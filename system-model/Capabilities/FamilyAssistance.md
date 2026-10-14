@@ -1,0 +1,53 @@
+# Elements
+
+### Assistenza personale domestica
+
+Un'installazione di Ambrogio nel proprio homelab assiste i membri della famiglia attraverso conversazioni e capacità rese disponibili dai connettori configurati. Nella prima versione i membri condividono un'unica identità, «famiglia».
+
+#### Metadata
+  * type: capability
+---
+
+### Conversazione familiare
+
+La famiglia pone domande generali e riceve risposte attraverso una conversazione rappresentata come testo nel sistema. I membri possono scrivere e ricevere testo, oppure parlare e ricevere una risposta pronunciata; il canale vocale trascrive l'input prima dell'elaborazione.
+
+#### Metadata
+  * type: capability
+
+#### Relations
+  * derivedFrom: [Assistenza personale domestica](#assistenza-personale-domestica)
+---
+
+### Estensione tramite connettori MCP
+
+Chi installa Ambrogio può rendere disponibili nuove capacità alla famiglia aggiungendo connettori a server MCP tramite configurazione. Il progetto può fornire configurazioni pronte per i connettori di base.
+
+#### Metadata
+  * type: capability
+
+#### Relations
+  * derivedFrom: [Assistenza personale domestica](#assistenza-personale-domestica)
+---
+
+### Interazione domestica tramite Home Assistant
+
+La famiglia può consultare informazioni e richiedere azioni sui dispositivi disponibili in Home Assistant durante le conversazioni con Ambrogio. Home Assistant è uno dei due connettori di base della prima versione.
+
+#### Metadata
+  * type: capability
+
+#### Relations
+  * derivedFrom: [Estensione tramite connettori MCP](#estensione-tramite-connettori-mcp)
+---
+
+### Memoria delle conversazioni
+
+La famiglia può porre domande che richiedono informazioni contenute nelle conversazioni precedenti. Il connettore Memory, disponibile dalla prima versione, recupera tramite RAG contenuti pertinenti dallo storico comune delle conversazioni testuali, comprese quelle svolte a voce e trascritte. Ambrogio fornisce sia il client sia il server MCP di questo connettore.
+
+#### Metadata
+  * type: capability
+
+#### Relations
+  * derivedFrom: [Estensione tramite connettori MCP](#estensione-tramite-connettori-mcp)
+---

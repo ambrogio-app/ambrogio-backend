@@ -10,7 +10,7 @@ Un'installazione di Ambrogio nel proprio homelab assiste i membri della famiglia
 
 ### Conversazione familiare
 
-La famiglia pone domande generali e riceve risposte attraverso una conversazione rappresentata come testo nel sistema. I membri possono scrivere e ricevere testo, oppure parlare e ricevere una risposta pronunciata; il canale vocale trascrive l'input prima dell'elaborazione.
+La famiglia pone domande generali e riceve risposte tramite testo o voce. Ambrogio rappresenta e conserva ogni conversazione come testo; trascrive i turni vocali e pronuncia le risposte ai turni vocali. Una conversazione iniziata a voce può essere riaperta e continuata in chat. Una nuova interazione vocale apre una nuova conversazione; solo le repliche immediate possono proseguire quella vocale ancora attiva.
 
 #### Metadata
   * type: capability

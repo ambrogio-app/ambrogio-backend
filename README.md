@@ -25,3 +25,11 @@ npx -y @reqvire-org/reqvire@1.3.2 --workspace "$PWD" mcp --port 8082 --enable-mu
 ```
 
 Il secondo comando avvia in primo piano il server MCP. La [configurazione Codex del progetto](.codex/config.toml) punta a `http://127.0.0.1:8082/mcp`. Per le mutazioni Reqvire richiede un branch con almeno un commit e un worktree pulito. Dopo aver avviato il server, aprire una nuova sessione Codex per rendere disponibili i suoi strumenti; fermare il server prima di modificare il modello con editor o CLI.
+
+Per aprire l'Explorer web in un altro terminale:
+
+```bash
+npx -y @reqvire-org/reqvire@1.3.2 --workspace "$PWD" serve --port 8080
+```
+
+La UI è disponibile su `http://127.0.0.1:8080`. Il comando avvia solo l'Explorer; il server MCP configurato per Codex rimane sulla porta 8082.

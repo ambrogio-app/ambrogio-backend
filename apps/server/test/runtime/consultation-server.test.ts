@@ -247,10 +247,12 @@ describe('consultation HTTP runtime', () => {
     const cause = new Error('private cause');
     const original = new TypeError('private bug', { cause });
     original.name = 'ExternalDriverError';
+    original.stack = 'TECH_EXTERNAL_STACK_MARKER';
     Object.assign(original, { connectionString: 'private driver property' });
     const sdkError = new Error('private SDK failure');
     Object.assign(sdkError, { token: 'private SDK property' });
     const project = new ProjectError('project diagnostic marker', { cause });
+    project.stack = 'TECH_PROJECT_STACK_MARKER';
     const unknown = { marker: 'private unknown failure' };
     const originalProperties = Object.getOwnPropertyDescriptors(original);
     const sdkProperties = Object.getOwnPropertyDescriptors(sdkError);
@@ -263,6 +265,7 @@ describe('consultation HTTP runtime', () => {
     });
     const server = await buildConsultationServer(base, prepared);
     const logged: { err: Error; event: string }[] = [];
+    const warnings: unknown[][] = [];
     server.get('/test-project', async () => { throw project; });
     server.get('/test-fallback', async () => { throw original; });
     server.get('/test-sdk', async () => { throw sdkError; });
@@ -271,6 +274,7 @@ describe('consultation HTTP runtime', () => {
     server.addHook('onRequest', (request, _reply, done) => {
       const logError = request.log.error.bind(request.log);
       const error = vi.spyOn(request.log, 'error');
+      warnings.push(vi.spyOn(request.log, 'warn').mock.calls);
       error.mockImplementation((value: unknown, message?: string) => {
         logged.push(value as { err: Error; event: string });
         logError(value, message);
@@ -278,10 +282,13 @@ describe('consultation HTTP runtime', () => {
       done();
     });
     try {
-      for (const url of ['/test-project', '/test-fallback', '/test-sdk', '/test-unknown', '/test-string']) {
+      for (const [index, url] of ['/test-project', '/test-fallback', '/test-sdk',
+        '/test-unknown', '/test-string'].entries()) {
         const response = await server.inject({ method: 'GET', url });
         expect(response.statusCode).toBe(500);
         expect(response.json()).toEqual({ error: 'Internal server error.' });
+        expect(logged).toHaveLength(index + 1);
+        expect(warnings[index]).toHaveLength(0);
       }
       expect(logged.map(item => item.event)).toEqual([
         'http.unexpected_failure', 'http.unexpected_failure',
@@ -307,7 +314,7 @@ describe('consultation HTTP runtime', () => {
       for (const row of rows.slice(1)) {
         expect(row.err).toEqual({ type: 'Error', message: 'Unexpected HTTP failure', stack: '[redacted]' });
       }
-      expect(output.join('')).not.toMatch(/private bug|private cause|private driver property|private SDK failure|private SDK property|private unknown failure|another private failure/);
+      expect(output.join('')).not.toMatch(/private bug|private cause|private driver property|private SDK failure|private SDK property|private unknown failure|another private failure|TECH_EXTERNAL_STACK_MARKER/);
     } finally {
       write.mockRestore();
       await server.close();

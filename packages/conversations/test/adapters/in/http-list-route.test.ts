@@ -96,23 +96,31 @@ describe('conversation list HTTP ingress', () => {
   });
 
   it('normalizes unknown failures only at the HTTP boundary', async () => {
-    const cause = new Error('private original cause');
-    const original = new TypeError('private list bug', { cause });
-    const project = new ProjectError('project list failure', { cause });
-    const unknown = { marker: 'private unknown failure' };
-    const thrown: unknown[] = [original, project, unknown, 'another private failure'];
+    const cause = new Error('TECH_CAUSE_MARKER');
+    const original = new TypeError('TECH_MESSAGE_MARKER', { cause });
+    original.stack = 'TECH_STACK_MARKER';
+    const project = new ProjectError('PROJECT_MESSAGE_MARKER', { cause });
+    const unknown = { marker: 'TECH_ORIGINAL_MARKER' };
+    const thrown: unknown[] = [original, project, unknown, 'TECH_STRING_MARKER'];
     const logs: unknown[][] = [];
+    const warnings: unknown[][] = [];
     const server = fixture(createListConversations({ async page() { throw thrown.shift(); } }));
     server.addHook('onRequest', (request, _reply, done) => {
       const error = vi.spyOn(request.log, 'error');
+      const warn = vi.spyOn(request.log, 'warn');
       logs.push(error.mock.calls);
+      warnings.push(warn.mock.calls);
       done();
     });
     const logged: { err: Error }[] = [];
     for (let index = 0; index < 4; index++) {
+      const previousErrors = (logs.at(-1) as unknown[][] | undefined)?.length ?? 0;
+      const previousWarnings = (warnings.at(-1) as unknown[][] | undefined)?.length ?? 0;
       const response = await server.inject({ method: 'GET', url: '/api/conversations' });
       expect(response.statusCode).toBe(500);
-      expect(response.body).not.toContain('private');
+      expect(response.json()).toEqual({ error: "I can't complete the response." });
+      expect((logs.at(-1) as unknown[][])).toHaveLength(previousErrors + 1);
+      expect((warnings.at(-1) as unknown[][])).toHaveLength(previousWarnings);
       logged.push((logs.at(-1) as unknown[][]).at(-1)![0] as { err: Error });
     }
     expect(logged[0]!.err).toBe(original);
@@ -120,8 +128,9 @@ describe('conversation list HTTP ingress', () => {
     expect(original.cause).toBe(cause);
     expect(logged[2]!.err).toBeInstanceOf(Error);
     expect(logged[2]!.err.cause).toBe(unknown);
-    expect(logged[3]!.err.cause).toBe('another private failure');
+    expect(logged[3]!.err.cause).toBe('TECH_STRING_MARKER');
     expect(logged[2]!.err.message).toBe(logged[3]!.err.message);
-    expect(unknown).toEqual({ marker: 'private unknown failure' });
+    expect(original.stack).toBe('TECH_STACK_MARKER');
+    expect(unknown).toEqual({ marker: 'TECH_ORIGINAL_MARKER' });
   });
 });

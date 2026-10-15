@@ -163,23 +163,29 @@ describe('text turn HTTP ingress', () => {
   });
 
   it('normalizes admission failures without replacing an Error or stringifying unknown values', async () => {
-    const cause = new Error('private original cause');
-    const original = new Error('private admission failure', { cause });
-    const project = new ProjectError('project admission failure', { cause });
-    const unknown = { marker: 'private unknown failure' };
-    const thrown: unknown[] = [original, project, unknown, 'another private failure'];
+    const cause = new Error('TECH_CAUSE_MARKER');
+    const original = new Error('TECH_MESSAGE_MARKER', { cause });
+    original.stack = 'TECH_STACK_MARKER';
+    const project = new ProjectError('PROJECT_MESSAGE_MARKER', { cause });
+    const unknown = { marker: 'TECH_ORIGINAL_MARKER' };
+    const thrown: unknown[] = [original, project, unknown, 'TECH_STRING_MARKER'];
     const calls: unknown[][] = [];
+    const warnings: unknown[][] = [];
     const { server, lines } = loggedFixture(async () => { throw thrown.shift(); });
     server.addHook('onRequest', (request, _reply, done) => {
       const error = vi.spyOn(request.log, 'error');
+      const warn = vi.spyOn(request.log, 'warn');
       calls.push(error.mock.calls);
+      warnings.push(warn.mock.calls);
       done();
     });
     const logged: { err: Error }[] = [];
     for (let index = 0; index < 4; index++) {
       const response = await server.inject(jsonPost({ text: 'hello' }));
       expect(response.statusCode).toBe(500);
-      expect(response.body).not.toContain('private');
+      expect(response.json()).toEqual({ error: "I can't complete the response." });
+      expect((calls.at(-1) as unknown[][])).toHaveLength(1);
+      expect((warnings.at(-1) as unknown[][])).toHaveLength(0);
       logged.push((calls.at(-1) as unknown[][]).at(-1)![0] as { err: Error });
     }
     expect(logged[0]!.err).toBe(original);
@@ -187,9 +193,10 @@ describe('text turn HTTP ingress', () => {
     expect(original.cause).toBe(cause);
     expect(logged[2]!.err).toBeInstanceOf(Error);
     expect(logged[2]!.err.cause).toBe(unknown);
-    expect(logged[3]!.err.cause).toBe('another private failure');
+    expect(logged[3]!.err.cause).toBe('TECH_STRING_MARKER');
     expect(logged[2]!.err.message).toBe(logged[3]!.err.message);
-    expect(unknown).toEqual({ marker: 'private unknown failure' });
+    expect(original.stack).toBe('TECH_STACK_MARKER');
+    expect(unknown).toEqual({ marker: 'TECH_ORIGINAL_MARKER' });
     expect(lines).toHaveLength(4);
   });
 
@@ -307,8 +314,14 @@ describe('text turn HTTP ingress', () => {
     expect(restartedCalls).toBe(1);
   });
 
-  it('does not copy a private completion failure into the diagnostic log message', async () => {
+  it('keeps a completion failure out of public SSE and emits one definitive diagnostic', async () => {
     const lines: string[] = [];
+    const original = { marker: 'TECH_ORIGINAL_MARKER' };
+    const cause = new Error('TECH_CAUSE_MARKER', { cause: original });
+    const failure = new ProjectError('TECH_MESSAGE_MARKER', { cause });
+    failure.stack = 'TECH_STACK_MARKER';
+    const diagnosticCalls: unknown[][][] = [];
+    const warningCalls: unknown[][][] = [];
     const server = Fastify({ logger: { level: 'error',
       stream: new Writable({ write(chunk, _encoding, callback) {
         lines.push(chunk.toString());
@@ -320,17 +333,30 @@ describe('text turn HTTP ingress', () => {
     servers.push(server);
     registerTurnRoute(server, { language: 'en', exchange: async (_input, observer) => {
       await observer?.admitted?.('conversation-1', 'turn-1');
-      throw new Error('private completion failure');
+      throw failure;
     } });
+    server.addHook('onRequest', (request, _reply, done) => {
+      diagnosticCalls.push(vi.spyOn(request.log, 'error').mock.calls);
+      warningCalls.push(vi.spyOn(request.log, 'warn').mock.calls);
+      done();
+    });
     const response = await server.inject(jsonPost({ text: 'hello' }));
     expect(response.statusCode).toBe(200);
-    expect(response.body).toContain('event: error');
+    expect(response.body).toContain('event: error\ndata: {"error":"I can\'t complete the response."}\n\n');
+    expect(response.body).not.toContain('event: done');
+    expect(response.body).not.toMatch(/TECH_(?:MESSAGE|STACK|CAUSE|ORIGINAL)_MARKER/);
+    expect(diagnosticCalls).toHaveLength(1);
+    expect(diagnosticCalls[0]).toHaveLength(1);
+    expect(warningCalls).toEqual([[]]);
+    expect((diagnosticCalls[0]![0]![0] as { err: Error }).err).toBe(failure);
+    expect(failure.cause).toBe(cause);
+    expect(cause.cause).toBe(original);
     expect(lines).toHaveLength(1);
     const logged = JSON.parse(lines[0]!) as { event: string; msg: string; err: { message: string } };
     expect(logged.event).toBe('conversation_turn_completion_failed');
     expect(logged.msg).toBe('Conversation turn completion failed');
     expect(logged.err.message).toBe('Unexpected HTTP failure');
-    expect(lines[0]).not.toContain('private completion failure');
+    expect(lines[0]).not.toMatch(/TECH_(?:MESSAGE|STACK|CAUSE|ORIGINAL)_MARKER/);
   });
 
   it.each(['conversation', 'delta'] as const)(

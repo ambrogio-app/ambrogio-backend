@@ -57,6 +57,8 @@ Quando un componente intermedio del server si limita a propagare un guasto inatt
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [get-conversation.use-case.ts](../../packages/conversations/src/application/get-conversation.use-case.ts)
+  * satisfiedBy: [list-conversations.use-case.ts](../../packages/conversations/src/application/list-conversations.use-case.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -311,6 +313,10 @@ Quando un confine del server comunica alla famiglia un messaggio per un guasto, 
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [history-route.ts](../../packages/conversations/src/adapters/in/http/history-route.ts)
+  * satisfiedBy: [list-route.ts](../../packages/conversations/src/adapters/in/http/list-route.ts)
+  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -686,6 +692,10 @@ Quando un componente del server decide definitivamente l'esito esterno di un gua
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [history-route.ts](../../packages/conversations/src/adapters/in/http/history-route.ts)
+  * satisfiedBy: [list-route.ts](../../packages/conversations/src/adapters/in/http/list-route.ts)
+  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -746,6 +756,10 @@ Quando un confine del server produce per lo stesso guasto un messaggio per la fa
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [history-route.ts](../../packages/conversations/src/adapters/in/http/history-route.ts)
+  * satisfiedBy: [list-route.ts](../../packages/conversations/src/adapters/in/http/list-route.ts)
+  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 

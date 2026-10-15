@@ -6,7 +6,8 @@ import { dirname, join } from 'node:path';
 import { openConversationArchive } from '@ambrogio/conversations/adapters/out/sqlite/archive';
 import { ProjectError } from '@ambrogio/conversations/application/project-error';
 import { prepareConfiguredConversations } from '../../src/composition/conversations.js';
-import { buildConsultationServer, startConsultationServer } from '../../src/runtime/consultation-server.js';
+import { buildConsultationServer, buildConversationServer,
+  startConsultationServer } from '../../src/runtime/consultation-server.js';
 import { loadHttpConfig, type HttpConfig } from '../../src/runtime/http-config.js';
 
 const directories: string[] = [];
@@ -179,7 +180,10 @@ describe('consultation HTTP runtime', () => {
       return true;
     });
     const server = await buildConsultationServer(base, prepared);
-    server.get('/test-fallback', async () => { throw new Error('private diagnostic marker'); });
+    server.get('/test-fallback', async request => {
+      throw Object.assign(new Error('private diagnostic marker'),
+        { sourceContext: request.headers['x-context-marker'] });
+    });
     const diagnostics = new Map<string, { binding: unknown; events: unknown[][] }>();
     server.addHook('onRequest', (request, _reply, done) => {
       const error = vi.spyOn(request.log, 'error');
@@ -194,18 +198,31 @@ describe('consultation HTTP runtime', () => {
       expect([ordinary.statusCode, expected.statusCode, missing.statusCode]).toEqual([200, 400, 404]);
       expect(output).toEqual([]);
       await prepared.archive.close();
-      const list = await server.inject({ method: 'GET', url: '/api/conversations' });
-      const history = await server.inject({ method: 'GET', url: '/api/conversations/example' });
-      const fallback = await server.inject({ method: 'GET', url: '/test-fallback' });
-      for (const response of [list, history, fallback]) {
+      const list = await server.inject({ method: 'GET', url: '/api/conversations',
+        headers: { 'x-context-marker': 'LIST_CONTEXT_MARKER_A' } });
+      const history = await server.inject({ method: 'GET', url: '/api/conversations/example',
+        headers: { 'x-context-marker': 'HISTORY_CONTEXT_MARKER_A' } });
+      const fallback = await server.inject({ method: 'GET', url: '/test-fallback',
+        headers: { 'x-context-marker': 'FALLBACK_CONTEXT_MARKER_A' } });
+      const listAgain = await server.inject({ method: 'GET', url: '/api/conversations?limit=2',
+        headers: { 'x-context-marker': 'LIST_CONTEXT_MARKER_B' } });
+      const historyAgain = await server.inject({ method: 'GET', url: '/api/conversations/other',
+        headers: { 'x-context-marker': 'HISTORY_CONTEXT_MARKER_B' } });
+      const fallbackAgain = await server.inject({ method: 'GET', url: '/test-fallback?run=2',
+        headers: { 'x-context-marker': 'FALLBACK_CONTEXT_MARKER_B' } });
+      for (const response of [list, history, fallback, listAgain, historyAgain, fallbackAgain]) {
         expect(response.statusCode).toBe(500);
         expect(response.headers['x-request-id']).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
       }
       expect(list.headers['cache-control']).toBe('no-store');
       expect(history.headers['cache-control']).toBe('no-store');
       expect(list.headers['x-request-id']).not.toBe(history.headers['x-request-id']);
-      for (const [response, event] of [[list, 'conversation_list_http_failed'],
-        [history, 'conversation_history_http_failed'], [fallback, 'http.unexpected_failure']] as const) {
+      const expectedEvents = [[list, 'conversation_list_http_failed'],
+        [history, 'conversation_history_http_failed'], [fallback, 'http.unexpected_failure'],
+        [listAgain, 'conversation_list_http_failed'],
+        [historyAgain, 'conversation_history_http_failed'],
+        [fallbackAgain, 'http.unexpected_failure']] as const;
+      for (const [response, event] of expectedEvents) {
         const id = response.headers['x-request-id'] as string;
         const diagnostic = diagnostics.get(id);
         expect(diagnostic?.binding).toMatchObject({ correlationId: id });
@@ -214,12 +231,14 @@ describe('consultation HTTP runtime', () => {
       }
       const rows = output.flatMap(chunk => chunk.split('\n')).filter(line => line.length > 0)
         .map(line => JSON.parse(line) as { event?: string; correlationId?: string; msg?: string });
-      expect(rows).toHaveLength(3);
+      expect(rows).toHaveLength(6);
       expect(errorOutput).toEqual([]);
-      for (const row of rows) {
+      for (const [index, row] of rows.entries()) {
         expect(Object.keys(row).sort()).toEqual([
           'correlationId', 'err', 'event', 'hostname', 'level', 'msg', 'pid', 'time',
         ]);
+        expect(row.event).toBe(expectedEvents[index]![1]);
+        expect(row.correlationId).toBe(expectedEvents[index]![0].headers['x-request-id']);
       }
       expect(rows).toEqual(expect.arrayContaining([
         expect.objectContaining({ event: 'conversation_list_http_failed',
@@ -233,6 +252,7 @@ describe('consultation HTTP runtime', () => {
       expect(output.join('')).not.toContain('driver has already been destroyed');
       expect(output.join('')).not.toContain('private authorization marker');
       expect(output.join('')).not.toContain('private-id-marker');
+      expect(output.join('')).not.toMatch(/(?:LIST|HISTORY|FALLBACK)_CONTEXT_MARKER_[AB]/);
     } finally {
       write.mockRestore();
       writeError.mockRestore();
@@ -315,6 +335,76 @@ describe('consultation HTTP runtime', () => {
         expect(row.err).toEqual({ type: 'Error', message: 'Unexpected HTTP failure', stack: '[redacted]' });
       }
       expect(output.join('')).not.toMatch(/private bug|private cause|private driver property|private SDK failure|private SDK property|private unknown failure|another private failure|TECH_EXTERNAL_STACK_MARKER/);
+    } finally {
+      write.mockRestore();
+      await server.close();
+      await prepared.archive.close();
+    }
+  });
+
+  it('does not collect conversation, request, use-case or credential data into diagnostics', async () => {
+    const files = await fixture();
+    const prepared = await prepareConfiguredConversations({ archivePath: files.archive,
+      listPageSize: 20, maxListPageSize: 100, language: 'en' }, new Date());
+    const output: string[] = [];
+    const write = vi.spyOn(process.stdout, 'write').mockImplementation(chunk => {
+      output.push(String(chunk));
+      return true;
+    });
+    const { server } = await buildConversationServer(base, prepared, {
+      async *produce(history) {
+        expect(history.turns.at(-1)?.text).toBe('PRIVATE_CONVERSATION_TEXT');
+        yield 'PRIVATE_USE_CASE_OUTPUT';
+      },
+    });
+    server.post('/test-diagnostic-input', async request => {
+      throw Object.assign(new Error('private technical fault'), {
+        input: request.body,
+        output: { answer: 'PRIVATE_USE_CASE_OUTPUT' },
+        credential: request.headers.authorization,
+      });
+    });
+    try {
+      const turn = await server.inject({ method: 'POST', url: '/api/conversations/turns',
+        headers: { 'content-type': 'application/json', authorization: 'PRIVATE_CREDENTIAL',
+          'x-context': 'PRIVATE_CONTEXT' },
+        payload: { text: 'PRIVATE_CONVERSATION_TEXT' } });
+      expect(turn.statusCode).toBe(200);
+      const conversationId = JSON.parse(turn.body.match(/event: conversation\ndata: ([^\n]+)/)![1]!)
+        .conversationId as string;
+      const history = await server.inject({ method: 'GET',
+        url: `/api/conversations/${conversationId}` });
+      expect(history.statusCode).toBe(200);
+      expect(history.body).toContain('PRIVATE_CONVERSATION_TEXT');
+      expect(history.body).toContain('PRIVATE_USE_CASE_OUTPUT');
+      const list = await server.inject({ method: 'GET', url: '/api/conversations?limit=1' });
+      expect(list.statusCode).toBe(200);
+      expect(list.body).toContain(conversationId);
+      expect(output).toEqual([]);
+
+      await prepared.archive.close();
+      const admissionFault = await server.inject({ method: 'POST', url: '/api/conversations/turns',
+        headers: { 'content-type': 'application/json', authorization: 'PRIVATE_CREDENTIAL',
+          'x-context': 'PRIVATE_CONTEXT' },
+        payload: { text: 'PRIVATE_CONVERSATION_TEXT' } });
+      expect(admissionFault.statusCode).toBe(500);
+      const fault = await server.inject({ method: 'POST', url: '/test-diagnostic-input',
+        headers: { 'content-type': 'application/json', authorization: 'PRIVATE_CREDENTIAL',
+          'x-context': 'PRIVATE_CONTEXT' },
+        payload: { text: 'PRIVATE_HTTP_BODY', useCaseInput: 'PRIVATE_USE_CASE_INPUT' } });
+      expect(fault.statusCode).toBe(500);
+      const rows = output.flatMap(chunk => chunk.split('\n')).filter(Boolean)
+        .map(line => JSON.parse(line) as Record<string, unknown>);
+      expect(rows).toHaveLength(2);
+      for (const row of rows) {
+        expect(Object.keys(row).sort()).toEqual([
+          'correlationId', 'err', 'event', 'hostname', 'level', 'msg', 'pid', 'time',
+        ]);
+      }
+      expect(rows.map(row => row.event)).toEqual([
+        'conversation_turn_admission_failed', 'http.unexpected_failure',
+      ]);
+      expect(output.join('')).not.toMatch(/PRIVATE_(?:CONVERSATION_TEXT|USE_CASE_OUTPUT|CREDENTIAL|CONTEXT|HTTP_BODY|USE_CASE_INPUT)/);
     } finally {
       write.mockRestore();
       await server.close();

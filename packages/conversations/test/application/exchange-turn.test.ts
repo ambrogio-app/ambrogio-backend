@@ -203,14 +203,16 @@ describe('conversation exchange use case', () => {
   });
 
   it('stops on an admission rejection without reading history or invoking the producer', async () => {
-    const deps = setup();
-    const exchange = createExchangeTurn({
-      ...deps,
-      begin: async () => ({ ok: false, error: { kind: 'occupied' } }),
-      reply: { async *produce() { throw new Error('must not run'); } },
-    });
-    expect(await exchange({ text: '  domanda  ' })).toEqual({ ok: false, error: { kind: 'occupied' } });
-    expect(deps.calls).toEqual([]);
+    for (const kind of ['occupied', 'conversation_not_found', 'temporarily_unavailable'] as const) {
+      const deps = setup();
+      const exchange = createExchangeTurn({
+        ...deps,
+        begin: async () => ({ ok: false, error: { kind } }),
+        reply: { async *produce() { throw new Error('must not run'); } },
+      });
+      expect(await exchange({ text: '  domanda  ' })).toEqual({ ok: false, error: { kind } });
+      expect(deps.calls).toEqual([]);
+    }
   });
 
   it('does not report success when persistence of the answer fails', async () => {

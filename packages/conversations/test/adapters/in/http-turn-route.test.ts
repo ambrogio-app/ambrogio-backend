@@ -3,6 +3,7 @@ import { request as httpRequest } from 'node:http';
 import { PassThrough, Writable } from 'node:stream';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createExchangeTurn } from '../../../src/application/exchange-turn.use-case.js';
+import { createBeginTurn } from '../../../src/application/begin-turn.use-case.js';
 import { Turn } from '../../../src/domain/turn.js';
 import { ProjectError } from '../../../src/project-error.js';
 import type { ExchangeTurn } from '../../../src/application/exchange-turn.use-case.js';
@@ -44,13 +45,34 @@ function loggedFixture(exchange: ExchangeTurn) {
   return { server, lines };
 }
 
+function expectExplicitDiagnosticFields(line: string, event: string) {
+  const row = JSON.parse(line) as Record<string, unknown>;
+  expect(Object.keys(row).sort()).toEqual([
+    'err', 'event', 'hostname', 'level', 'msg', 'pid', 'reqId', 'time',
+  ]);
+  expect(row.event).toBe(event);
+  expect(Object.keys(row.err as Record<string, unknown>).sort()).toEqual([
+    'message', 'stack', 'type',
+  ]);
+}
+
 describe('text turn HTTP ingress', () => {
   it('rejects empty text before a missing conversation, malformed JSON and unsupported fields', async () => {
-    let calls = 0;
-    const server = fixture(async () => { calls += 1; throw new Error('must not run'); });
+    const admit = vi.fn(async () => { throw new Error('archive admission must not run'); });
+    const completeArchive = vi.fn(async () => { throw new Error('archive completion must not run'); });
+    const exchange = vi.fn(createExchangeTurn({
+      begin: createBeginTurn({ archive: { admit, complete: completeArchive },
+        identifiers: { next: () => 'turn-id' }, clock: { now: () => new Date(1000) } }),
+      complete: async () => { throw new Error('completion must not run'); },
+      history: { async find() { throw new Error('history must not run'); } },
+      reply: { async *produce() { throw new Error('reply must not run'); } },
+      failureMessage: "I can't complete the response.",
+    }));
+    const server = fixture(exchange);
     for (const request of [
       jsonPost({ text: '   ', conversationId: 'missing' }),
       post('{broken'),
+      jsonPost({ text: 42 }),
       jsonPost({ text: 'hello', history: [] }),
       jsonPost({ text: 'hello', conversationId: 5 }),
       { ...post('hello'), headers: { 'content-type': 'text/plain' } },
@@ -61,7 +83,9 @@ describe('text turn HTTP ingress', () => {
       expect(response.headers['cache-control']).toBe('no-store');
       expect(response.json()).toEqual({ error: 'Invalid message.' });
     }
-    expect(calls).toBe(0);
+    expect(exchange).not.toHaveBeenCalled();
+    expect(admit).not.toHaveBeenCalled();
+    expect(completeArchive).not.toHaveBeenCalled();
   });
 
   it('maps expected admission rejections to distinct HTTP errors in Italian', async () => {
@@ -78,6 +102,58 @@ describe('text turn HTTP ingress', () => {
       expect(response.headers['cache-control']).toBe('no-store');
       expect(response.json()).toEqual({ error: message });
     }
+  });
+
+  it('does not emit warn or error logs for expected admission and protocol outcomes', async () => {
+    const begin = createBeginTurn({
+      archive: {
+        async admit({ turn }) {
+          return { ok: false as const, error: { kind: turn.snapshot().text === 'busy'
+            ? 'archive_busy' as const : 'conversation_occupied' as const } };
+        },
+        async complete() { throw new Error('unexpected completion'); },
+      },
+      identifiers: { next: () => 'turn-id' },
+      clock: { now: () => new Date(1000) },
+    });
+    const exchange = createExchangeTurn({
+      begin,
+      complete: async () => { throw new Error('unexpected completion'); },
+      history: { async find() { throw new Error('unexpected history read'); } },
+      reply: { async *produce() { throw new Error('unexpected reply'); } },
+      failureMessage: "I can't complete the response.",
+    });
+    const { server, lines } = loggedFixture(exchange);
+    const rootErrors = vi.spyOn(server.log, 'error');
+    const rootWarnings = vi.spyOn(server.log, 'warn');
+    const calls: { errors: unknown[][]; warnings: unknown[][] }[] = [];
+    server.addHook('onRequest', (request, _reply, done) => {
+      calls.push({ errors: vi.spyOn(request.log, 'error').mock.calls,
+        warnings: vi.spyOn(request.log, 'warn').mock.calls });
+      done();
+    });
+    const domainTurn = Turn.accept({ id: 'domain-turn', text: 'domain text',
+      acceptedAt: new Date(1000) });
+    expect(domainTurn.answer('answer', new Date(2000))).toEqual({ ok: true, value: undefined });
+    expect(domainTurn.answer('another answer', new Date(3000)))
+      .toEqual({ ok: false, error: { kind: 'already_closed' } });
+    expect(rootErrors).not.toHaveBeenCalled();
+    expect(rootWarnings).not.toHaveBeenCalled();
+    expect(lines).toEqual([]);
+    for (const [request, status] of [
+      [jsonPost({ text: 'occupied', conversationId: 'existing' }), 409],
+      [jsonPost({ text: 'busy', conversationId: 'existing' }), 503],
+      [post('{broken'), 400],
+    ] as const) {
+      const response = await server.inject(request);
+      expect(response.statusCode).toBe(status);
+      expect(calls.at(-1)?.errors).toEqual([]);
+      expect(calls.at(-1)?.warnings).toEqual([]);
+      expect(lines).toEqual([]);
+    }
+    expect(calls).toHaveLength(3);
+    expect(rootErrors).not.toHaveBeenCalled();
+    expect(rootWarnings).not.toHaveBeenCalled();
   });
 
   it('caps the actual JSON body at 64 KiB before admission', async () => {
@@ -198,6 +274,39 @@ describe('text turn HTTP ingress', () => {
     expect(original.stack).toBe('TECH_STACK_MARKER');
     expect(unknown).toEqual({ marker: 'TECH_ORIGINAL_MARKER' });
     expect(lines).toHaveLength(4);
+    for (const line of lines) expectExplicitDiagnosticFields(line, 'conversation_turn_admission_failed');
+  });
+
+  it('keeps the HTTP error event name stable across different technical faults', async () => {
+    const faults = ['first technical fault', 'second technical fault'];
+    const { server, lines } = loggedFixture(async () => { throw new Error('exchange should not run'); });
+    server.addHook('preValidation', async request => {
+      if (request.url === '/api/conversations/turns') throw new Error(faults.shift());
+    });
+    for (const text of ['first', 'second']) {
+      const response = await server.inject(jsonPost({ text }));
+      expect(response.statusCode).toBe(500);
+    }
+    expect(lines).toHaveLength(2);
+    for (const line of lines) expectExplicitDiagnosticFields(line, 'conversation_turn_http_failed');
+  });
+
+  it('keeps the completion error event name stable across different faults', async () => {
+    const events: string[] = [];
+    for (const text of ['first', 'second']) {
+      const { server, lines } = loggedFixture(async (_input, observer) => {
+        await observer?.admitted?.('conversation-1', 'turn-1');
+        throw new Error(`${text} technical fault`);
+      });
+      const response = await server.inject(jsonPost({ text }));
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain('event: error');
+      expect(lines).toHaveLength(1);
+      expectExplicitDiagnosticFields(lines[0]!, 'conversation_turn_completion_failed');
+      events.push((JSON.parse(lines[0]!) as { event: string }).event);
+    }
+    expect(events).toEqual(['conversation_turn_completion_failed',
+      'conversation_turn_completion_failed']);
   });
 
   it('streams conversation identity, ordered deltas and done on the same POST', async () => {
@@ -406,6 +515,7 @@ describe('text turn HTTP ingress', () => {
       expect(response.body).not.toContain('private SSE transport detail');
       expect(lines).toHaveLength(1);
       const logged = JSON.parse(lines[0]!) as { event: string; err: { message: string } };
+      expectExplicitDiagnosticFields(lines[0]!, 'conversation_turn_sse_delivery_failed');
       expect(logged.event).toBe('conversation_turn_sse_delivery_failed');
       expect(logged.err.message).toBe('Unexpected HTTP failure');
       expect(lines[0]).not.toContain('private SSE transport detail');

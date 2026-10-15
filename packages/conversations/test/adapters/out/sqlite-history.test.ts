@@ -37,6 +37,54 @@ afterEach(async () => {
 });
 
 describe('conversation history and startup recovery', () => {
+  it('reopens two ordered textual exchanges with their answer and public error', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'ambrogio-exchanges-'));
+    directories.push(directory);
+    const filename = join(directory, 'history.sqlite');
+    const db = open(filename);
+    await migrateConversationArchive(db);
+    const writer = new SqliteConversationWrite(db);
+    const firstText = '  prima   domanda  ';
+    const secondText = '  seconda  domanda  ';
+    expect(await writer.admit({ conversationId, createConversation: true,
+      turn: Turn.accept({ id: firstTurnId, text: firstText, acceptedAt: new Date(1000) }) }))
+      .toEqual({ ok: true, value: undefined });
+    expect(await writer.complete({ turnId: firstTurnId,
+      outcome: { kind: 'answer', text: 'Prima risposta' }, finishedAt: new Date(2000) }))
+      .toMatchObject({ ok: true });
+    expect(await writer.admit({ conversationId, createConversation: false,
+      turn: Turn.accept({ id: secondTurnId, text: secondText, acceptedAt: new Date(3000) }) }))
+      .toEqual({ ok: true, value: undefined });
+    expect(await writer.complete({ turnId: secondTurnId,
+      outcome: { kind: 'error', message: 'Errore pubblico' }, finishedAt: new Date(4000) }))
+      .toMatchObject({ ok: true });
+    const otherConversationId = 'f4d711a3-5e8b-4a9d-a513-23d9ef21521f';
+    const otherTurnId = 'bd5458f4-b393-4fb7-8d2a-6465727fbc36';
+    expect(await writer.admit({ conversationId: otherConversationId, createConversation: true,
+      turn: Turn.accept({ id: otherTurnId, text: 'altra domanda', acceptedAt: new Date(5000) }) }))
+      .toMatchObject({ ok: true });
+    expect(await writer.complete({ turnId: otherTurnId,
+      outcome: { kind: 'answer', text: 'altra risposta' }, finishedAt: new Date(6000) }))
+      .toMatchObject({ ok: true });
+    await db.destroy();
+    opened.splice(opened.indexOf(db), 1);
+
+    const reopened = open(filename);
+    await migrateConversationArchive(reopened);
+    const history = await createGetConversation(new SqliteConversationHistoryRead(reopened))({ conversationId });
+    expect(history).toEqual({ ok: true, value: {
+      id: conversationId, createdAt: new Date(1000), lastActivityAt: new Date(3000),
+      turns: [
+        { id: firstTurnId, text: firstText, acceptedAt: new Date(1000),
+          status: 'answered', answer: 'Prima risposta', finishedAt: new Date(2000) },
+        { id: secondTurnId, text: secondText, acceptedAt: new Date(3000),
+          status: 'failed', error: 'Errore pubblico', finishedAt: new Date(4000) },
+      ],
+    } });
+    expect((await new SqliteConversationHistoryRead(reopened).find(otherConversationId))?.turns)
+      .toMatchObject([{ id: otherTurnId, text: 'altra domanda', answer: 'altra risposta' }]);
+  });
+
   it('stores and restores exact Unix milliseconds before and after the epoch', async () => {
     const db = open(':memory:');
     await migrateConversationArchive(db);

@@ -35,9 +35,9 @@ export class McpToolClient {
     try {
       await client.connect(transport);
       return new McpToolClient(client);
-    } catch {
+    } catch (error) {
       try { await client.close(); } catch { /* preserve the safe connection failure */ }
-      throw new ProjectError('MCP connection failed');
+      throw new ProjectError('MCP connection failed', { cause: error });
     }
   }
 
@@ -46,7 +46,7 @@ export class McpToolClient {
       const { tools } = await this.client.listTools();
       return tools.map((tool) => ({ name: tool.name, description: tool.description,
         inputSchema: tool.inputSchema as Record<string, unknown> }));
-    } catch { throw new ProjectError('MCP tool discovery failed'); }
+    } catch (error) { throw new ProjectError('MCP tool discovery failed', { cause: error }); }
   }
 
   async callTool(name: string, args: Record<string, unknown>): Promise<Readonly<{
@@ -55,7 +55,7 @@ export class McpToolClient {
     try {
       const result = await this.client.callTool({ name, arguments: args });
       return { isError: result.isError === true, content: result.content };
-    } catch { throw new ProjectError('MCP tool invocation failed'); }
+    } catch (error) { throw new ProjectError('MCP tool invocation failed', { cause: error }); }
   }
 
   async close(): Promise<void> { await this.client.close(); }

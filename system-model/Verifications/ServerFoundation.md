@@ -249,6 +249,8 @@ La prova passa se tutti i campi della riga appartengono alla selezione esplicita
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
+  * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
+  * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
   * verify: [Selezione esplicita dei campi diagnostici](../Requirements/ServerFoundation.md#selezione-esplicita-dei-campi-diagnostici)
 ---
 
@@ -280,6 +282,8 @@ La prova passa se ogni riga contiene `event`, il suo valore corrisponde al nome 
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
+  * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
+  * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
   * verify: [Nome stabile degli eventi diagnostici](../Requirements/ServerFoundation.md#nome-stabile-degli-eventi-diagnostici)
 ---
 
@@ -295,6 +299,11 @@ La prova passa se ogni rifiuto è restituito come valore distinguibile dal succe
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
+  * satisfiedBy: [sqlite-conversation-write.test.ts](../../packages/conversations/test/adapters/out/sqlite-conversation-write.test.ts)
+  * satisfiedBy: [sqlite-history.test.ts](../../packages/conversations/test/adapters/out/sqlite-history.test.ts)
+  * satisfiedBy: [exchange-turn.test.ts](../../packages/conversations/test/application/exchange-turn.test.ts)
+  * satisfiedBy: [turn-use-cases.test.ts](../../packages/conversations/test/application/turn-use-cases.test.ts)
+  * satisfiedBy: [turn.test.ts](../../packages/conversations/test/domain/turn.test.ts)
   * verify: [Rifiuti previsti come valori di esito](../Requirements/ServerFoundation.md#rifiuti-previsti-come-valori-di-esito)
 ---
 
@@ -363,6 +372,7 @@ La prova passa se nessuno dei quattro esiti causa automaticamente un log dedicat
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
+  * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
   * verify: [Nessun log automatico per esiti previsti](../Requirements/ServerFoundation.md#nessun-log-automatico-per-esiti-previsti)
 ---
 
@@ -378,6 +388,7 @@ La prova passa se nessuno dei marcatori viene acquisito automaticamente dagli ev
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
+  * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
   * verify: [Esclusione della raccolta automatica di dati nei log](../Requirements/ServerFoundation.md#esclusione-della-raccolta-automatica-di-dati-nei-log)
 ---
 
@@ -430,6 +441,8 @@ La prova passa se il caso d'uso gestisce esplicitamente ogni variante e, quando 
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
+  * satisfiedBy: [exchange-turn.test.ts](../../packages/conversations/test/application/exchange-turn.test.ts)
+  * satisfiedBy: [turn-use-cases.test.ts](../../packages/conversations/test/application/turn-use-cases.test.ts)
   * verify: [Gestione esplicita dei rifiuti delle porte](../Requirements/ServerFoundation.md#gestione-esplicita-dei-rifiuti-delle-porte)
   * verify: [Proiezione dei rifiuti bloccanti delle porte](../Requirements/ServerFoundation.md#proiezione-dei-rifiuti-bloccanti-delle-porte)
 ---
@@ -482,6 +495,8 @@ La prova passa se nel primo caso arriva al confine lo stesso valore originale, s
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
+  * satisfiedBy: [turn-use-cases.test.ts](../../packages/conversations/test/application/turn-use-cases.test.ts)
+  * satisfiedBy: [mcp-tool-client.test.ts](../../packages/conversations/test/adapters/out/mcp-tool-client.test.ts)
   * verify: [Contesto operativo con Error e cause](../Requirements/ServerFoundation.md#contesto-operativo-con-error-e-cause)
   * verify: [Propagazione senza wrapper superflui](../Requirements/ServerFoundation.md#propagazione-senza-wrapper-superflui)
 ---
@@ -672,6 +687,9 @@ La prova passa se ciascun processo legge una volta all'avvio i soli file necessa
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * satisfiedBy: [config-bootstrap.test.ts](../../apps/server/test/runtime/config-bootstrap.test.ts)
+  * satisfiedBy: [agent-config.test.ts](../../apps/server/test/runtime/agent-config.test.ts)
+  * satisfiedBy: [conversation-config.test.ts](../../packages/conversations/test/adapters/out/conversation-config.test.ts)
   * verify: [Caricamento iniziale dei JSON di configurazione](../Requirements/ServerFoundation.md#caricamento-iniziale-dei-json-di-configurazione)
   * verify: [Distribuzione mirata della configurazione validata](../Requirements/ServerFoundation.md#distribuzione-mirata-della-configurazione-validata)
   * verify: [Validazione preventiva della configurazione attiva](../Requirements/ServerFoundation.md#validazione-preventiva-della-configurazione-attiva)
@@ -736,6 +754,7 @@ La prova passa se gli script eseguono i test backend tramite Vitest e il runner 
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * satisfiedBy: [package.json](../../package.json)
   * verify: [Vitest come runner del backend](../Requirements/ServerFoundation.md#vitest-come-runner-del-backend)
 ---
 
@@ -767,6 +786,7 @@ La prova passa se le credenziali fornite al client corrispondono a quelle del fi
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * satisfiedBy: [api-credentials.test.ts](../../apps/server/test/composition/api-credentials.test.ts)
   * verify: [Credenziali API nel JSON del componente](../Requirements/ServerFoundation.md#credenziali-api-nel-json-del-componente)
 ---
 
@@ -782,6 +802,8 @@ La prova passa se la build usa `tsc`, produce JavaScript ESM e l'artefatto si av
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * satisfiedBy: [verify-server-startup.mjs](../../scripts/verify-server-startup.mjs)
+  * satisfiedBy: [package.json](../../apps/server/package.json)
   * verify: [Preparazione del server TypeScript ESM](../Requirements/ServerFoundation.md#preparazione-del-server-typescript-esm)
 ---
 
@@ -797,6 +819,9 @@ La prova passa se l'opzione effettiva `strict` è abilitata per ogni progetto Ty
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * satisfiedBy: [tsconfig.json](../../tsconfig.json)
+  * satisfiedBy: [tsconfig.build.json](../../apps/server/tsconfig.build.json)
+  * satisfiedBy: [tsconfig.build.json](../../packages/conversations/tsconfig.build.json)
   * verify: [Compilazione TypeScript strict del server](../Requirements/ServerFoundation.md#compilazione-typescript-strict-del-server)
 ---
 

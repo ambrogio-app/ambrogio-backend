@@ -1,7 +1,9 @@
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
+import { Client } from '@modelcontextprotocol/client';
 import { McpToolClient } from '../../../src/adapters/out/mcp-tool-client.js';
+import { ProjectError } from '../../../src/project-error.js';
 
 async function testServer() {
   const seen: Array<{ method: string; authorization?: string }> = [];
@@ -57,6 +59,52 @@ test.each([undefined, { type: 'bearer' as const, token: 'agent-token' }])(
     }
   },
 );
+
+test('preserves the original cause when MCP operations add safe operational context', async () => {
+  async function expectContext(operation: Promise<unknown>, message: string, cause: unknown) {
+    let caught: unknown;
+    try { await operation; } catch (error) { caught = error; }
+    expect(caught).toBeInstanceOf(ProjectError);
+    expect((caught as Error).message).toBe(message);
+    expect((caught as Error).cause).toBe(cause);
+  }
+  const connectionFailure = new Error('PRIVATE_MCP_CONNECTION_DETAIL');
+  const connectionProperties = Object.getOwnPropertyDescriptors(connectionFailure);
+  const connect = vi.spyOn(Client.prototype, 'connect').mockRejectedValueOnce(connectionFailure);
+  const close = vi.spyOn(Client.prototype, 'close').mockResolvedValueOnce(undefined);
+  try {
+    await expectContext(McpToolClient.connect({ url: 'http://127.0.0.1:1/mcp' }),
+      'MCP connection failed', connectionFailure);
+    expect(connect).toHaveBeenCalledTimes(1);
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(Object.getOwnPropertyDescriptors(connectionFailure)).toEqual(connectionProperties);
+  } finally {
+    connect.mockRestore();
+    close.mockRestore();
+  }
+
+  const server = await testServer();
+  const client = await McpToolClient.connect({ url: server.url });
+  try {
+    const discoveryFailure = { marker: 'PRIVATE_MCP_DISCOVERY_DETAIL' };
+    const list = vi.spyOn(Client.prototype, 'listTools').mockRejectedValueOnce(discoveryFailure);
+    try {
+      await expectContext(client.listTools(), 'MCP tool discovery failed', discoveryFailure);
+      expect(discoveryFailure).toEqual({ marker: 'PRIVATE_MCP_DISCOVERY_DETAIL' });
+    } finally { list.mockRestore(); }
+
+    const invocationFailure = new TypeError('PRIVATE_MCP_INVOCATION_DETAIL');
+    const invocationProperties = Object.getOwnPropertyDescriptors(invocationFailure);
+    const call = vi.spyOn(Client.prototype, 'callTool').mockRejectedValueOnce(invocationFailure);
+    try {
+      await expectContext(client.callTool('echo', {}), 'MCP tool invocation failed', invocationFailure);
+      expect(Object.getOwnPropertyDescriptors(invocationFailure)).toEqual(invocationProperties);
+    } finally { call.mockRestore(); }
+  } finally {
+    await client.close();
+    await server.close();
+  }
+});
 
 test('keeps Bearer credentials isolated between two MCP agents', async () => {
   const first = await testServer();

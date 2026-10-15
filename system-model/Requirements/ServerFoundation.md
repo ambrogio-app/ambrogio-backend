@@ -167,6 +167,7 @@ Quando un `catch` del server aggiunge un contesto operativo concreto a un guasto
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [mcp-tool-client.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -431,6 +432,8 @@ Quando un caso d'uso Application del server riceve da una porta un rifiuto previ
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [begin-turn.use-case.ts](../../packages/conversations/src/application/begin-turn.use-case.ts)
+  * satisfiedBy: [complete-turn.use-case.ts](../../packages/conversations/src/application/complete-turn.use-case.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -657,6 +660,8 @@ Quando un rifiuto previsto ricevuto da una porta impedisce di completare un caso
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [begin-turn.use-case.ts](../../packages/conversations/src/application/begin-turn.use-case.ts)
+  * satisfiedBy: [complete-turn.use-case.ts](../../packages/conversations/src/application/complete-turn.use-case.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -731,6 +736,11 @@ Quando un'operazione Domain, un caso d'uso Application o una porta Application d
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [sqlite-conversation-write.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.ts)
+  * satisfiedBy: [begin-turn.use-case.ts](../../packages/conversations/src/application/begin-turn.use-case.ts)
+  * satisfiedBy: [complete-turn.use-case.ts](../../packages/conversations/src/application/complete-turn.use-case.ts)
+  * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
+  * satisfiedBy: [turn.ts](../../packages/conversations/src/domain/turn.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 

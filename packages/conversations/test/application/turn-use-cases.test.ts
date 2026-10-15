@@ -71,4 +71,26 @@ describe('turn use cases', () => {
       turnId, outcome: { kind: 'interrupted' },
     })).rejects.toThrow('disk failed');
   });
+
+  it('returns successful completion as a value and preserves unexpected port faults by identity', async () => {
+    const fault = new TypeError('technical archive failure');
+    const archive: ConversationWrite = {
+      async admit() { throw fault; },
+      async complete() { return { ok: true, value: {
+        id: turnId, text: 'ciao', acceptedAt: new Date(1234),
+        status: 'answered', answer: 'salve', finishedAt: new Date(5678),
+      } }; },
+    };
+    const clock = { now: () => new Date(5678) };
+    const begin = createBeginTurn({ archive, identifiers: { next: () => turnId }, clock });
+    await expect(begin({ conversationId, text: 'ciao' })).rejects.toBe(fault);
+    const complete = createCompleteTurn({ archive, clock });
+    expect(await complete({ turnId, outcome: { kind: 'answer', text: 'salve' } })).toEqual({
+      ok: true, value: { turnId, status: 'answered' },
+    });
+    const faulting: ConversationWrite = { ...archive, complete: async () => { throw fault; } };
+    await expect(createCompleteTurn({ archive: faulting, clock })({
+      turnId, outcome: { kind: 'interrupted' },
+    })).rejects.toBe(fault);
+  });
 });

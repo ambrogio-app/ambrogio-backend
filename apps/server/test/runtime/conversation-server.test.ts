@@ -729,44 +729,44 @@ test('POST/SSE delegates to a configured MCP tool and persists the answer', asyn
   const modelRequests: Array<{ model: string; instructions: string }> = [];
   let orchestratorStep = 0;
   let runtime: Awaited<ReturnType<typeof startConversationServer>> | undefined;
-  try {
-    runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
-      AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, agentDirectory,
-    async (directory) => {
-      const configs = await loadAgentConfigs(directory);
-      const config = configs.specialists[0]!;
-      const mcp = await McpToolClient.connect(config.mcp!);
-      try {
-        const tools = await mcp.listTools();
-        let specialistStep = 0;
-        const specialist = new MistralToolAgentReply({ instructions: config.instructions,
-          model: config.llm.model, apiKey: config.llm.apiKey },
-          tools, mcp, config.maxToolCalls!, async (request) => {
-            modelRequests.push({ model: request.model, instructions: request.messages[0]?.content ?? '' });
-            return (async function* () {
-              if (specialistStep++ === 0) yield { data: { choices: [{ delta: { toolCalls: [{
-                id: 'tool-1', index: 0, function: { name: 'mcp_0', arguments: '{"key":"answer"}' },
-              }] } }] } };
-              else yield { data: { choices: [{ delta: { content: 'Answer from tool.' } }] } };
-            })();
-          });
-        const orchestrator = new MistralOrchestratorReply({
-          instructions: configs.orchestrator.instructions, model: configs.orchestrator.llm.model,
-          apiKey: configs.orchestrator.llm.apiKey,
-        }, [{ id: config.id, description: config.description!, reply: specialist }],
-        async (request) => {
+  const prepareAgents = async (directory: string) => {
+    const configs = await loadAgentConfigs(directory);
+    const config = configs.specialists[0]!;
+    const mcp = await McpToolClient.connect(config.mcp!);
+    try {
+      const tools = await mcp.listTools();
+      let specialistStep = 0;
+      const specialist = new MistralToolAgentReply({ instructions: config.instructions,
+        model: config.llm.model, apiKey: config.llm.apiKey },
+        tools, mcp, config.maxToolCalls!, async (request) => {
           modelRequests.push({ model: request.model, instructions: request.messages[0]?.content ?? '' });
-          expect(request.tools?.[0]?.function.description).toBe('Find facts.');
           return (async function* () {
-            if (orchestratorStep++ === 0) yield { data: { choices: [{ delta: { toolCalls: [{
-              id: 'delegate-1', index: 0, function: { name: 'delegate_0', arguments: '{"task":"Find answer"}' },
+            if (specialistStep++ === 0) yield { data: { choices: [{ delta: { toolCalls: [{
+              id: 'tool-1', index: 0, function: { name: 'mcp_0', arguments: '{"key":"answer"}' },
             }] } }] } };
-            else yield { data: { choices: [{ delta: { content: 'Direct answer.' } }] } };
+            else yield { data: { choices: [{ delta: { content: 'Answer from tool.' } }] } };
           })();
         });
-        return { orchestrator, close: () => mcp.close() };
-      } catch (error) { await mcp.close(); throw error; }
-    });
+      const orchestrator = new MistralOrchestratorReply({
+        instructions: configs.orchestrator.instructions, model: configs.orchestrator.llm.model,
+        apiKey: configs.orchestrator.llm.apiKey,
+      }, [{ id: config.id, description: config.description!, reply: specialist }],
+      async (request) => {
+        modelRequests.push({ model: request.model, instructions: request.messages[0]?.content ?? '' });
+        expect(request.tools?.[0]?.function.description).toBe('Find facts.');
+        return (async function* () {
+          if (orchestratorStep++ === 0) yield { data: { choices: [{ delta: { toolCalls: [{
+            id: 'delegate-1', index: 0, function: { name: 'delegate_0', arguments: '{"task":"Find answer"}' },
+          }] } }] } };
+          else yield { data: { choices: [{ delta: { content: 'Direct answer.' } }] } };
+        })();
+      });
+      return { orchestrator, close: () => mcp.close() };
+    } catch (error) { await mcp.close(); throw error; }
+  };
+  try {
+    runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
+      AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, agentDirectory, prepareAgents);
     const response = await fetch(`http://127.0.0.1:${port}/api/conversations/turns`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ text: 'What is the answer?' }),
@@ -797,6 +797,28 @@ test('POST/SSE delegates to a configured MCP tool and persists the answer', asyn
     const history = await fetch(`http://127.0.0.1:${port}/api/conversations/${items[0]!.id}`);
     const turns = (await history.json() as { turns: Array<{ answer: string }> }).turns;
     expect(turns.map((turn) => turn.answer)).toEqual(['Answer from tool.', 'Direct answer.']);
+    await runtime.close();
+    runtime = undefined;
+    await writeFile(join(agentDirectory, 'facts.json'), JSON.stringify({
+      instructions: 'Use the updated lookup.', description: 'Find facts.', maxToolCalls: 1, llm,
+      mcp: { url: `http://127.0.0.1:${address.port}/mcp` },
+    }));
+    orchestratorStep = 0;
+    modelRequests.length = 0;
+    runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
+      AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, agentDirectory, prepareAgents);
+    const changed = await fetch(`http://127.0.0.1:${port}/api/conversations/turns`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text: 'Look up the updated fact.' }),
+    });
+    expect(changed.status).toBe(200);
+    expect(await changed.text()).toContain('Answer from tool.');
+    expect(modelRequests).toEqual([
+      { model: 'controlled-model', instructions: 'Delegate fact lookups.' },
+      { model: 'controlled-model', instructions: 'Use the updated lookup.' },
+      { model: 'controlled-model', instructions: 'Use the updated lookup.' },
+    ]);
+    expect(calls).toEqual(['lookup', 'lookup']);
   } finally {
     await runtime?.close();
     await new Promise<void>((resolve) => mcpServer.close(() => resolve()));

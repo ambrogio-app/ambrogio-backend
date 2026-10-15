@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import { Writable } from 'node:stream';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { ExchangeTurn } from '../../../src/application/exchange-turn.use-case.js';
 import { registerTurnRoute, TURN_BODY_LIMIT } from '../../../src/adapters/in/http/turn-route.js';
@@ -223,5 +224,31 @@ describe('text turn HTTP ingress', () => {
     const afterRestart = await restarted.inject(jsonPost({ text: 'nuovo' }));
     expect(afterRestart.statusCode).toBe(409);
     expect(restartedCalls).toBe(1);
+  });
+
+  it('does not copy a private completion failure into the diagnostic log message', async () => {
+    const lines: string[] = [];
+    const server = Fastify({ logger: { level: 'error',
+      stream: new Writable({ write(chunk, _encoding, callback) {
+        lines.push(chunk.toString());
+        callback();
+      } }),
+      serializers: { err: () => ({ type: 'Error', message: 'Unexpected HTTP failure',
+        stack: '[redacted]' }) },
+    } });
+    servers.push(server);
+    registerTurnRoute(server, { language: 'en', exchange: async (_input, observer) => {
+      await observer?.admitted?.('conversation-1', 'turn-1');
+      throw new Error('private completion failure');
+    } });
+    const response = await server.inject(jsonPost({ text: 'hello' }));
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('event: error');
+    expect(lines).toHaveLength(1);
+    const logged = JSON.parse(lines[0]!) as { event: string; msg: string; err: { message: string } };
+    expect(logged.event).toBe('conversation_turn_completion_failed');
+    expect(logged.msg).toBe('Conversation turn completion failed');
+    expect(logged.err.message).toBe('Unexpected HTTP failure');
+    expect(lines[0]).not.toContain('private completion failure');
   });
 });

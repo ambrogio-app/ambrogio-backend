@@ -3,8 +3,10 @@ import { createServer as createHttpServer } from 'node:http';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, expect, test } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 import { openConversationArchive } from '@ambrogio/conversations/adapters/out/sqlite/archive';
+import { SqliteConversationHistoryRead } from '@ambrogio/conversations/adapters/out/sqlite/history-read';
+import { SqliteConversationWrite } from '@ambrogio/conversations/adapters/out/sqlite/write';
 import { McpToolClient } from '@ambrogio/conversations/adapters/out/mcp-tool-client';
 import { MistralOrchestratorReply, MistralToolAgentReply } from '@ambrogio/conversations/adapters/out/mistral-function-reply';
 import { prepareConfiguredConversations } from '../../src/composition/conversations.js';
@@ -33,6 +35,31 @@ async function freePort(): Promise<number> {
   if (!address || typeof address === 'string') throw new Error('No test port');
   await new Promise<void>((resolve) => server.close(() => resolve()));
   return address.port;
+}
+
+function gate() {
+  let release!: () => void;
+  const waiting = new Promise<void>(resolve => { release = resolve; });
+  return { waiting, release };
+}
+
+async function conversationTurns(origin: string, id: string): Promise<Array<{
+  text: string; status: string; answer?: string; error?: string;
+}>> {
+  const response = await fetch(`${origin}/api/conversations/${id}`);
+  expect(response.status).toBe(200);
+  return (await response.json() as { turns: Array<{
+    text: string; status: string; answer?: string; error?: string;
+  }> }).turns;
+}
+
+async function waitForTurn(origin: string, id: string, status: string) {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const turns = await conversationTurns(origin, id);
+    if (turns[0]?.status === status) return turns;
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  throw new Error(`Turn did not reach ${status}`);
 }
 
 test('POST/SSE uses the orchestrator and retains security, CORS and correlation headers', async () => {
@@ -175,6 +202,200 @@ test('shutdown preserves a turn already completed before interruption', async ()
         .toEqual([{ status: 'answered', answer: 'completed answer' }]);
     } finally { await archive.close(); }
   } finally { await runtime.close(); }
+});
+
+test('rejects concurrent HTTP turns across conversations without queuing or persisting them', async () => {
+  const files = await fixture();
+  const port = await freePort();
+  await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
+  await writeFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
+  const origin = `http://127.0.0.1:${port}`;
+  const firstGate = gate();
+  const secondGate = gate();
+  let producingFirst!: () => void;
+  const firstStarted = new Promise<void>(resolve => { producingFirst = resolve; });
+  let producingSecond!: () => void;
+  const secondStarted = new Promise<void>(resolve => { producingSecond = resolve; });
+  let productions = 0;
+  const runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
+    AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory,
+  async () => ({ orchestrator: { async *produce() {
+    productions++;
+    if (productions === 1) { producingFirst(); await firstGate.waiting; }
+    if (productions === 2) { producingSecond(); await secondGate.waiting; }
+    yield 'complete';
+  } }, async close() {} }));
+  const submit = (text: string, conversationId?: string) => fetch(`${origin}/api/conversations/turns`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ text, ...(conversationId ? { conversationId } : {}) }),
+  });
+  try {
+    const active = await submit('first');
+    expect(active.status).toBe(200);
+    await firstStarted;
+    const list = await fetch(`${origin}/api/conversations`);
+    const items = (await list.json() as { items: Array<{ id: string }> }).items;
+    expect(items).toHaveLength(1);
+    const id = items[0]!.id;
+    for (const rejected of await Promise.all([
+      submit('same conversation', id), submit('new conversation'),
+    ])) {
+      expect(rejected.status).toBe(409);
+      expect(rejected.headers.get('content-type')).toMatch(/^application\/json/);
+      expect(await rejected.json()).toEqual({ error: 'Another turn is in progress.' });
+    }
+    expect(await conversationTurns(origin, id)).toMatchObject([{ text: 'first', status: 'pending' }]);
+    firstGate.release();
+    expect(await active.text()).toContain('event: done\ndata: {}\n\n');
+    expect(await waitForTurn(origin, id, 'answered')).toHaveLength(1);
+
+    const simultaneous = await Promise.all([submit('one of two'), submit('other of two')]);
+    expect(simultaneous.map(response => response.status).sort()).toEqual([200, 409]);
+    await secondStarted;
+    const refused = simultaneous.find(response => response.status === 409)!;
+    expect(refused.headers.get('content-type')).toMatch(/^application\/json/);
+    expect(await refused.json()).toEqual({ error: 'Another turn is in progress.' });
+    secondGate.release();
+    expect(await simultaneous.find(response => response.status === 200)!.text()).toContain('event: done');
+    expect(productions).toBe(2);
+    const after = await fetch(`${origin}/api/conversations`);
+    expect((await after.json() as { items: unknown[] }).items).toHaveLength(2);
+    const archive = await openConversationArchive(files.archive, new Date());
+    try {
+      expect((await archive.db.selectFrom('turns').select('text').execute())
+        .map(row => row.text).sort()).toEqual([
+        'first', simultaneous[0]!.status === 200 ? 'one of two' : 'other of two',
+      ].sort());
+    } finally { await archive.close(); }
+  } finally {
+    firstGate.release();
+    secondGate.release();
+    await runtime.close();
+  }
+});
+
+test.each(['answered', 'failed'] as const)(
+  'persists a %s turn after its SSE client disconnects', async (outcome) => {
+    const files = await fixture();
+    const port = await freePort();
+    await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
+    await writeFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
+    const origin = `http://127.0.0.1:${port}`;
+    const continuation = gate();
+    const runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
+      AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory,
+    async () => ({ orchestrator: { async *produce() {
+      yield 'partial';
+      await continuation.waiting;
+      if (outcome === 'failed') throw new Error('private provider failure');
+      yield ' complete';
+    } }, async close() {} }));
+    try {
+      const response = await fetch(`${origin}/api/conversations/turns`, { method: 'POST',
+        headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: 'hello' }),
+      });
+      expect(response.status).toBe(200);
+      const reader = response.body!.getReader();
+      const first = new TextDecoder().decode((await reader.read()).value);
+      expect(first).toContain('event: conversation\ndata: ');
+      expect(first).toContain('event: delta\ndata: {"text":"partial"}\n\n');
+      const id = JSON.parse(first.match(/event: conversation\ndata: ([^\n]+)/)![1]!)
+        .conversationId as string;
+      await reader.cancel();
+      continuation.release();
+      const turns = await waitForTurn(origin, id, outcome);
+      expect(turns).toHaveLength(1);
+      expect(turns[0]?.text).toBe('hello');
+      if (outcome === 'answered') expect(turns[0]?.answer).toBe('partial complete');
+      else {
+        expect(turns[0]?.error).toBe("I can't complete the response.");
+        expect(JSON.stringify(turns)).not.toContain('private provider failure');
+      }
+    } finally {
+      continuation.release();
+      await runtime.close();
+    }
+  },
+);
+
+test.each([
+  ['read error', false, false],
+  ['missing pending turn', true, false],
+  ['read error and failed completion', false, true],
+  ['missing pending turn and failed completion', true, true],
+] as const)('handles admitted turn with %s', async (_scenario, missing, completionFails) => {
+  const files = await fixture();
+  const prepared = await prepareConfiguredConversations({ archivePath: files.archive,
+    listPageSize: 20, maxListPageSize: 100, language: 'en' }, new Date());
+  let productions = 0;
+  const built = await buildConversationServer({ host: '127.0.0.1', port: 3000,
+    allowedOrigins: [], publicHttps: false }, prepared,
+  { async *produce() { productions++; yield 'must not be produced for the faulty turn'; } });
+  const historyFault = vi.spyOn(SqliteConversationHistoryRead.prototype, 'find')
+    .mockImplementationOnce(async () => {
+      if (missing) return undefined;
+      throw new Error('private history failure');
+    });
+  const completionFault = completionFails
+    ? vi.spyOn(SqliteConversationWrite.prototype, 'complete')
+      .mockImplementationOnce(async () => { throw new Error('private completion failure'); })
+    : undefined;
+  try {
+    const first = await built.server.inject({ method: 'POST', url: '/api/conversations/turns',
+      headers: { 'content-type': 'application/json' }, payload: { text: 'first' } });
+    expect(first.statusCode).toBe(200);
+    expect(first.body).toContain('event: error\ndata: {"error":"I can\'t complete the response."}\n\n');
+    expect(first.body).not.toContain('event: done');
+    expect(first.body).not.toContain('private');
+    expect(productions).toBe(0);
+    historyFault.mockRestore();
+    completionFault?.mockRestore();
+    const list = await built.server.inject({ method: 'GET', url: '/api/conversations' });
+    const id = (list.json() as { items: Array<{ id: string }> }).items[0]!.id;
+    const history = await built.server.inject({ method: 'GET',
+      url: `/api/conversations/${id}` });
+    const turns = (history.json() as { turns: Array<{ status: string; error?: string }> }).turns;
+    expect(turns).toHaveLength(1);
+    expect(turns[0]?.status).toBe(completionFails ? 'pending' : 'failed');
+    if (!completionFails) expect(turns[0]?.error).toBe("I can't complete the response.");
+    const next = await built.server.inject({ method: 'POST', url: '/api/conversations/turns',
+      headers: { 'content-type': 'application/json' }, payload: { text: 'second' } });
+    if (completionFails) {
+      expect(next.statusCode).toBe(503);
+      expect(next.headers['content-type']).toMatch(/^application\/json/);
+      expect(next.json()).toEqual({ error: 'Service temporarily unavailable.' });
+      expect(productions).toBe(0);
+    } else {
+      expect(next.statusCode).toBe(200);
+      expect(next.body).toContain('event: done');
+      expect(productions).toBe(1);
+    }
+  } finally {
+    historyFault.mockRestore();
+    completionFault?.mockRestore();
+    await built.server.close();
+    await prepared.archive.close();
+  }
+  if (completionFails) {
+    const recovered = await prepareConfiguredConversations({ archivePath: files.archive,
+      listPageSize: 20, maxListPageSize: 100, language: 'en' }, new Date());
+    const restarted = await buildConversationServer({ host: '127.0.0.1', port: 3000,
+      allowedOrigins: [], publicHttps: false }, recovered,
+    { async *produce() { yield 'after restart'; } });
+    try {
+      expect(recovered.archive.recoveredTurns).toBe(1);
+      expect(await recovered.archive.db.selectFrom('turns').select('status').execute())
+        .toEqual([{ status: 'interrupted' }]);
+      const next = await restarted.server.inject({ method: 'POST', url: '/api/conversations/turns',
+        headers: { 'content-type': 'application/json' }, payload: { text: 'after restart' } });
+      expect(next.statusCode).toBe(200);
+      expect(next.body).toContain('after restart');
+      expect(next.body).toContain('event: done');
+    } finally {
+      await restarted.server.close();
+      await recovered.archive.close();
+    }
+  }
 });
 
 test('invalid agent files prevent the conversation listener from starting', async () => {

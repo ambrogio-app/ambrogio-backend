@@ -73,7 +73,8 @@ export function registerTurnRoute(server: FastifyInstance, options: Readonly<{
       if (error.statusCode === 400 || error.statusCode === 415) {
         return publicError(reply, 400, message('invalid'));
       }
-      request.log.error({ event: 'conversation_turn_http_failed', err: normalizeError(error) });
+      request.log.error({ event: 'conversation_turn_http_failed', err: normalizeError(error) },
+        'Conversation turn HTTP request failed');
       return publicError(reply, 500, message('failure'));
     },
     async handler(request: FastifyRequest, reply: FastifyReply) {
@@ -88,7 +89,8 @@ export function registerTurnRoute(server: FastifyInstance, options: Readonly<{
       reply.raw.once('close', () => { clientDisconnected = !reply.raw.writableEnded; });
       const logDeliveryFailure = (error: unknown) => {
         if (!clientDisconnected && !reply.raw.destroyed) {
-          request.log.error({ event: 'conversation_turn_sse_delivery_failed', err: normalizeError(error) });
+          request.log.error({ event: 'conversation_turn_sse_delivery_failed', err: normalizeError(error) },
+            'Conversation turn SSE delivery failed');
         }
       };
       stream.on('error', logDeliveryFailure);
@@ -117,7 +119,8 @@ export function registerTurnRoute(server: FastifyInstance, options: Readonly<{
         first = await admission;
       } catch (error) {
         stream.destroy();
-        request.log.error({ event: 'conversation_turn_admission_failed', err: normalizeError(error) });
+        request.log.error({ event: 'conversation_turn_admission_failed', err: normalizeError(error) },
+          'Conversation turn admission failed');
         return publicError(reply, 500, message('failure'));
       } finally {
         admissions.delete(admission);
@@ -145,7 +148,8 @@ export function registerTurnRoute(server: FastifyInstance, options: Readonly<{
         }
       }).catch(async error => {
         acceptingTurns = false;
-        request.log.error({ event: 'conversation_turn_completion_failed', err: normalizeError(error) });
+        request.log.error({ event: 'conversation_turn_completion_failed', err: normalizeError(error) },
+          'Conversation turn completion failed');
         await deliver({ kind: 'error', error: message('failure') });
       }).finally(() => { stream.end(); });
       return reply;

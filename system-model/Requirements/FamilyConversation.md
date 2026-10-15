@@ -14,20 +14,6 @@ Quando un componente tecnico esterno viene integrato come ingresso del modulo «
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Invito ad aggiornare la conversazione in elaborazione
-
-Quando una conversazione riaperta nel client della chat testuale mostra un turno «In elaborazione», il client deve invitare la persona ad aggiornare manualmente la pagina più tardi per consultarne l'esito.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Stati del turno testuale alla riapertura](../Contracts/FamilyConversation.md#stati-del-turno-testuale-alla-riapertura)
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
 ### Assemblaggio delle porte nella composition root
 
 Quando l'applicazione server assembla il modulo «Conversazioni», deve scegliere e fornire le implementazioni delle porte Application tramite la propria composition root.
@@ -51,6 +37,17 @@ Quando Ambrogio non può avviare l'elaborazione di un nuovo turno al momento del
 
 #### Contract References
   * [Occupazione dell'installazione e ammissione dei turni](../Contracts/FamilyConversation.md#occupazione-dellinstallazione-e-ammissione-dei-turni)
+
+#### Relations
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Avvio consultivo dell'API conversazioni
+
+Quando il processo avvia l'ingresso HTTP di consultazione delle conversazioni, deve rendere disponibili le rotte di elenco e storico dopo aver validato le configurazioni attive e preparato l'archivio.
+
+#### Metadata
+  * type: requirement
 
 #### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
@@ -121,32 +118,6 @@ Quando il backend ha accettato un turno della chat testuale e il client si disco
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Continuità del turno dopo un guasto di consegna
-
-Quando la consegna di una notifica di un turno già ammesso all'ingresso fallisce, Ambrogio deve proseguire l'elaborazione e conservare l'esito del turno indipendentemente da quel guasto di consegna.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Dati dei casi d'uso indipendenti dagli ingressi](../Contracts/FamilyConversation.md#dati-dei-casi-duso-indipendenti-dagli-ingressi)
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
-### Diagnostica del guasto tecnico di consegna
-
-Quando la consegna di una notifica conversazionale fallisce per un guasto tecnico diverso dalla disconnessione del client, il componente tecnico che gestisce la consegna deve registrare il guasto nel canale diagnostico del server.
-
-#### Metadata
-  * type: requirement
-
-#### Relations
-  * derivedFrom: [Diagnostica dei guasti nei componenti tecnici](ServerFoundation.md#diagnostica-dei-guasti-nei-componenti-tecnici)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
 ### Comunicazione dell'identificativo della nuova conversazione testuale
 
 Quando un turno della chat testuale avvia una nuova conversazione, il backend deve comunicare al client l'identificativo della conversazione nel primo evento applicativo SSE, prima degli incrementi della risposta testuale.
@@ -159,6 +130,24 @@ Quando un turno della chat testuale avvia una nuova conversazione, il backend de
   * [Profilo di trasporto SSE della chat](../Contracts/FamilyConversation.md#profilo-di-trasporto-sse-della-chat)
 
 #### Relations
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Configurazione della paginazione conversazionale
+
+Quando il server prepara la consultazione dell'elenco delle conversazioni, deve individuare il file JSON locale del componente «Conversazioni» tramite `AMBROGIO_CONVERSATIONS_CONFIG_PATH` e usare i valori di dimensione della pagina e dimensione massima scelti dall'utente nel file, applicando i valori predefiniti concordati se i campi sono assenti e impedendo l'attivazione se il percorso o i valori sono invalidi.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Pagine dell'elenco conversazioni](../Contracts/FamilyConversation.md#pagine-dellelenco-conversazioni)
+  * [Profilo di bootstrap dei JSON dei componenti](../Contracts/ServerFoundation.md#profilo-di-bootstrap-dei-json-dei-componenti)
+
+#### Relations
+  * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
+  * satisfiedBy: [conversation-config-path.ts](../../apps/server/src/runtime/conversation-config-path.ts)
+  * satisfiedBy: [conversation-config.ts](../../packages/conversations/src/adapters/out/conversation-config.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -225,6 +214,20 @@ Quando la famiglia riapre nella chat testuale una conversazione conservata, indi
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
+### Continuità del turno dopo un guasto di consegna
+
+Quando la consegna di una notifica di un turno già ammesso all'ingresso fallisce, Ambrogio deve proseguire l'elaborazione e conservare l'esito del turno indipendentemente da quel guasto di consegna.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Dati dei casi d'uso indipendenti dagli ingressi](../Contracts/FamilyConversation.md#dati-dei-casi-duso-indipendenti-dagli-ingressi)
+
+#### Relations
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
 ### Contratti delle porte nei termini di Conversazioni
 
 Quando un caso d'uso del modulo «Conversazioni» richiede una capacità esterna, la sua porta Application deve esprimere le operazioni e i dati necessari nel linguaggio del modulo, senza esporre tipi o chiamate specifici del fornitore; l'adapter deve tradurre tra tale contratto e l'integrazione concreta.
@@ -283,6 +286,18 @@ Quando un caso d'uso del modulo «Conversazioni» riceve dati di ingresso o prod
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
+### Diagnostica del guasto tecnico di consegna
+
+Quando la consegna di una notifica conversazionale fallisce per un guasto tecnico diverso dalla disconnessione del client, il componente tecnico che gestisce la consegna deve registrare il guasto nel canale diagnostico del server.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * derivedFrom: [Diagnostica dei guasti nei componenti tecnici](ServerFoundation.md#diagnostica-dei-guasti-nei-componenti-tecnici)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
 ### Disabilitazione degli ingressi durante un turno
 
 Quando l'installazione elabora un turno o ne comunica la risposta, i client devono impedire l'invio di nuovi turni tramite testo o voce nell'intera installazione fino alla conclusione o all'interruzione del turno in corso.
@@ -324,27 +339,9 @@ Quando la famiglia consulta l'elenco delle conversazioni conservate, Ambrogio de
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [list-conversations.use-case.ts](../../packages/conversations/src/application/list-conversations.use-case.ts)
-  * satisfiedBy: [sqlite-conversation-list-read.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-list-read.ts)
   * satisfiedBy: [list-route.ts](../../packages/conversations/src/adapters/in/http/list-route.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
-### Configurazione della paginazione conversazionale
-
-Quando il server prepara la consultazione dell'elenco delle conversazioni, deve individuare il file JSON locale del componente «Conversazioni» tramite `AMBROGIO_CONVERSATIONS_CONFIG_PATH` e usare i valori di dimensione della pagina e dimensione massima scelti dall'utente nel file, applicando i valori predefiniti concordati se i campi sono assenti e impedendo l'attivazione se il percorso o i valori sono invalidi.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Pagine dell'elenco conversazioni](../Contracts/FamilyConversation.md#pagine-dellelenco-conversazioni)
-  * [Profilo di bootstrap dei JSON dei componenti](../Contracts/ServerFoundation.md#profilo-di-bootstrap-dei-json-dei-componenti)
-
-#### Relations
-  * satisfiedBy: [conversation-config.ts](../../packages/conversations/src/adapters/out/conversation-config.ts)
-  * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
-  * satisfiedBy: [conversation-config-path.ts](../../apps/server/src/runtime/conversation-config-path.ts)
+  * satisfiedBy: [sqlite-conversation-list-read.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-list-read.ts)
+  * satisfiedBy: [list-conversations.use-case.ts](../../packages/conversations/src/application/list-conversations.use-case.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -382,6 +379,18 @@ Quando un caso d'uso Application del modulo «Conversazioni» crea una conversaz
   * [Identità di conversazioni e turni](../Contracts/FamilyConversation.md#identità-di-conversazioni-e-turni)
 
 #### Relations
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Gestione del turno ammesso senza storico utilizzabile
+
+Quando, dopo l'ammissione di un turno, il server non riesce a leggere uno storico utilizzabile per elaborarlo, Ambrogio deve provare a conservarne l'esito «Errore» e liberare l'occupazione; se la conservazione dell'esito fallisce, il server deve smettere di accettare nuovi turni fino al riavvio.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -486,6 +495,20 @@ Quando la famiglia invia un turno testuale da un client della chat testuale, il 
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
+### Invito ad aggiornare la conversazione in elaborazione
+
+Quando una conversazione riaperta nel client della chat testuale mostra un turno «In elaborazione», il client deve invitare la persona ad aggiornare manualmente la pagina più tardi per consultarne l'esito.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Stati del turno testuale alla riapertura](../Contracts/FamilyConversation.md#stati-del-turno-testuale-alla-riapertura)
+
+#### Relations
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
 ### Istanti validi e protetti della conversazione
 
 Quando Application e Domain rappresentano un istante della conversazione, devono usare un `Date` valido. Gli oggetti Domain che ricevono o espongono un `Date` devono proteggerlo con copie difensive in ingresso e in uscita.
@@ -495,6 +518,48 @@ Quando Application e Domain rappresentano un istante della conversazione, devono
 
 #### Relations
   * satisfiedBy: [turn.ts](../../packages/conversations/src/domain/turn.ts)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Lettura HTTP dell'elenco conversazioni
+
+Quando un client della chat testuale consulta l'elenco delle conversazioni conservate, il backend deve restituire una pagina dell'elenco e un riferimento utilizzabile per richiedere la pagina successiva secondo il contratto HTTP pubblico dell'elenco.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Pagine dell'elenco conversazioni](../Contracts/FamilyConversation.md#pagine-dellelenco-conversazioni)
+
+#### Relations
+  * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
+  * satisfiedBy: [list-route.ts](../../packages/conversations/src/adapters/in/http/list-route.ts)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Lettura HTTP dello storico conversazionale
+
+Quando un client della chat testuale consulta una conversazione conservata, il backend deve restituire lo storico testuale ordinato e lo stato corrente dei suoi turni mediante la risposta alla richiesta HTTP di lettura, secondo il contratto pubblico dello storico conversazionale.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
+  * satisfiedBy: [history-route.ts](../../packages/conversations/src/adapters/in/http/history-route.ts)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Localizzazione dell'errore conversazionale inatteso
+
+Quando un turno ammesso termina con un guasto inatteso, Ambrogio deve comunicare e conservare lo stesso messaggio pubblico standard tradotto nella lingua scelta dall'utente nel file JSON locale del componente «Conversazioni».
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
+  * satisfiedBy: [conversation-config.ts](../../packages/conversations/src/adapters/out/conversation-config.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -671,31 +736,6 @@ Quando il backend riceve da un client della chat testuale un nuovo turno con l'i
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Gestione del turno ammesso senza storico utilizzabile
-
-Quando, dopo l'ammissione di un turno, il server non riesce a leggere uno storico utilizzabile per elaborarlo, Ambrogio deve provare a conservarne l'esito «Errore» e liberare l'occupazione; se la conservazione dell'esito fallisce, il server deve smettere di accettare nuovi turni fino al riavvio.
-
-#### Metadata
-  * type: requirement
-
-#### Relations
-  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
-### Localizzazione dell'errore conversazionale inatteso
-
-Quando un turno ammesso termina con un guasto inatteso, Ambrogio deve comunicare e conservare lo stesso messaggio pubblico standard tradotto nella lingua scelta dall'utente nel file JSON locale del componente «Conversazioni».
-
-#### Metadata
-  * type: requirement
-
-#### Relations
-  * satisfiedBy: [conversation-config.ts](../../packages/conversations/src/adapters/out/conversation-config.ts)
-  * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
 ### Registrazione dei turni conversazionali accettati
 
 Quando Ambrogio accetta un turno rappresentato come testo dalla chat o dalla trascrizione vocale, deve conservarne il testo e lo stato in elaborazione prima di avviarne l'elaborazione, affinché il turno sia riconoscibile dopo un riavvio.
@@ -805,9 +845,9 @@ Quando il backend avvia il flusso di risposta a un turno della chat testuale, de
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
   * satisfiedBy: [sse-events.ts](../../packages/conversations/src/adapters/in/http/sse-events.ts)
   * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
-  * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -857,8 +897,8 @@ Quando un turno della chat testuale non può avviare la risposta SSE, il backend
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
   * derivedFrom: [Esclusione dei dettagli tecnici dal messaggio pubblico](ServerFoundation.md#esclusione-dei-dettagli-tecnici-dal-messaggio-pubblico)
+  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -873,8 +913,8 @@ Quando il backend riceve un turno valido della chat testuale e lo rifiuta perch�
   * [Risposta di errore HTTP prima del flusso testuale](../Contracts/FamilyConversation.md#risposta-di-errore-http-prima-del-flusso-testuale)
 
 #### Relations
-  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
   * derivedFrom: [Segnalazione dell'errore HTTP prima del flusso testuale](#segnalazione-dellerrore-http-prima-del-flusso-testuale)
+  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -890,8 +930,8 @@ Quando il campo `text` di un turno della chat testuale è vuoto o contiene solta
   * [Risposta di errore HTTP prima del flusso testuale](../Contracts/FamilyConversation.md#risposta-di-errore-http-prima-del-flusso-testuale)
 
 #### Relations
-  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
   * derivedFrom: [Segnalazione dell'errore HTTP prima del flusso testuale](#segnalazione-dellerrore-http-prima-del-flusso-testuale)
+  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -906,8 +946,8 @@ Quando una richiesta della chat testuale contiene un `text` valido e un `convers
   * [Risposta di errore HTTP prima del flusso testuale](../Contracts/FamilyConversation.md#risposta-di-errore-http-prima-del-flusso-testuale)
 
 #### Relations
-  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
   * derivedFrom: [Segnalazione dell'errore HTTP prima del flusso testuale](#segnalazione-dellerrore-http-prima-del-flusso-testuale)
+  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -923,6 +963,19 @@ Quando un errore impedisce di completare la risposta a un turno della chat testu
 
 #### Relations
   * derivedFrom: [Esclusione dei dettagli tecnici dal messaggio pubblico](ServerFoundation.md#esclusione-dei-dettagli-tecnici-dal-messaggio-pubblico)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Selezione dell'archivio conversazionale all'avvio
+
+Quando il processo prepara l'ingresso HTTP di consultazione, deve aprire l'archivio SQLite al percorso dichiarato nel JSON locale del componente «Conversazioni» e impedire l'avvio se il percorso manca o è invalido.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
+  * satisfiedBy: [conversation-config.ts](../../packages/conversations/src/adapters/out/conversation-config.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -1009,34 +1062,5 @@ Quando l'ingresso HTTP riceve un turno, il suo adapter deve verificare forma e d
   * type: requirement
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
-### Lettura HTTP dello storico conversazionale
-
-Quando un client della chat testuale consulta una conversazione conservata, il backend deve restituire lo storico testuale ordinato e lo stato corrente dei suoi turni mediante la risposta alla richiesta HTTP di lettura, secondo il contratto pubblico dello storico conversazionale.
-
-#### Metadata
-  * type: requirement
-
-#### Relations
-  * satisfiedBy: [history-route.ts](../../packages/conversations/src/adapters/in/http/history-route.ts)
-  * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
-### Lettura HTTP dell'elenco conversazioni
-
-Quando un client della chat testuale consulta l'elenco delle conversazioni conservate, il backend deve restituire una pagina dell'elenco e un riferimento utilizzabile per richiedere la pagina successiva secondo il contratto HTTP pubblico dell'elenco.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Pagine dell'elenco conversazioni](../Contracts/FamilyConversation.md#pagine-dellelenco-conversazioni)
-
-#### Relations
-  * satisfiedBy: [list-route.ts](../../packages/conversations/src/adapters/in/http/list-route.ts)
-  * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---

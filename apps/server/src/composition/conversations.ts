@@ -1,4 +1,5 @@
 import { loadConversationConfig } from '@ambrogio/conversations/adapters/out/conversation-config';
+import type { ConversationConfig } from '@ambrogio/conversations/adapters/out/conversation-config';
 import { SystemCurrentTime } from '@ambrogio/conversations/adapters/out/system-current-time';
 import { UuidIdentifiers } from '@ambrogio/conversations/adapters/out/uuid-identifiers';
 import { openConversationArchive } from '@ambrogio/conversations/adapters/out/sqlite/archive';
@@ -24,6 +25,18 @@ export async function prepareConversations(
   environment?: NodeJS.ProcessEnv,
 ) {
   const config = await loadConversationConfig(conversationConfigPath(environment));
+  return openPreparedConversations(archiveFilename, interruptedAt, config);
+}
+
+/** Prepare the configured archive without reading the component JSON again. */
+export async function prepareConfiguredConversations(config: ConversationConfig, interruptedAt: Date) {
+  if (!config.archivePath?.trim()) throw new Error('Missing conversation archive path');
+  return openPreparedConversations(config.archivePath, interruptedAt, config);
+}
+
+async function openPreparedConversations(
+  archiveFilename: string, interruptedAt: Date, config: ConversationConfig,
+) {
   const archive = await openConversationArchive(archiveFilename, interruptedAt);
   try {
     const read = new SqliteConversationListRead(archive.db, config.maxListPageSize);

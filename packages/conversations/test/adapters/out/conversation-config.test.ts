@@ -37,6 +37,14 @@ describe('conversation JSON configuration', () => {
     expect((await loadConversationConfig(await configFile('{"language":"fr"}'))).language).toBe('en');
   });
 
+  it('keeps a supplied archive path and rejects an unusable one', async () => {
+    expect((await loadConversationConfig(await configFile('{"archivePath":"/tmp/ambrogio.sqlite"}')))
+      .archivePath).toBe('/tmp/ambrogio.sqlite');
+    for (const archivePath of ['', '  ', 7, null]) {
+      await expect(loadConversationConfig(await configFile(JSON.stringify({ archivePath })))).rejects.toThrow();
+    }
+  });
+
   it('rejects missing files, malformed JSON and invalid limits before use', async () => {
     await expect(loadConversationConfig('/missing/conversations.json')).rejects.toThrow();
     for (const contents of [

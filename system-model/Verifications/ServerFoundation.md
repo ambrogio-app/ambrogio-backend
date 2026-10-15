@@ -787,6 +787,21 @@ La prova passa se HSTS è assente quando la configurazione pubblica è HTTP o no
   * verify: [HSTS legato all'HTTPS pubblico](../Requirements/ServerFoundation.md#hsts-legato-allhttps-pubblico)
 ---
 
+### Prova della configurazione esplicita del listener HTTP
+
+Fornire al processo file JSON HTTP con `host` e `port` validi, poi omettere separatamente ciascun campo e provare valori di tipo o intervallo invalidi; provare anche variabile di percorso mancante, file assente e JSON malformato. Verificare l'indirizzo e la porta effettivamente ascoltati nel caso valido e l'assenza di listener nei casi invalidi.
+
+#### Details
+La prova passa se il processo ascolta solo all'indirizzo e alla porta espliciti validati, senza valori predefiniti, e non apre né attiva l'ingresso per configurazioni mancanti o invalide. Fallisce se usa valori d'ambiente per sostituire campi JSON o un valore implicito per host o porta.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * verify: [Configurazione esplicita dell'ascolto HTTP](../Requirements/ServerFoundation.md#configurazione-esplicita-dellascolto-http)
+---
+
 ### Prova delle origini CORS dell'API HTTP
 
 Avviare l'API con elenco di origini assente, poi con un'origine esplicitamente ammessa. Inviare richieste ordinarie e preflight da origine ammessa e non ammessa.

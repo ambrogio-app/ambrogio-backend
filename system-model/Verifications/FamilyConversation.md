@@ -470,36 +470,6 @@ La prova passa se, in entrambi i casi, il backend prosegue l'elaborazione dopo l
   * verify: [Completamento del turno accettato dopo disconnessione](../Requirements/FamilyConversation.md#completamento-del-turno-accettato-dopo-disconnessione)
 ---
 
-### Prova della continuità dopo un guasto di consegna
-
-Ammettere un turno con risposta controllata in più frammenti e far fallire con un guasto tecnico la consegna della notifica di ammissione oppure di un frammento. Osservare la produzione della risposta, l'esito restituito dal caso d'uso e lo scambio conservato.
-
-#### Details
-La prova passa se in entrambi i casi la produzione prosegue fino al proprio esito, il turno conserva la risposta completa se la produzione riesce e il solo guasto di consegna non crea uno scambio di errore. Fallisce se il caso d'uso interrompe la produzione, perde un frammento nella risposta conservata o attribuisce al turno un errore causato soltanto dalla consegna. La verifica dell'ingresso resta da eseguire quando l'adapter è implementato.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * verify: [Continuità del turno dopo un guasto di consegna](../Requirements/FamilyConversation.md#continuità-del-turno-dopo-un-guasto-di-consegna)
----
-
-### Prova della diagnostica del guasto di consegna
-
-Con l'ingresso conversazionale attivo, provocare separatamente una normale disconnessione del client e un guasto tecnico inatteso nella consegna di una notifica; acquisire gli eventi diagnostici del server e lo storico del turno.
-
-#### Details
-La prova passa se il guasto tecnico inatteso è registrato dal componente tecnico che lo gestisce nel canale diagnostico, senza dettagli tecnici nel messaggio pubblico e senza cambiare l'esito conversazionale conservato. La sola disconnessione non produce un log di errore per il turno. Fallisce se il guasto tecnico sparisce senza diagnostica, se il caso d'uso registra direttamente il log, se la disconnessione è trattata come errore del turno o se l'errore diagnostico entra nello storico. La prova resta da eseguire quando l'adapter di ingresso è implementato.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * verify: [Diagnostica del guasto tecnico di consegna](../Requirements/FamilyConversation.md#diagnostica-del-guasto-tecnico-di-consegna)
----
-
 ### Prova del completamento esplicito della risposta testuale
 
 Da un client della chat testuale di prova, eseguire un turno la cui risposta produca almeno due frammenti e completi correttamente; acquisire tutti gli eventi SSE e lo stato con cui il client conclude il turno. Ripetere interrompendo il flusso dopo il primo frammento, senza emettere né `done` né `error`; osservare anche le richieste che il client invia al backend dopo l'interruzione.
@@ -546,21 +516,6 @@ La prova passa se ogni richiesta dichiara `Content-Type: application/json` e il 
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * verify: [Invio HTTP del turno della chat testuale](../Requirements/FamilyConversation.md#invio-http-del-turno-della-chat-testuale)
   * verify: [Risposta progressiva SSE nella chat testuale](../Requirements/FamilyConversation.md#risposta-progressiva-sse-nella-chat-testuale)
----
-
-### Prova dell'invito ad aggiornare la conversazione
-
-Avviare un turno testuale con elaborazione controllabile, disconnettere il client e riaprire la stessa conversazione mentre il turno è ancora in corso. Osservare la pagina, far conservare al backend l'esito e aggiornare manualmente la pagina. Ripetere con una risposta completa e con un errore pubblico.
-
-#### Details
-La prova passa se la pagina riaperta mostra il turno «In elaborazione» e invita la persona ad aggiornarla più tardi, senza aprire un altro flusso SSE, interrogare periodicamente lo stato o mostrare frammenti temporanei come risposta completa. Prima dell'aggiornamento manuale il client non sostituisce da sé lo stato; dopo l'aggiornamento mostra l'esito conservato corretto senza duplicare il turno né inviarne uno nuovo. La prova resta da eseguire quando client e backend sono implementati.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * verify: [Invito ad aggiornare la conversazione in elaborazione](../Requirements/FamilyConversation.md#invito-ad-aggiornare-la-conversazione-in-elaborazione)
 ---
 
 ### Prova dell'arresto per input conversazionale non valido
@@ -626,6 +581,21 @@ La prova passa se il primo evento applicativo SSE è `event: conversation` e ha 
   * verify: [Comunicazione dell'identificativo della nuova conversazione testuale](../Requirements/FamilyConversation.md#comunicazione-dellidentificativo-della-nuova-conversazione-testuale)
 ---
 
+### Prova dell'invito ad aggiornare la conversazione
+
+Avviare un turno testuale con elaborazione controllabile, disconnettere il client e riaprire la stessa conversazione mentre il turno è ancora in corso. Osservare la pagina, far conservare al backend l'esito e aggiornare manualmente la pagina. Ripetere con una risposta completa e con un errore pubblico.
+
+#### Details
+La prova passa se la pagina riaperta mostra il turno «In elaborazione» e invita la persona ad aggiornarla più tardi, senza aprire un altro flusso SSE, interrogare periodicamente lo stato o mostrare frammenti temporanei come risposta completa. Prima dell'aggiornamento manuale il client non sostituisce da sé lo stato; dopo l'aggiornamento mostra l'esito conservato corretto senza duplicare il turno né inviarne uno nuovo. La prova resta da eseguire quando client e backend sono implementati.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * verify: [Invito ad aggiornare la conversazione in elaborazione](../Requirements/FamilyConversation.md#invito-ad-aggiornare-la-conversazione-in-elaborazione)
+---
+
 ### Prova della conservazione del testo originale
 
 Inviare tramite chat un turno valido con spazi iniziali, finali e interni e, quando la voce è abilitata, simulare una trascrizione valida con gli stessi caratteri. Consultare poi lo storico di ciascuna conversazione. Verificare separatamente il rifiuto già previsto per un input composto solo da spazi nei rispettivi ingressi che lo definiscono.
@@ -674,6 +644,36 @@ La prova passa se, per ogni origine, il backend recupera dall'archivio lo storic
   * verify: [Riapertura delle conversazioni tramite chat testuale](../Requirements/FamilyConversation.md#riapertura-delle-conversazioni-tramite-chat-testuale)
 ---
 
+### Prova della continuità dopo un guasto di consegna
+
+Ammettere un turno con risposta controllata in più frammenti e far fallire con un guasto tecnico la consegna della notifica di ammissione oppure di un frammento. Osservare la produzione della risposta, l'esito restituito dal caso d'uso e lo scambio conservato.
+
+#### Details
+La prova passa se in entrambi i casi la produzione prosegue fino al proprio esito, il turno conserva la risposta completa se la produzione riesce e il solo guasto di consegna non crea uno scambio di errore. Fallisce se il caso d'uso interrompe la produzione, perde un frammento nella risposta conservata o attribuisce al turno un errore causato soltanto dalla consegna. La verifica dell'ingresso resta da eseguire quando l'adapter è implementato.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * verify: [Continuità del turno dopo un guasto di consegna](../Requirements/FamilyConversation.md#continuità-del-turno-dopo-un-guasto-di-consegna)
+---
+
+### Prova della diagnostica del guasto di consegna
+
+Con l'ingresso conversazionale attivo, provocare separatamente una normale disconnessione del client e un guasto tecnico inatteso nella consegna di una notifica; acquisire gli eventi diagnostici del server e lo storico del turno.
+
+#### Details
+La prova passa se il guasto tecnico inatteso è registrato dal componente tecnico che lo gestisce nel canale diagnostico, senza dettagli tecnici nel messaggio pubblico e senza cambiare l'esito conversazionale conservato. La sola disconnessione non produce un log di errore per il turno. Fallisce se il guasto tecnico sparisce senza diagnostica, se il caso d'uso registra direttamente il log, se la disconnessione è trattata come errore del turno o se l'errore diagnostico entra nello storico. La prova resta da eseguire quando l'adapter di ingresso è implementato.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * verify: [Diagnostica del guasto tecnico di consegna](../Requirements/FamilyConversation.md#diagnostica-del-guasto-tecnico-di-consegna)
+---
+
 ### Prova della disponibilità dello storico dopo riavvio
 
 Creare una conversazione con più scambi testuali, riavviare l'installazione e recuperare la stessa conversazione.
@@ -687,6 +687,23 @@ La prova passa se, dopo il riavvio, la famiglia può recuperare la conversazione
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * verify: [Disponibilità dello storico dopo riavvio](../Requirements/FamilyConversation.md#disponibilità-dello-storico-dopo-riavvio)
+---
+
+### Prova della lettura HTTP dello storico conversazionale
+
+Leggere via GET una conversazione con turni conclusi con risposta ed errore, un turno in elaborazione e un turno interrotto. Ripetere la lettura dopo la conclusione del turno in elaborazione e verificare anche conversazione assente e guasto tecnico dell'archivio.
+
+#### Details
+La prova passa se la risposta `200` è JSON senza cache, conserva identità, testi, ordine e istanti ISO 8601 UTC e presenta solo i campi di esito pertinenti a ciascuno stato. La seconda lettura presenta l'esito persistente del turno prima in elaborazione senza duplicarlo; la lettura non usa SSE né recupera frammenti parziali. La conversazione assente restituisce `404` e il guasto tecnico `500`, entrambi con un messaggio pubblico sicuro tradotto e senza dettagli tecnici. Fallisce se uno stato o un testo è alterato, se un frammento parziale compare nello storico o se un guasto espone dettagli interni.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
+  * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
+  * verify: [Lettura HTTP dello storico conversazionale](../Requirements/FamilyConversation.md#lettura-http-dello-storico-conversazionale)
 ---
 
 ### Prova della risposta e dello storico testuale
@@ -889,6 +906,21 @@ La prova passa se ogni turno e l'ultima attività della sua conversazione usano 
   * verify: [Fornitura esplicita dell'ora corrente alla conversazione](../Requirements/FamilyConversation.md#fornitura-esplicita-dellora-corrente-alla-conversazione)
 ---
 
+### Prova del guasto dello storico dopo ammissione
+
+Ammettere un turno e provocare separatamente un errore di lettura dello storico e uno storico che non contiene il turno ammesso in elaborazione. In entrambi i casi verificare prima che la conclusione con errore riesca, poi che la scrittura dell'esito fallisca. Osservare produzione della risposta, stato persistente, occupazione e disponibilità degli ingressi; riavviare il server dopo il guasto di scrittura.
+
+#### Details
+La prova passa se la risposta non viene prodotta, una conclusione riuscita conserva una sola volta «Errore» con messaggio pubblico sicuro e libera l'occupazione, mentre una conclusione non conservata non viene presentata come riuscita e impedisce al server di accettare altri turni fino al riavvio. Ogni nuovo POST del turno testuale durante questo blocco restituisce `503` con JSON `error` contenente «Service temporarily unavailable.» in inglese oppure «Servizio temporaneamente non disponibile.» in italiano, senza ammettere o accodare il turno. Al riavvio un turno ancora «In elaborazione» diventa «Interrotto». Fallisce se il turno resta pendente mentre il server continua ad accettare ingressi, se compare una risposta riuscita o se il guasto viene riprovato automaticamente. La parte relativa al blocco degli ingressi resta da eseguire quando il server è implementato.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
+  * verify: [Gestione del turno ammesso senza storico utilizzabile](../Requirements/FamilyConversation.md#gestione-del-turno-ammesso-senza-storico-utilizzabile)
+---
+
 ### Prova del turno interrotto dopo riavvio
 
 Accettare turni con elaborazione controllata dalla chat testuale e dalla voce trascritta quando abilitata; terminare bruscamente il processo prima di conservarne l'esito e riavviare Ambrogio. Ripetere dopo un arresto ordinato che interrompe un turno attivo, con un turno concluso normalmente e con una semplice disconnessione del client. Predisporre inoltre più turni pendenti nell’archivio di prova e verificare che siano recuperati tutti prima di abilitare gli ingressi.
@@ -906,38 +938,6 @@ La prova passa se ciascun turno accettato è persistito con il suo testo prima d
   * verify: [Riconoscimento del turno interrotto dopo riavvio](../Requirements/FamilyConversation.md#riconoscimento-del-turno-interrotto-dopo-riavvio)
 ---
 
-### Prova del guasto dello storico dopo ammissione
-
-Ammettere un turno e provocare separatamente un errore di lettura dello storico e uno storico che non contiene il turno ammesso in elaborazione. In entrambi i casi verificare prima che la conclusione con errore riesca, poi che la scrittura dell'esito fallisca. Osservare produzione della risposta, stato persistente, occupazione e disponibilità degli ingressi; riavviare il server dopo il guasto di scrittura.
-
-#### Details
-La prova passa se la risposta non viene prodotta, una conclusione riuscita conserva una sola volta «Errore» con messaggio pubblico sicuro e libera l'occupazione, mentre una conclusione non conservata non viene presentata come riuscita e impedisce al server di accettare altri turni fino al riavvio. Ogni nuovo POST del turno testuale durante questo blocco restituisce `503` con JSON `error` contenente «Service temporarily unavailable.» in inglese oppure «Servizio temporaneamente non disponibile.» in italiano, senza ammettere o accodare il turno. Al riavvio un turno ancora «In elaborazione» diventa «Interrotto». Fallisce se il turno resta pendente mentre il server continua ad accettare ingressi, se compare una risposta riuscita o se il guasto viene riprovato automaticamente. La parte relativa al blocco degli ingressi resta da eseguire quando il server è implementato.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * verify: [Gestione del turno ammesso senza storico utilizzabile](../Requirements/FamilyConversation.md#gestione-del-turno-ammesso-senza-storico-utilizzabile)
----
-
-### Prova della lingua del guasto conversazionale
-
-Nel JSON di «Conversazioni» configurare separatamente `language: "en"` e `language: "it"`, poi omettere il campo, scegliere una lingua stringa non supportata e usare un valore non stringa. Nei casi validi ammettere un turno e provocare un guasto inatteso dopo l'ammissione. Osservare il messaggio restituito dal caso d'uso, quello conservato nell'archivio e quello comunicato al client quando l'ingresso è disponibile.
-
-#### Details
-La prova passa se l'inglese produce «I can't complete the response.», l'italiano produce «Non riesco a completare la risposta.», l'omissione e la lingua stringa non supportata producono la formulazione inglese, un valore non stringa impedisce la preparazione, nessun messaggio contiene dettagli tecnici e il testo coincide esattamente nell'esito conservato e nella comunicazione al client. Fallisce se la lingua configurata viene ignorata, se i due testi differiscono o se il messaggio espone il guasto tecnico. La prova dell'ingresso resta da eseguire quando l'ingresso server è implementato.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [conversation-config.test.ts](../../packages/conversations/test/adapters/out/conversation-config.test.ts)
-  * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
-  * verify: [Localizzazione dell'errore conversazionale inatteso](../Requirements/FamilyConversation.md#localizzazione-dellerrore-conversazionale-inatteso)
----
-
 ### Prova dell'elenco paginato per ultima attività
 
 Creare più conversazioni di quante ne contenga una pagina, da chat testuale e voce quando abilitata; aggiungere un turno a una conversazione meno recente e consultare tutte le pagine senza mutare ulteriormente l'archivio. Includere almeno due conversazioni con la stessa ultima attività.
@@ -950,10 +950,26 @@ La prova passa se l'elenco è diviso in pagine limitate, la conversazione aggior
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [sqlite-list.test.ts](../../packages/conversations/test/adapters/out/sqlite-list.test.ts)
   * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
+  * satisfiedBy: [sqlite-list.test.ts](../../packages/conversations/test/adapters/out/sqlite-list.test.ts)
   * verify: [Elenco paginato delle conversazioni](../Requirements/FamilyConversation.md#elenco-paginato-delle-conversazioni)
   * verify: [Ordinamento delle conversazioni per ultima attività](../Requirements/FamilyConversation.md#ordinamento-delle-conversazioni-per-ultima-attività)
+---
+
+### Prova dell'ingresso consultivo e dell'archivio configurato
+
+Avviare il processo con JSON HTTP e Conversazioni validi e con `archivePath` diretto a un archivio SQLite di prova; richiedere l'elenco e lo storico di una conversazione. Ripetere con `archivePath` assente o invalido, e con un turno pendente nell'archivio al riavvio. Richiedere anche la rotta POST dei turni e arrestare il processo.
+
+#### Details
+La prova passa se i due GET rispondono secondo i contratti esistenti usando l'archivio configurato, il turno pendente è recuperato prima delle risposte, il POST non è registrato, l'avvio invalido non apre il listener e l'arresto chiude listener e archivio. Fallisce se legge un altro archivio, espone il POST senza produttore delle risposte, risponde prima del recupero o lascia risorse aperte.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
+  * verify: [Avvio consultivo dell'API conversazioni](../Requirements/FamilyConversation.md#avvio-consultivo-dellapi-conversazioni)
+  * verify: [Selezione dell'archivio conversazionale all'avvio](../Requirements/FamilyConversation.md#selezione-dellarchivio-conversazionale-allavvio)
 ---
 
 ### Prova della configurazione della paginazione
@@ -968,9 +984,43 @@ La prova passa se la variabile d'ambiente seleziona solo il percorso, i campi as
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [conversation-config.test.ts](../../packages/conversations/test/adapters/out/conversation-config.test.ts)
   * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
+  * satisfiedBy: [conversation-config.test.ts](../../packages/conversations/test/adapters/out/conversation-config.test.ts)
   * verify: [Configurazione della paginazione conversazionale](../Requirements/FamilyConversation.md#configurazione-della-paginazione-conversazionale)
+---
+
+### Prova della lettura HTTP dell'elenco conversazioni
+
+Leggere via GET più pagine di un elenco con conversazioni di attività differente e a parità di attività, usando il cursore restituito, il limite predefinito e un `limit` esplicito entro il massimo configurato. Ripetere con elenco vuoto, cursore e limite invalidi e guasto tecnico dell'archivio.
+
+#### Details
+La prova passa se le risposte `200` JSON senza cache contengono solo `items` ordinati e `nextCursor`, con identificativi e istanti ISO 8601 UTC preservati; seguire il cursore attraversa l'archivio invariato senza omissioni o duplicati e termina con `nextCursor: null`. Il limite predefinito proviene dalla configurazione e un limite esplicito valido la rispetta; valori invalidi ricevono `400` JSON sicuro senza chiamare il caso d'uso. Un guasto dell'archivio riceve `500` JSON sicuro e viene registrato. Fallisce se l'ordine, i limiti o gli esiti HTTP non corrispondono al contratto.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
+  * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
+  * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
+  * verify: [Lettura HTTP dell'elenco conversazioni](../Requirements/FamilyConversation.md#lettura-http-dellelenco-conversazioni)
+---
+
+### Prova della lingua del guasto conversazionale
+
+Nel JSON di «Conversazioni» configurare separatamente `language: "en"` e `language: "it"`, poi omettere il campo, scegliere una lingua stringa non supportata e usare un valore non stringa. Nei casi validi ammettere un turno e provocare un guasto inatteso dopo l'ammissione. Osservare il messaggio restituito dal caso d'uso, quello conservato nell'archivio e quello comunicato al client quando l'ingresso è disponibile.
+
+#### Details
+La prova passa se l'inglese produce «I can't complete the response.», l'italiano produce «Non riesco a completare la risposta.», l'omissione e la lingua stringa non supportata producono la formulazione inglese, un valore non stringa impedisce la preparazione, nessun messaggio contiene dettagli tecnici e il testo coincide esattamente nell'esito conservato e nella comunicazione al client. Fallisce se la lingua configurata viene ignorata, se i due testi differiscono o se il messaggio espone il guasto tecnico. La prova dell'ingresso resta da eseguire quando l'ingresso server è implementato.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
+  * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
+  * satisfiedBy: [conversation-config.test.ts](../../packages/conversations/test/adapters/out/conversation-config.test.ts)
+  * verify: [Localizzazione dell'errore conversazionale inatteso](../Requirements/FamilyConversation.md#localizzazione-dellerrore-conversazionale-inatteso)
 ---
 
 ### Prova della ripartenza dell'elenco aggiornato
@@ -1017,38 +1067,4 @@ La prova passa se le migrazioni pendenti sono applicate automaticamente prima ch
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
   * verify: [Migrazione automatica dell'archivio delle conversazioni](../Requirements/FamilyConversation.md#migrazione-automatica-dellarchivio-delle-conversazioni)
----
-
-### Prova della lettura HTTP dello storico conversazionale
-
-Leggere via GET una conversazione con turni conclusi con risposta ed errore, un turno in elaborazione e un turno interrotto. Ripetere la lettura dopo la conclusione del turno in elaborazione e verificare anche conversazione assente e guasto tecnico dell'archivio.
-
-#### Details
-La prova passa se la risposta `200` è JSON senza cache, conserva identità, testi, ordine e istanti ISO 8601 UTC e presenta solo i campi di esito pertinenti a ciascuno stato. La seconda lettura presenta l'esito persistente del turno prima in elaborazione senza duplicarlo; la lettura non usa SSE né recupera frammenti parziali. La conversazione assente restituisce `404` e il guasto tecnico `500`, entrambi con un messaggio pubblico sicuro tradotto e senza dettagli tecnici. Fallisce se uno stato o un testo è alterato, se un frammento parziale compare nello storico o se un guasto espone dettagli interni.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
-  * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
-  * verify: [Lettura HTTP dello storico conversazionale](../Requirements/FamilyConversation.md#lettura-http-dello-storico-conversazionale)
----
-
-### Prova della lettura HTTP dell'elenco conversazioni
-
-Leggere via GET più pagine di un elenco con conversazioni di attività differente e a parità di attività, usando il cursore restituito, il limite predefinito e un `limit` esplicito entro il massimo configurato. Ripetere con elenco vuoto, cursore e limite invalidi e guasto tecnico dell'archivio.
-
-#### Details
-La prova passa se le risposte `200` JSON senza cache contengono solo `items` ordinati e `nextCursor`, con identificativi e istanti ISO 8601 UTC preservati; seguire il cursore attraversa l'archivio invariato senza omissioni o duplicati e termina con `nextCursor: null`. Il limite predefinito proviene dalla configurazione e un limite esplicito valido la rispetta; valori invalidi ricevono `400` JSON sicuro senza chiamare il caso d'uso. Un guasto dell'archivio riceve `500` JSON sicuro e viene registrato. Fallisce se l'ordine, i limiti o gli esiti HTTP non corrispondono al contratto.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
-  * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
-  * verify: [Lettura HTTP dell'elenco conversazioni](../Requirements/FamilyConversation.md#lettura-http-dellelenco-conversazioni)
 ---

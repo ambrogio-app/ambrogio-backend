@@ -43,7 +43,32 @@ Conversazioni e turni ricevono UUID v4 generati tramite una capacità fornita ad
 
 Ogni richiesta di una pagina dell'elenco legge lo stato corrente dell'archivio; quando il client aggiorna l'elenco, scarta la continuazione precedente e riparte dalla prima pagina.
 
-Restano da precisare nei contratti pubblici la dimensione massima delle pagine e la rappresentazione della continuazione.
+La dimensione massima delle pagine e la rappresentazione della continuazione sono definite nel contratto HTTP dell'elenco.
+
+## Ingresso HTTP di consultazione
+
+La tranche eseguibile attuale espone `GET /api/conversations` e `GET /api/conversations/:conversationId`. `POST /api/conversations/turns` resta disponibile come adapter e nei test, ma non è registrato in questo processo finché non viene scelto un produttore concreto delle risposte.
+
+Il processo richiede due file JSON locali, esterni al repository. Un esempio di configurazione HTTP è:
+
+```json
+{"host":"127.0.0.1","port":3000,"allowedOrigins":[],"publicHttps":false}
+```
+
+`host` e `port` sono obbligatori. `allowedOrigins` è facoltativo e, se assente, non autorizza origini CORS. Per un'origine pubblica esclusivamente HTTPS, impostare `publicHttps` a `true` e fornire `hstsMaxAgeSeconds` positivo. Un esempio del JSON Conversazioni è:
+
+```json
+{"archivePath":"/percorso/locale/conversations.sqlite","listPageSize":20,"maxListPageSize":100,"language":"it"}
+```
+
+Per questo ingresso `archivePath` è obbligatorio; gli altri campi conservano i valori predefiniti già definiti nel modello. Dopo la build, avviare il processo indicando solo i percorsi dei file:
+
+```bash
+pnpm build
+AMBROGIO_HTTP_CONFIG_PATH=/percorso/locale/http.json \
+AMBROGIO_CONVERSATIONS_CONFIG_PATH=/percorso/locale/conversations.json \
+node apps/server/dist/main.js
+```
 
 ## Reqvire locale
 

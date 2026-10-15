@@ -127,6 +127,17 @@ La compilazione TypeScript del server deve avere l'opzione effettiva `strict` ab
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
+### Configurazione esplicita dell'ascolto HTTP
+
+Quando il processo avvia l'ingresso HTTP, deve usare un indirizzo host e una porta dichiarati esplicitamente nel JSON locale del componente HTTP e impedire l'avvio se tali valori sono assenti o invalidi.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
 ### Conservazione dell'errore originale durante la serializzazione
 
 Quando il logger del server serializza il campo `err` di un log diagnostico definitivo, la serializzazione non deve modificare l'oggetto `Error` originale né gli oggetti della sua catena `cause` mantenuti in memoria.

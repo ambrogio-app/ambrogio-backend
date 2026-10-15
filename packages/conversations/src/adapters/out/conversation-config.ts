@@ -4,6 +4,7 @@ export type ConversationConfig = Readonly<{
   listPageSize: number;
   maxListPageSize: number;
   language: 'en' | 'it';
+  archivePath?: string;
 }>;
 
 /** Load the conversation component's JSON before constructing its resources. */
@@ -29,5 +30,10 @@ export async function loadConversationConfig(filename: string): Promise<Conversa
     throw new Error('Invalid conversation language');
   }
   const language = fields.language === 'it' ? 'it' : 'en';
-  return { listPageSize, maxListPageSize, language };
+  if (fields.archivePath !== undefined
+    && (typeof fields.archivePath !== 'string' || !fields.archivePath.trim())) {
+    throw new Error('Invalid conversation archive path');
+  }
+  return { listPageSize, maxListPageSize, language,
+    ...(fields.archivePath === undefined ? {} : { archivePath: fields.archivePath }) };
 }

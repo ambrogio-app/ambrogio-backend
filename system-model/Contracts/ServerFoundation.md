@@ -66,6 +66,19 @@ Alla richiesta di arresto il server smette di accettare nuovi turni, richiede su
   * define: [Interruzione dei turni durante l'arresto](../Requirements/ServerFoundation.md#interruzione-dei-turni-durante-larresto)
 ---
 
+### Profilo JSON dell'ascolto HTTP
+
+Il percorso del file JSON del componente HTTP è indicato da `AMBROGIO_HTTP_CONFIG_PATH`, che seleziona soltanto il file. Il file richiede `host`, stringa non vuota, e `port`, numero intero da 1 a 65535. Non esistono valori predefiniti per questi due campi. Il listener usa esattamente i valori validati. File mancante, JSON invalido o valori non validi impediscono l'avvio.
+
+Il file ammette `allowedOrigins`, elenco di origini HTTP(S) esplicite, predefinito vuoto; `publicHttps`, booleano predefinito `false`; e `hstsMaxAgeSeconds`, intero positivo obbligatorio quando `publicHttps` è `true`. Il componente applica la politica CORS già definita tramite il plugin ufficiale `@fastify/cors` e configura `@fastify/helmet` secondo la politica HSTS già definita. Una voce CORS non può essere `*`; la corrispondenza dell'origine è esatta.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Configurazione esplicita dell'ascolto HTTP](../Requirements/ServerFoundation.md#configurazione-esplicita-dellascolto-http)
+---
+
 ### Profilo controllato di serializzazione di err
 
 La rappresentazione JSON di `err` usa una vista composta soltanto da campi ammessi esplicitamente dal serializzatore. Per un `Error` costruito dal progetto, la vista include il suo stack diagnostico. Per un errore proveniente da driver, SDK o provider e per un valore lanciato sconosciuto, la vista usa una descrizione costante sicura, indipendente dal valore ricevuto, e non copia il messaggio, lo stack o le proprietà aggiuntive di origine.

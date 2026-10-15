@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import { Kysely, sql, SqliteDialect } from 'kysely';
 import { Migrator } from 'kysely/migration';
@@ -93,6 +93,10 @@ describe('conversation archive startup', () => {
     const sqlite = new Database(filename);
     sqlite.exec('create table conversations (conflicting text)');
     sqlite.close();
-    await expect(openConversationArchive(filename, new Date(1000))).rejects.toThrow();
+    const destroy = vi.spyOn(Kysely.prototype, 'destroy');
+    try {
+      await expect(openConversationArchive(filename, new Date(1000))).rejects.toThrow();
+      expect(destroy).toHaveBeenCalledTimes(1);
+    } finally { destroy.mockRestore(); }
   });
 });

@@ -490,6 +490,7 @@ La prova passa se nessuna transazione del turno resta aperta durante l'attesa de
 
 #### Relations
   * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
+  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
   * verify: [Transazioni brevi dell'archivio conversazioni](../Requirements/FamilyConversation.md#transazioni-brevi-dellarchivio-conversazioni)
 ---
 
@@ -986,6 +987,8 @@ La prova passa se l'archivio è preparato prima degli ingressi, ogni risorsa cre
 
 #### Relations
   * derivedFrom: [Verifica della risorsa SQLite conversazionale](#verifica-della-risorsa-sqlite-conversazionale)
+  * satisfiedBy: [conversation-resource-lifecycle.test.ts](../../apps/server/test/runtime/conversation-resource-lifecycle.test.ts)
+  * satisfiedBy: [sqlite-archive-startup.test.ts](../../packages/conversations/test/adapters/out/sqlite-archive-startup.test.ts)
   * verify: [Chiusura della risorsa SQLite conversazionale](../Requirements/FamilyConversation.md#chiusura-della-risorsa-sqlite-conversazionale)
 ---
 

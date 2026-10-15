@@ -220,6 +220,66 @@ test('shutdown preserves a turn already completed before interruption', async ()
   } finally { await runtime.close(); }
 });
 
+test('keeps SQLite writable while waiting for an agent and while streaming SSE', async () => {
+  const files = await fixture();
+  const port = await freePort();
+  await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
+  await writeFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
+  const agentGate = gate();
+  const streamGate = gate();
+  let agentStarted!: () => void;
+  let streamStarted!: () => void;
+  const waitingForAgent = new Promise<void>(resolve => { agentStarted = resolve; });
+  const waitingDuringStream = new Promise<void>(resolve => { streamStarted = resolve; });
+  const runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
+    AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory,
+  async () => ({ orchestrator: { async *produce() {
+    agentStarted();
+    await agentGate.waiting;
+    yield 'first';
+    streamStarted();
+    await streamGate.waiting;
+    yield ' second';
+  } }, async close() {} }));
+  const independent = new DatabaseSync(files.archive);
+  independent.exec('pragma busy_timeout = 0; create table independent_writes (phase text not null)');
+  try {
+    const request = fetch(`http://127.0.0.1:${port}/api/conversations/turns`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text: 'question' }),
+    });
+    await waitingForAgent;
+    independent.prepare('insert into independent_writes (phase) values (?)').run('agent');
+    agentGate.release();
+    const response = await request;
+    expect(response.status).toBe(200);
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    let body = '';
+    while (!body.includes('event: delta')) {
+      const next = await reader.read();
+      expect(next.done).toBe(false);
+      body += decoder.decode(next.value, { stream: true });
+    }
+    await waitingDuringStream;
+    independent.prepare('insert into independent_writes (phase) values (?)').run('stream');
+    streamGate.release();
+    while (true) {
+      const next = await reader.read();
+      if (next.done) break;
+      body += decoder.decode(next.value, { stream: true });
+    }
+    expect(body).toContain('event: done');
+    expect(independent.prepare('select phase from independent_writes order by rowid').all())
+      .toEqual([{ phase: 'agent' }, { phase: 'stream' }]);
+  } finally {
+    agentGate.release();
+    streamGate.release();
+    independent.close();
+    await runtime.close();
+  }
+});
+
 test('restores completed history after restart and uses it for textual continuation', async () => {
   const files = await fixture();
   const port = await freePort();

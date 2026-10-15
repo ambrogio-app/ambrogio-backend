@@ -3,7 +3,7 @@
   "private": true,
   "packageManager": "pnpm@12.11.2",
   "scripts": {
-    "build": "tsc -p packages/conversations/tsconfig.build.json",
+    "build": "tsc -p packages/conversations/tsconfig.build.json && tsc -p apps/server/tsconfig.build.json",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

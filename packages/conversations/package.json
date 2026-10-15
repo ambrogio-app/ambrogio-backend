@@ -70,6 +70,10 @@
       "types": "./dist/adapters/out/sqlite/sqlite-conversation-list-read.d.ts",
       "import": "./dist/adapters/out/sqlite/sqlite-conversation-list-read.js"
     },
+    "./adapters/out/conversation-list-config": {
+      "types": "./dist/adapters/out/conversation-list-config.d.ts",
+      "import": "./dist/adapters/out/conversation-list-config.js"
+    },
     "./adapters/out/sqlite/recover-pending-turns": {
       "types": "./dist/adapters/out/sqlite/recover-pending-turns.d.ts",
       "import": "./dist/adapters/out/sqlite/recover-pending-turns.js"

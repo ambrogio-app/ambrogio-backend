@@ -119,6 +119,28 @@ describe('conversation exchange use case', () => {
     expect(deps.outcomes).toEqual([{ kind: 'error', message: englishFailure }]);
   });
 
+  it.each(['admitted', 'delta'] as const)('keeps the complete answer after a technical %s notification failure', async failureAt => {
+    const deps = setup();
+    const delivered: string[] = [];
+    const exchange = createExchangeTurn({
+      ...deps,
+      reply: { async *produce() { yield 'prima'; yield 'seconda'; } },
+    });
+    const result = await exchange({ text: '  domanda  ' }, {
+      admitted() {
+        if (failureAt === 'admitted') throw new Error('technical delivery failure');
+      },
+      delta(text) {
+        delivered.push(text);
+        if (failureAt === 'delta' && text === 'prima') throw new Error('technical delivery failure');
+      },
+    });
+
+    expect(result).toEqual({ ok: true, value: { conversationId, turnId, outcome: 'answered' } });
+    expect(deps.outcomes).toEqual([{ kind: 'answer', text: 'primaseconda' }]);
+    expect(delivered).toEqual(['prima', 'seconda']);
+  });
+
   it('requests error completion when history cannot be read', async () => {
     const deps = setup();
     const exchange = createExchangeTurn({

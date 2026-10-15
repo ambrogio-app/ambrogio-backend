@@ -173,6 +173,16 @@ importers:
         specifier: 5.0.4
         version: 5.0.4(@types/node@26.6.5)(vite@8.3.4(@types/node@26.6.5))
 
+  apps/server:
+    dependencies:
+      '@ambrogio/conversations':
+        specifier: workspace:*
+        version: link:../../packages/conversations
+    devDependencies:
+      '@types/node':
+        specifier: 24.19.2
+        version: 24.19.2
+
   packages/conversations:
     dependencies:
       better-sqlite3:

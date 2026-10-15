@@ -1,8 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import Database from 'better-sqlite3';
 import { Kysely, SqliteDialect, sql } from 'kysely';
 import { Turn } from '../../../src/domain/turn.js';
 import { createListConversations } from '../../../src/application/list-conversations.use-case.js';
+import { loadConversationListConfig } from '../../../src/adapters/out/conversation-list-config.js';
 import { migrateConversationArchive } from '../../../src/adapters/out/sqlite/migrations.js';
 import { SqliteConversationListRead } from '../../../src/adapters/out/sqlite/sqlite-conversation-list-read.js';
 import { SqliteConversationWrite } from '../../../src/adapters/out/sqlite/sqlite-conversation-write.js';
@@ -16,6 +20,7 @@ const ids = [
 ];
 
 const opened: Kysely<ConversationDatabase>[] = [];
+const configDirectories: string[] = [];
 
 function open() {
   const sqlite = new Database(':memory:');
@@ -27,6 +32,7 @@ function open() {
 
 afterEach(async () => {
   await Promise.all(opened.splice(0).map(db => db.destroy()));
+  await Promise.all(configDirectories.splice(0).map(directory => rm(directory, { recursive: true, force: true })));
 });
 
 describe('conversation list', () => {
@@ -62,12 +68,36 @@ describe('conversation list', () => {
     expect((await list({})).items.map(item => item.id)).toEqual([ids[1], ids[0]]);
   });
 
-  it('rejects invalid fixed page sizes', () => {
+  it('uses the configured page size and maximum across Application and SQLite', async () => {
+    const db = open();
+    await migrateConversationArchive(db);
+    const directory = await mkdtemp(join(tmpdir(), 'ambrogio-list-settings-'));
+    configDirectories.push(directory);
+    const filename = join(directory, 'conversations.json');
+    await writeFile(filename, '{"listPageSize": 110, "maxListPageSize": 120}');
+    const settings = await loadConversationListConfig(filename);
+    const limits: number[] = [];
+    const list = createListConversations({
+      async page(_after, limit) {
+        limits.push(limit);
+        return { items: [] };
+      },
+    }, settings.listPageSize, settings.maxListPageSize);
+    expect((await list({})).items).toEqual([]);
+    expect(limits).toEqual([110]);
+    const read = new SqliteConversationListRead(db, settings.maxListPageSize);
+    expect((await read.page(undefined, 120)).items).toEqual([]);
+    await expect(read.page(undefined, 121)).rejects.toThrow('Invalid conversation page size');
+  });
+
+  it('rejects invalid configured page sizes', () => {
     const db = open();
     const read = new SqliteConversationListRead(db);
     for (const size of [0, -1, 1.5, Number.POSITIVE_INFINITY, 101]) {
       expect(() => createListConversations(read, size)).toThrow('Invalid conversation page size');
     }
+    expect(() => createListConversations(read, 5, 4)).toThrow('Invalid conversation page size');
+    expect(() => new SqliteConversationListRead(db, 0)).toThrow('Invalid conversation page size');
   });
 
   it('reports incompatible persisted activity instead of inventing a date', async () => {

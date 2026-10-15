@@ -121,6 +121,32 @@ Quando il backend ha accettato un turno della chat testuale e il client si disco
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
+### Continuità del turno dopo un guasto di consegna
+
+Quando la consegna di una notifica di un turno già ammesso all'ingresso fallisce, Ambrogio deve proseguire l'elaborazione e conservare l'esito del turno indipendentemente da quel guasto di consegna.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Dati dei casi d'uso indipendenti dagli ingressi](../Contracts/FamilyConversation.md#dati-dei-casi-duso-indipendenti-dagli-ingressi)
+
+#### Relations
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Diagnostica del guasto tecnico di consegna
+
+Quando la consegna di una notifica conversazionale fallisce per un guasto tecnico diverso dalla disconnessione del client, il componente tecnico che gestisce la consegna deve registrare il guasto nel canale diagnostico del server.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * derivedFrom: [Diagnostica dei guasti nei componenti tecnici](ServerFoundation.md#diagnostica-dei-guasti-nei-componenti-tecnici)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
 ### Comunicazione dell'identificativo della nuova conversazione testuale
 
 Quando un turno della chat testuale avvia una nuova conversazione, il backend deve comunicare al client l'identificativo della conversazione nel primo evento applicativo SSE, prima degli incrementi della risposta testuale.
@@ -298,6 +324,24 @@ Quando la famiglia consulta l'elenco delle conversazioni conservate, Ambrogio de
   * type: requirement
 
 #### Relations
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Configurazione della paginazione conversazionale
+
+Quando il server prepara la consultazione dell'elenco delle conversazioni, deve individuare il file JSON locale del componente «Conversazioni» tramite `AMBROGIO_CONVERSATIONS_CONFIG_PATH` e usare i valori di dimensione della pagina e dimensione massima scelti dall'utente nel file, applicando i valori predefiniti concordati se i campi sono assenti e impedendo l'attivazione se il percorso o i valori sono invalidi.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Pagine dell'elenco conversazioni](../Contracts/FamilyConversation.md#pagine-dellelenco-conversazioni)
+  * [Profilo di bootstrap dei JSON dei componenti](../Contracts/ServerFoundation.md#profilo-di-bootstrap-dei-json-dei-componenti)
+
+#### Relations
+  * satisfiedBy: [conversation-list-config.ts](../../packages/conversations/src/adapters/out/conversation-list-config.ts)
+  * satisfiedBy: [conversation-list.ts](../../apps/server/src/composition/conversation-list.ts)
+  * satisfiedBy: [conversation-config-path.ts](../../apps/server/src/runtime/conversation-config-path.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 

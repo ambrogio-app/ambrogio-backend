@@ -6,10 +6,16 @@ import type { ConversationDatabase } from './schema.js';
 import { fromMillis, toMillis } from './sqlite-turn-mapper.js';
 
 export class SqliteConversationListRead implements ConversationListRead {
-  constructor(private readonly db: Kysely<ConversationDatabase>) {}
+  constructor(private readonly db: Kysely<ConversationDatabase>, private readonly maxPageSize = 100) {
+    if (!Number.isSafeInteger(maxPageSize) || maxPageSize < 1) {
+      throw new Error('Invalid conversation page size');
+    }
+  }
 
   async page(after: ConversationListCursor | undefined, limit: number): Promise<ConversationListPage> {
-    if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error('Invalid conversation page size');
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > this.maxPageSize) {
+      throw new Error('Invalid conversation page size');
+    }
     let query = this.db.selectFrom('conversations').select(['id', 'last_activity_at']);
     if (after) {
       if (typeof after.id !== 'string' || after.id.length === 0) throw new Error('Invalid conversation cursor');

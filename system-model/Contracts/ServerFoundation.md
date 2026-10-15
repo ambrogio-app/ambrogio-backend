@@ -92,6 +92,8 @@ Il componente HTTP configura un limite di dimensione positivo per i corpi ricevu
 
 Per il processo server, la composition root determina i componenti dell'ingresso da avviare e carica una sola volta i rispettivi file JSON locali prima di costruirne le risorse. Le configurazioni dei componenti non vengono sovrascritte da variabili d'ambiente; un eventuale meccanismo per scegliere il percorso dei file non modifica i valori letti dai file. Ogni componente dichiara quali campi sono richiesti e quali valori predefiniti sono ammessi. Il caricamento verifica struttura e valori, converte i dati nei tipi previsti e blocca l'attivazione se un file necessario manca o è invalido. I file dei componenti non attivi, compresi quelli vocali quando la voce è disabilitata, non sono richiesti. La composition root consegna a ogni componente solo la propria sezione validata; Domain e casi d'uso Application non leggono file, variabili d'ambiente o segreti dal processo. Messaggi di errore, log ed esempi non riproducono valori segreti. Il contratto non prescrive nomi di file, una libreria di schema o il meccanismo di immutabilità dei valori consegnati.
 
+Il percorso del file JSON di un componente attivo può essere indicato da una variabile d'ambiente dedicata. Tale variabile contiene solo il percorso: nessun campo del JSON viene sostituito con un valore d'ambiente.
+
 #### Metadata
   * type: specification
 

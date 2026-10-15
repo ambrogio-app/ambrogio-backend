@@ -138,7 +138,7 @@ L'analisi passa se input e dati di successo sono definiti in Application con sig
 Per ciascuna porta outbound di «Conversazioni», confrontare il bisogno del caso d'uso, le operazioni e i tipi dichiarati in Application, l'API del fornitore e le conversioni dell'adapter. Esaminare anche se la porta raccoglie capacità non richieste dal modulo o contiene tipi tecnici del fornitore.
 
 #### Details
-L'analisi passa se ogni porta rappresenta una capacità coerente richiesta dal modulo con operazioni e dati espressi nei suoi termini, e l'adapter traduce le differenze rispetto al fornitore. Fallisce se Application importa tipi del fornitore, se la porta replica senza motivo l'API tecnica o se dati ed esiti del fornitore attraversano il confine senza traduzione. L'analisi resta da svolgere quando esistono porte e adapter concreti.
+L'analisi passa se ogni porta rappresenta una capacità coerente richiesta dal modulo con operazioni e dati espressi nei suoi termini, e l'adapter traduce le differenze rispetto al fornitore. La porta di produzione della risposta usa `AsyncIterable<string>` sui frammenti testuali e il caso d'uso li legge in ordine, senza tipi SSE o del fornitore. Fallisce se Application importa tipi del fornitore, se la porta replica senza motivo l'API tecnica, se usa il trasporto SSE come contratto della porta oppure se dati ed esiti del fornitore attraversano il confine senza traduzione. L'analisi completa resta da svolgere quando esistono gli adapter concreti.
 
 #### Metadata
   * type: analysis-verification
@@ -468,6 +468,36 @@ La prova passa se, in entrambi i casi, il backend prosegue l'elaborazione dopo l
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * verify: [Completamento del turno accettato dopo disconnessione](../Requirements/FamilyConversation.md#completamento-del-turno-accettato-dopo-disconnessione)
+---
+
+### Prova della continuità dopo un guasto di consegna
+
+Ammettere un turno con risposta controllata in più frammenti e far fallire con un guasto tecnico la consegna della notifica di ammissione oppure di un frammento. Osservare la produzione della risposta, l'esito restituito dal caso d'uso e lo scambio conservato.
+
+#### Details
+La prova passa se in entrambi i casi la produzione prosegue fino al proprio esito, il turno conserva la risposta completa se la produzione riesce e il solo guasto di consegna non crea uno scambio di errore. Fallisce se il caso d'uso interrompe la produzione, perde un frammento nella risposta conservata o attribuisce al turno un errore causato soltanto dalla consegna. La verifica dell'ingresso resta da eseguire quando l'adapter è implementato.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * verify: [Continuità del turno dopo un guasto di consegna](../Requirements/FamilyConversation.md#continuità-del-turno-dopo-un-guasto-di-consegna)
+---
+
+### Prova della diagnostica del guasto di consegna
+
+Con l'ingresso conversazionale attivo, provocare separatamente una normale disconnessione del client e un guasto tecnico inatteso nella consegna di una notifica; acquisire gli eventi diagnostici del server e lo storico del turno.
+
+#### Details
+La prova passa se il guasto tecnico inatteso è registrato dal componente tecnico che lo gestisce nel canale diagnostico, senza dettagli tecnici nel messaggio pubblico e senza cambiare l'esito conversazionale conservato. La sola disconnessione non produce un log di errore per il turno. Fallisce se il guasto tecnico sparisce senza diagnostica, se il caso d'uso registra direttamente il log, se la disconnessione è trattata come errore del turno o se l'errore diagnostico entra nello storico. La prova resta da eseguire quando l'adapter di ingresso è implementato.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * verify: [Diagnostica del guasto tecnico di consegna](../Requirements/FamilyConversation.md#diagnostica-del-guasto-tecnico-di-consegna)
 ---
 
 ### Prova del completamento esplicito della risposta testuale
@@ -950,6 +980,23 @@ La prova passa se l'elenco è diviso in pagine limitate, la conversazione aggior
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
   * verify: [Elenco paginato delle conversazioni](../Requirements/FamilyConversation.md#elenco-paginato-delle-conversazioni)
   * verify: [Ordinamento delle conversazioni per ultima attività](../Requirements/FamilyConversation.md#ordinamento-delle-conversazioni-per-ultima-attività)
+---
+
+### Prova della configurazione della paginazione
+
+Preparare file JSON del componente «Conversazioni» con i due campi assenti, poi con `listPageSize` e `maxListPageSize` espliciti e diversi dai valori predefiniti. Indicare il percorso del file con `AMBROGIO_CONVERSATIONS_CONFIG_PATH` e leggere l'elenco attraverso i valori caricati, verificando il numero di voci e il limite applicato dall'archivio. Ripetere con variabile o file mancante, JSON invalido, valori non interi o non positivi e dimensione della pagina superiore al massimo.
+
+#### Details
+La prova passa se la variabile d'ambiente seleziona solo il percorso, i campi assenti danno 20 e 100, i valori espliciti validi sono usati dal caso d'uso e dall'adapter, e ogni percorso, file o combinazione invalida impedisce la preparazione dell'ingresso prima di accettare richieste. Fallisce se una variabile d'ambiente sostituisce un valore del JSON, se un valore invalido viene corretto in silenzio, se il massimo resta fissato a 100 quando la configurazione ne sceglie un altro o se il caso d'uso legge il file direttamente. La verifica dell'attivazione dell'ingresso resta da eseguire quando l'ingresso server è implementato.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
+  * satisfiedBy: [conversation-list-config.test.ts](../../packages/conversations/test/adapters/out/conversation-list-config.test.ts)
+  * satisfiedBy: [conversation-list.test.ts](../../apps/server/test/composition/conversation-list.test.ts)
+  * verify: [Configurazione della paginazione conversazionale](../Requirements/FamilyConversation.md#configurazione-della-paginazione-conversazionale)
 ---
 
 ### Prova della ripartenza dell'elenco aggiornato

@@ -15,7 +15,7 @@ export type ExchangeTurn = (input: BeginTurnInput, observer?: Readonly<{
 async function notify(call: (() => void | Promise<void>) | undefined): Promise<void> {
   try {
     await call?.();
-  } catch { /* a disconnected observer cannot cancel an admitted turn */ }
+  } catch { /* delivery failures do not cancel an admitted turn; adapters own diagnostics */ }
 }
 
 export function createExchangeTurn(dependencies: Readonly<{

@@ -24,7 +24,7 @@ export function registerHistoryRoute(server: FastifyInstance, options: Readonly<
       return reply.code(200).header('Cache-Control', 'no-store')
         .type('application/json').send(result.value);
     } catch (error) {
-      request.log.error({ event: 'conversation_history_http_failed', err: error });
+      request.log.error({ event: 'conversation_history_http_failed', err: error }, 'HTTP request failed');
       return publicError(reply, 500, messages.failure[options.language]);
     }
   });

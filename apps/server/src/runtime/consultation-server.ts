@@ -29,7 +29,7 @@ export async function buildConsultationServer(config: HttpConfig, prepared: Prep
       ? error.statusCode : undefined;
     const status = typeof statusCode === 'number' && statusCode >= 400 && statusCode < 500
       ? statusCode : 500;
-    if (status === 500) request.log.error({ event: 'http.unexpected_failure', err: error });
+    if (status === 500) request.log.error({ event: 'http.unexpected_failure', err: error }, 'HTTP request failed');
     reply.code(status).send({ error: status === 500
       ? 'Internal server error.' : 'Invalid HTTP request.' });
   });

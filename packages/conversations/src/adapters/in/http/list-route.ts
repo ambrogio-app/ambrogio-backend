@@ -73,7 +73,7 @@ export function registerListRoute(server: FastifyInstance, options: Readonly<{
         nextCursor: page.next ? encodeCursor(page.next) : null,
       });
     } catch (error) {
-      request.log.error({ event: 'conversation_list_http_failed', err: error });
+      request.log.error({ event: 'conversation_list_http_failed', err: error }, 'HTTP request failed');
       return publicError(reply, 500, messages.failure[options.language]);
     }
   });

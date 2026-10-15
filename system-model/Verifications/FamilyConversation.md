@@ -992,6 +992,8 @@ La prova passa se le colonne contengono interi pari ai rispettivi `getTime()`, l
 
 #### Relations
   * derivedFrom: [Verifica delle conversioni di persistenza](#verifica-delle-conversioni-di-persistenza)
+  * satisfiedBy: [sqlite-history.test.ts](../../packages/conversations/test/adapters/out/sqlite-history.test.ts)
+  * satisfiedBy: [sqlite-turn-mapper.test.ts](../../packages/conversations/test/adapters/out/sqlite-turn-mapper.test.ts)
   * verify: [Persistenza degli istanti conversazionali in millisecondi Unix](../Requirements/FamilyConversation.md#persistenza-degli-istanti-conversazionali-in-millisecondi-unix)
 ---
 

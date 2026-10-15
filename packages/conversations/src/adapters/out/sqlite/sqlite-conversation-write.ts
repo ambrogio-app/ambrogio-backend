@@ -1,51 +1,11 @@
 import { sql, type Kysely } from 'kysely';
 import type { Result, TurnSnapshot } from '../../../domain/turn.js';
-import { Turn } from '../../../domain/turn.js';
 import type {
   AdmitTurn, AdmissionRejection, CompleteTurn, ConversationWrite, TurnNotActive,
 } from '../../../application/conversation-write.js';
-import type { ConversationDatabase, TurnRows } from './schema.js';
-
-function toMillis(date: Date): number {
-  if (!(date instanceof Date) || !Number.isFinite(date.getTime())) throw new Error('Invalid conversation instant');
-  return date.getTime();
-}
-
-function fromMillis(value: unknown): Date {
-  if (typeof value !== 'number' || !Number.isInteger(value)) throw new Error('Invalid persisted instant');
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime()) || date.getTime() !== value) throw new Error('Invalid persisted instant');
-  return date;
-}
-
-function restoreTurn(row: TurnRows): Turn {
-  const base = { id: row.id, text: row.text, acceptedAt: fromMillis(row.accepted_at) };
-  switch (row.status) {
-    case 'pending':
-      if (row.answer !== null || row.error !== null || row.finished_at !== null) break;
-      return Turn.restore({ ...base, status: 'pending' });
-    case 'answered':
-      if (row.answer === null || row.error !== null) break;
-      return Turn.restore({ ...base, status: 'answered', answer: row.answer, finishedAt: fromMillis(row.finished_at) });
-    case 'failed':
-      if (row.error === null || row.answer !== null) break;
-      return Turn.restore({ ...base, status: 'failed', error: row.error, finishedAt: fromMillis(row.finished_at) });
-    case 'interrupted':
-      if (row.answer !== null || row.error !== null) break;
-      return Turn.restore({ ...base, status: 'interrupted', finishedAt: fromMillis(row.finished_at) });
-  }
-  throw new Error('Invalid persisted turn state');
-}
-
-function isSqliteBusy(error: unknown): boolean {
-  return error instanceof Error && 'code' in error && error.code === 'SQLITE_BUSY';
-}
-
-class AdmissionLockBusy extends Error {
-  constructor(cause: unknown) {
-    super('Admission could not acquire the archive lock', { cause });
-  }
-}
+import type { ConversationDatabase } from './schema.js';
+import { restoreTurn, toMillis } from './sqlite-turn-mapper.js';
+import { AdmissionLockBusy, withImmediateTransaction } from './sqlite-transaction.js';
 
 export class SqliteConversationWrite implements ConversationWrite {
   private writeInProgress = false;
@@ -59,24 +19,7 @@ export class SqliteConversationWrite implements ConversationWrite {
     if (this.writeInProgress) throw new Error('Concurrent archive write');
     this.writeInProgress = true;
     try {
-      return await this.db.connection().execute(async connection => {
-        try {
-          // A synchronous SQLite busy wait would block the event loop that must finish the other write.
-          await sql.raw('pragma busy_timeout = 0').execute(connection);
-          await sql.raw('begin immediate').execute(connection);
-        } catch (error) {
-          if (classifyAdmissionLock && isSqliteBusy(error)) throw new AdmissionLockBusy(error);
-          throw error;
-        }
-        try {
-          const result = await run(connection);
-          await sql.raw('commit').execute(connection);
-          return result;
-        } catch (error) {
-          try { await sql.raw('rollback').execute(connection); } catch { /* preserve the original failure */ }
-          throw error;
-        }
-      });
+      return await withImmediateTransaction(this.db, run, classifyAdmissionLock);
     } finally {
       this.writeInProgress = false;
     }
@@ -109,8 +52,12 @@ export class SqliteConversationWrite implements ConversationWrite {
             .where('id', '=', input.conversationId).executeTakeFirst();
           if (updated.numUpdatedRows !== 1n) throw new Error('Conversation activity update failed');
         }
+        const ordinalResult = await db.selectFrom('turns')
+          .select(sql<number>`coalesce(max(ordinal), 0)`.as('last'))
+          .where('conversation_id', '=', input.conversationId).executeTakeFirstOrThrow();
         await db.insertInto('turns').values({
           id: state.id, conversation_id: input.conversationId, text: state.text,
+          ordinal: ordinalResult.last + 1,
           accepted_at: acceptedAt, status: 'pending', answer: null, error: null, finished_at: null,
         }).execute();
         const occupied = await db.updateTable('installation').set({ active_turn_id: state.id })

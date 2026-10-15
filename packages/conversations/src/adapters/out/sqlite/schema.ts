@@ -7,6 +7,7 @@ export interface ConversationRows {
 export interface TurnRows {
   id: string;
   conversation_id: string;
+  ordinal: number;
   text: string;
   accepted_at: number;
   status: 'pending' | 'answered' | 'failed' | 'interrupted';

@@ -2,5 +2,57 @@
   "name": "@ambrogio/conversations",
   "version": "0.0.0",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "exports": {
+    "./application/begin-turn": {
+      "types": "./dist/application/begin-turn.use-case.d.ts",
+      "import": "./dist/application/begin-turn.use-case.js"
+    },
+    "./application/complete-turn": {
+      "types": "./dist/application/complete-turn.use-case.d.ts",
+      "import": "./dist/application/complete-turn.use-case.js"
+    },
+    "./application/conversation-write": {
+      "types": "./dist/application/conversation-write.d.ts",
+      "import": "./dist/application/conversation-write.js"
+    },
+    "./application/turn-capabilities": {
+      "types": "./dist/application/turn-capabilities.d.ts",
+      "import": "./dist/application/turn-capabilities.js"
+    },
+    "./adapters/out/sqlite/migrations": {
+      "types": "./dist/adapters/out/sqlite/migrations.d.ts",
+      "import": "./dist/adapters/out/sqlite/migrations.js"
+    },
+    "./adapters/out/sqlite/write": {
+      "types": "./dist/adapters/out/sqlite/sqlite-conversation-write.d.ts",
+      "import": "./dist/adapters/out/sqlite/sqlite-conversation-write.js"
+    },
+    "./adapters/out/sqlite/schema": {
+      "types": "./dist/adapters/out/sqlite/schema.d.ts",
+      "import": "./dist/adapters/out/sqlite/schema.js"
+    },
+    "./adapters/out/uuid-identifiers": {
+      "types": "./dist/adapters/out/uuid-identifiers.d.ts",
+      "import": "./dist/adapters/out/uuid-identifiers.js"
+    },
+    "./adapters/out/system-current-time": {
+      "types": "./dist/adapters/out/system-current-time.d.ts",
+      "import": "./dist/adapters/out/system-current-time.js"
+    }
+  },
+  "dependencies": {
+    "better-sqlite3": "13.0.3",
+    "kysely": "0.29.6"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "9.6.0",
+    "@types/node": "24.19.2"
+  }
 }

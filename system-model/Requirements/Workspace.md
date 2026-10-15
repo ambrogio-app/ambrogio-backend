@@ -195,6 +195,7 @@ Ciascun package business del monorepo deve dichiarare nel campo `exports` di `pa
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [package.json](../../packages/conversations/package.json)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 

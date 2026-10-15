@@ -143,6 +143,7 @@ Quando l'adapter SQLite dell'archivio esegue una mutazione conversazionale, deve
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [sqlite-conversation-write.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -290,6 +291,7 @@ Quando Application del modulo «Conversazioni» conserva turni o esiti, deve usa
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [conversation-write.ts](../../packages/conversations/src/application/conversation-write.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -414,6 +416,7 @@ Quando Application del modulo «Conversazioni» dichiara una porta outbound a og
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [conversation-write.ts](../../packages/conversations/src/application/conversation-write.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -613,6 +616,7 @@ Quando Application del modulo «Conversazioni» dichiara una porta verso una cap
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [turn-capabilities.ts](../../packages/conversations/src/application/turn-capabilities.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -668,6 +672,7 @@ Quando l'adapter dell'archivio salva o ricostruisce un istante della conversazio
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [sqlite-conversation-write.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -682,6 +687,7 @@ Quando un turno supera la validazione dell'ingresso, il caso d'uso Application d
   * [Proprietà dei controlli del turno conversazionale](../Contracts/FamilyConversation.md#proprietà-dei-controlli-del-turno-conversazionale)
 
 #### Relations
+  * satisfiedBy: [begin-turn.use-case.ts](../../packages/conversations/src/application/begin-turn.use-case.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -945,6 +951,7 @@ Quando Ambrogio accetta, conclude o interrompe un turno, deve confermare insieme
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [sqlite-conversation-write.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 

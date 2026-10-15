@@ -22,17 +22,6 @@ Prima di attivare gli ingressi conversazionali, il server confronta lo schema SQ
   * define: [Migrazione automatica dell'archivio delle conversazioni](../Requirements/FamilyConversation.md#migrazione-automatica-dellarchivio-delle-conversazioni)
 ---
 
-### Canale SSE del turno riaperto
-
-Il client che riapre una conversazione mentre un turno testuale è in corso apre una nuova connessione di sola ricezione associata alla conversazione e al turno già accettato, senza inviare nuovamente il testo del turno. La risposta usa `Content-Type: text/event-stream` e messaggi Server-Sent Events in UTF-8. Sul nuovo flusso, il backend emette come `delta` il testo della risposta già prodotto, eventualmente in uno o più frammenti, e poi gli ulteriori frammenti nell'ordine di produzione; la loro concatenazione ricostruisce la risposta senza lacune né duplicati. Ogni `delta` ha `data` JSON con il campo stringa `text`. La conclusione riuscita usa `done` con `data: {}` e l'errore usa `error` con `data` JSON contenente il campo stringa `error` e un messaggio pubblico sicuro. La connessione aperta dopo la riapertura è distinta dalla risposta SSE alla richiesta POST originale. Il percorso della richiesta resta da definire.
-
-#### Metadata
-  * type: input-output
-
-#### Relations
-  * define: [Flusso degli aggiornamenti del turno riaperto](../Requirements/FamilyConversation.md#flusso-degli-aggiornamenti-del-turno-riaperto)
----
-
 ### Ciclo di vita della risorsa SQLite conversazionale
 
 La composition root del server costruisce e possiede una risorsa SQLite/Kysely condivisa dagli adapter interessati. Gli adapter ricevono l'accesso necessario per le proprie operazioni e non ne controllano la chiusura; Domain e Application non ricevono handle tecnici SQLite o Kysely. Prima di abilitare il lavoro che dipende dall'archivio, il proprietario ne verifica l'apertura e completa le migrazioni richieste. Se la preparazione fallisce, chiude la risorsa già creata. Al termine del processo, la chiude dopo il completamento o l'interruzione delle operazioni che la usano. Non si prescrive un pool PostgreSQL né un numero di connessioni fisiche SQLite.
@@ -90,7 +79,7 @@ Il caso d'uso del turno conversazionale riceve un input Application costruito da
 
 ### Dati della richiesta del turno della chat testuale
 
-La richiesta HTTP POST della chat testuale usa `Content-Type: application/json` e un corpo JSON con `text`, stringa che contiene il nuovo turno testuale, e `conversationId`, stringa presente quando si prosegue una conversazione conservata e assente quando se ne avvia una nuova. Il valore di `text`, eliminati gli spazi bianchi iniziali e finali per la sola verifica di validità, deve contenere almeno un carattere. Il corpo non contiene gli scambi precedenti: lo storico è recuperato dal backend dall'archivio delle conversazioni.
+La richiesta HTTP `POST /api/conversations/turns` della chat testuale usa `Content-Type: application/json` e un corpo JSON di al massimo 64 KiB (65 536 byte) con `text`, stringa che contiene il nuovo turno testuale, e `conversationId`, stringa presente quando si prosegue una conversazione conservata e assente quando se ne avvia una nuova. Il valore di `text`, eliminati gli spazi bianchi iniziali e finali per la sola verifica di validità, deve contenere almeno un carattere. Il corpo non contiene gli scambi precedenti: lo storico è recuperato dal backend dall'archivio delle conversazioni.
 
 #### Metadata
   * type: input-output
@@ -200,6 +189,17 @@ Il percorso del file è indicato dalla variabile d'ambiente `AMBROGIO_CONVERSATI
   * define: [Configurazione della paginazione conversazionale](../Requirements/FamilyConversation.md#configurazione-della-paginazione-conversazionale)
 ---
 
+### Lingua nel JSON conversazionale
+
+Il file JSON locale del componente «Conversazioni», già usato per i limiti della paginazione, ammette il campo opzionale `language`, una stringa con `en` per l'inglese o `it` per l'italiano. Se il campo è assente o contiene una lingua non supportata, la lingua effettiva è `en`. Un valore non stringa è una struttura incompatibile e impedisce l'attivazione dell'ingresso interessato. La variabile d'ambiente indica solo il percorso del file e non sostituisce `language`.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Localizzazione dell'errore conversazionale inatteso](../Requirements/FamilyConversation.md#localizzazione-dellerrore-conversazionale-inatteso)
+---
+
 ### Profilo di trasporto SSE della chat
 
 Il client invia il turno della chat testuale con una richiesta HTTP POST. Il backend restituisce il flusso sulla risposta della stessa richiesta, con `Content-Type: text/event-stream` ed eventi nel formato Server-Sent Events codificati in UTF-8. Quando il turno crea una nuova conversazione, il primo evento applicativo del flusso è `event: conversation` e comunica `conversationId`, corrispondente all'identificativo della conversazione conservata, prima di qualsiasi incremento della risposta testuale. Il valore del campo SSE `data` di questo evento è la serializzazione JSON di un oggetto con il campo stringa `conversationId`, per esempio `{"conversationId":"..."}`. Ogni evento che trasporta testo di risposta è `event: delta` e usa nel proprio campo SSE `data` la serializzazione JSON di un oggetto con il campo stringa `text`, contenente soltanto il nuovo frammento; la concatenazione ordinata dei frammenti ricostruisce la risposta testuale. Quando la risposta è prodotta in più incrementi, il backend trasmette gli incrementi disponibili prima del completamento della generazione, senza attendere di disporre dell'intera risposta. Dopo l'ultimo incremento di una risposta completata correttamente, il backend invia un evento con `event: done` e `data: {}`, terminato da una riga vuota secondo il formato SSE, e poi chiude il flusso. `done` segnala il completamento riuscito; la sola chiusura del flusso senza `done` non lo segnala. Se un errore impedisce il completamento dopo l'avvio del flusso, il backend invia `event: error` con `data` contenente la serializzazione JSON di un oggetto con il campo stringa `error` e un messaggio pubblico sicuro, per esempio `{"error":"..."}`; termina l'evento con una riga vuota e chiude il flusso senza `done`. Il messaggio pubblico rispetta l'esclusione dei dettagli tecnici dai messaggi di guasto.
@@ -235,7 +235,9 @@ Nel modulo business «Conversazioni», Domain contiene le regole e i tipi del do
 
 ### Risposta di errore HTTP prima del flusso testuale
 
-Se un errore viene determinato prima dell'invio degli header SSE, il backend risponde alla richiesta POST con uno stato HTTP di errore `4xx` o `5xx` e `Content-Type: application/json`. Il corpo è un oggetto JSON con il campo stringa `error` contenente un messaggio pubblico sicuro, per esempio `{"error":"..."}`. Il messaggio non espone dettagli tecnici del guasto. Questa risposta non usa `text/event-stream` e non contiene eventi SSE. Se `text` è vuoto o contiene soltanto spazi bianchi, il codice di stato è `400`, anche quando è presente un `conversationId` inesistente. Se `text` è valido ma il `conversationId` non identifica una conversazione conservata, il codice di stato è `404`. Se il turno valido è rifiutato perché l'installazione è occupata, il codice di stato è `409`; il turno non viene conservato né accodato. La scelta del codice di stato specifico per gli altri casi di errore resta da definire.
+Se un errore viene determinato prima dell'invio degli header SSE, il backend risponde alla richiesta POST con uno stato HTTP di errore `4xx` o `5xx` e `Content-Type: application/json`. Il corpo è un oggetto JSON con il campo stringa `error` contenente un messaggio pubblico sicuro, per esempio `{"error":"..."}`. Il messaggio non espone dettagli tecnici del guasto. Questa risposta non usa `text/event-stream` e non contiene eventi SSE. Se `text` è vuoto o contiene soltanto spazi bianchi, il corpo JSON è malformato, contiene campi non previsti o usa tipi diversi da quelli contrattuali, oppure `Content-Type` non è `application/json`, il codice di stato è `400` e il messaggio è «Invalid message.» in inglese oppure «Messaggio non valido.» in italiano; il testo vuoto ha precedenza anche quando è presente un `conversationId` inesistente. Se `text` è valido ma il `conversationId` non identifica una conversazione conservata, il codice di stato è `404` e il messaggio è «Conversation not found.» oppure «Conversazione non trovata.». Se il turno valido è rifiutato perché l'installazione è occupata, il codice di stato è `409` e il messaggio è «Another turn is in progress.» oppure «Un altro turno è in corso.»; il turno non viene conservato né accodato. Se l'archivio rifiuta temporaneamente l'ammissione perché occupato, il codice di stato è `503` e il messaggio è «Service temporarily unavailable.» oppure «Servizio temporaneamente non disponibile.»; il turno non viene conservato né accodato. Se il corpo supera 64 KiB, il codice di stato è `413` e il messaggio è «Request too large.» oppure «Richiesta troppo grande.». Per i messaggi alternativi di questo paragrafo, il primo testo è inglese e il secondo italiano, secondo la lingua configurata. Se un guasto tecnico inatteso avviene prima dell'ammissione del turno e prima degli header SSE, il codice di stato è `500` e `error` contiene il messaggio standard già definito per la lingua configurata: «I can't complete the response.» in inglese oppure «Non riesco a completare la risposta.» in italiano. La scelta del codice di stato specifico per gli altri casi di errore resta da definire.
+
+Quando il server ha disabilitato gli ingressi conversazionali perché non è riuscito a conservare l'esito di un turno già ammesso, ogni nuovo POST del turno testuale riceve fino al riavvio HTTP `503` con la stessa risposta JSON e lo stesso messaggio tradotto di indisponibilità temporanea; nessun nuovo turno viene ammesso, conservato o accodato.
 
 #### Metadata
   * type: input-output
@@ -268,7 +270,7 @@ Per ogni mutazione dell'archivio, la porta di scrittura definisce la postcondizi
 
 ### Stati del turno testuale alla riapertura
 
-Un turno testuale accettato e ancora in elaborazione è distinguibile dagli scambi conclusi quando si consulta la conversazione. Finché l'elaborazione è effettivamente in corso e il relativo esito non è conservato, la consultazione lo identifica come `in elaborazione` e lo associa al testo del turno. Se è già disponibile testo generato per la risposta, il client lo mostra come risposta parziale nello stesso messaggio, senza presentarlo come risposta completa. Gli aggiornamenti successivi alla riapertura arrivano al client tramite messaggi SSE del turno riaperto. Quando l'esito è conservato, il client presenta lo scambio concluso con risposta oppure errore e non presenta più per lo stesso turno lo stato `in elaborazione`. Dopo un'interruzione del processo, il turno senza esito segue lo stato `interrotto` definito nel contratto degli stati persistenti del turno testuale.
+Un turno testuale accettato e ancora in elaborazione è distinguibile dagli scambi conclusi quando si consulta la conversazione. Finché l'esito non è conservato, la consultazione lo identifica come `in elaborazione` e lo associa al testo del turno; il client invita la persona ad aggiornare manualmente la pagina più tardi. Alla successiva consultazione, se l'esito è stato conservato, il client presenta lo scambio concluso con risposta oppure errore e non presenta più per lo stesso turno lo stato `in elaborazione`. La riapertura non crea una seconda connessione SSE, non recupera i frammenti parziali e non aggiorna automaticamente lo stato della pagina. Dopo un'interruzione del processo, il turno senza esito segue lo stato `interrotto` definito nel contratto degli stati persistenti del turno testuale.
 
 #### Metadata
   * type: state
@@ -312,7 +314,7 @@ Se la lettura dello storico fallisce oppure non restituisce il turno appena amme
 
 ### Messaggio standard del guasto conversazionale
 
-Per un guasto inatteso di un turno già ammesso, il server sceglie il messaggio pubblico nella lingua selezionata dall'utente nella configurazione dell'installazione. Le lingue inizialmente supportate sono inglese e italiano; se la lingua non è indicata oppure non è supportata, usa l'inglese. La formulazione inglese è «I can't complete the response.»; quella italiana è «Non riesco a completare la risposta.». La composition root passa al caso d'uso la formulazione scelta dai valori di configurazione, senza far leggere il file al caso d'uso. Il caso d'uso usa il medesimo testo per l'esito persistente e per la comunicazione al client.
+Per un guasto inatteso di un turno già ammesso, il server sceglie il messaggio pubblico secondo `language` nel medesimo file JSON locale del componente «Conversazioni» che configura la paginazione. Le lingue inizialmente supportate sono `en` e `it`; se la lingua non è indicata oppure non è supportata, usa `en`. La formulazione inglese è «I can't complete the response.»; quella italiana è «Non riesco a completare la risposta.». La composition root passa al caso d'uso la formulazione scelta dai valori di configurazione, senza far leggere il file al caso d'uso. Il caso d'uso usa il medesimo testo per l'esito persistente e per la comunicazione al client.
 
 #### Metadata
   * type: input-output

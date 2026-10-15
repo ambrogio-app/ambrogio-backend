@@ -70,9 +70,17 @@
       "types": "./dist/adapters/out/sqlite/sqlite-conversation-list-read.d.ts",
       "import": "./dist/adapters/out/sqlite/sqlite-conversation-list-read.js"
     },
-    "./adapters/out/conversation-list-config": {
-      "types": "./dist/adapters/out/conversation-list-config.d.ts",
-      "import": "./dist/adapters/out/conversation-list-config.js"
+    "./adapters/out/conversation-config": {
+      "types": "./dist/adapters/out/conversation-config.d.ts",
+      "import": "./dist/adapters/out/conversation-config.js"
+    },
+    "./adapters/in/http/sse-events": {
+      "types": "./dist/adapters/in/http/sse-events.d.ts",
+      "import": "./dist/adapters/in/http/sse-events.js"
+    },
+    "./adapters/in/http/turn-route": {
+      "types": "./dist/adapters/in/http/turn-route.d.ts",
+      "import": "./dist/adapters/in/http/turn-route.js"
     },
     "./adapters/out/sqlite/recover-pending-turns": {
       "types": "./dist/adapters/out/sqlite/recover-pending-turns.d.ts",
@@ -93,6 +101,7 @@
   },
   "dependencies": {
     "better-sqlite3": "13.0.3",
+    "fastify": "5.12.7",
     "kysely": "0.29.6"
   },
   "devDependencies": {

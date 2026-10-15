@@ -671,7 +671,7 @@ La prova passa se il client ammesso può raggiungere l'ingresso previsto e il cl
 Per una rotta che accetta un corpo, inviare corpi sotto e sopra il limite dichiarato, includendo un invio in più parti oltre il limite. Osservare risposta ed effetti sul caso d'uso e sull'archivio.
 
 #### Details
-La prova passa se i corpi entro il limite raggiungono la normale validazione della rotta, mentre quelli oltre il limite ricevono `413` con JSON `error` sicuro e non avviano l'operazione né creano un turno. Fallisce se un corpo oltre il limite viene elaborato o se il limite dipende solo da `Content-Length`. Da eseguire quando l'API HTTP è implementata.
+La prova passa se i corpi entro il limite raggiungono la normale validazione della rotta, mentre quelli oltre il limite ricevono `413` con JSON `error` sicuro e non avviano l'operazione né creano un turno. Per la rotta del turno testuale, provare corpi di 65 536 e 65 537 byte e verificare il testo pubblico esatto nella lingua configurata. Fallisce se un corpo oltre il limite viene elaborato o se il limite dipende solo da `Content-Length`. Da eseguire quando l'API HTTP è implementata.
 
 #### Metadata
   * type: test-verification

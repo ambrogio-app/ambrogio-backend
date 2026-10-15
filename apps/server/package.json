@@ -9,7 +9,8 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@ambrogio/conversations": "workspace:*"
+    "@ambrogio/conversations": "workspace:*",
+    "fastify": "5.12.7"
   },
   "devDependencies": {
     "@types/node": "24.19.2"

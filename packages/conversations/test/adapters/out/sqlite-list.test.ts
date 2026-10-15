@@ -6,7 +6,7 @@ import Database from 'better-sqlite3';
 import { Kysely, SqliteDialect, sql } from 'kysely';
 import { Turn } from '../../../src/domain/turn.js';
 import { createListConversations } from '../../../src/application/list-conversations.use-case.js';
-import { loadConversationListConfig } from '../../../src/adapters/out/conversation-list-config.js';
+import { loadConversationConfig } from '../../../src/adapters/out/conversation-config.js';
 import { migrateConversationArchive } from '../../../src/adapters/out/sqlite/migrations.js';
 import { SqliteConversationListRead } from '../../../src/adapters/out/sqlite/sqlite-conversation-list-read.js';
 import { SqliteConversationWrite } from '../../../src/adapters/out/sqlite/sqlite-conversation-write.js';
@@ -75,7 +75,7 @@ describe('conversation list', () => {
     configDirectories.push(directory);
     const filename = join(directory, 'conversations.json');
     await writeFile(filename, '{"listPageSize": 110, "maxListPageSize": 120}');
-    const settings = await loadConversationListConfig(filename);
+    const settings = await loadConversationConfig(filename);
     const limits: number[] = [];
     const list = createListConversations({
       async page(_after, limit) {

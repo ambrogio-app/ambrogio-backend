@@ -1,12 +1,13 @@
 import { readFile } from 'node:fs/promises';
 
-export type ConversationListConfig = Readonly<{
+export type ConversationConfig = Readonly<{
   listPageSize: number;
   maxListPageSize: number;
+  language: 'en' | 'it';
 }>;
 
-/** Load the conversation component's JSON before constructing list resources. */
-export async function loadConversationListConfig(filename: string): Promise<ConversationListConfig> {
+/** Load the conversation component's JSON before constructing its resources. */
+export async function loadConversationConfig(filename: string): Promise<ConversationConfig> {
   let value: unknown;
   try {
     value = JSON.parse(await readFile(filename, 'utf8'));
@@ -24,5 +25,9 @@ export async function loadConversationListConfig(filename: string): Promise<Conv
     || maxListPageSize < 1 || listPageSize > maxListPageSize) {
     throw new Error('Invalid conversation list limits');
   }
-  return { listPageSize, maxListPageSize };
+  if (fields.language !== undefined && typeof fields.language !== 'string') {
+    throw new Error('Invalid conversation language');
+  }
+  const language = fields.language === 'it' ? 'it' : 'en';
+  return { listPageSize, maxListPageSize, language };
 }

@@ -79,7 +79,7 @@ La rappresentazione JSON di `err` usa una vista composta soltanto da campi ammes
 
 ### Profilo del limite dei corpi HTTP
 
-Il componente HTTP configura un limite di dimensione positivo per i corpi ricevuti dalle rotte che ne accettano uno; un'eventuale eccezione per rotta dichiara un proprio limite esplicito. Il controllo riguarda la dimensione effettivamente ricevuta, anche quando il corpo arriva in più parti. Il rifiuto `413` usa la forma JSON pubblica degli errori HTTP e non passa il corpo al caso d'uso né crea un turno. Il valore numerico e le eventuali eccezioni per rotta saranno fissati con i contratti delle rotte concrete.
+Il componente HTTP configura un limite di dimensione positivo per i corpi ricevuti dalle rotte che ne accettano uno; un'eventuale eccezione per rotta dichiara un proprio limite esplicito. Il controllo riguarda la dimensione effettivamente ricevuta, anche quando il corpo arriva in più parti. Il rifiuto `413` usa la forma JSON pubblica degli errori HTTP e non passa il corpo al caso d'uso né crea un turno. La rotta del turno testuale usa 64 KiB, come definito nel contratto della sua richiesta; i valori delle altre rotte saranno fissati nei rispettivi contratti.
 
 #### Metadata
   * type: specification

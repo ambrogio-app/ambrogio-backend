@@ -504,6 +504,7 @@ Quando una rotta HTTP riceve un corpo, il server deve applicare un limite esplic
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 

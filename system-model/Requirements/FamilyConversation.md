@@ -14,9 +14,9 @@ Quando un componente tecnico esterno viene integrato come ingresso del modulo «
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Aggiornamento automatico dell'esito alla riapertura
+### Invito ad aggiornare la conversazione in elaborazione
 
-Quando una conversazione riaperta nel client della chat testuale mostra un turno «In elaborazione» e il backend ne conserva l'esito, il client deve aggiornare automaticamente quel turno con la risposta completa o il messaggio pubblico di errore, senza richiedere un'azione della famiglia.
+Quando una conversazione riaperta nel client della chat testuale mostra un turno «In elaborazione», il client deve invitare la persona ad aggiornare manualmente la pagina più tardi per consultarne l'esito.
 
 #### Metadata
   * type: requirement
@@ -339,20 +339,9 @@ Quando il server prepara la consultazione dell'elenco delle conversazioni, deve 
   * [Profilo di bootstrap dei JSON dei componenti](../Contracts/ServerFoundation.md#profilo-di-bootstrap-dei-json-dei-componenti)
 
 #### Relations
-  * satisfiedBy: [conversation-list-config.ts](../../packages/conversations/src/adapters/out/conversation-list-config.ts)
-  * satisfiedBy: [conversation-list.ts](../../apps/server/src/composition/conversation-list.ts)
+  * satisfiedBy: [conversation-config.ts](../../packages/conversations/src/adapters/out/conversation-config.ts)
+  * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
   * satisfiedBy: [conversation-config-path.ts](../../apps/server/src/runtime/conversation-config-path.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
-### Flusso degli aggiornamenti del turno riaperto
-
-Quando un client della chat testuale riapre una conversazione con un turno testuale accettato ancora in elaborazione, il backend deve consentire al client di collegarsi agli aggiornamenti SSE di quel turno e trasmetterne l'avanzamento e l'esito tramite messaggi nello stream, senza avviare un nuovo turno.
-
-#### Metadata
-  * type: requirement
-
-#### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -687,17 +676,20 @@ Quando, dopo l'ammissione di un turno, il server non riesce a leggere uno storic
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
 ### Localizzazione dell'errore conversazionale inatteso
 
-Quando un turno ammesso termina con un guasto inatteso, Ambrogio deve comunicare e conservare lo stesso messaggio pubblico standard tradotto nella lingua scelta dall'utente nella configurazione dell'installazione.
+Quando un turno ammesso termina con un guasto inatteso, Ambrogio deve comunicare e conservare lo stesso messaggio pubblico standard tradotto nella lingua scelta dall'utente nel file JSON locale del componente «Conversazioni».
 
 #### Metadata
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [conversation-config.ts](../../packages/conversations/src/adapters/out/conversation-config.ts)
+  * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -802,20 +794,6 @@ Quando il client della chat testuale aggiorna l'elenco delle conversazioni conse
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Ripresa della risposta parziale nel turno riaperto
-
-Quando il client della chat testuale riapre una conversazione mentre la risposta a un turno è ancora in elaborazione, deve mostrare il testo già prodotto come risposta parziale e continuare ad aggiornare lo stesso messaggio con i frammenti successivi, senza lacune o duplicazioni del testo.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Canale SSE del turno riaperto](../Contracts/FamilyConversation.md#canale-sse-del-turno-riaperto)
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
 ### Risposta progressiva SSE nella chat testuale
 
 Quando il backend avvia il flusso di risposta a un turno della chat testuale, deve trasmettere progressivamente la risposta come Server-Sent Events nella risposta alla stessa richiesta HTTP POST che ha ricevuto il turno, conforme al profilo di trasporto SSE della chat.
@@ -824,6 +802,9 @@ Quando il backend avvia il flusso di risposta a un turno della chat testuale, de
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [sse-events.ts](../../packages/conversations/src/adapters/in/http/sse-events.ts)
+  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
+  * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -867,12 +848,13 @@ Quando il backend completa correttamente la risposta a un turno della chat testu
 
 ### Segnalazione dell'errore HTTP prima del flusso testuale
 
-Quando un turno della chat testuale non può avviare la risposta SSE, il backend deve restituire una risposta HTTP di errore con un messaggio pubblico sicuro in formato JSON, senza iniziare un flusso SSE.
+Quando un turno della chat testuale non può avviare la risposta SSE, il backend deve restituire una risposta HTTP di errore con un messaggio pubblico sicuro in formato JSON, senza iniziare un flusso SSE; se l'archivio rifiuta temporaneamente l'ammissione perché occupato o gli ingressi sono disabilitati dopo una conclusione non conservata, deve usare HTTP 503 con il messaggio di indisponibilità nella lingua configurata; se un guasto tecnico inatteso avviene prima dell'ammissione, deve usare HTTP 500 e il messaggio standard nella lingua configurata.
 
 #### Metadata
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
   * derivedFrom: [Esclusione dei dettagli tecnici dal messaggio pubblico](ServerFoundation.md#esclusione-dei-dettagli-tecnici-dal-messaggio-pubblico)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
@@ -888,6 +870,7 @@ Quando il backend riceve un turno valido della chat testuale e lo rifiuta perch�
   * [Risposta di errore HTTP prima del flusso testuale](../Contracts/FamilyConversation.md#risposta-di-errore-http-prima-del-flusso-testuale)
 
 #### Relations
+  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
   * derivedFrom: [Segnalazione dell'errore HTTP prima del flusso testuale](#segnalazione-dellerrore-http-prima-del-flusso-testuale)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
@@ -904,6 +887,7 @@ Quando il campo `text` di un turno della chat testuale è vuoto o contiene solta
   * [Risposta di errore HTTP prima del flusso testuale](../Contracts/FamilyConversation.md#risposta-di-errore-http-prima-del-flusso-testuale)
 
 #### Relations
+  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
   * derivedFrom: [Segnalazione dell'errore HTTP prima del flusso testuale](#segnalazione-dellerrore-http-prima-del-flusso-testuale)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
@@ -919,6 +903,7 @@ Quando una richiesta della chat testuale contiene un `text` valido e un `convers
   * [Risposta di errore HTTP prima del flusso testuale](../Contracts/FamilyConversation.md#risposta-di-errore-http-prima-del-flusso-testuale)
 
 #### Relations
+  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
   * derivedFrom: [Segnalazione dell'errore HTTP prima del flusso testuale](#segnalazione-dellerrore-http-prima-del-flusso-testuale)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
@@ -965,7 +950,7 @@ Il modulo business «Conversazioni» deve distinguere Domain, Application e adap
 
 ### Stato del turno in elaborazione alla riapertura
 
-Quando la famiglia riapre tramite un client della chat testuale una conversazione con un turno testuale accettato il cui esito non è ancora conservato, Ambrogio deve mostrare quel turno come «In elaborazione» fino alla disponibilità dell'esito conservato.
+Quando la famiglia consulta tramite un client della chat testuale una conversazione con un turno testuale accettato il cui esito non è ancora conservato, Ambrogio deve mostrare quel turno come «In elaborazione»; a una nuova consultazione dopo la conservazione dell'esito deve mostrare lo scambio concluso.
 
 #### Metadata
   * type: requirement

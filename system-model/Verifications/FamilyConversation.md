@@ -517,21 +517,6 @@ La prova passa se, nel caso completato, dopo l'ultimo frammento e prima della ch
   * verify: [Segnalazione locale dell'interruzione della chat testuale](../Requirements/FamilyConversation.md#segnalazione-locale-dellinterruzione-della-chat-testuale)
 ---
 
-### Prova del flusso del turno riaperto
-
-Avviare un turno testuale con generazione controllabile, ricevere un primo frammento sullo stream della richiesta POST e disconnettere il client. Riaprire la conversazione durante l'elaborazione, collegarsi al flusso del turno già accettato e far produrre un ulteriore frammento e l'esito. Ripetere con un errore dopo il collegamento. Osservare le richieste e gli scambi conservati.
-
-#### Details
-La prova passa se la riapertura stabilisce una nuova connessione SSE associata allo stesso turno senza inviare nuovamente il testo come nuovo turno; gli aggiornamenti successivi arrivano come eventi SSE `delta` e la conclusione come `done` con `data: {}` oppure `error` con un messaggio pubblico sicuro nel campo JSON `error`. Il backend conserva un solo scambio per il turno. Fallisce se il client deve interrogare periodicamente lo stato per conoscere l'esito, se la riapertura crea un altro turno, se gli aggiornamenti successivi non arrivano nello stream o se l'evento finale non corrisponde all'esito conservato. La prova resta da eseguire quando client e backend sono implementati.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * verify: [Flusso degli aggiornamenti del turno riaperto](../Requirements/FamilyConversation.md#flusso-degli-aggiornamenti-del-turno-riaperto)
----
-
 ### Prova del rifiuto del turno vuoto della chat testuale
 
 Inviare da un client della chat testuale una richiesta con `text` vuoto e una con `text` composto solo da spazi bianchi, sia per una nuova conversazione sia per una conversazione esistente. Ripetere con testo vuoto e un `conversationId` inesistente. Confrontare lo stato dell'archivio prima e dopo ogni richiesta.
@@ -549,7 +534,7 @@ La prova passa se ogni richiesta restituisce HTTP `400` con `Content-Type: appli
 
 ### Prova del trasporto HTTP e SSE della chat
 
-Da un client della chat testuale di prova, inviare un nuovo turno testuale e intercettare la richiesta HTTP POST e la relativa risposta del backend. Ripetere l'invio per continuare una conversazione conservata. Far produrre al caso d'uso una risposta controllata in due frammenti testuali distinti, mantenendo la generazione aperta dopo il primo; leggere il flusso mentre è ancora attivo. Ritardare in modo controllato la conclusione della consegna del primo evento all'adapter e osservare quando viene iniziata la consegna del secondo.
+Da un client della chat testuale di prova, inviare un nuovo turno testuale a `POST /api/conversations/turns` e intercettare la relativa risposta del backend. Ripetere l'invio allo stesso percorso per continuare una conversazione conservata. Far produrre al caso d'uso una risposta controllata in due frammenti testuali distinti, mantenendo la generazione aperta dopo il primo; leggere il flusso mentre è ancora attivo. Ritardare in modo controllato la conclusione della consegna del primo evento all'adapter e osservare quando viene iniziata la consegna del secondo.
 
 #### Details
 La prova passa se ogni richiesta dichiara `Content-Type: application/json` e il corpo JSON contiene `text` con il solo nuovo turno come contenuto conversazionale; `conversationId` è assente per una nuova conversazione e contiene l'identificativo di quella conservata nella continuazione, senza includere gli scambi precedenti. La risposta SSE arriva sulla stessa richiesta senza aprire una seconda connessione per riceverla e dichiara `Content-Type: text/event-stream`. Gli eventi sono SSE validi codificati in UTF-8; ciascun incremento è `event: delta` e ha nel campo `data` un oggetto JSON con `text` uguale al solo frammento nuovo, e la loro concatenazione ordinata ricostruisce esattamente la risposta. Il primo frammento è ricevuto prima che la generazione dell'intera risposta sia completata. La notifica di ammissione precede ogni incremento e la consegna del secondo non inizia finché quella del primo non è terminata. La prova fallisce se il turno usa un metodo o un trasporto diverso, se il payload viola il contratto, se il flusso richiede una seconda richiesta, se la risposta non è SSE valida, se gli incrementi non usano `delta`, se `text` contiene ogni volta il testo cumulativo o se tutti gli incrementi sono trattenuti fino alla fine. La prova resta da eseguire quando client e backend sono implementati.
@@ -563,19 +548,19 @@ La prova passa se ogni richiesta dichiara `Content-Type: application/json` e il 
   * verify: [Risposta progressiva SSE nella chat testuale](../Requirements/FamilyConversation.md#risposta-progressiva-sse-nella-chat-testuale)
 ---
 
-### Prova dell'aggiornamento automatico dell'esito riaperto
+### Prova dell'invito ad aggiornare la conversazione
 
-Avviare un turno testuale con elaborazione controllabile, disconnettere il client e riaprire la stessa conversazione mentre il turno mostra «In elaborazione». Senza ulteriori azioni della famiglia, far conservare al backend l'esito e osservare la conversazione già aperta. Eseguire una volta con una risposta completa e una volta con un errore pubblico.
+Avviare un turno testuale con elaborazione controllabile, disconnettere il client e riaprire la stessa conversazione mentre il turno è ancora in corso. Osservare la pagina, far conservare al backend l'esito e aggiornare manualmente la pagina. Ripetere con una risposta completa e con un errore pubblico.
 
 #### Details
-La prova passa se, dopo la conservazione dell'esito, il client aggiorna automaticamente il turno già visibile, rimuove «In elaborazione» e mostra la risposta completa oppure il messaggio pubblico di errore corrispondente allo scambio conservato, senza ricaricare manualmente la vista, riaprire la conversazione o inviare un nuovo turno. Fallisce se lo stato resta invariato fino a un'azione della famiglia, se compare una risposta parziale come completa, se viene mostrato un esito diverso da quello conservato o se il turno è duplicato. La prova resta da eseguire quando client e backend sono implementati.
+La prova passa se la pagina riaperta mostra il turno «In elaborazione» e invita la persona ad aggiornarla più tardi, senza aprire un altro flusso SSE, interrogare periodicamente lo stato o mostrare frammenti temporanei come risposta completa. Prima dell'aggiornamento manuale il client non sostituisce da sé lo stato; dopo l'aggiornamento mostra l'esito conservato corretto senza duplicare il turno né inviarne uno nuovo. La prova resta da eseguire quando client e backend sono implementati.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * verify: [Aggiornamento automatico dell'esito alla riapertura](../Requirements/FamilyConversation.md#aggiornamento-automatico-dellesito-alla-riapertura)
+  * verify: [Invito ad aggiornare la conversazione in elaborazione](../Requirements/FamilyConversation.md#invito-ad-aggiornare-la-conversazione-in-elaborazione)
 ---
 
 ### Prova dell'arresto per input conversazionale non valido
@@ -595,10 +580,10 @@ La prova passa se gli adapter rifiutano ciascun input al proprio confine prima d
 
 ### Prova dell'errore HTTP prima del flusso testuale
 
-Da un client della chat testuale di prova, inviare un turno che il backend rifiuta prima di avviare SSE; ripetere provocando un guasto tecnico controllato prima dell'invio degli header della risposta. Intercettare stato, header e corpo HTTP e osservare l'esito mostrato dal client.
+Da un client della chat testuale di prova, inviare un turno che il backend rifiuta prima di avviare SSE; ripetere simulando il rifiuto temporaneo dell'ammissione da parte dell'archivio e provocando un guasto tecnico controllato prima dell'ammissione e prima dell'invio degli header, con `language` impostato separatamente a `en` e `it`. Intercettare stato, header e corpo HTTP e osservare l'esito mostrato dal client.
 
 #### Details
-La prova passa se ogni caso restituisce uno stato HTTP `4xx` o `5xx` e `Content-Type: application/json`, con un corpo JSON contenente un campo stringa `error` con messaggio pubblico sicuro. La risposta non dichiara `text/event-stream` e non invia eventi SSE. Il client mostra il messaggio come errore del turno; nel caso di guasto tecnico non compaiono dettagli diagnostici nel messaggio. La prova fallisce se la risposta è `2xx`, se il payload non rispetta il contratto, se viene avviato SSE, se l'errore non è mostrato o se trapelano dettagli tecnici. La prova resta da eseguire quando client e backend sono implementati.
+La prova passa se ogni caso restituisce uno stato HTTP `4xx` o `5xx` e `Content-Type: application/json`, con un corpo JSON contenente un campo stringa `error` con messaggio pubblico sicuro. Il valore di `error` nei casi `400`, `404`, `409`, `413` e `503` corrisponde esattamente alla coppia inglese/italiano definita dal contratto. Per il rifiuto temporaneo dell'archivio lo stato è `503` e il turno non viene conservato; per il guasto inatteso prima dell'ammissione lo stato è `500` e il testo è esattamente «I can't complete the response.» con `en` oppure «Non riesco a completare la risposta.» con `it`, senza creare un turno. La risposta non dichiara `text/event-stream` e non invia eventi SSE. Il client mostra il messaggio come errore del turno; nel caso di guasto tecnico non compaiono dettagli diagnostici nel messaggio. La prova fallisce se la risposta è `2xx`, se il payload non rispetta il contratto, se viene avviato SSE, se l'errore non è mostrato o se trapelano dettagli tecnici. La prova resta da eseguire quando client e backend sono implementati.
 
 #### Metadata
   * type: test-verification
@@ -704,21 +689,6 @@ La prova passa se, dopo il riavvio, la famiglia può recuperare la conversazione
   * verify: [Disponibilità dello storico dopo riavvio](../Requirements/FamilyConversation.md#disponibilità-dello-storico-dopo-riavvio)
 ---
 
-### Prova della ripresa della risposta parziale
-
-Avviare un turno della chat testuale che generi almeno tre frammenti riconoscibili. Ricevere il primo frammento, disconnettere il client, lasciare che il backend produca un secondo frammento, poi riaprire la conversazione e mantenere il nuovo stream connesso mentre viene prodotto il terzo frammento e l'esito finale. Ripetere con un errore finale.
-
-#### Details
-La prova passa se, alla riapertura, lo stesso messaggio mostra come parziale il testo già prodotto e poi si aggiorna con il testo successivo, senza perdere o duplicare alcun carattere. Il nuovo stream consente di ricostruire nell'ordine l'intera risposta fino a `done`; nel caso di `error`, il client sostituisce il testo parziale con il messaggio pubblico di errore. Il turno e lo scambio conservato restano unici. Fallisce se il client riparte con un nuovo messaggio, mostra solo i frammenti successivi, duplica il prefisso già visibile o considera completa la risposta prima dell'esito terminale. La prova resta da eseguire quando client e backend sono implementati.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * verify: [Ripresa della risposta parziale nel turno riaperto](../Requirements/FamilyConversation.md#ripresa-della-risposta-parziale-nel-turno-riaperto)
----
-
 ### Prova della risposta e dello storico testuale
 
 Eseguire una conversazione con un turno che produce una risposta e uno che produce un errore controllato; riaprire lo storico.
@@ -740,7 +710,7 @@ La prova passa se ogni turno riceve l'esito testuale nella conversazione corrett
 Avviare da un client della chat testuale un turno con elaborazione controllabile, poi disconnettere il client dopo l'accettazione e prima dell'esito. Mantenere l'elaborazione in corso, riaprire la stessa conversazione da un client della chat testuale e osservare lo stato del turno. Far poi terminare il turno, consultare nuovamente la conversazione e ripetere la prova con un esito di errore.
 
 #### Details
-La prova passa se, durante l'elaborazione, il client mostra il testo del turno con lo stato «In elaborazione» e non presenta eventuali frammenti ricevuti prima della disconnessione come risposta completa. Dopo la conservazione dell'esito, la consultazione mostra un solo scambio concluso con risposta completa oppure messaggio pubblico di errore, e lo stato «In elaborazione» scompare per quel turno. Fallisce se il turno non è visibile durante l'elaborazione, se appare già concluso, se lo stato rimane dopo l'esito o se la riapertura crea uno scambio duplicato. La prova resta da eseguire quando client e backend sono implementati.
+La prova passa se, durante l'elaborazione, il client mostra il testo del turno con lo stato «In elaborazione» e non presenta eventuali frammenti ricevuti prima della disconnessione come risposta completa. Dopo la conservazione dell'esito e una nuova consultazione manuale, il client mostra un solo scambio concluso con risposta completa oppure messaggio pubblico di errore, e lo stato «In elaborazione» scompare per quel turno. Fallisce se il turno non è visibile durante l'elaborazione, se appare già concluso, se lo stato rimane dopo la nuova consultazione o se la riapertura crea uno scambio duplicato. La prova resta da eseguire quando client e backend sono implementati.
 
 #### Metadata
   * type: test-verification
@@ -941,7 +911,7 @@ La prova passa se ciascun turno accettato è persistito con il suo testo prima d
 Ammettere un turno e provocare separatamente un errore di lettura dello storico e uno storico che non contiene il turno ammesso in elaborazione. In entrambi i casi verificare prima che la conclusione con errore riesca, poi che la scrittura dell'esito fallisca. Osservare produzione della risposta, stato persistente, occupazione e disponibilità degli ingressi; riavviare il server dopo il guasto di scrittura.
 
 #### Details
-La prova passa se la risposta non viene prodotta, una conclusione riuscita conserva una sola volta «Errore» con messaggio pubblico sicuro e libera l'occupazione, mentre una conclusione non conservata non viene presentata come riuscita e impedisce al server di accettare altri turni fino al riavvio. Al riavvio un turno ancora «In elaborazione» diventa «Interrotto». Fallisce se il turno resta pendente mentre il server continua ad accettare ingressi, se compare una risposta riuscita o se il guasto viene riprovato automaticamente. La parte relativa al blocco degli ingressi resta da eseguire quando il server è implementato.
+La prova passa se la risposta non viene prodotta, una conclusione riuscita conserva una sola volta «Errore» con messaggio pubblico sicuro e libera l'occupazione, mentre una conclusione non conservata non viene presentata come riuscita e impedisce al server di accettare altri turni fino al riavvio. Ogni nuovo POST del turno testuale durante questo blocco restituisce `503` con JSON `error` contenente «Service temporarily unavailable.» in inglese oppure «Servizio temporaneamente non disponibile.» in italiano, senza ammettere o accodare il turno. Al riavvio un turno ancora «In elaborazione» diventa «Interrotto». Fallisce se il turno resta pendente mentre il server continua ad accettare ingressi, se compare una risposta riuscita o se il guasto viene riprovato automaticamente. La parte relativa al blocco degli ingressi resta da eseguire quando il server è implementato.
 
 #### Metadata
   * type: test-verification
@@ -953,16 +923,18 @@ La prova passa se la risposta non viene prodotta, una conclusione riuscita conse
 
 ### Prova della lingua del guasto conversazionale
 
-Configurare separatamente inglese e italiano, poi omettere la lingua e scegliere una lingua non supportata; in ciascun caso ammettere un turno e provocare un guasto inatteso dopo l'ammissione. Osservare il messaggio restituito dal caso d'uso, quello conservato nell'archivio e quello comunicato al client quando l'ingresso è disponibile.
+Nel JSON di «Conversazioni» configurare separatamente `language: "en"` e `language: "it"`, poi omettere il campo, scegliere una lingua stringa non supportata e usare un valore non stringa. Nei casi validi ammettere un turno e provocare un guasto inatteso dopo l'ammissione. Osservare il messaggio restituito dal caso d'uso, quello conservato nell'archivio e quello comunicato al client quando l'ingresso è disponibile.
 
 #### Details
-La prova passa se l'inglese produce «I can't complete the response.», l'italiano produce «Non riesco a completare la risposta.», l'omissione e la lingua non supportata producono la formulazione inglese, nessun messaggio contiene dettagli tecnici e il testo coincide esattamente nell'esito conservato e nella comunicazione al client. Fallisce se la lingua configurata viene ignorata, se i due testi differiscono o se il messaggio espone il guasto tecnico. La prova della configurazione e dell'ingresso resta da eseguire quando il server è implementato.
+La prova passa se l'inglese produce «I can't complete the response.», l'italiano produce «Non riesco a completare la risposta.», l'omissione e la lingua stringa non supportata producono la formulazione inglese, un valore non stringa impedisce la preparazione, nessun messaggio contiene dettagli tecnici e il testo coincide esattamente nell'esito conservato e nella comunicazione al client. Fallisce se la lingua configurata viene ignorata, se i due testi differiscono o se il messaggio espone il guasto tecnico. La prova dell'ingresso resta da eseguire quando l'ingresso server è implementato.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
+  * satisfiedBy: [conversation-config.test.ts](../../packages/conversations/test/adapters/out/conversation-config.test.ts)
+  * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
   * verify: [Localizzazione dell'errore conversazionale inatteso](../Requirements/FamilyConversation.md#localizzazione-dellerrore-conversazionale-inatteso)
 ---
 
@@ -994,8 +966,8 @@ La prova passa se la variabile d'ambiente seleziona solo il percorso, i campi as
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [conversation-list-config.test.ts](../../packages/conversations/test/adapters/out/conversation-list-config.test.ts)
-  * satisfiedBy: [conversation-list.test.ts](../../apps/server/test/composition/conversation-list.test.ts)
+  * satisfiedBy: [conversation-config.test.ts](../../packages/conversations/test/adapters/out/conversation-config.test.ts)
+  * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
   * verify: [Configurazione della paginazione conversazionale](../Requirements/FamilyConversation.md#configurazione-della-paginazione-conversazionale)
 ---
 

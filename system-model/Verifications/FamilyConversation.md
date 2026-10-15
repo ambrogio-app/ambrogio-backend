@@ -751,6 +751,7 @@ La prova passa se il backend restituisce HTTP `404` prima di avviare SSE, con `C
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
   * verify: [Precondizioni contestuali nel caso d'uso conversazionale](../Requirements/FamilyConversation.md#precondizioni-contestuali-nel-caso-duso-conversazionale)
   * verify: [Rifiuto della continuazione testuale con conversazione inesistente](../Requirements/FamilyConversation.md#rifiuto-della-continuazione-testuale-con-conversazione-inesistente)
 ---
@@ -767,6 +768,7 @@ La prova passa se, per ogni origine, il backend recupera dall'archivio lo storic
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
   * verify: [Continuazione testuale di ogni conversazione](../Requirements/FamilyConversation.md#continuazione-testuale-di-ogni-conversazione)
   * verify: [Recupero dello storico per il turno testuale](../Requirements/FamilyConversation.md#recupero-dello-storico-per-il-turno-testuale)
   * verify: [Riapertura delle conversazioni tramite chat testuale](../Requirements/FamilyConversation.md#riapertura-delle-conversazioni-tramite-chat-testuale)
@@ -847,6 +849,7 @@ La prova passa se, dopo il riavvio, la famiglia può recuperare la conversazione
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
   * verify: [Disponibilità dello storico dopo riavvio](../Requirements/FamilyConversation.md#disponibilità-dello-storico-dopo-riavvio)
 ---
 
@@ -1036,6 +1039,8 @@ La prova passa se i valori recuperati preservano identità, ordine, testo origin
 
 #### Relations
   * derivedFrom: [Verifica delle conversioni di persistenza](#verifica-delle-conversioni-di-persistenza)
+  * satisfiedBy: [sqlite-history.test.ts](../../packages/conversations/test/adapters/out/sqlite-history.test.ts)
+  * satisfiedBy: [sqlite-turn-mapper.test.ts](../../packages/conversations/test/adapters/out/sqlite-turn-mapper.test.ts)
   * verify: [Conversione esplicita dei dati conversazionali persistenti](../Requirements/FamilyConversation.md#conversione-esplicita-dei-dati-conversazionali-persistenti)
 ---
 
@@ -1143,6 +1148,8 @@ La prova passa se ciascun turno accettato è persistito con il suo testo prima d
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
+  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
+  * satisfiedBy: [sqlite-archive-startup.test.ts](../../packages/conversations/test/adapters/out/sqlite-archive-startup.test.ts)
   * verify: [Nessuna ripetizione automatica del turno interrotto](../Requirements/FamilyConversation.md#nessuna-ripetizione-automatica-del-turno-interrotto)
   * verify: [Registrazione dei turni conversazionali accettati](../Requirements/FamilyConversation.md#registrazione-dei-turni-conversazionali-accettati)
   * verify: [Riconoscimento del turno interrotto dopo riavvio](../Requirements/FamilyConversation.md#riconoscimento-del-turno-interrotto-dopo-riavvio)

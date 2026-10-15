@@ -204,6 +204,96 @@ test('shutdown preserves a turn already completed before interruption', async ()
   } finally { await runtime.close(); }
 });
 
+test('restores completed history after restart and uses it for textual continuation', async () => {
+  const files = await fixture();
+  const port = await freePort();
+  await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
+  await writeFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
+  const environment = { AMBROGIO_HTTP_CONFIG_PATH: files.http,
+    AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations };
+  const seen: Array<Array<{ text: string; status: string; answer?: string; error?: string }>> = [];
+  const firstRuntime = await startConversationServer(environment, files.directory,
+    async () => ({ orchestrator: { async *produce(history) {
+      seen.push(history.turns.map(turn => ({ text: turn.text, status: turn.status,
+        ...(turn.status === 'answered' ? { answer: turn.answer } : {}),
+        ...(turn.status === 'failed' ? { error: turn.error } : {}) })));
+      if (seen.length === 1) yield 'first answer';
+      else { yield 'partial'; throw new Error('private provider failure'); }
+    } }, async close() {} }));
+  let id = '';
+  let beforeRestart: { id: string; turns: Array<{ id: string; text: string;
+    status: string; answer?: string; error?: string }> } | undefined;
+  try {
+    const unknown = await firstRuntime.server.inject({ method: 'POST', url: '/api/conversations/turns',
+      headers: { 'content-type': 'application/json' }, payload: {
+        text: 'unknown', conversationId: '00000000-0000-4000-8000-000000000000',
+      } });
+    expect(unknown.statusCode).toBe(404);
+    expect(unknown.headers['content-type']).toMatch(/^application\/json/);
+    expect(unknown.json()).toEqual({ error: 'Conversation not found.' });
+    expect((await firstRuntime.server.inject({ method: 'GET', url: '/api/conversations' }))
+      .json().items).toEqual([]);
+
+    const first = await firstRuntime.server.inject({ method: 'POST', url: '/api/conversations/turns',
+      headers: { 'content-type': 'application/json' }, payload: { text: 'first question' } });
+    expect(first.statusCode).toBe(200);
+    id = JSON.parse(first.body.match(/event: conversation\ndata: ([^\n]+)/)![1]!)
+      .conversationId as string;
+    expect(first.body).toContain('first answer');
+    const second = await firstRuntime.server.inject({ method: 'POST', url: '/api/conversations/turns',
+      headers: { 'content-type': 'application/json' }, payload: {
+        text: 'second question', conversationId: id,
+      } });
+    expect(second.statusCode).toBe(200);
+    expect(second.body).toContain('event: error');
+    expect(second.body).not.toContain('event: conversation');
+    expect(second.body).not.toContain('private provider failure');
+    expect(seen).toEqual([
+      [{ text: 'first question', status: 'pending' }],
+      [{ text: 'first question', status: 'answered', answer: 'first answer' },
+        { text: 'second question', status: 'pending' }],
+    ]);
+    const history = await firstRuntime.server.inject({ method: 'GET',
+      url: `/api/conversations/${id}` });
+    expect(history.statusCode).toBe(200);
+    beforeRestart = history.json() as typeof beforeRestart;
+    expect(beforeRestart?.turns.map(turn => [turn.text, turn.status])).toEqual([
+      ['first question', 'answered'], ['second question', 'failed'],
+    ]);
+    expect(beforeRestart?.turns[1]?.error).toBe("I can't complete the response.");
+  } finally { await firstRuntime.close(); }
+
+  const afterRestartSeen: string[][] = [];
+  const restarted = await startConversationServer(environment, files.directory,
+    async () => ({ orchestrator: { async *produce(history) {
+      afterRestartSeen.push(history.turns.map(turn => turn.text));
+      yield 'third answer';
+    } }, async close() {} }));
+  try {
+    const history = await restarted.server.inject({ method: 'GET',
+      url: `/api/conversations/${id}` });
+    expect(history.statusCode).toBe(200);
+    expect(history.json()).toEqual(beforeRestart);
+    const third = await restarted.server.inject({ method: 'POST', url: '/api/conversations/turns',
+      headers: { 'content-type': 'application/json' }, payload: {
+        text: 'third question', conversationId: id,
+      } });
+    expect(third.statusCode).toBe(200);
+    expect(third.body).toContain('third answer');
+    expect(third.body).not.toContain('event: conversation');
+    expect(afterRestartSeen).toEqual([['first question', 'second question', 'third question']]);
+    const finalHistory = await restarted.server.inject({ method: 'GET',
+      url: `/api/conversations/${id}` });
+    const persisted = finalHistory.json() as { id: string; turns: Array<{ text: string; status: string }> };
+    expect(persisted.id).toBe(id);
+    expect(persisted.turns.map(turn => [turn.text, turn.status])).toEqual([
+      ['first question', 'answered'], ['second question', 'failed'], ['third question', 'answered'],
+    ]);
+    expect((await restarted.server.inject({ method: 'GET', url: '/api/conversations' }))
+      .json().items).toHaveLength(1);
+  } finally { await restarted.close(); }
+});
+
 test('rejects concurrent HTTP turns across conversations without queuing or persisting them', async () => {
   const files = await fixture();
   const port = await freePort();

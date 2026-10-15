@@ -98,20 +98,37 @@ test('shutdown interrupts a pending turn without waiting for the remote reply', 
   let release!: () => void;
   const wait = new Promise<void>((resolve) => { release = resolve; });
   let closed = false;
+  let persistedBeforeAgentClose = false;
   const runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
     AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory,
   async () => ({ orchestrator: { async *produce() { started(); await wait; yield 'too late'; } },
-    async close() { closed = true; } }));
+    async close() {
+      const archive = await openConversationArchive(files.archive, new Date());
+      try {
+        const rows = await archive.db.selectFrom('turns').select(['status', 'answer']).execute();
+        persistedBeforeAgentClose = rows.length === 1 && rows[0]?.status === 'interrupted'
+          && rows[0].answer === null;
+      } finally { await archive.close(); }
+      closed = true;
+    } }));
   const origin = `http://127.0.0.1:${port}`;
   try {
     const response = await fetch(`${origin}/api/conversations/turns`, { method: 'POST',
       headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: 'Hi' }) });
     expect(response.status).toBe(200);
     await producing;
-    await expect(Promise.race([runtime.close(), new Promise((_, reject) =>
+    const closing = runtime.close();
+    const rejectedDuringShutdown = runtime.server.inject({ method: 'POST',
+      url: '/api/conversations/turns', headers: { 'content-type': 'application/json' },
+      payload: { text: 'too late to start' } });
+    await expect(Promise.race([closing, new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Shutdown waited for remote reply')), 1000))])).resolves.toBeUndefined();
     expect(closed).toBe(true);
+    expect(persistedBeforeAgentClose).toBe(true);
+    const lateAdmission = await rejectedDuringShutdown.catch(() => undefined);
+    if (lateAdmission) expect(lateAdmission.statusCode).not.toBe(200);
     release();
+    expect(await response.text().catch(() => '')).not.toContain('event: done');
     await new Promise<void>((resolve) => setImmediate(resolve));
     const archive = await openConversationArchive(files.archive, new Date());
     try {
@@ -119,10 +136,45 @@ test('shutdown interrupts a pending turn without waiting for the remote reply', 
       const rows = await archive.db.selectFrom('turns').select(['status', 'answer']).execute();
       expect(rows).toEqual([{ status: 'interrupted', answer: null }]);
     } finally { await archive.close(); }
+    const restarted = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
+      AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory,
+    async () => ({ orchestrator: { async *produce() { yield 'after restart'; } },
+      async close() {} }));
+    try {
+      const next = await fetch(`${origin}/api/conversations/turns`, { method: 'POST',
+        headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: 'Again' }) });
+      expect(next.status).toBe(200);
+      expect(await next.text()).toContain('after restart');
+    } finally { await restarted.close(); }
   } finally {
     release();
     await runtime.close();
   }
+});
+
+test('shutdown preserves a turn already completed before interruption', async () => {
+  const files = await fixture();
+  const port = await freePort();
+  await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
+  await writeFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
+  const runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
+    AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory,
+  async () => ({ orchestrator: { async *produce() { yield 'completed answer'; } },
+    async close() {} }));
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/api/conversations/turns`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text: 'Finish first' }),
+    });
+    expect(await response.text()).toContain('event: done');
+    await runtime.close();
+    const archive = await openConversationArchive(files.archive, new Date());
+    try {
+      expect(archive.recoveredTurns).toBe(0);
+      expect(await archive.db.selectFrom('turns').select(['status', 'answer']).execute())
+        .toEqual([{ status: 'answered', answer: 'completed answer' }]);
+    } finally { await archive.close(); }
+  } finally { await runtime.close(); }
 });
 
 test('invalid agent files prevent the conversation listener from starting', async () => {

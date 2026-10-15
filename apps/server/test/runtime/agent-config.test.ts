@@ -49,6 +49,14 @@ test.each([
     clientId: 'id', clientSecret: 'secret', issuer: 'https://other.example', scope: '' } },
   { url: 'https://example/mcp', auth: { type: 'oauth_client_credentials',
     clientId: 'id', clientSecret: 'secret', issuer: 'not-an-issuer' } },
+  { url: 'https://example/mcp', auth: { type: 'oauth_client_credentials',
+    clientId: '', clientSecret: 'secret', issuer: 'https://auth.example' } },
+  { url: 'https://example/mcp', auth: { type: 'oauth_client_credentials',
+    clientId: 'id', clientSecret: '', issuer: 'https://auth.example' } },
+  { url: 'https://example/mcp', auth: { type: 'oauth_client_credentials',
+    clientId: 'id', clientSecret: 'secret' } },
+  { url: 'https://example/mcp', auth: { type: 'oauth_client_credentials',
+    clientId: 'id', clientSecret: 'secret', issuer: '' } },
 ])('rejects invalid MCP configuration before activation: %j', async (mcp) => {
   const path = await directory();
   await writeFile(join(path, 'specialist.json'), JSON.stringify({

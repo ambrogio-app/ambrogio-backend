@@ -172,3 +172,97 @@ test.each([false, true])('uses OAuth client credentials and checks the configure
       await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     }
   }, 15_000);
+
+test('keeps OAuth credentials and tokens isolated across simultaneous MCP agents', async () => {
+  async function oauthServer(id: string) {
+    const seen: Array<{ method: string; authorization?: string }> = [];
+    const tokenCredentials: string[] = [];
+    let origin = '';
+    const server = createServer(async (request, reply) => {
+      const path = request.url ?? '';
+      const respond = (status: number, value: unknown, headers: Record<string, string> = {}) => {
+        reply.writeHead(status, { 'content-type': 'application/json', ...headers });
+        reply.end(JSON.stringify(value));
+      };
+      if (path === '/.well-known/oauth-protected-resource/mcp') {
+        respond(200, { resource: `${origin}/mcp`, authorization_servers: [origin] });
+        return;
+      }
+      if (path === '/.well-known/oauth-authorization-server') {
+        respond(200, { issuer: origin, token_endpoint: `${origin}/token`,
+          authorization_endpoint: `${origin}/authorize`, response_types_supported: ['code'],
+          grant_types_supported: ['client_credentials'],
+          token_endpoint_auth_methods_supported: ['client_secret_basic'] });
+        return;
+      }
+      if (path === '/token') {
+        tokenCredentials.push(request.headers.authorization ?? '');
+        if (request.headers.authorization !== `Basic ${Buffer.from(`${id}:${id}-secret`).toString('base64')}`) {
+          respond(401, { error: 'invalid_client' });
+          return;
+        }
+        respond(200, { access_token: `${id}-token`, token_type: 'Bearer', expires_in: 3600 });
+        return;
+      }
+      if (path !== '/mcp') { reply.writeHead(404).end(); return; }
+      if (request.headers.authorization !== `Bearer ${id}-token`) {
+        respond(401, { error: 'unauthorized' }, { 'www-authenticate':
+          `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource/mcp"` });
+        return;
+      }
+      let body = '';
+      for await (const chunk of request) body += chunk.toString();
+      const rpc = body ? JSON.parse(body) as { id?: number; method?: string } : {};
+      seen.push({ method: rpc.method ?? '', authorization: request.headers.authorization });
+      if (rpc.method === 'notifications/initialized') { reply.writeHead(202).end(); return; }
+      const result = rpc.method === 'initialize'
+        ? { protocolVersion: '2025-11-25', capabilities: { tools: {} },
+          serverInfo: { name: id, version: '1.0.0' } }
+        : rpc.method === 'tools/list'
+          ? { tools: [{ name: `${id}-tool`, inputSchema: { type: 'object' } }] }
+          : rpc.method === 'tools/call'
+            ? { content: [{ type: 'text', text: `${id}-result` }] } : undefined;
+      if (!result) { reply.writeHead(404).end(); return; }
+      respond(200, { jsonrpc: '2.0', id: rpc.id, result });
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    return { origin, seen, tokenCredentials,
+      close: () => new Promise<void>((resolve) => server.close(() => resolve())) };
+  }
+
+  const first = await oauthServer('first');
+  const second = await oauthServer('second');
+  let firstClient: McpToolClient | undefined;
+  let secondClient: McpToolClient | undefined;
+  try {
+    [firstClient, secondClient] = await Promise.all([
+      McpToolClient.connect({ url: `${first.origin}/mcp`, auth: {
+        type: 'oauth_client_credentials', clientId: 'first', clientSecret: 'first-secret',
+        issuer: first.origin } }),
+      McpToolClient.connect({ url: `${second.origin}/mcp`, auth: {
+        type: 'oauth_client_credentials', clientId: 'second', clientSecret: 'second-secret',
+        issuer: second.origin } }),
+    ]);
+    const [firstTools, secondTools] = await Promise.all([firstClient.listTools(), secondClient.listTools()]);
+    expect(firstTools.map((tool) => tool.name)).toEqual(['first-tool']);
+    expect(secondTools.map((tool) => tool.name)).toEqual(['second-tool']);
+    expect(await firstClient.callTool('first-tool', {})).toMatchObject({
+      content: [{ text: 'first-result' }] });
+    expect(await secondClient.callTool('second-tool', {})).toMatchObject({
+      content: [{ text: 'second-result' }] });
+    for (const [fixture, id] of [[first, 'first'], [second, 'second']] as const) {
+      expect(fixture.tokenCredentials).toEqual([
+        `Basic ${Buffer.from(`${id}:${id}-secret`).toString('base64')}`]);
+      expect(fixture.seen.filter(({ method }) => method === 'tools/list' || method === 'tools/call')
+        .map(({ authorization }) => authorization)).toEqual([`Bearer ${id}-token`, `Bearer ${id}-token`]);
+    }
+    await expect(McpToolClient.connect({ url: `${first.origin}/mcp`, auth: {
+      type: 'oauth_client_credentials', clientId: 'first', clientSecret: 'wrong-secret',
+      issuer: first.origin } })).rejects.toThrow('MCP connection failed');
+    expect(first.seen.filter(({ method }) => method === 'tools/list')).toHaveLength(1);
+  } finally {
+    await Promise.allSettled([firstClient?.close(), secondClient?.close()]);
+    await Promise.all([first.close(), second.close()]);
+  }
+});

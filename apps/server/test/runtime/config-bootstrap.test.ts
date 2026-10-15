@@ -126,8 +126,7 @@ test('uses the validated agent, HTTP and conversation JSON throughout the active
   try {
     const runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: http,
       AMBROGIO_CONVERSATIONS_CONFIG_PATH: conversations, HOST: '0.0.0.0',
-      PORT: String(port + 1), AMBROGIO_LANGUAGE: 'en',
-      AMBROGIO_VOICE_CONFIG_PATH: join(directory, 'missing-voice.json') }, agents);
+      PORT: String(port + 1), AMBROGIO_LANGUAGE: 'en' }, agents);
     try {
       const turn = () => runtime.server.inject({ method: 'POST', url: '/api/conversations/turns',
         headers: { origin: 'https://allowed.example', 'content-type': 'application/json' },

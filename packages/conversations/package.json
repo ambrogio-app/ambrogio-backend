@@ -26,6 +26,10 @@
       "types": "./dist/application/exchange-turn.use-case.d.ts",
       "import": "./dist/application/exchange-turn.use-case.js"
     },
+    "./application/start-voice-conversation": {
+      "types": "./dist/application/start-voice-conversation.use-case.d.ts",
+      "import": "./dist/application/start-voice-conversation.use-case.js"
+    },
     "./application/produce-conversation-reply": {
       "types": "./dist/application/produce-conversation-reply.d.ts",
       "import": "./dist/application/produce-conversation-reply.js"
@@ -78,6 +82,10 @@
       "types": "./dist/adapters/out/conversation-config.d.ts",
       "import": "./dist/adapters/out/conversation-config.js"
     },
+    "./adapters/out/voice-config": {
+      "types": "./dist/adapters/out/voice-config.d.ts",
+      "import": "./dist/adapters/out/voice-config.js"
+    },
     "./adapters/out/mistral-conversation-reply": {
       "types": "./dist/adapters/out/mistral-conversation-reply.d.ts",
       "import": "./dist/adapters/out/mistral-conversation-reply.js"
@@ -93,6 +101,14 @@
     "./adapters/in/http/sse-events": {
       "types": "./dist/adapters/in/http/sse-events.d.ts",
       "import": "./dist/adapters/in/http/sse-events.js"
+    },
+    "./adapters/in/voice/voice-session": {
+      "types": "./dist/adapters/in/voice/voice-session.d.ts",
+      "import": "./dist/adapters/in/voice/voice-session.js"
+    },
+    "./adapters/in/voice/vosk-streaming-stt": {
+      "types": "./dist/adapters/in/voice/vosk-streaming-stt.d.ts",
+      "import": "./dist/adapters/in/voice/vosk-streaming-stt.js"
     },
     "./adapters/in/http/turn-route": {
       "types": "./dist/adapters/in/http/turn-route.d.ts",
@@ -124,14 +140,19 @@
     }
   },
   "dependencies": {
+    "@micdrop/piper": "1.0.0",
+    "@micdrop/server": "2.9.0",
     "@mistralai/mistralai": "2.7.0",
     "@modelcontextprotocol/client": "2.3.1",
     "better-sqlite3": "13.0.3",
     "fastify": "5.12.7",
-    "kysely": "0.29.6"
+    "kysely": "0.29.6",
+    "vosk-koffi": "1.1.1",
+    "ws": "8.22.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "9.6.0",
-    "@types/node": "24.19.2"
+    "@types/node": "24.19.2",
+    "@types/ws": "8.18.2"
   }
 }

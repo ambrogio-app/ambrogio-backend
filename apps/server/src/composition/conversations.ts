@@ -19,6 +19,8 @@ import type { ProduceConversationReply } from '@ambrogio/conversations/applicati
 import type { FastifyInstance } from 'fastify';
 import { conversationConfigPath } from '../runtime/conversation-config-path.js';
 
+export type PreparedConversations = Awaited<ReturnType<typeof prepareConfiguredConversations>>;
+
 /** Prepare conversation resources before an HTTP ingress can be enabled. */
 export async function prepareConversations(
   archiveFilename: string,

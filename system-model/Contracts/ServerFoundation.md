@@ -11,6 +11,17 @@ Alla richiesta di arresto ordinato, il server impedisce subito nuove ammissioni 
   * define: [Interruzione dei turni durante l'arresto](../Requirements/ServerFoundation.md#interruzione-dei-turni-durante-larresto)
 ---
 
+### Collocazione esterna dei modelli vocali
+
+Quando la voce è abilitata, Vosk e Piper sono eseguiti nel medesimo container Docker del backend. Le librerie necessarie a Vosk e il binario necessario a Piper appartengono all'immagine runtime del server. I modelli di trascrizione Vosk e di sintesi Piper sono invece forniti tramite directory esterne montate in sola lettura; i file dei modelli non sono incorporati nell'immagine. Il componente vocale riceve i percorsi dalla configurazione validata e ne verifica la disponibilità prima di attivare l'ingresso vocale; un modello necessario assente o illeggibile impedisce l'attivazione della voce. Quando la voce è disabilitata, tali directory e percorsi non sono richiesti.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Distribuzione del server come immagine Docker](../Requirements/ServerFoundation.md#distribuzione-del-server-come-immagine-docker)
+---
+
 ### Contratto di normalizzazione diagnostica
 
 Il confine tecnico usa il valore catturato come `err` senza crearne un altro quando è già un `Error`: l'identità dell'istanza resta invariata. Se il valore catturato non è un `Error`, crea un nuovo `Error` con un messaggio diagnostico fisso, indipendente dal valore, e con `cause` pari per identità al valore catturato. La normalizzazione non converte il valore catturato in stringa e non lo modifica.
@@ -190,3 +201,4 @@ Una variante può contenere solo `kind` oppure aggiungere campi propri, tipizzat
 #### Relations
   * define: [Campi specifici dei rifiuti previsti](../Requirements/ServerFoundation.md#campi-specifici-dei-rifiuti-previsti)
 ---
+

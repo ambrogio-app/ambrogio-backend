@@ -44,9 +44,20 @@ La composition root del server costruisce e possiede una risorsa SQLite/Kysely c
   * define: [Proprietà della risorsa SQLite conversazionale](../Requirements/FamilyConversation.md#proprietà-della-risorsa-sqlite-conversazionale)
 ---
 
+### Conferma della fine della risposta parlata
+
+Il client vocale osserva la riproduzione della risposta tramite lo stato Micdrop `isAssistantSpeaking`. Quando tale stato passa da vero a falso dopo una risposta vocale, invia al server un evento di fine riproduzione riferito all'interazione attiva. Il backend usa la ricezione di questo evento come inizio dell'intervallo configurato di inattività; la sola fine della generazione TTS o dell'invio dei blocchi audio non avvia l'intervallo. Il VAD delimita il parlato della famiglia in ingresso e non determina la fine della riproduzione della risposta. L'ingresso ignora eventi duplicati o riferiti a un'interazione non attiva. Alla chiusura della connessione vocale l'interazione associata viene chiusa.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Chiusura per inattività vocale](../Requirements/FamilyConversation.md#chiusura-per-inattività-vocale)
+---
+
 ### Configurazione facoltativa dell'interazione vocale
 
-Un'installazione può non abilitare l'ingresso vocale. In tal caso la configurazione richiesta soltanto dai componenti vocali può essere assente e la composition root non costruisce né avvia tali componenti. La chat testuale HTTP resta utilizzabile con le proprie dipendenze. Quando la voce è abilitata, i suoi componenti sono configurati e avviati secondo i requisiti dell'interazione vocale.
+Un'installazione può non abilitare l'ingresso vocale. L'assenza della variabile di percorso `AMBROGIO_VOICE_CONFIG_PATH` lo disabilita: la composition root non legge file vocali e non costruisce né avvia Micdrop, Vosk o Piper. La chat testuale HTTP resta utilizzabile con le proprie dipendenze. Quando il percorso è presente, il file JSON vocale richiede `voskModelPath` (directory del modello), `piperModelPath` (file ONNX della voce) e `piperBinaryPath` (eseguibile Piper); ammette `inactivityMs` intero positivo, predefinito a 15000. I percorsi dei modelli devono essere leggibili all'avvio, il binario deve essere eseguibile e il file JSON della voce Piper adiacente al modello ONNX deve essere leggibile. Un valore mancante o invalido impedisce l'attivazione della voce prima dell'ascolto del server. I file di configurazione e i modelli restano esterni all'immagine del backend.
 
 #### Metadata
   * type: specification
@@ -374,6 +385,19 @@ L'adapter HTTP possiede la verifica della forma dell'input e della decodifica de
   * define: [Validazione del formato negli ingressi conversazionali](../Requirements/FamilyConversation.md#validazione-del-formato-negli-ingressi-conversazionali)
 ---
 
+### Protocollo vocale del prodotto
+
+L'ingresso vocale del backend usa Micdrop e WebSocket per trasportare l'audio della famiglia e la risposta parlata in streaming. La WebSocket vocale condivide la porta di ascolto del server HTTP ed è raggiungibile sul percorso `/api/voice`. Ogni nuova connessione WebSocket rappresenta un avvio esplicito di una nuova interazione vocale: il server crea una nuova conversazione, comunica `Ready` seguito da un oggetto JSON con `conversationId` e solo allora il client comincia a trasmettere il turno. Un avvio rifiutato comunica `TurnRejected` con `kind` e chiude la connessione. Un nuovo avvio ammesso chiude l'eventuale interazione vocale precedente. Le repliche immediate usano la stessa connessione e la conversazione attiva. Quando scade l'inattività configurata, il server chiude l'interazione e la sua WebSocket. Il client invia i comandi Micdrop `StartSpeaking` e `StopSpeaking` con campioni audio PCM16 mono a 16 kHz in frame binari mentre la persona parla; il server li consegna progressivamente a Vosk, che trascrive durante il parlato senza attendere la clip completa. Dopo la transizione di `isAssistantSpeaking` da vero a falso, il client invia il comando testuale `Played` sulla stessa connessione; il comando ha effetto una sola volta per ciascuna risposta parlata. Il server segnala il rifiuto previsto di un turno con `TurnRejected` seguito da un oggetto JSON contenente `kind`. Il prodotto definisce il proprio contratto di integrazione del canale vocale: il protocollo e il satellite dello spike non sono vincoli di compatibilità e il satellite potrà richiedere un aggiornamento separato.
+
+Un Agent Micdrop personalizzato, contenuto negli adapter tecnici del package «Conversazioni», traduce la trascrizione in input del caso d'uso conversazionale esistente e consegna progressivamente il testo della risposta a Micdrop per la sintesi vocale. Il caso d'uso e l'archivio comuni ai turni HTTP restano autorità per ammissione atomica, stato ed esito del turno. Domain e Application non importano Micdrop e non ricevono oggetti del suo protocollo. Micdrop non mantiene un secondo archivio persistente della conversazione.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Dati Application dei casi d'uso conversazionali](../Requirements/FamilyConversation.md#dati-application-dei-casi-duso-conversazionali)
+---
+
 ### Responsabilità di Domain Application e adapter
 
 Nel modulo business «Conversazioni», Domain contiene le regole e i tipi del dominio della conversazione; Application contiene i casi d'uso e le porte necessarie per collaborare con componenti esterni; gli adapter realizzano gli ingressi del modulo e le integrazioni tecniche richieste dalle porte. Questa suddivisione riguarda le responsabilità del codice, indipendentemente dai percorsi delle cartelle.
@@ -526,3 +550,4 @@ Il percorso del file è indicato dalla variabile d'ambiente `AMBROGIO_CONVERSATI
 #### Relations
   * define: [Configurazione della paginazione conversazionale](../Requirements/FamilyConversation.md#configurazione-della-paginazione-conversazionale)
 ---
+

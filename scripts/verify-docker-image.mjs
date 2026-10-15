@@ -30,7 +30,7 @@ try {
 
   docker('build', '--tag', image, '.');
   docker('run', '--rm', '--entrypoint', '/bin/sh', image, '-c',
-    'test ! -e /etc/ambrogio/http.json && test ! -e /etc/ambrogio/conversations.json && test ! -e /var/lib/ambrogio/conversations.sqlite');
+    'test ! -e /etc/ambrogio/http.json && test ! -e /etc/ambrogio/conversations.json && test ! -e /var/lib/ambrogio/conversations.sqlite && /opt/piper/bin/piper --help >/dev/null && cd /workspace/packages/conversations && node -e "require(\'vosk-koffi\')"');
   container = docker('run', '--detach', '--rm',
     '--publish', `127.0.0.1::${port}`,
     '--mount', `type=bind,src=${config},dst=/etc/ambrogio,readonly`,

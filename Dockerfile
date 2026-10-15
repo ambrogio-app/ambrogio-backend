@@ -1,6 +1,8 @@
 FROM node:24-bookworm-slim AS build
 
 WORKDIR /workspace
+RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv && rm -rf /var/lib/apt/lists/*
+RUN python3 -m venv /opt/piper && /opt/piper/bin/pip install --no-cache-dir piper-tts==1.8.0
 RUN npm install --global pnpm@12.11.2
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
@@ -15,6 +17,8 @@ RUN pnpm build
 FROM node:24-bookworm-slim
 
 WORKDIR /workspace
+RUN apt-get update && apt-get install -y --no-install-recommends python3 libgomp1 && rm -rf /var/lib/apt/lists/*
+COPY --from=build /opt/piper/ /opt/piper/
 COPY --from=build /workspace/package.json ./
 COPY --from=build /workspace/node_modules/ node_modules/
 COPY --from=build /workspace/apps/server/package.json apps/server/

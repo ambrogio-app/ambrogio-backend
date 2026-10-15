@@ -2,7 +2,10 @@ import { randomUUID } from 'node:crypto';
 import { ProjectError } from '@ambrogio/conversations/application/project-error';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
+import websocket from '@fastify/websocket';
 import { loadConversationConfig } from '@ambrogio/conversations/adapters/out/conversation-config';
+import type { VoiceConfig } from '@ambrogio/conversations/adapters/out/voice-config';
+import type { createVoiceComponents } from '@ambrogio/conversations/adapters/in/voice/voice-session';
 import type { ProduceConversationReply } from '@ambrogio/conversations/application/produce-conversation-reply';
 import Fastify, { LogController, type FastifyInstance } from 'fastify';
 import { prepareConfiguredConversations, registerConversationHistoryRoute,
@@ -23,7 +26,8 @@ function serializeDiagnosticError(value: unknown): Readonly<{ type: string; mess
 }
 
 async function buildHttpServer(config: HttpConfig, prepared: Prepared,
-  replyProducer?: ProduceConversationReply): Promise<Readonly<{
+  replyProducer?: ProduceConversationReply, voice?: VoiceConfig,
+  voiceComponents?: typeof createVoiceComponents): Promise<Readonly<{
     server: FastifyInstance; turnIngress?: Readonly<{ stopAccepting(): Promise<void> }>;
   }>> {
   const server = Fastify({
@@ -51,6 +55,7 @@ async function buildHttpServer(config: HttpConfig, prepared: Prepared,
       ? 'Internal server error.' : 'Invalid HTTP request.' });
   });
   try {
+    if (voice) await server.register(websocket);
     await server.register(helmet, { global: true, hsts: config.publicHttps
       ? { maxAge: config.hstsMaxAgeSeconds!, includeSubDomains: false, preload: false } : false });
     await server.register(cors, { origin: config.allowedOrigins.length ? [...config.allowedOrigins] : false,
@@ -59,7 +64,15 @@ async function buildHttpServer(config: HttpConfig, prepared: Prepared,
     registerConversationHistoryRoute(server, prepared);
     const turnIngress = replyProducer
       ? registerConversationTurnRoute(server, prepared, replyProducer) : undefined;
-    return { server, ...(turnIngress ? { turnIngress } : {}) };
+    const voiceIngress = voice && replyProducer
+      ? (await import('../composition/voice.js')).registerVoiceRoute(server, prepared, replyProducer,
+        voice, voiceComponents)
+      : undefined;
+    const combined = turnIngress && voiceIngress
+      ? { async stopAccepting() { await Promise.all([
+        turnIngress.stopAccepting(), voiceIngress.stopAccepting(),
+      ]); } } : turnIngress;
+    return { server, ...(combined ? { turnIngress: combined } : {}) };
   } catch (error) {
     await server.close();
     throw error;
@@ -71,8 +84,9 @@ export async function buildConsultationServer(config: HttpConfig, prepared: Prep
 }
 
 export async function buildConversationServer(config: HttpConfig, prepared: Prepared,
-  replyProducer: ProduceConversationReply) {
-  const built = await buildHttpServer(config, prepared, replyProducer);
+  replyProducer: ProduceConversationReply, voice?: VoiceConfig,
+  voiceComponents?: typeof createVoiceComponents) {
+  const built = await buildHttpServer(config, prepared, replyProducer, voice, voiceComponents);
   return { server: built.server, turnIngress: built.turnIngress! };
 }
 

@@ -5,10 +5,11 @@ import type {
   AdmitTurn, AdmissionRejection, CompleteTurn, ConversationWrite, TurnNotActive,
 } from '../../../application/conversation-write.js';
 import type { ConversationDatabase } from './schema.js';
+import type { VoiceConversationStartWrite } from '../../../application/start-voice-conversation.use-case.js';
 import { restoreTurn, toMillis } from './sqlite-turn-mapper.js';
 import { AdmissionLockBusy, withImmediateTransaction } from './sqlite-transaction.js';
 
-export class SqliteConversationWrite implements ConversationWrite {
+export class SqliteConversationWrite implements ConversationWrite, VoiceConversationStartWrite {
   private writeInProgress = false;
 
   constructor(private readonly db: Kysely<ConversationDatabase>) {}
@@ -23,6 +24,30 @@ export class SqliteConversationWrite implements ConversationWrite {
       return await withImmediateTransaction(this.db, run, classifyAdmissionLock);
     } finally {
       this.writeInProgress = false;
+    }
+  }
+
+  async createWhenAvailable(id: string, createdAt: Date) {
+    if (this.writeInProgress) return { ok: false as const, error: { kind: 'temporarily_unavailable' as const } };
+    try {
+      return await this.transaction(async db => {
+        const installation = await db.selectFrom('installation').select('active_turn_id')
+          .where('id', '=', 1).executeTakeFirst();
+        if (!installation) throw new ProjectError('Installation occupancy record missing');
+        if (installation.active_turn_id !== null) {
+          return { ok: false as const, error: { kind: 'occupied' as const } };
+        }
+        const time = toMillis(createdAt);
+        await db.insertInto('conversations').values({
+          id, created_at: time, last_activity_at: time,
+        }).execute();
+        return { ok: true as const, value: undefined };
+      }, true);
+    } catch (error) {
+      if (error instanceof AdmissionLockBusy) {
+        return { ok: false as const, error: { kind: 'temporarily_unavailable' as const } };
+      }
+      throw error;
     }
   }
 

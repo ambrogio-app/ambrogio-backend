@@ -495,8 +495,8 @@ La prova passa se nel primo caso arriva al confine lo stesso valore originale, s
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [turn-use-cases.test.ts](../../packages/conversations/test/application/turn-use-cases.test.ts)
   * satisfiedBy: [mcp-tool-client.test.ts](../../packages/conversations/test/adapters/out/mcp-tool-client.test.ts)
+  * satisfiedBy: [turn-use-cases.test.ts](../../packages/conversations/test/application/turn-use-cases.test.ts)
   * verify: [Contesto operativo con Error e cause](../Requirements/ServerFoundation.md#contesto-operativo-con-error-e-cause)
   * verify: [Propagazione senza wrapper superflui](../Requirements/ServerFoundation.md#propagazione-senza-wrapper-superflui)
 ---
@@ -687,8 +687,8 @@ La prova passa se ciascun processo legge una volta all'avvio i soli file necessa
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [config-bootstrap.test.ts](../../apps/server/test/runtime/config-bootstrap.test.ts)
   * satisfiedBy: [agent-config.test.ts](../../apps/server/test/runtime/agent-config.test.ts)
+  * satisfiedBy: [config-bootstrap.test.ts](../../apps/server/test/runtime/config-bootstrap.test.ts)
   * satisfiedBy: [conversation-config.test.ts](../../packages/conversations/test/adapters/out/conversation-config.test.ts)
   * verify: [Caricamento iniziale dei JSON di configurazione](../Requirements/ServerFoundation.md#caricamento-iniziale-dei-json-di-configurazione)
   * verify: [Distribuzione mirata della configurazione validata](../Requirements/ServerFoundation.md#distribuzione-mirata-della-configurazione-validata)
@@ -770,6 +770,7 @@ La prova passa se il progetto produce un'immagine eseguibile, il server si avvia
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * satisfiedBy: [README.md](../../README.md)
   * verify: [Distribuzione del server come immagine Docker](../Requirements/ServerFoundation.md#distribuzione-del-server-come-immagine-docker)
   * verify: [Esecuzione del server senza Docker Compose](../Requirements/ServerFoundation.md#esecuzione-del-server-senza-docker-compose)
 ---
@@ -802,8 +803,8 @@ La prova passa se la build usa `tsc`, produce JavaScript ESM e l'artefatto si av
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [verify-server-startup.mjs](../../scripts/verify-server-startup.mjs)
   * satisfiedBy: [package.json](../../apps/server/package.json)
+  * satisfiedBy: [verify-server-startup.mjs](../../scripts/verify-server-startup.mjs)
   * verify: [Preparazione del server TypeScript ESM](../Requirements/ServerFoundation.md#preparazione-del-server-typescript-esm)
 ---
 
@@ -819,9 +820,9 @@ La prova passa se l'opzione effettiva `strict` è abilitata per ogni progetto Ty
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [tsconfig.json](../../tsconfig.json)
   * satisfiedBy: [tsconfig.build.json](../../apps/server/tsconfig.build.json)
   * satisfiedBy: [tsconfig.build.json](../../packages/conversations/tsconfig.build.json)
+  * satisfiedBy: [tsconfig.json](../../tsconfig.json)
   * verify: [Compilazione TypeScript strict del server](../Requirements/ServerFoundation.md#compilazione-typescript-strict-del-server)
 ---
 

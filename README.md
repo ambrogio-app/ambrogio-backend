@@ -70,6 +70,12 @@ AMBROGIO_CONVERSATIONS_CONFIG_PATH=/percorso/locale/conversations.json \
 node apps/server/dist/main.js
 ```
 
+## Immagine Docker del backend
+
+Il [Dockerfile](Dockerfile) costruisce il server con Debian e Node.js 24 in due fasi. I file JSON effettivi e l'archivio SQLite sono forniti tramite mount esterni; non entrano nel contesto copiato nell'immagine. Docker Compose non è richiesto.
+
+La prova ripetibile è `node scripts/verify-docker-image.mjs`. Esegue `docker build` e `docker run` senza Compose, monta JSON di prova e una directory SQLite esterna, verifica che tali file non siano presenti nell'immagine, richiede `GET /api/conversations` con Node e controlla la creazione dell'archivio nel mount. Il 16 ottobre 2026 la prova è passata: HTTP `200`, archivio esterno creato; l'immagine locale risultante è `sha256:9a79d8e48cfe5b14a3b03f157d05716be9616ce779bd9e64dd22d0cd9f41d941`.
+
 ## Reqvire locale
 
 La versione usata per il modello iniziale è Reqvire `1.3.2`. Dalla radice del repository:

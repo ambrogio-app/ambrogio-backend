@@ -267,6 +267,7 @@ Quando il progetto distribuisce il server, deve fornire un'immagine Docker esegu
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [README.md](../../README.md)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -329,6 +330,7 @@ Quando il server usa file di configurazione locali effettivi, tali file devono r
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [README.md](../../README.md)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -351,6 +353,7 @@ Quando un installatore avvia l'immagine Docker del server, deve poterlo fare sen
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [README.md](../../README.md)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 

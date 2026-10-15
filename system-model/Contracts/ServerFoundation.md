@@ -112,6 +112,17 @@ Il componente HTTP configura un limite di dimensione positivo per i corpi ricevu
   * define: [Limite dei corpi delle richieste HTTP](../Requirements/ServerFoundation.md#limite-dei-corpi-delle-richieste-http)
 ---
 
+### Profilo dell'immagine Docker del server
+
+L'immagine del backend usa Debian con Node.js 24 ed è costruita in due fasi: una fase prepara dipendenze e artefatti compilati del workspace, l'altra contiene il runtime necessario per avviare il server. La configurazione JSON effettiva dei componenti e l'archivio SQLite sono forniti dal deployment tramite percorsi esterni all'immagine; il filesystem dell'immagine non contiene i loro valori effettivi. La build e l'avvio dell'immagine non richiedono Docker Compose.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Distribuzione del server come immagine Docker](../Requirements/ServerFoundation.md#distribuzione-del-server-come-immagine-docker)
+---
+
 ### Profilo di bootstrap dei JSON dei componenti
 
 Per il processo server, la composition root determina i componenti dell'ingresso da avviare e carica una sola volta i rispettivi file JSON locali prima di costruirne le risorse. Le configurazioni dei componenti non vengono sovrascritte da variabili d'ambiente; un eventuale meccanismo per scegliere il percorso dei file non modifica i valori letti dai file. Ogni componente dichiara quali campi sono richiesti e quali valori predefiniti sono ammessi. Il caricamento verifica struttura e valori, converte i dati nei tipi previsti e blocca l'attivazione se un file necessario manca o è invalido. I file dei componenti non attivi, compresi quelli vocali quando la voce è disabilitata, non sono richiesti. La composition root consegna a ogni componente solo la propria sezione validata; Domain e casi d'uso Application non leggono file, variabili d'ambiente o segreti dal processo. Messaggi di errore, log ed esempi non riproducono valori segreti. Il contratto non prescrive nomi di file, una libreria di schema o il meccanismo di immutabilità dei valori consegnati.

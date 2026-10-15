@@ -257,11 +257,25 @@ test('restores completed history after restart and uses it for textual continuat
       url: `/api/conversations/${id}` });
     expect(history.statusCode).toBe(200);
     beforeRestart = history.json() as typeof beforeRestart;
+    const uuidV4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+    expect(id).toMatch(uuidV4);
+    expect(beforeRestart?.id).toBe(id);
+    expect(beforeRestart?.turns.map(turn => turn.id)).toHaveLength(2);
+    for (const turn of beforeRestart?.turns ?? []) expect(turn.id).toMatch(uuidV4);
+    expect(new Set([id, ...beforeRestart!.turns.map(turn => turn.id)]).size).toBe(3);
     expect(beforeRestart?.turns.map(turn => [turn.text, turn.status])).toEqual([
       ['first question', 'answered'], ['second question', 'failed'],
     ]);
     expect(beforeRestart?.turns[1]?.error).toBe("I can't complete the response.");
   } finally { await firstRuntime.close(); }
+
+  const persistedArchive = await openConversationArchive(files.archive, new Date());
+  try {
+    expect(await persistedArchive.db.selectFrom('conversations').select('id').execute())
+      .toEqual([{ id }]);
+    expect((await persistedArchive.db.selectFrom('turns').select('id').orderBy('ordinal').execute())
+      .map(turn => turn.id)).toEqual(beforeRestart?.turns.map(turn => turn.id));
+  } finally { await persistedArchive.close(); }
 
   const afterRestartSeen: string[][] = [];
   const restarted = await startConversationServer(environment, files.directory,

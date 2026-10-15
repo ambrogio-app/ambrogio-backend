@@ -9,6 +9,9 @@ import { createBeginTurn } from '../../../src/application/begin-turn.use-case.js
 import { createCompleteTurn } from '../../../src/application/complete-turn.use-case.js';
 import { migrateConversationArchive } from '../../../src/adapters/out/sqlite/migrations.js';
 import { SqliteConversationWrite } from '../../../src/adapters/out/sqlite/sqlite-conversation-write.js';
+import { SqliteConversationHistoryRead } from '../../../src/adapters/out/sqlite/sqlite-conversation-history-read.js';
+import { SqliteConversationListRead } from '../../../src/adapters/out/sqlite/sqlite-conversation-list-read.js';
+import { recoverPendingTurns } from '../../../src/adapters/out/sqlite/recover-pending-turns.js';
 import type { ConversationDatabase } from '../../../src/adapters/out/sqlite/schema.js';
 
 const conversationA = 'dc89cb5e-e695-43cc-8a04-917316771ea4';
@@ -147,6 +150,59 @@ describe('SQLite conversation writer', () => {
     });
     expect(await db.selectFrom('turns').select(['text', 'answer', 'status']).where('id', '=', turnA).executeTakeFirst())
       .toEqual({ text: '  buongiorno  ', answer: 'ciao', status: 'answered' });
+  });
+
+  it('preserves supplied identities and acceptance times across reopen, and rejects a duplicate identity', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'ambrogio-identities-time-'));
+    directories.push(directory);
+    const filename = join(directory, 'archive.sqlite');
+    const firstDb = open(filename);
+    await migrateConversationArchive(firstDb);
+    const writer = new SqliteConversationWrite(firstDb);
+    const generated = [conversationA, turnA, conversationB, turnB, conversationA, 'e057302a-1c68-4a99-8dfd-7998e390eb51'];
+    const instants = [1000, 2000, 3000];
+    const begin = createBeginTurn({ archive: writer,
+      identifiers: { next: () => generated.shift()! },
+      clock: { now: () => new Date(instants.shift()!) },
+    });
+    const complete = createCompleteTurn({ archive: writer, clock: { now: () => new Date(9000) } });
+
+    expect(await begin({ text: 'prima' })).toMatchObject({
+      ok: true, value: { conversationId: conversationA, turnId: turnA, acceptedAt: new Date(1000) },
+    });
+    expect(await complete({ turnId: turnA, outcome: { kind: 'answer', text: 'ok' } }))
+      .toMatchObject({ ok: true });
+    expect(await begin({ text: 'seconda' })).toMatchObject({
+      ok: true, value: { conversationId: conversationB, turnId: turnB, acceptedAt: new Date(2000) },
+    });
+    expect(await complete({ turnId: turnB, outcome: { kind: 'answer', text: 'ok' } }))
+      .toMatchObject({ ok: true });
+
+    await expect(begin({ text: 'duplicata' })).rejects.toThrow();
+    expect(await firstDb.selectFrom('conversations').select(['id', 'created_at', 'last_activity_at'])
+      .orderBy('id').execute()).toEqual([
+        { id: conversationB, created_at: 2000, last_activity_at: 2000 },
+        { id: conversationA, created_at: 1000, last_activity_at: 1000 },
+      ]);
+    expect(await firstDb.selectFrom('turns').select('id').execute()).toHaveLength(2);
+    await firstDb.destroy();
+    opened.splice(opened.indexOf(firstDb), 1);
+
+    const reopened = open(filename);
+    await migrateConversationArchive(reopened);
+    expect(await recoverPendingTurns(reopened, new Date(10000))).toBe(0);
+    const history = new SqliteConversationHistoryRead(reopened);
+    expect(await history.find(conversationA)).toMatchObject({
+      id: conversationA, createdAt: new Date(1000), lastActivityAt: new Date(1000),
+      turns: [{ id: turnA, acceptedAt: new Date(1000) }],
+    });
+    expect(await history.find(conversationB)).toMatchObject({
+      id: conversationB, createdAt: new Date(2000), lastActivityAt: new Date(2000),
+      turns: [{ id: turnB, acceptedAt: new Date(2000) }],
+    });
+    expect((await new SqliteConversationListRead(reopened).page(undefined, 10)).items)
+      .toEqual([{ id: conversationB, lastActivityAt: new Date(2000) },
+        { id: conversationA, lastActivityAt: new Date(1000) }]);
   });
 
   it('rejects an invalid stored instant without changing a pending turn', async () => {

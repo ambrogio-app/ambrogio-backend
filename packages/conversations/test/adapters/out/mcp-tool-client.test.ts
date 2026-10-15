@@ -58,9 +58,34 @@ test.each([undefined, { type: 'bearer' as const, token: 'agent-token' }])(
   },
 );
 
+test('keeps Bearer credentials isolated between two MCP agents', async () => {
+  const first = await testServer();
+  const second = await testServer();
+  let firstClient: McpToolClient | undefined;
+  let secondClient: McpToolClient | undefined;
+  try {
+    firstClient = await McpToolClient.connect({ url: first.url,
+      auth: { type: 'bearer', token: 'first-token' } });
+    secondClient = await McpToolClient.connect({ url: second.url,
+      auth: { type: 'bearer', token: 'second-token' } });
+    await firstClient.listTools();
+    await secondClient.listTools();
+    await firstClient.callTool('echo', { text: 'first' });
+    await secondClient.callTool('echo', { text: 'second' });
+    expect(first.seen.filter(({ method }) => method === 'tools/call')
+      .map(({ authorization }) => authorization)).toEqual(['Bearer first-token']);
+    expect(second.seen.filter(({ method }) => method === 'tools/call')
+      .map(({ authorization }) => authorization)).toEqual(['Bearer second-token']);
+  } finally {
+    await Promise.allSettled([firstClient?.close(), secondClient?.close()]);
+    await Promise.all([first.close(), second.close()]);
+  }
+});
+
 test.each([false, true])('uses OAuth client credentials and checks the configured issuer (mismatch %s)',
   async (mismatch) => {
     let tokenRequests = 0;
+    let expired = false;
     const received: string[] = [];
     let origin = '';
     const server = createServer(async (request, reply) => {
@@ -90,12 +115,13 @@ test.each([false, true])('uses OAuth client credentials and checks the configure
         expect(request.headers.authorization).toBe(`Basic ${Buffer.from('client:secret').toString('base64')}`);
         expect(new URLSearchParams(body).get('grant_type')).toBe('client_credentials');
         expect(new URLSearchParams(body).get('scope')).toBe('read');
-        respond(200, { access_token: 'issued-token', token_type: 'Bearer', expires_in: 3600 });
+        respond(200, { access_token: `issued-token-${tokenRequests}`, token_type: 'Bearer',
+          expires_in: 1 });
         return;
       }
       if (path === '/mcp') {
         received.push(request.headers.authorization ?? '');
-        if (request.headers.authorization !== 'Bearer issued-token') {
+        if (request.headers.authorization !== `Bearer issued-token-${expired ? 2 : 1}`) {
           respond(401, { error: 'unauthorized' }, { 'www-authenticate':
             `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource/mcp"` });
           return;
@@ -110,7 +136,8 @@ test.each([false, true])('uses OAuth client credentials and checks the configure
         const result = rpc.method === 'initialize'
           ? { protocolVersion: '2025-11-25', capabilities: { tools: {} },
             serverInfo: { name: 'oauth-mcp', version: '1.0.0' } }
-          : rpc.method === 'tools/list' ? { tools: [] } : null;
+          : rpc.method === 'tools/list' ? { tools: [] }
+            : rpc.method === 'tools/call' ? { content: [{ type: 'text', text: 'ok' }] } : null;
         if (result === null) { reply.writeHead(404).end(); return; }
         respond(200, { jsonrpc: '2.0', id: rpc.id, result });
         return;
@@ -132,7 +159,13 @@ test.each([false, true])('uses OAuth client credentials and checks the configure
         client = await McpToolClient.connect(connection);
         expect(await client.listTools()).toEqual([]);
         expect(tokenRequests).toBe(1);
-        expect(received).toContain('Bearer issued-token');
+        expect(received).toContain('Bearer issued-token-1');
+        await new Promise((resolve) => setTimeout(resolve, 1100));
+        expired = true;
+        expect(await client.callTool('echo', {})).toEqual({ isError: false,
+          content: [{ type: 'text', text: 'ok' }] });
+        expect(tokenRequests).toBe(2);
+        expect(received).toContain('Bearer issued-token-2');
       }
     } finally {
       await client?.close();

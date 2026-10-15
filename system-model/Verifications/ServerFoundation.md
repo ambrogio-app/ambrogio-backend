@@ -1,5 +1,30 @@
 # Elements
 
+### Verifica del ciclo di vita del server
+
+Raggruppa le prove dell'interruzione dei turni attivi all'arresto ordinato e della chiusura delle risorse.
+
+#### Metadata
+  * type: verification-objective
+---
+
+### Prova dell'interruzione dei turni all'arresto
+
+Avviare un turno con elaborazione controllata che resterebbe in corso, richiedere l'arresto del server e tentare un nuovo turno. Osservare la richiesta di interruzione, lo stato persistente del turno, l'ordine di chiusura delle risorse e gli eventi restituiti al client.
+
+#### Details
+La prova passa se il server non accetta nuovi turni, richiede subito l'interruzione di quello attivo senza attendere il completamento della risposta, conserva il turno senza esito come «Interrotto» prima di chiudere l'archivio e poi chiude le risorse. Nessun turno interrotto riceve un esito riuscito o viene riavviato automaticamente. Fallisce se l'arresto attende la risposta controllata, accetta altri turni, perde il turno interrotto o chiude l'archivio prima di registrarlo. La prova resta da eseguire quando il server è implementato.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica del ciclo di vita del server](#verifica-del-ciclo-di-vita-del-server)
+  * verify: [Arresto controllato dei nuovi turni](../Requirements/ServerFoundation.md#arresto-controllato-dei-nuovi-turni)
+  * verify: [Chiusura delle risorse dopo l'interruzione dei turni](../Requirements/ServerFoundation.md#chiusura-delle-risorse-dopo-linterruzione-dei-turni)
+  * verify: [Interruzione dei turni durante l'arresto](../Requirements/ServerFoundation.md#interruzione-dei-turni-durante-larresto)
+---
+
 ### Verifica della distinzione degli esiti applicativi
 
 Raggruppa le prove che distinguono i rifiuti previsti dai guasti inattesi nelle operazioni Domain, nei casi d'uso Application e nelle porte del server.
@@ -473,6 +498,29 @@ La prova passa se il messaggio pubblico non contiene nessuno dei marcatori tecni
   * verify: [Separazione del messaggio pubblico dalla diagnosi tecnica](../Requirements/ServerFoundation.md#separazione-del-messaggio-pubblico-dalla-diagnosi-tecnica)
 ---
 
+### Verifica delle integrazioni senza eventi differiti
+
+Raggruppa i controlli sulla scelta di non usare eventi di dominio persistenti per consegne successive nella prima versione.
+
+#### Metadata
+  * type: verification-objective
+---
+
+### Controllo dell'assenza di outbox e pubblicazione differita
+
+Esaminare le operazioni dei moduli business, lo schema persistente e le integrazioni tra componenti della prima versione.
+
+#### Details
+Il controllo passa se nessun modulo conserva eventi di dominio per una consegna successiva e se non esistono outbox, code o processi di pubblicazione differita di tali eventi. Fallisce se un evento di dominio viene registrato in attesa di essere consegnato o ritentato. La verifica non riguarda i normali scambi testuali conservati nello storico delle conversazioni.
+
+#### Metadata
+  * type: inspection-verification
+
+#### Relations
+  * derivedFrom: [Verifica delle integrazioni senza eventi differiti](#verifica-delle-integrazioni-senza-eventi-differiti)
+  * verify: [Assenza di consegna differita degli eventi di dominio](../Requirements/ServerFoundation.md#assenza-di-consegna-differita-degli-eventi-di-dominio)
+---
+
 ### Verifica dello stack del server
 
 Raggruppa i controlli sulla preparazione del server in TypeScript ESM e sulla sua esecuzione con Node.js 24 o successivo.
@@ -509,6 +557,36 @@ Il controllo passa se ogni componente legge un proprio file JSON e nessun file �
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
   * verify: [File JSON separato per componente configurabile](../Requirements/ServerFoundation.md#file-json-separato-per-componente-configurabile)
+---
+
+### Controllo del percorso CI del server
+
+Esaminare la configurazione CI e le invocazioni effettive per le modifiche funzionali del server. Verificare che esegua Reqvire validate e lint, la compilazione TypeScript e la suite backend Vitest, incluse prove degli adapter di persistenza contro un database SQLite reale preparato per i test quando gli adapter esistono. Accertare che ogni comando richiesto abbia un esito vincolante per l'integrazione.
+
+#### Details
+Il controllo passa se tutte le fasi richieste vengono eseguite e un loro fallimento impedisce l'integrazione; le prove SQLite devono usare il database reale e non un sostituto in memoria della porta. Fallisce se manca una fase, le prove dell'adapter non raggiungono SQLite reale oppure un controllo fallito non blocca l'integrazione. Il controllo resta da eseguire quando esistono codice applicativo e configurazione CI.
+
+#### Metadata
+  * type: inspection-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * verify: [Controlli CI delle modifiche funzionali del server](../Requirements/ServerFoundation.md#controlli-ci-delle-modifiche-funzionali-del-server)
+---
+
+### Controllo del perimetro iniziale di osservabilità
+
+Esaminare runtime HTTP e CLI, dipendenze, configurazioni, endpoint e documentazione operativa della prima versione. Confrontare i segnali presenti con i contratti dei log strutturati e degli identificativi di correlazione; cercare raccoglitori o API distinti per metriche, tracing distribuito e audit.
+
+#### Details
+Il controllo passa se i runtime forniscono i log e i `correlationId` già previsti, senza attivare nella prima versione metriche, tracing o audit separati, e se nessun `correlationId` o log ordinario è presentato come traccia distribuita o registro di audit. Fallisce se viene introdotto un segnale separato senza una decisione e una verifica proprie, se i log sono descritti come audit garantito o se manca il profilo diagnostico previsto. I controlli funzionali dei log e della correlazione restano nelle rispettive verifiche. Il controllo è da svolgere quando il runtime esiste.
+
+#### Metadata
+  * type: inspection-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * verify: [Perimetro iniziale dei segnali di osservabilità](../Requirements/ServerFoundation.md#perimetro-iniziale-dei-segnali-di-osservabilità)
 ---
 
 ### Controllo dell'assenza di autenticazione applicativa
@@ -556,6 +634,38 @@ Il controllo passa se il server crea un'istanza Fastify, vi registra gli endpoin
   * verify: [Implementazione Fastify dell'API HTTP](../Requirements/ServerFoundation.md#implementazione-fastify-dellapi-http)
 ---
 
+### Prova degli header di cache conversazionali
+
+Richiedere elenco, storico, invio di un turno con risposta SSE e flusso di aggiornamento di un turno in corso; osservare gli header prima degli eventi e dopo un eventuale errore nel flusso.
+
+#### Details
+La prova passa se tutte le risposte che trasportano dati conversazionali includono `Cache-Control: no-store`, anche quando il flusso segnala un errore dopo gli header. Fallisce se una risposta pertinente ne è priva. Da eseguire quando le relative rotte HTTP sono implementate.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * verify: [Esclusione dalla cache delle risposte conversazionali HTTP](../Requirements/ServerFoundation.md#esclusione-dalla-cache-delle-risposte-conversazionali-http)
+---
+
+### Prova del bootstrap delle configurazioni JSON
+
+Avviare separatamente gli ingressi HTTP e CLI con file JSON di prova distinti per i componenti attivi; predisporre variabili d'ambiente con valori discordanti e un file vocale mancante quando la voce è disabilitata. Osservare letture dei file, valori ricevuti dai componenti e momento in cui vengono create e attivate le risorse. Ripetere con un JSON richiesto mancante, malformato o con un valore non valido, includendo un segreto marcatore.
+
+#### Details
+La prova passa se ciascun processo legge una volta all'avvio i soli file necessari, usa i valori validati dei JSON senza sovrascriverli con quelli d'ambiente e consegna a ogni componente solo i dati pertinenti già convertiti. L'assenza del file vocale non blocca gli ingressi quando la voce è disabilitata. Un file necessario mancante o invalido impedisce l'attivazione prima dell'uso delle risorse dipendenti e produce un errore sicuro senza riprodurre il segreto. Domain e casi d'uso non leggono direttamente file o ambiente. Fallisce se un valore d'ambiente prevale, un file non necessario diventa obbligatorio, la configurazione viene riletta durante il lavoro, una risorsa dipendente si attiva prima della validazione o un segreto appare nell'errore. La prova resta da eseguire quando i componenti esistono.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * verify: [Caricamento iniziale dei JSON di configurazione](../Requirements/ServerFoundation.md#caricamento-iniziale-dei-json-di-configurazione)
+  * verify: [Distribuzione mirata della configurazione validata](../Requirements/ServerFoundation.md#distribuzione-mirata-della-configurazione-validata)
+  * verify: [Validazione preventiva della configurazione attiva](../Requirements/ServerFoundation.md#validazione-preventiva-della-configurazione-attiva)
+---
+
 ### Prova del controllo di accesso dell'installazione
 
 Per ogni installazione dell'MVP da verificare, ispezionare la configurazione di rete e dell'eventuale reverse proxy; tentare l'accesso agli ingressi del server da un client ammesso e da un client non ammesso dall'installatore.
@@ -569,6 +679,36 @@ La prova passa se il client ammesso può raggiungere l'ingresso previsto e il cl
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
   * verify: [Controllo dell'accesso nell'installazione](../Requirements/ServerFoundation.md#controllo-dellaccesso-nellinstallazione)
+---
+
+### Prova del limite dei corpi HTTP
+
+Per una rotta che accetta un corpo, inviare corpi sotto e sopra il limite dichiarato, includendo un invio in più parti oltre il limite. Osservare risposta ed effetti sul caso d'uso e sull'archivio.
+
+#### Details
+La prova passa se i corpi entro il limite raggiungono la normale validazione della rotta, mentre quelli oltre il limite ricevono `413` con JSON `error` sicuro e non avviano l'operazione né creano un turno. Fallisce se un corpo oltre il limite viene elaborato o se il limite dipende solo da `Content-Length`. Da eseguire quando l'API HTTP è implementata.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * verify: [Limite dei corpi delle richieste HTTP](../Requirements/ServerFoundation.md#limite-dei-corpi-delle-richieste-http)
+---
+
+### Prova del profilo globale degli header HTTP
+
+Avviare l'API con il plugin registrato sulla radice e richiedere una risposta conversazionale riuscita, un errore gestito e una rotta inesistente. Ispezionare configurazione del plugin e header delle risposte.
+
+#### Details
+La prova passa se `@fastify/helmet` è registrato globalmente e le tre risposte portano gli header applicabili del profilo adottato, salvo differenze motivate e dichiarate. Fallisce se il plugin è limitato a un sottoinsieme di rotte, se un errore o un `404` non riceve il profilo, oppure se una deroga non è motivata. Da eseguire quando l'API HTTP è implementata.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * verify: [Header di sicurezza sulle risposte HTTP](../Requirements/ServerFoundation.md#header-di-sicurezza-sulle-risposte-http)
 ---
 
 ### Prova del runner Vitest del backend
@@ -645,4 +785,34 @@ La prova passa se l'opzione effettiva `strict` è abilitata per ogni progetto Ty
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
   * verify: [Compilazione TypeScript strict del server](../Requirements/ServerFoundation.md#compilazione-typescript-strict-del-server)
+---
+
+### Prova della condizione HSTS
+
+Avviare l'API con origine pubblica HTTP e con origine pubblica dichiarata HTTPS, mantenendo in entrambi i casi una connessione interna HTTP e variando `X-Forwarded-Proto`. Osservare le risposte riuscite e di errore.
+
+#### Details
+La prova passa se HSTS è assente quando la configurazione pubblica è HTTP o non dichiarata ed è presente con durata positiva quando è HTTPS, indipendentemente dal protocollo interno o dal valore di `X-Forwarded-Proto`. Fallisce se un header della richiesta attiva HSTS da solo o se la politica è assente in un deployment HTTPS dichiarato. Da eseguire quando l'API HTTP è implementata.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * verify: [HSTS legato all'HTTPS pubblico](../Requirements/ServerFoundation.md#hsts-legato-allhttps-pubblico)
+---
+
+### Prova delle origini CORS dell'API HTTP
+
+Avviare l'API con elenco di origini assente, poi con un'origine esplicitamente ammessa. Inviare richieste ordinarie e preflight da origine ammessa e non ammessa.
+
+#### Details
+La prova passa se, senza elenco, nessuna risposta autorizza CORS; con l'elenco, solo l'origine ammessa riceve gli header di autorizzazione pertinenti e nessuna risposta usa wildcard o riflette l'origine non ammessa. Fallisce se una delle richieste non ammesse ottiene autorizzazione CORS. Da eseguire quando l'API HTTP è implementata.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * verify: [Origini CORS esplicite dell'API HTTP](../Requirements/ServerFoundation.md#origini-cors-esplicite-dellapi-http)
 ---

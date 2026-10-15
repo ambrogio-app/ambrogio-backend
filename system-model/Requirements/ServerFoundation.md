@@ -1,5 +1,19 @@
 # Elements
 
+### Arresto controllato dei nuovi turni
+
+Quando il server riceve una richiesta di arresto ordinato, deve smettere di accettare nuovi turni prima di interrompere quelli attivi e chiudere le risorse.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Politica di interruzione nell'arresto ordinato](../Contracts/ServerFoundation.md#politica-di-interruzione-nellarresto-ordinato)
+
+#### Relations
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
 ### Assenza dei log HTTP automatici
 
 Quando il runtime HTTP del server abilita il logger di Fastify, non deve emettere automaticamente eventi diagnostici di ricezione della richiesta o invio della risposta.
@@ -14,6 +28,17 @@ Quando il runtime HTTP del server abilita il logger di Fastify, non deve emetter
 ### Assenza di account e autenticazione applicativa nell'MVP
 
 Durante l'MVP, il server Ambrogio non deve implementare account utente né autenticazione applicativa per i propri ingressi pubblici.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
+### Assenza di consegna differita degli eventi di dominio
+
+Nella prima versione, Ambrogio non deve conservare eventi di dominio per consegne successive né pubblicarli tramite code o outbox.
 
 #### Metadata
   * type: requirement
@@ -66,6 +91,31 @@ Le varianti di rifiuto previsto di Domain, Application e delle porte del server 
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
+### Caricamento iniziale dei JSON di configurazione
+
+Quando un processo del server avvia un ingresso, deve leggere una volta all'avvio i file JSON locali dei componenti necessari a quell'ingresso, prima di attivarli, senza sostituire i valori di configurazione dei file con variabili d'ambiente.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
+### Chiusura delle risorse dopo l'interruzione dei turni
+
+Quando il server conclude un arresto ordinato, deve chiudere le risorse dei turni dopo averne richiesto l'interruzione e aver conservato lo stato dei turni interrotti.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Politica di interruzione nell'arresto ordinato](../Contracts/ServerFoundation.md#politica-di-interruzione-nellarresto-ordinato)
+
+#### Relations
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
 ### Compilazione TypeScript strict del server
 
 La compilazione TypeScript del server deve avere l'opzione effettiva `strict` abilitata.
@@ -91,6 +141,17 @@ Quando il logger del server serializza il campo `err` di un log diagnostico defi
 ### Contesto operativo con Error e cause
 
 Quando un `catch` del server aggiunge un contesto operativo concreto a un guasto inatteso, deve costruire un nuovo `Error` con un messaggio che descriva l'operazione fallita nel linguaggio del componente e con l'opzione `cause` pari per identità al valore originale, senza modificarlo.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
+### Controlli CI delle modifiche funzionali del server
+
+Quando il server contiene codice applicativo e una modifica funzionale viene proposta per l'integrazione, la CI deve eseguire la validazione e il lint del modello Reqvire, la compilazione TypeScript del server e la suite backend con Vitest, comprendente prove degli adapter di persistenza su SQLite reale quando tali adapter esistono. L'integrazione deve essere impedita se uno di questi controlli fallisce.
 
 #### Metadata
   * type: requirement
@@ -187,6 +248,20 @@ Quando il progetto distribuisce il server, deve fornire un'immagine Docker esegu
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
+### Distribuzione mirata della configurazione validata
+
+Quando il processo ha validato i JSON dei componenti attivi, la composition root deve fornire a ciascun componente soltanto i valori di configurazione che gli servono, già convertiti nei tipi previsti, senza far leggere direttamente file o variabili d'ambiente a Domain e ai casi d'uso Application.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Profilo di bootstrap dei JSON dei componenti](../Contracts/ServerFoundation.md#profilo-di-bootstrap-dei-json-dei-componenti)
+
+#### Relations
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
 ### Eccezioni costruite come Error
 
 Quando il codice TypeScript del server costruisce un'eccezione per un guasto tecnico non tradotto o un bug, deve costruire un oggetto `Error`.
@@ -196,6 +271,17 @@ Quando il codice TypeScript del server costruisce un'eccezione per un guasto tec
 
 #### Relations
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
+### Esclusione dalla cache delle risposte conversazionali HTTP
+
+Quando l'API HTTP risponde con dati di una conversazione, inclusi storico, elenco e flussi di aggiornamento, deve includere l'header `Cache-Control: no-store`.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
 ### Esclusione dei dettagli tecnici dal messaggio pubblico
@@ -260,6 +346,9 @@ Quando un componente del server richiede configurazione locale, la sua configura
 #### Metadata
   * type: requirement
 
+#### Contract References
+  * [Profilo di bootstrap dei JSON dei componenti](../Contracts/ServerFoundation.md#profilo-di-bootstrap-dei-json-dei-componenti)
+
 #### Relations
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
@@ -311,6 +400,28 @@ Quando un adapter inbound del server rappresenta gli esiti di un caso d'uso, dev
 ### Gestione esplicita dei rifiuti delle porte
 
 Quando un caso d'uso Application del server riceve da una porta un rifiuto previsto, deve gestire esplicitamente ogni variante dichiarata dal contratto della porta nel proprio flusso.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
+### HSTS legato all'HTTPS pubblico
+
+Quando il deployment dichiara che l'origine pubblica dell'API HTTP usa HTTPS, il server deve emettere `Strict-Transport-Security` secondo una politica esplicita; quando l'origine pubblica non usa HTTPS, non deve emettere tale header.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
+### Header di sicurezza sulle risposte HTTP
+
+Quando il server HTTP emette una risposta, incluse risposte di errore e rotte non trovate, deve applicare il profilo di header di sicurezza fornito da `@fastify/helmet` registrato globalmente, con sole eccezioni esplicite motivate dal contratto della rotta o del deployment.
 
 #### Metadata
   * type: requirement
@@ -374,9 +485,31 @@ Quando è richiesta la raccolta centralizzata dei log tecnici del server HTTP o 
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
+### Interruzione dei turni durante l'arresto
+
+Quando il server riceve una richiesta di arresto ordinato, deve interrompere i turni attivi senza attendere che completino la risposta.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
 ### Isolamento degli adapter inbound dai rifiuti interni
 
 Quando un adapter inbound del server rappresenta gli esiti di un caso d'uso, non deve importare né riconoscere i tipi di rifiuto interni delle porte o del Domain, inclusi gli import di soli tipi.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
+### Limite dei corpi delle richieste HTTP
+
+Quando una rotta HTTP riceve un corpo, il server deve applicare un limite esplicito e positivo alla sua dimensione prima di invocare il caso d'uso; se il corpo supera il limite, deve rispondere con HTTP 413 e un errore JSON pubblico sicuro senza avviare l'operazione richiesta.
 
 #### Metadata
   * type: requirement
@@ -443,6 +576,28 @@ Quando un confine tecnico HTTP o CLI del server gestisce definitivamente un guas
 ### Oggetto Error nel campo err del log definitivo
 
 Quando il confine HTTP o CLI del server chiama il logger per un log diagnostico definitivo, il campo strutturato `err` deve contenere l'oggetto `Error` che rappresenta il guasto, conservando in memoria la catena `cause` presente.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
+### Origini CORS esplicite dell'API HTTP
+
+Quando l'API HTTP riceve una richiesta con un'origine cross-origin, deve autorizzare CORS solo se tale origine è esplicitamente configurata per il componente HTTP; in assenza di origini configurate non deve autorizzare alcuna origine.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
+### Perimetro iniziale dei segnali di osservabilità
+
+Nella prima versione, i runtime HTTP e CLI del server devono usare i log tecnici strutturati e gli identificativi di correlazione già previsti come segnali di osservabilità, senza introdurre sistemi separati di metriche, tracing distribuito o audit degli eventi applicativi.
 
 #### Metadata
   * type: requirement
@@ -600,6 +755,20 @@ Quando il server HTTP o la CLI emette un evento diagnostico tecnico, deve usare 
 
 #### Metadata
   * type: requirement
+
+#### Relations
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
+### Validazione preventiva della configurazione attiva
+
+Quando un processo del server prepara un ingresso, deve verificare presenza, formato e valori richiesti dei JSON dei componenti effettivamente attivi prima di creare o attivare le risorse che li usano; una configurazione non valida deve impedire l'attivazione dell'ingresso e produrre un errore sicuro al confine di avvio.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Profilo di bootstrap dei JSON dei componenti](../Contracts/ServerFoundation.md#profilo-di-bootstrap-dei-json-dei-componenti)
 
 #### Relations
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)

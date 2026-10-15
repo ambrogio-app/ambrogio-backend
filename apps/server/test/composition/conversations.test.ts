@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Fastify from 'fastify';
-import { assembleExchangeTurn, prepareConversations, registerConversationTurnRoute } from '../../src/composition/conversations.js';
+import { assembleExchangeTurn, prepareConversations, registerConversationHistoryRoute, registerConversationTurnRoute } from '../../src/composition/conversations.js';
 
 const directories: string[] = [];
 
@@ -138,6 +138,55 @@ describe('server conversation composition', () => {
         .select(['text', 'status', 'answer']).executeTakeFirst();
       expect(stored).toEqual({ text: 'ciao', status: 'answered', answer: 'Buongiorno' });
     } finally {
+      await server.close();
+      await prepared.archive.close();
+    }
+  });
+
+  it('reads a pending turn and then its persisted answer through GET without another stream', async () => {
+    const files = await fixture();
+    await writeFile(files.configFilename, '{"language":"it"}');
+    const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
+    const server = Fastify();
+    let signalStarted!: () => void;
+    const started = new Promise<void>(resolve => { signalStarted = resolve; });
+    let release!: () => void;
+    const released = new Promise<void>(resolve => { release = resolve; });
+    try {
+      registerConversationTurnRoute(server, prepared, {
+        async *produce() {
+          signalStarted();
+          await released;
+          yield 'risposta completa';
+        },
+      });
+      registerConversationHistoryRoute(server, prepared);
+      const post = server.inject({ method: 'POST', url: '/api/conversations/turns',
+        headers: { 'content-type': 'application/json' }, payload: JSON.stringify({ text: ' domanda ' }) });
+      await started;
+      const conversation = await prepared.archive.db.selectFrom('conversations').select('id').executeTakeFirstOrThrow();
+      const url = `/api/conversations/${conversation.id}`;
+      const pending = await server.inject({ method: 'GET', url });
+      expect(pending.statusCode).toBe(200);
+      expect(pending.headers['content-type']).toMatch(/^application\/json/);
+      expect(pending.headers['cache-control']).toBe('no-store');
+      expect(pending.json()).toMatchObject({ id: conversation.id,
+        turns: [{ text: ' domanda ', status: 'pending' }] });
+      expect(pending.json().turns[0]).not.toHaveProperty('answer');
+      expect(pending.json().turns[0]).not.toHaveProperty('finishedAt');
+
+      release();
+      expect((await post).body).toContain('event: done');
+      const completed = await server.inject({ method: 'GET', url });
+      expect(completed.json()).toMatchObject({ id: conversation.id,
+        turns: [{ text: ' domanda ', status: 'answered', answer: 'risposta completa' }] });
+      expect(completed.json().turns).toHaveLength(1);
+      expect(completed.json().turns[0].finishedAt).toMatch(/Z$/);
+      const missing = await server.inject({ method: 'GET', url: '/api/conversations/missing' });
+      expect(missing.statusCode).toBe(404);
+      expect(missing.json()).toEqual({ error: 'Conversazione non trovata.' });
+    } finally {
+      release();
       await server.close();
       await prepared.archive.close();
     }

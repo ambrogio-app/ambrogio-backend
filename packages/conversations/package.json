@@ -82,6 +82,10 @@
       "types": "./dist/adapters/in/http/turn-route.d.ts",
       "import": "./dist/adapters/in/http/turn-route.js"
     },
+    "./adapters/in/http/history-route": {
+      "types": "./dist/adapters/in/http/history-route.d.ts",
+      "import": "./dist/adapters/in/http/history-route.js"
+    },
     "./adapters/out/sqlite/recover-pending-turns": {
       "types": "./dist/adapters/out/sqlite/recover-pending-turns.d.ts",
       "import": "./dist/adapters/out/sqlite/recover-pending-turns.js"

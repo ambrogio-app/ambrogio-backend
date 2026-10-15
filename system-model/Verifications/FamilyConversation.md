@@ -1016,3 +1016,20 @@ La prova passa se le migrazioni pendenti sono applicate automaticamente prima ch
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
   * verify: [Migrazione automatica dell'archivio delle conversazioni](../Requirements/FamilyConversation.md#migrazione-automatica-dellarchivio-delle-conversazioni)
 ---
+
+### Prova della lettura HTTP dello storico conversazionale
+
+Leggere via GET una conversazione con turni conclusi con risposta ed errore, un turno in elaborazione e un turno interrotto. Ripetere la lettura dopo la conclusione del turno in elaborazione e verificare anche conversazione assente e guasto tecnico dell'archivio.
+
+#### Details
+La prova passa se la risposta `200` è JSON senza cache, conserva identità, testi, ordine e istanti ISO 8601 UTC e presenta solo i campi di esito pertinenti a ciascuno stato. La seconda lettura presenta l'esito persistente del turno prima in elaborazione senza duplicarlo; la lettura non usa SSE né recupera frammenti parziali. La conversazione assente restituisce `404` e il guasto tecnico `500`, entrambi con un messaggio pubblico sicuro tradotto e senza dettagli tecnici. Fallisce se uno stato o un testo è alterato, se un frammento parziale compare nello storico o se un guasto espone dettagli interni.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
+  * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
+  * verify: [Lettura HTTP dello storico conversazionale](../Requirements/FamilyConversation.md#lettura-http-dello-storico-conversazionale)
+---

@@ -1008,3 +1008,16 @@ Quando l'ingresso HTTP riceve un turno, il suo adapter deve verificare forma e d
 #### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
+
+### Lettura HTTP dello storico conversazionale
+
+Quando un client della chat testuale consulta una conversazione conservata, il backend deve restituire lo storico testuale ordinato e lo stato corrente dei suoi turni mediante la risposta alla richiesta HTTP di lettura, secondo il contratto pubblico dello storico conversazionale.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [history-route.ts](../../packages/conversations/src/adapters/in/http/history-route.ts)
+  * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---

@@ -6,10 +6,12 @@ import { SqliteConversationHistoryRead } from '@ambrogio/conversations/adapters/
 import { SqliteConversationListRead } from '@ambrogio/conversations/adapters/out/sqlite/list-read';
 import { SqliteConversationWrite } from '@ambrogio/conversations/adapters/out/sqlite/write';
 import { registerTurnRoute } from '@ambrogio/conversations/adapters/in/http/turn-route';
+import { registerHistoryRoute } from '@ambrogio/conversations/adapters/in/http/history-route';
 import { createBeginTurn } from '@ambrogio/conversations/application/begin-turn';
 import { createCompleteTurn } from '@ambrogio/conversations/application/complete-turn';
 import { createExchangeTurn } from '@ambrogio/conversations/application/exchange-turn';
 import { createListConversations } from '@ambrogio/conversations/application/list-conversations';
+import { createGetConversation } from '@ambrogio/conversations/application/get-conversation';
 import type { ProduceConversationReply } from '@ambrogio/conversations/application/produce-conversation-reply';
 import type { FastifyInstance } from 'fastify';
 import { conversationConfigPath } from '../runtime/conversation-config-path.js';
@@ -58,4 +60,15 @@ export function registerConversationTurnRoute(
   reply: ProduceConversationReply,
 ): void {
   registerTurnRoute(server, { exchange: assembleExchangeTurn(prepared, reply), language: prepared.language });
+}
+
+/** Attach the HTTP history ingress after archive recovery. */
+export function registerConversationHistoryRoute(
+  server: FastifyInstance,
+  prepared: Awaited<ReturnType<typeof prepareConversations>>,
+): void {
+  registerHistoryRoute(server, {
+    getConversation: createGetConversation(new SqliteConversationHistoryRead(prepared.archive.db)),
+    language: prepared.language,
+  });
 }

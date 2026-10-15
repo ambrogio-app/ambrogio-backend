@@ -550,4 +550,3 @@ Il percorso del file è indicato dalla variabile d'ambiente `AMBROGIO_CONVERSATI
 #### Relations
   * define: [Configurazione della paginazione conversazionale](../Requirements/FamilyConversation.md#configurazione-della-paginazione-conversazionale)
 ---
-

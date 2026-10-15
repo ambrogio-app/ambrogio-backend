@@ -201,4 +201,3 @@ Una variante può contenere solo `kind` oppure aggiungere campi propri, tipizzat
 #### Relations
   * define: [Campi specifici dei rifiuti previsti](../Requirements/ServerFoundation.md#campi-specifici-dei-rifiuti-previsti)
 ---
-

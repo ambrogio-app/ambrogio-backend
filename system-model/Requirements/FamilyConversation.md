@@ -131,6 +131,8 @@ Quando trascorre l'intervallo di inattività configurato senza repliche vocali, 
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [voice-session.ts](../../packages/conversations/src/adapters/in/voice/voice-session.ts)
+  * satisfiedBy: [voice-config.ts](../../packages/conversations/src/adapters/out/voice-config.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -279,6 +281,7 @@ Quando Ambrogio conserva una conversazione, deve conservarne la rappresentazione
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [conversation-agent.ts](../../packages/conversations/src/adapters/in/voice/conversation-agent.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -761,7 +764,9 @@ Quando la famiglia avvia esplicitamente una nuova interazione vocale, Ambrogio d
   * [Stati dell'interazione vocale](../Contracts/FamilyConversation.md#stati-dellinterazione-vocale)
 
 #### Relations
+  * satisfiedBy: [voice.ts](../../apps/server/src/composition/voice.ts)
   * satisfiedBy: [sqlite-conversation-write.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.ts)
+  * satisfiedBy: [start-voice-conversation.use-case.ts](../../packages/conversations/src/application/start-voice-conversation.use-case.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -859,6 +864,7 @@ Quando Ambrogio produce una risposta a un turno vocale, deve pronunciare la risp
   * [Esclusione dell'audio persistente](../Contracts/FamilyConversation.md#esclusione-dellaudio-persistente)
 
 #### Relations
+  * satisfiedBy: [voice-session.ts](../../packages/conversations/src/adapters/in/voice/voice-session.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -913,6 +919,7 @@ Mentre un'interazione vocale è attiva, quando la famiglia formula una replica i
   * [Stati dell'interazione vocale](../Contracts/FamilyConversation.md#stati-dellinterazione-vocale)
 
 #### Relations
+  * satisfiedBy: [conversation-agent.ts](../../packages/conversations/src/adapters/in/voice/conversation-agent.ts)
   * satisfiedBy: [sqlite-conversation-write.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
@@ -976,6 +983,7 @@ Quando l'installazione ha un turno accettato il cui esito non è ancora conserva
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [conversation-agent.ts](../../packages/conversations/src/adapters/in/voice/conversation-agent.ts)
   * satisfiedBy: [sqlite-conversation-write.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
@@ -1209,6 +1217,7 @@ Quando la famiglia pronuncia un turno vocale trascrivibile, Ambrogio deve rappre
   * [Esclusione dell'audio persistente](../Contracts/FamilyConversation.md#esclusione-dellaudio-persistente)
 
 #### Relations
+  * satisfiedBy: [vosk-streaming-stt.ts](../../packages/conversations/src/adapters/in/voice/vosk-streaming-stt.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -1220,6 +1229,7 @@ Se Ambrogio non ottiene una trascrizione utilizzabile di un turno vocale, non de
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [vosk-streaming-stt.ts](../../packages/conversations/src/adapters/in/voice/vosk-streaming-stt.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -1245,4 +1255,3 @@ Quando l'ingresso HTTP riceve un turno, il suo adapter deve verificare forma e d
 #### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
-

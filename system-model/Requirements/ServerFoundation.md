@@ -859,4 +859,3 @@ Quando la suite automatica del backend esegue le verifiche implementate nei pack
 #### Relations
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
-

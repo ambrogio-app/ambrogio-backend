@@ -22,6 +22,7 @@ Quando il runtime HTTP del server abilita il logger di Fastify, non deve emetter
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -135,6 +136,8 @@ Quando il processo avvia l'ingresso HTTP, deve usare un indirizzo host e una por
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [http-config.ts](../../apps/server/src/runtime/http-config.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -427,6 +430,8 @@ Quando il deployment dichiara che l'origine pubblica dell'API HTTP usa HTTPS, il
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [http-config.ts](../../apps/server/src/runtime/http-config.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -438,6 +443,7 @@ Quando il server HTTP emette una risposta, incluse risposte di errore e rotte no
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -449,6 +455,7 @@ Quando il server riceve una richiesta HTTP, il confine HTTP deve generare per qu
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -460,6 +467,7 @@ Quando il server emette una risposta HTTP gestita, inclusa una risposta di error
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -471,6 +479,7 @@ L'API HTTP del server deve essere implementata con Fastify.
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -593,6 +602,8 @@ Quando l'API HTTP riceve una richiesta con un'origine cross-origin, deve autoriz
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [http-config.ts](../../apps/server/src/runtime/http-config.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -796,3 +807,4 @@ Quando la suite automatica del backend esegue le verifiche implementate nei pack
 #### Relations
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
+

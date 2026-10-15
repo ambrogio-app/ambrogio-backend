@@ -943,13 +943,15 @@ La prova passa se l'inglese produce «I can't complete the response.», l'italia
 Creare più conversazioni di quante ne contenga una pagina, da chat testuale e voce quando abilitata; aggiungere un turno a una conversazione meno recente e consultare tutte le pagine senza mutare ulteriormente l'archivio. Includere almeno due conversazioni con la stessa ultima attività.
 
 #### Details
-La prova passa se l'elenco è diviso in pagine limitate, la conversazione aggiornata compare prima di quelle con attività più vecchia, l'ordine è deterministico anche a parità di ultima attività e la consultazione di tutte le pagine restituisce ciascuna conversazione una sola volta senza omissioni. Fallisce se l'intero elenco è restituito in una sola risposta, l'ordine dipende implicitamente dal database o una conversazione compare due volte o manca. La prova resta da eseguire quando l'ingresso di consultazione è implementato.
+La prova passa se l'elenco è diviso in pagine limitate, la conversazione aggiornata compare prima di quelle con attività più vecchia, l'ordine è deterministico anche a parità di ultima attività e la consultazione di tutte le pagine restituisce ciascuna conversazione una sola volta senza omissioni. Fallisce se l'intero elenco è restituito in una sola risposta, l'ordine dipende implicitamente dal database o una conversazione compare due volte o manca. La parte relativa all'ingresso vocale resta da eseguire quando è implementato.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
+  * satisfiedBy: [sqlite-list.test.ts](../../packages/conversations/test/adapters/out/sqlite-list.test.ts)
+  * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
   * verify: [Elenco paginato delle conversazioni](../Requirements/FamilyConversation.md#elenco-paginato-delle-conversazioni)
   * verify: [Ordinamento delle conversazioni per ultima attività](../Requirements/FamilyConversation.md#ordinamento-delle-conversazioni-per-ultima-attività)
 ---
@@ -959,7 +961,7 @@ La prova passa se l'elenco è diviso in pagine limitate, la conversazione aggior
 Preparare file JSON del componente «Conversazioni» con i due campi assenti, poi con `listPageSize` e `maxListPageSize` espliciti e diversi dai valori predefiniti. Indicare il percorso del file con `AMBROGIO_CONVERSATIONS_CONFIG_PATH` e leggere l'elenco attraverso i valori caricati, verificando il numero di voci e il limite applicato dall'archivio. Ripetere con variabile o file mancante, JSON invalido, valori non interi o non positivi e dimensione della pagina superiore al massimo.
 
 #### Details
-La prova passa se la variabile d'ambiente seleziona solo il percorso, i campi assenti danno 20 e 100, i valori espliciti validi sono usati dal caso d'uso e dall'adapter, e ogni percorso, file o combinazione invalida impedisce la preparazione dell'ingresso prima di accettare richieste. Fallisce se una variabile d'ambiente sostituisce un valore del JSON, se un valore invalido viene corretto in silenzio, se il massimo resta fissato a 100 quando la configurazione ne sceglie un altro o se il caso d'uso legge il file direttamente. La verifica dell'attivazione dell'ingresso resta da eseguire quando l'ingresso server è implementato.
+La prova passa se la variabile d'ambiente seleziona solo il percorso, i campi assenti danno 20 e 100, i valori espliciti validi sono usati dal caso d'uso e dall'adapter, e ogni percorso, file o combinazione invalida impedisce la preparazione dell'ingresso prima di accettare richieste. Fallisce se una variabile d'ambiente sostituisce un valore del JSON, se un valore invalido viene corretto in silenzio, se il massimo resta fissato a 100 quando la configurazione ne sceglie un altro o se il caso d'uso legge il file direttamente.
 
 #### Metadata
   * type: test-verification
@@ -976,7 +978,7 @@ La prova passa se la variabile d'ambiente seleziona solo il percorso, i campi as
 Caricare almeno due pagine nel client della chat testuale, poi aggiungere una conversazione o aggiornare l'ultima attività di una conversazione meno recente nell'archivio. Attivare l'aggiornamento dell'elenco e osservare la richiesta successiva e le voci mostrate.
 
 #### Details
-La prova passa se il client scarta il riferimento alla vecchia pagina successiva, richiede la prima pagina e presenta l'ordine corrente delle conversazioni, compresa quella nuova o aggiornata. Fallisce se continua dalla pagina della consultazione precedente o tratta le pagine già caricate come una fotografia immutabile. La prova resta da eseguire quando il client e l'ingresso di consultazione sono implementati.
+La prova passa se il client scarta il riferimento alla vecchia pagina successiva, richiede la prima pagina e presenta l'ordine corrente delle conversazioni, compresa quella nuova o aggiornata. Fallisce se continua dalla pagina della consultazione precedente o tratta le pagine già caricate come una fotografia immutabile. La prova resta da eseguire quando il client è implementato.
 
 #### Metadata
   * type: test-verification
@@ -1032,4 +1034,21 @@ La prova passa se la risposta `200` è JSON senza cache, conserva identità, tes
   * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
   * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
   * verify: [Lettura HTTP dello storico conversazionale](../Requirements/FamilyConversation.md#lettura-http-dello-storico-conversazionale)
+---
+
+### Prova della lettura HTTP dell'elenco conversazioni
+
+Leggere via GET più pagine di un elenco con conversazioni di attività differente e a parità di attività, usando il cursore restituito, il limite predefinito e un `limit` esplicito entro il massimo configurato. Ripetere con elenco vuoto, cursore e limite invalidi e guasto tecnico dell'archivio.
+
+#### Details
+La prova passa se le risposte `200` JSON senza cache contengono solo `items` ordinati e `nextCursor`, con identificativi e istanti ISO 8601 UTC preservati; seguire il cursore attraversa l'archivio invariato senza omissioni o duplicati e termina con `nextCursor: null`. Il limite predefinito proviene dalla configurazione e un limite esplicito valido la rispetta; valori invalidi ricevono `400` JSON sicuro senza chiamare il caso d'uso. Un guasto dell'archivio riceve `500` JSON sicuro e viene registrato. Fallisce se l'ordine, i limiti o gli esiti HTTP non corrispondono al contratto.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
+  * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
+  * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
+  * verify: [Lettura HTTP dell'elenco conversazioni](../Requirements/FamilyConversation.md#lettura-http-dellelenco-conversazioni)
 ---

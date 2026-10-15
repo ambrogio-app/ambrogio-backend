@@ -7,6 +7,7 @@ import { SqliteConversationListRead } from '@ambrogio/conversations/adapters/out
 import { SqliteConversationWrite } from '@ambrogio/conversations/adapters/out/sqlite/write';
 import { registerTurnRoute } from '@ambrogio/conversations/adapters/in/http/turn-route';
 import { registerHistoryRoute } from '@ambrogio/conversations/adapters/in/http/history-route';
+import { registerListRoute } from '@ambrogio/conversations/adapters/in/http/list-route';
 import { createBeginTurn } from '@ambrogio/conversations/application/begin-turn';
 import { createCompleteTurn } from '@ambrogio/conversations/application/complete-turn';
 import { createExchangeTurn } from '@ambrogio/conversations/application/exchange-turn';
@@ -30,7 +31,8 @@ export async function prepareConversations(
     const failureMessage = config.language === 'it'
       ? 'Non riesco a completare la risposta.'
       : "I can't complete the response.";
-    return { listConversations, failureMessage, language: config.language, archive };
+    return { listConversations, maxListPageSize: config.maxListPageSize,
+      failureMessage, language: config.language, archive };
   } catch (error) {
     try { await archive.close(); } catch { /* preserve the preparation failure */ }
     throw error;
@@ -69,6 +71,18 @@ export function registerConversationHistoryRoute(
 ): void {
   registerHistoryRoute(server, {
     getConversation: createGetConversation(new SqliteConversationHistoryRead(prepared.archive.db)),
+    language: prepared.language,
+  });
+}
+
+/** Attach the HTTP list ingress after archive recovery. */
+export function registerConversationListRoute(
+  server: FastifyInstance,
+  prepared: Awaited<ReturnType<typeof prepareConversations>>,
+): void {
+  registerListRoute(server, {
+    listConversations: prepared.listConversations,
+    maxPageSize: prepared.maxListPageSize,
     language: prepared.language,
   });
 }

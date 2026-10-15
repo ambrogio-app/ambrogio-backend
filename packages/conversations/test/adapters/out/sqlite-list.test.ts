@@ -84,7 +84,9 @@ describe('conversation list', () => {
       },
     }, settings.listPageSize, settings.maxListPageSize);
     expect((await list({})).items).toEqual([]);
-    expect(limits).toEqual([110]);
+    expect((await list({ limit: 120 })).items).toEqual([]);
+    expect(limits).toEqual([110, 120]);
+    expect(() => list({ limit: 121 })).toThrow('Invalid conversation page size');
     const read = new SqliteConversationListRead(db, settings.maxListPageSize);
     expect((await read.page(undefined, 120)).items).toEqual([]);
     await expect(read.page(undefined, 121)).rejects.toThrow('Invalid conversation page size');

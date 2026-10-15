@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Fastify from 'fastify';
-import { assembleExchangeTurn, prepareConversations, registerConversationHistoryRoute, registerConversationTurnRoute } from '../../src/composition/conversations.js';
+import { assembleExchangeTurn, prepareConversations, registerConversationHistoryRoute, registerConversationListRoute, registerConversationTurnRoute } from '../../src/composition/conversations.js';
 
 const directories: string[] = [];
 
@@ -39,6 +39,37 @@ describe('server conversation composition', () => {
       expect(page.next?.id).toBe('b');
       expect(prepared.failureMessage).toBe('Non riesco a completare la risposta.');
     } finally {
+      await prepared.archive.close();
+    }
+  });
+
+  it('serves configured list pages and a current first page after activity changes', async () => {
+    const files = await fixture();
+    await writeFile(files.configFilename, '{"listPageSize":2,"maxListPageSize":3}');
+    const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
+    const server = Fastify();
+    try {
+      await prepared.archive.db.insertInto('conversations').values([
+        { id: 'a', created_at: 100, last_activity_at: 300 },
+        { id: 'b', created_at: 100, last_activity_at: 200 },
+        { id: 'c', created_at: 100, last_activity_at: 200 },
+        { id: 'd', created_at: 100, last_activity_at: 100 },
+      ]).execute();
+      registerConversationListRoute(server, prepared);
+      const first = (await server.inject({ method: 'GET', url: '/api/conversations' })).json();
+      expect(first.items.map((item: { id: string }) => item.id)).toEqual(['a', 'c']);
+      expect(typeof first.nextCursor).toBe('string');
+      const second = (await server.inject({ method: 'GET',
+        url: `/api/conversations?cursor=${first.nextCursor}` })).json();
+      expect(second.items.map((item: { id: string }) => item.id)).toEqual(['b', 'd']);
+      expect(second.nextCursor).toBeNull();
+
+      await prepared.archive.db.updateTable('conversations').set({ last_activity_at: 400 })
+        .where('id', '=', 'd').execute();
+      const refreshed = (await server.inject({ method: 'GET', url: '/api/conversations' })).json();
+      expect(refreshed.items.map((item: { id: string }) => item.id)).toEqual(['d', 'a']);
+    } finally {
+      await server.close();
       await prepared.archive.close();
     }
   });

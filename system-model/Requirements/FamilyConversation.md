@@ -324,6 +324,9 @@ Quando la famiglia consulta l'elenco delle conversazioni conservate, Ambrogio de
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [list-conversations.use-case.ts](../../packages/conversations/src/application/list-conversations.use-case.ts)
+  * satisfiedBy: [sqlite-conversation-list-read.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-list-read.ts)
+  * satisfiedBy: [list-route.ts](../../packages/conversations/src/adapters/in/http/list-route.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -1018,6 +1021,22 @@ Quando un client della chat testuale consulta una conversazione conservata, il b
 
 #### Relations
   * satisfiedBy: [history-route.ts](../../packages/conversations/src/adapters/in/http/history-route.ts)
+  * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Lettura HTTP dell'elenco conversazioni
+
+Quando un client della chat testuale consulta l'elenco delle conversazioni conservate, il backend deve restituire una pagina dell'elenco e un riferimento utilizzabile per richiedere la pagina successiva secondo il contratto HTTP pubblico dell'elenco.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Pagine dell'elenco conversazioni](../Contracts/FamilyConversation.md#pagine-dellelenco-conversazioni)
+
+#### Relations
+  * satisfiedBy: [list-route.ts](../../packages/conversations/src/adapters/in/http/list-route.ts)
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---

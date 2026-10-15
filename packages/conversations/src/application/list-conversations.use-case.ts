@@ -1,6 +1,9 @@
 import type { ConversationListCursor, ConversationListPage, ConversationListRead } from './conversation-list-read.js';
 
-export type ListConversations = (input: Readonly<{ after?: ConversationListCursor }>) => Promise<ConversationListPage>;
+export type ListConversations = (input: Readonly<{
+  after?: ConversationListCursor;
+  limit?: number;
+}>) => Promise<ConversationListPage>;
 
 /** The composition root supplies limits loaded from the conversation component's JSON file. */
 export function createListConversations(
@@ -10,5 +13,11 @@ export function createListConversations(
     || !Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > maxPageSize) {
     throw new Error('Invalid conversation page size');
   }
-  return ({ after }) => read.page(after, pageSize);
+  return ({ after, limit }) => {
+    const size = limit ?? pageSize;
+    if (!Number.isSafeInteger(size) || size < 1 || size > maxPageSize) {
+      throw new Error('Invalid conversation page size');
+    }
+    return read.page(after, size);
+  };
 }

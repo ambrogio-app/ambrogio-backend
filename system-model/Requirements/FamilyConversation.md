@@ -50,6 +50,7 @@ Quando un agente specializzato accede al proprio server MCP tramite Streamable H
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [mcp-tool-client.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.ts)
   * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
 ---
 
@@ -61,6 +62,7 @@ Quando la configurazione JSON di un agente specializzato richiede OAuth `client_
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [mcp-tool-client.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.ts)
   * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
 ---
 
@@ -89,6 +91,7 @@ Quando il server avvia la conversazione testuale con agenti configurati, deve re
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
   * satisfiedBy: [main.ts](../../apps/server/src/main.ts)
   * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -151,6 +154,7 @@ Quando Ambrogio abilita un connettore a un server MCP configurato, deve usare un
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [mcp-tool-client.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.ts)
   * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
 ---
 
@@ -191,6 +195,8 @@ Quando il server attiva un agente con connettore MCP, deve leggere la configuraz
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
+  * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
   * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
 ---
 
@@ -202,6 +208,10 @@ Quando il server attiva un agente, incluso l'orchestratore, deve leggere il file
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
+  * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
+  * satisfiedBy: [mistral-conversation-reply.ts](../../packages/conversations/src/adapters/out/mistral-conversation-reply.ts)
+  * satisfiedBy: [mistral-function-reply.ts](../../packages/conversations/src/adapters/out/mistral-function-reply.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -366,6 +376,8 @@ Quando Ambrogio prepara un agente specializzato da un file JSON, deve rendere di
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
+  * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -403,6 +415,8 @@ Quando il server avvia la conversazione con la directory degli agenti, deve rend
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
+  * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
   * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
 ---
 
@@ -623,6 +637,10 @@ Quando il server attiva un agente, incluso l'orchestratore, deve leggere le istr
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
+  * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
+  * satisfiedBy: [mistral-conversation-reply.ts](../../packages/conversations/src/adapters/out/mistral-conversation-reply.ts)
+  * satisfiedBy: [mistral-function-reply.ts](../../packages/conversations/src/adapters/out/mistral-function-reply.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -663,6 +681,7 @@ Quando un agente specializzato usa gli strumenti del proprio connettore MCP per 
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [mistral-function-reply.ts](../../packages/conversations/src/adapters/out/mistral-function-reply.ts)
   * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
 ---
 
@@ -749,6 +768,7 @@ Quando Ambrogio elabora un turno della famiglia, l'agente orchestratore deve sce
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [mistral-function-reply.ts](../../packages/conversations/src/adapters/out/mistral-function-reply.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -986,6 +1006,8 @@ Quando la famiglia invia un turno testuale, Ambrogio deve comunicare una rispost
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [mistral-conversation-reply.ts](../../packages/conversations/src/adapters/out/mistral-conversation-reply.ts)
+  * satisfiedBy: [mistral-function-reply.ts](../../packages/conversations/src/adapters/out/mistral-function-reply.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -997,6 +1019,7 @@ Quando il server prepara gli agenti attivi, deve cercare i rispettivi file JSON 
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -1201,6 +1224,7 @@ Quando Ambrogio connette un agente specializzato al suo server MCP nella prima i
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [mcp-tool-client.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.ts)
   * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
 ---
 

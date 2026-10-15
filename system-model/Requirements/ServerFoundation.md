@@ -101,6 +101,7 @@ Quando un processo del server avvia un ingresso, deve leggere una volta all'avvi
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -116,6 +117,7 @@ Quando il server conclude un arresto ordinato, deve chiudere le risorse dei turn
 
 #### Relations
   * satisfiedBy: [main.ts](../../apps/server/src/main.ts)
+  * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -505,6 +507,7 @@ Quando il server riceve una richiesta di arresto ordinato, deve interrompere i t
 
 #### Relations
   * satisfiedBy: [main.ts](../../apps/server/src/main.ts)
+  * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
@@ -790,6 +793,7 @@ Quando un processo del server prepara un ingresso, deve verificare presenza, for
   * [Profilo di bootstrap dei JSON dei componenti](../Contracts/ServerFoundation.md#profilo-di-bootstrap-dei-json-dei-componenti)
 
 #### Relations
+  * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 

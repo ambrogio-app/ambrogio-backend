@@ -1,3 +1,4 @@
+import { ProjectError } from '../../project-error.js';
 import { Mistral } from '@mistralai/mistralai';
 import type { ConversationHistory } from '../../application/conversation-history-read.js';
 import type { ProduceConversationReply } from '../../application/produce-conversation-reply.js';
@@ -19,17 +20,17 @@ export function mistralOptions(value: MistralAgentSettings['options']): Readonly
 }> {
   if (value === undefined) return {};
   if (Object.keys(value).some((key) => key !== 'temperature' && key !== 'max_tokens')) {
-    throw new Error('Unsupported Mistral option');
+    throw new ProjectError('Unsupported Mistral option');
   }
   const temperature = value.temperature;
   const maxTokens = value.max_tokens;
   if (temperature !== undefined && (typeof temperature !== 'number'
     || !Number.isFinite(temperature) || temperature < 0)) {
-    throw new Error('Invalid Mistral temperature');
+    throw new ProjectError('Invalid Mistral temperature');
   }
   if (maxTokens !== undefined && (typeof maxTokens !== 'number'
     || !Number.isSafeInteger(maxTokens) || maxTokens < 1)) {
-    throw new Error('Invalid Mistral max_tokens');
+    throw new ProjectError('Invalid Mistral max_tokens');
   }
   return { ...(temperature === undefined ? {} : { temperature: temperature as number }),
     ...(maxTokens === undefined ? {} : { maxTokens: maxTokens as number }) };
@@ -61,7 +62,7 @@ export class MistralConversationReply implements ProduceConversationReply {
 
   constructor(private readonly settings: MistralAgentSettings, stream?: Stream) {
     if (!settings.instructions.trim() || !settings.model.trim() || !settings.apiKey.trim()) {
-      throw new Error('Invalid Mistral agent configuration');
+      throw new ProjectError('Invalid Mistral agent configuration');
     }
     this.requestOptions = mistralOptions(settings.options);
     if (stream) this.stream = stream;

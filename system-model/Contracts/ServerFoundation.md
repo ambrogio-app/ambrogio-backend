@@ -92,7 +92,7 @@ Il file ammette `allowedOrigins`, elenco di origini HTTP(S) esplicite, predefini
 
 ### Profilo controllato di serializzazione di err
 
-La rappresentazione JSON di `err` usa una vista composta soltanto da campi ammessi esplicitamente dal serializzatore. Per un `Error` costruito dal progetto, la vista include il suo stack diagnostico. Per un errore proveniente da driver, SDK o provider e per un valore lanciato sconosciuto, la vista usa una descrizione costante sicura, indipendente dal valore ricevuto, e non copia il messaggio, lo stack o le proprietà aggiuntive di origine.
+La rappresentazione JSON di `err` usa una vista composta soltanto da campi ammessi esplicitamente dal serializzatore. Gli errori costruiti dal progetto usano un tipo `Error` dedicato e riconoscibile dal serializzatore; la loro vista include lo stack diagnostico. Gli errori ricevuti da driver, SDK o provider conservano il tipo originale e, come ogni valore lanciato sconosciuto, ricevono una descrizione costante sicura, indipendente dal valore ricevuto, senza copiarne messaggio, stack o proprietà aggiuntive. La normalizzazione diagnostica al confine conserva l'identità di ogni `Error` ricevuto e rappresenta un valore non `Error` con un nuovo `Error` privo del tipo dedicato; non applica il tipo del progetto a un guasto esterno o sconosciuto.
 
 #### Metadata
   * type: input-output

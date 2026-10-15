@@ -1,3 +1,4 @@
+import { ProjectError } from '../../project-error.js';
 import { readFile } from 'node:fs/promises';
 
 export type ConversationConfig = Readonly<{
@@ -13,10 +14,10 @@ export async function loadConversationConfig(filename: string): Promise<Conversa
   try {
     value = JSON.parse(await readFile(filename, 'utf8'));
   } catch {
-    throw new Error('Invalid conversation configuration file');
+    throw new ProjectError('Invalid conversation configuration file');
   }
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error('Invalid conversation configuration file');
+    throw new ProjectError('Invalid conversation configuration file');
   }
   const fields = value as Record<string, unknown>;
   const listPageSize = fields.listPageSize === undefined ? 20 : fields.listPageSize;
@@ -24,15 +25,15 @@ export async function loadConversationConfig(filename: string): Promise<Conversa
   if (typeof listPageSize !== 'number' || !Number.isSafeInteger(listPageSize) || listPageSize < 1
     || typeof maxListPageSize !== 'number' || !Number.isSafeInteger(maxListPageSize)
     || maxListPageSize < 1 || listPageSize > maxListPageSize) {
-    throw new Error('Invalid conversation list limits');
+    throw new ProjectError('Invalid conversation list limits');
   }
   if (fields.language !== undefined && typeof fields.language !== 'string') {
-    throw new Error('Invalid conversation language');
+    throw new ProjectError('Invalid conversation language');
   }
   const language = fields.language === 'it' ? 'it' : 'en';
   if (fields.archivePath !== undefined
     && (typeof fields.archivePath !== 'string' || !fields.archivePath.trim())) {
-    throw new Error('Invalid conversation archive path');
+    throw new ProjectError('Invalid conversation archive path');
   }
   return { listPageSize, maxListPageSize, language,
     ...(fields.archivePath === undefined ? {} : { archivePath: fields.archivePath }) };

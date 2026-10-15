@@ -1,3 +1,4 @@
+import { ProjectError } from '../project-error.js';
 import type { Result } from '../domain/turn.js';
 import type { BeginTurn, BeginTurnInput, BeginTurnRejection } from './begin-turn.use-case.js';
 import type { CompleteTurnUseCase } from './complete-turn.use-case.js';
@@ -40,7 +41,7 @@ export function createExchangeTurn(dependencies: Readonly<{
     const failAdmittedTurn = async (): Promise<Result<ExchangeTurnSuccess, BeginTurnRejection>> => {
       const completed = await dependencies.complete({ turnId, outcome: { kind: 'error', message: failureMessage } });
       if (!completed.ok && shouldInterrupt()) return interrupted();
-      if (!completed.ok || completed.value.status !== 'failed') throw new Error('Admitted turn could not be completed');
+      if (!completed.ok || completed.value.status !== 'failed') throw new ProjectError('Admitted turn could not be completed');
       return { ok: true, value: { conversationId, turnId, outcome: 'failed', error: failureMessage } };
     };
 
@@ -48,7 +49,7 @@ export function createExchangeTurn(dependencies: Readonly<{
     try {
       const found = await dependencies.history.find(conversationId);
       if (!found || found.turns.at(-1)?.id !== turnId || found.turns.at(-1)?.status !== 'pending') {
-        throw new Error('Admitted turn missing from conversation history');
+        throw new ProjectError('Admitted turn missing from conversation history');
       }
       history = found;
     } catch {
@@ -72,7 +73,7 @@ export function createExchangeTurn(dependencies: Readonly<{
 
     const completed = await dependencies.complete({ turnId, outcome: { kind: 'answer', text: answer } });
     if (!completed.ok && shouldInterrupt()) return interrupted();
-    if (!completed.ok || completed.value.status !== 'answered') throw new Error('Admitted turn could not be completed');
+    if (!completed.ok || completed.value.status !== 'answered') throw new ProjectError('Admitted turn could not be completed');
     return { ok: true, value: { conversationId, turnId, outcome: 'answered' } };
   };
 }

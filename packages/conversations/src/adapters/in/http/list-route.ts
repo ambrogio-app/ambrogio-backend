@@ -13,6 +13,10 @@ function publicError(reply: FastifyReply, status: number, message: string): Fast
   return reply.code(status).header('Cache-Control', 'no-store').type('application/json').send({ error: message });
 }
 
+function normalizeError(value: unknown): Error {
+  return value instanceof Error ? value : new Error('Unknown conversation list failure', { cause: value });
+}
+
 function encodeCursor(cursor: ConversationListCursor): string {
   return Buffer.from(JSON.stringify({ id: cursor.id, lastActivityAt: cursor.lastActivityAt.toISOString() }), 'utf8')
     .toString('base64url');
@@ -73,7 +77,8 @@ export function registerListRoute(server: FastifyInstance, options: Readonly<{
         nextCursor: page.next ? encodeCursor(page.next) : null,
       });
     } catch (error) {
-      request.log.error({ event: 'conversation_list_http_failed', err: error }, 'HTTP request failed');
+      request.log.error({ event: 'conversation_list_http_failed', err: normalizeError(error) },
+        'HTTP request failed');
       return publicError(reply, 500, messages.failure[options.language]);
     }
   });

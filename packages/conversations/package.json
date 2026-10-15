@@ -10,6 +10,10 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "exports": {
+    "./application/project-error": {
+      "types": "./dist/project-error.d.ts",
+      "import": "./dist/project-error.js"
+    },
     "./application/begin-turn": {
       "types": "./dist/application/begin-turn.use-case.d.ts",
       "import": "./dist/application/begin-turn.use-case.js"

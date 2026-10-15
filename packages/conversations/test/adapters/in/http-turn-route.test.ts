@@ -4,6 +4,7 @@ import { PassThrough, Writable } from 'node:stream';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createExchangeTurn } from '../../../src/application/exchange-turn.use-case.js';
 import { Turn } from '../../../src/domain/turn.js';
+import { ProjectError } from '../../../src/project-error.js';
 import type { ExchangeTurn } from '../../../src/application/exchange-turn.use-case.js';
 import { registerTurnRoute, TURN_BODY_LIMIT } from '../../../src/adapters/in/http/turn-route.js';
 
@@ -159,6 +160,37 @@ describe('text turn HTTP ingress', () => {
     const second = await server.inject(jsonPost({ text: 'second' }));
     expect(second.statusCode).toBe(409);
     expect(calls).toBe(2);
+  });
+
+  it('normalizes admission failures without replacing an Error or stringifying unknown values', async () => {
+    const cause = new Error('private original cause');
+    const original = new Error('private admission failure', { cause });
+    const project = new ProjectError('project admission failure', { cause });
+    const unknown = { marker: 'private unknown failure' };
+    const thrown: unknown[] = [original, project, unknown, 'another private failure'];
+    const calls: unknown[][] = [];
+    const { server, lines } = loggedFixture(async () => { throw thrown.shift(); });
+    server.addHook('onRequest', (request, _reply, done) => {
+      const error = vi.spyOn(request.log, 'error');
+      calls.push(error.mock.calls);
+      done();
+    });
+    const logged: { err: Error }[] = [];
+    for (let index = 0; index < 4; index++) {
+      const response = await server.inject(jsonPost({ text: 'hello' }));
+      expect(response.statusCode).toBe(500);
+      expect(response.body).not.toContain('private');
+      logged.push((calls.at(-1) as unknown[][]).at(-1)![0] as { err: Error });
+    }
+    expect(logged[0]!.err).toBe(original);
+    expect(logged[1]!.err).toBe(project);
+    expect(original.cause).toBe(cause);
+    expect(logged[2]!.err).toBeInstanceOf(Error);
+    expect(logged[2]!.err.cause).toBe(unknown);
+    expect(logged[3]!.err.cause).toBe('another private failure');
+    expect(logged[2]!.err.message).toBe(logged[3]!.err.message);
+    expect(unknown).toEqual({ marker: 'private unknown failure' });
+    expect(lines).toHaveLength(4);
   });
 
   it('streams conversation identity, ordered deltas and done on the same POST', async () => {

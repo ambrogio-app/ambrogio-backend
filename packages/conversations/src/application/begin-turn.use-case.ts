@@ -1,3 +1,4 @@
+import { ProjectError } from '../project-error.js';
 import { Turn, type Result } from '../domain/turn.js';
 import type { AdmissionRejection, ConversationWrite } from './conversation-write.js';
 import type { CurrentTime, NewIdentifier } from './turn-capabilities.js';
@@ -11,7 +12,7 @@ export type BeginTurnRejection = BeginTurnOccupied | BeginTurnConversationMissin
 export type BeginTurn = (input: BeginTurnInput) => Promise<Result<BeginTurnSuccess, BeginTurnRejection>>;
 
 function assertNever(value: never): never {
-  throw new Error('Unhandled admission rejection');
+  throw new ProjectError('Unhandled admission rejection');
 }
 
 function projectRejection(error: AdmissionRejection): BeginTurnRejection {

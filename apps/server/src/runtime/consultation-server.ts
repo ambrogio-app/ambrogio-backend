@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { ProjectError } from '@ambrogio/conversations/application/project-error';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import { loadConversationConfig } from '@ambrogio/conversations/adapters/out/conversation-config';
@@ -11,6 +12,16 @@ import { httpConfigPath, loadHttpConfig, type HttpConfig } from './http-config.j
 
 type Prepared = Awaited<ReturnType<typeof prepareConfiguredConversations>>;
 
+function normalizeError(value: unknown): Error {
+  return value instanceof Error ? value : new Error('Unknown HTTP failure', { cause: value });
+}
+
+function serializeDiagnosticError(value: unknown): Readonly<{ type: string; message: string; stack: string }> {
+  return value instanceof ProjectError
+    ? { type: value.name, message: value.message, stack: value.stack ?? '' }
+    : { type: 'Error', message: 'Unexpected HTTP failure', stack: '[redacted]' };
+}
+
 async function buildHttpServer(config: HttpConfig, prepared: Prepared,
   replyProducer?: ProduceConversationReply): Promise<Readonly<{
     server: FastifyInstance; turnIngress?: Readonly<{ stopAccepting(): Promise<void> }>;
@@ -18,7 +29,7 @@ async function buildHttpServer(config: HttpConfig, prepared: Prepared,
   const server = Fastify({
     ...(replyProducer ? { forceCloseConnections: true } : {}),
     logger: { level: 'warn', serializers: {
-      err: () => ({ type: 'Error', message: 'Unexpected HTTP failure', stack: '[redacted]' }),
+      err: serializeDiagnosticError,
     } },
     logController: new LogController({ disableRequestLogging: true,
       requestIdLogLabel: 'correlationId' }),
@@ -34,7 +45,8 @@ async function buildHttpServer(config: HttpConfig, prepared: Prepared,
       ? error.statusCode : undefined;
     const status = typeof statusCode === 'number' && statusCode >= 400 && statusCode < 500
       ? statusCode : 500;
-    if (status === 500) request.log.error({ event: 'http.unexpected_failure', err: error }, 'HTTP request failed');
+    if (status === 500) request.log.error({ event: 'http.unexpected_failure', err: normalizeError(error) },
+      'HTTP request failed');
     reply.code(status).send({ error: status === 500
       ? 'Internal server error.' : 'Invalid HTTP request.' });
   });

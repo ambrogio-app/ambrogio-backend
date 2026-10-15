@@ -1,15 +1,16 @@
+import { ProjectError } from '../../../project-error.js';
 import { Turn } from '../../../domain/turn.js';
 import type { TurnRows } from './schema.js';
 
 export function toMillis(date: Date): number {
-  if (!(date instanceof Date) || !Number.isFinite(date.getTime())) throw new Error('Invalid conversation instant');
+  if (!(date instanceof Date) || !Number.isFinite(date.getTime())) throw new ProjectError('Invalid conversation instant');
   return date.getTime();
 }
 
 export function fromMillis(value: unknown): Date {
-  if (typeof value !== 'number' || !Number.isInteger(value)) throw new Error('Invalid persisted instant');
+  if (typeof value !== 'number' || !Number.isInteger(value)) throw new ProjectError('Invalid persisted instant');
   const date = new Date(value);
-  if (!Number.isFinite(date.getTime()) || date.getTime() !== value) throw new Error('Invalid persisted instant');
+  if (!Number.isFinite(date.getTime()) || date.getTime() !== value) throw new ProjectError('Invalid persisted instant');
   return date;
 }
 
@@ -29,5 +30,5 @@ export function restoreTurn(row: TurnRows): Turn {
       if (row.answer !== null || row.error !== null) break;
       return Turn.restore({ ...base, status: 'interrupted', finishedAt: fromMillis(row.finished_at) });
   }
-  throw new Error('Invalid persisted turn state');
+  throw new ProjectError('Invalid persisted turn state');
 }

@@ -1,3 +1,4 @@
+import { ProjectError } from '../../project-error.js';
 import { Client, ClientCredentialsProvider, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 
 export type McpConnection = Readonly<{
@@ -36,7 +37,7 @@ export class McpToolClient {
       return new McpToolClient(client);
     } catch {
       try { await client.close(); } catch { /* preserve the safe connection failure */ }
-      throw new Error('MCP connection failed');
+      throw new ProjectError('MCP connection failed');
     }
   }
 
@@ -45,7 +46,7 @@ export class McpToolClient {
       const { tools } = await this.client.listTools();
       return tools.map((tool) => ({ name: tool.name, description: tool.description,
         inputSchema: tool.inputSchema as Record<string, unknown> }));
-    } catch { throw new Error('MCP tool discovery failed'); }
+    } catch { throw new ProjectError('MCP tool discovery failed'); }
   }
 
   async callTool(name: string, args: Record<string, unknown>): Promise<Readonly<{
@@ -54,7 +55,7 @@ export class McpToolClient {
     try {
       const result = await this.client.callTool({ name, arguments: args });
       return { isError: result.isError === true, content: result.content };
-    } catch { throw new Error('MCP tool invocation failed'); }
+    } catch { throw new ProjectError('MCP tool invocation failed'); }
   }
 
   async close(): Promise<void> { await this.client.close(); }

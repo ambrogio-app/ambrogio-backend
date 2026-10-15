@@ -1,6 +1,8 @@
 import Fastify from 'fastify';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { registerListRoute } from '../../../src/adapters/in/http/list-route.js';
+import { createListConversations } from '../../../src/application/list-conversations.use-case.js';
+import { ProjectError } from '../../../src/project-error.js';
 import type { ListConversations } from '../../../src/application/list-conversations.use-case.js';
 
 const servers: ReturnType<typeof Fastify>[] = [];
@@ -91,5 +93,35 @@ describe('conversation list HTTP ingress', () => {
     expect(response.headers['cache-control']).toBe('no-store');
     expect(response.json()).toEqual({ error: 'Non riesco a completare la risposta.' });
     expect(response.body).not.toContain('private database path');
+  });
+
+  it('normalizes unknown failures only at the HTTP boundary', async () => {
+    const cause = new Error('private original cause');
+    const original = new TypeError('private list bug', { cause });
+    const project = new ProjectError('project list failure', { cause });
+    const unknown = { marker: 'private unknown failure' };
+    const thrown: unknown[] = [original, project, unknown, 'another private failure'];
+    const logs: unknown[][] = [];
+    const server = fixture(createListConversations({ async page() { throw thrown.shift(); } }));
+    server.addHook('onRequest', (request, _reply, done) => {
+      const error = vi.spyOn(request.log, 'error');
+      logs.push(error.mock.calls);
+      done();
+    });
+    const logged: { err: Error }[] = [];
+    for (let index = 0; index < 4; index++) {
+      const response = await server.inject({ method: 'GET', url: '/api/conversations' });
+      expect(response.statusCode).toBe(500);
+      expect(response.body).not.toContain('private');
+      logged.push((logs.at(-1) as unknown[][]).at(-1)![0] as { err: Error });
+    }
+    expect(logged[0]!.err).toBe(original);
+    expect(logged[1]!.err).toBe(project);
+    expect(original.cause).toBe(cause);
+    expect(logged[2]!.err).toBeInstanceOf(Error);
+    expect(logged[2]!.err.cause).toBe(unknown);
+    expect(logged[3]!.err.cause).toBe('another private failure');
+    expect(logged[2]!.err.message).toBe(logged[3]!.err.message);
+    expect(unknown).toEqual({ marker: 'private unknown failure' });
   });
 });

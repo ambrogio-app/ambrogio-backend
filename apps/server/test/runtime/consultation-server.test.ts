@@ -4,6 +4,7 @@ import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { openConversationArchive } from '@ambrogio/conversations/adapters/out/sqlite/archive';
+import { ProjectError } from '@ambrogio/conversations/application/project-error';
 import { prepareConfiguredConversations } from '../../src/composition/conversations.js';
 import { buildConsultationServer, startConsultationServer } from '../../src/runtime/consultation-server.js';
 import { loadHttpConfig, type HttpConfig } from '../../src/runtime/http-config.js';
@@ -172,6 +173,11 @@ describe('consultation HTTP runtime', () => {
       output.push(String(chunk));
       return true;
     });
+    const errorOutput: string[] = [];
+    const writeError = vi.spyOn(process.stderr, 'write').mockImplementation(chunk => {
+      errorOutput.push(String(chunk));
+      return true;
+    });
     const server = await buildConsultationServer(base, prepared);
     server.get('/test-fallback', async () => { throw new Error('private diagnostic marker'); });
     const diagnostics = new Map<string, { binding: unknown; events: unknown[][] }>();
@@ -181,6 +187,12 @@ describe('consultation HTTP runtime', () => {
       done();
     });
     try {
+      const ordinary = await server.inject({ method: 'GET', url: '/api/conversations',
+        headers: { authorization: 'private authorization marker' } });
+      const expected = await server.inject({ method: 'GET', url: '/api/conversations?limit=0' });
+      const missing = await server.inject({ method: 'GET', url: '/api/conversations/private-id-marker' });
+      expect([ordinary.statusCode, expected.statusCode, missing.statusCode]).toEqual([200, 400, 404]);
+      expect(output).toEqual([]);
       await prepared.archive.close();
       const list = await server.inject({ method: 'GET', url: '/api/conversations' });
       const history = await server.inject({ method: 'GET', url: '/api/conversations/example' });
@@ -200,8 +212,15 @@ describe('consultation HTTP runtime', () => {
         expect(diagnostic?.events[0]?.[0]).toMatchObject({ event });
         expect(diagnostic?.events[0]?.[1]).toBe('HTTP request failed');
       }
-      const rows = output.flatMap(chunk => chunk.split('\n')).filter(line => line.startsWith('{'))
+      const rows = output.flatMap(chunk => chunk.split('\n')).filter(line => line.length > 0)
         .map(line => JSON.parse(line) as { event?: string; correlationId?: string; msg?: string });
+      expect(rows).toHaveLength(3);
+      expect(errorOutput).toEqual([]);
+      for (const row of rows) {
+        expect(Object.keys(row).sort()).toEqual([
+          'correlationId', 'err', 'event', 'hostname', 'level', 'msg', 'pid', 'time',
+        ]);
+      }
       expect(rows).toEqual(expect.arrayContaining([
         expect.objectContaining({ event: 'conversation_list_http_failed',
           correlationId: list.headers['x-request-id'], msg: 'HTTP request failed' }),
@@ -212,9 +231,87 @@ describe('consultation HTTP runtime', () => {
       ]));
       expect(output.join('')).not.toContain('private diagnostic marker');
       expect(output.join('')).not.toContain('driver has already been destroyed');
+      expect(output.join('')).not.toContain('private authorization marker');
+      expect(output.join('')).not.toContain('private-id-marker');
+    } finally {
+      write.mockRestore();
+      writeError.mockRestore();
+      await server.close();
+    }
+  });
+
+  it('normalizes errors at the generic HTTP fallback', async () => {
+    const files = await fixture();
+    const prepared = await prepareConfiguredConversations({ archivePath: files.archive,
+      listPageSize: 20, maxListPageSize: 100, language: 'en' }, new Date());
+    const cause = new Error('private cause');
+    const original = new TypeError('private bug', { cause });
+    original.name = 'ExternalDriverError';
+    Object.assign(original, { connectionString: 'private driver property' });
+    const sdkError = new Error('private SDK failure');
+    Object.assign(sdkError, { token: 'private SDK property' });
+    const project = new ProjectError('project diagnostic marker', { cause });
+    const unknown = { marker: 'private unknown failure' };
+    const originalProperties = Object.getOwnPropertyDescriptors(original);
+    const sdkProperties = Object.getOwnPropertyDescriptors(sdkError);
+    const causeProperties = Object.getOwnPropertyDescriptors(cause);
+    const projectProperties = Object.getOwnPropertyDescriptors(project);
+    const output: string[] = [];
+    const write = vi.spyOn(process.stdout, 'write').mockImplementation(chunk => {
+      output.push(String(chunk));
+      return true;
+    });
+    const server = await buildConsultationServer(base, prepared);
+    const logged: { err: Error; event: string }[] = [];
+    server.get('/test-project', async () => { throw project; });
+    server.get('/test-fallback', async () => { throw original; });
+    server.get('/test-sdk', async () => { throw sdkError; });
+    server.get('/test-unknown', async () => { throw unknown; });
+    server.get('/test-string', async () => { throw 'another private failure'; });
+    server.addHook('onRequest', (request, _reply, done) => {
+      const logError = request.log.error.bind(request.log);
+      const error = vi.spyOn(request.log, 'error');
+      error.mockImplementation((value: unknown, message?: string) => {
+        logged.push(value as { err: Error; event: string });
+        logError(value, message);
+      });
+      done();
+    });
+    try {
+      for (const url of ['/test-project', '/test-fallback', '/test-sdk', '/test-unknown', '/test-string']) {
+        const response = await server.inject({ method: 'GET', url });
+        expect(response.statusCode).toBe(500);
+        expect(response.json()).toEqual({ error: 'Internal server error.' });
+      }
+      expect(logged.map(item => item.event)).toEqual([
+        'http.unexpected_failure', 'http.unexpected_failure',
+        'http.unexpected_failure', 'http.unexpected_failure', 'http.unexpected_failure',
+      ]);
+      expect(logged[0]!.err).toBe(project);
+      expect(logged[1]!.err).toBe(original);
+      expect(logged[2]!.err).toBe(sdkError);
+      expect(original.cause).toBe(cause);
+      expect(logged[3]!.err).toBeInstanceOf(Error);
+      expect(logged[3]!.err.cause).toBe(unknown);
+      expect(logged[4]!.err.cause).toBe('another private failure');
+      expect(logged[3]!.err.message).toBe(logged[4]!.err.message);
+      expect(Object.getOwnPropertyDescriptors(project)).toEqual(projectProperties);
+      expect(Object.getOwnPropertyDescriptors(original)).toEqual(originalProperties);
+      expect(Object.getOwnPropertyDescriptors(sdkError)).toEqual(sdkProperties);
+      expect(Object.getOwnPropertyDescriptors(cause)).toEqual(causeProperties);
+      expect(unknown).toEqual({ marker: 'private unknown failure' });
+      const rows = output.flatMap(chunk => chunk.split('\n')).filter(Boolean)
+        .map(line => JSON.parse(line) as { err: Record<string, unknown> });
+      expect(rows).toHaveLength(5);
+      expect(rows[0]!.err).toEqual({ type: 'ProjectError', message: project.message, stack: project.stack });
+      for (const row of rows.slice(1)) {
+        expect(row.err).toEqual({ type: 'Error', message: 'Unexpected HTTP failure', stack: '[redacted]' });
+      }
+      expect(output.join('')).not.toMatch(/private bug|private cause|private driver property|private SDK failure|private SDK property|private unknown failure|another private failure/);
     } finally {
       write.mockRestore();
       await server.close();
+      await prepared.archive.close();
     }
   });
 

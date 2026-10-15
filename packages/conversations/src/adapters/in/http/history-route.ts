@@ -12,6 +12,10 @@ function publicError(reply: FastifyReply, status: number, message: string): Fast
   return reply.code(status).header('Cache-Control', 'no-store').type('application/json').send({ error: message });
 }
 
+function normalizeError(value: unknown): Error {
+  return value instanceof Error ? value : new Error('Unknown conversation history failure', { cause: value });
+}
+
 /** Serve one persisted conversation snapshot for a manual chat reopening. */
 export function registerHistoryRoute(server: FastifyInstance, options: Readonly<{
   getConversation: GetConversation;
@@ -24,7 +28,8 @@ export function registerHistoryRoute(server: FastifyInstance, options: Readonly<
       return reply.code(200).header('Cache-Control', 'no-store')
         .type('application/json').send(result.value);
     } catch (error) {
-      request.log.error({ event: 'conversation_history_http_failed', err: error }, 'HTTP request failed');
+      request.log.error({ event: 'conversation_history_http_failed', err: normalizeError(error) },
+        'HTTP request failed');
       return publicError(reply, 500, messages.failure[options.language]);
     }
   });

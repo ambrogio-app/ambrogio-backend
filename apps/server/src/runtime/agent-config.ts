@@ -1,3 +1,4 @@
+import { ProjectError } from '@ambrogio/conversations/application/project-error';
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -47,7 +48,7 @@ function parseAuth(value: unknown): McpAuth {
       clientSecret: fields.clientSecret, issuer: fields.issuer,
       ...(fields.scope === undefined ? {} : { scope: fields.scope as string }) };
   }
-  throw new Error('Invalid agent MCP authentication configuration');
+  throw new ProjectError('Invalid agent MCP authentication configuration');
 }
 
 function parseAgent(id: string, value: unknown): AgentConfig {
@@ -56,7 +57,7 @@ function parseAgent(id: string, value: unknown): AgentConfig {
   if (!fields || !nonempty(fields.instructions) || !llm || llm.provider !== 'mistral'
     || !nonempty(llm.model) || !nonempty(llm.apiKey)
     || (llm.options !== undefined && !record(llm.options))) {
-    throw new Error(`Invalid agent configuration: ${id}`);
+    throw new ProjectError(`Invalid agent configuration: ${id}`);
   }
   const base: AgentConfig = { id, instructions: fields.instructions, llm: {
     provider: 'mistral', model: llm.model, apiKey: llm.apiKey,
@@ -64,17 +65,17 @@ function parseAgent(id: string, value: unknown): AgentConfig {
   } };
   if (id === 'orchestrator') {
     if (fields.mcp !== undefined || fields.description !== undefined) {
-      throw new Error('Orchestrator must not configure MCP or description');
+      throw new ProjectError('Orchestrator must not configure MCP or description');
     }
     return base;
   }
-  if (!nonempty(fields.description)) throw new Error(`Invalid agent description: ${id}`);
+  if (!nonempty(fields.description)) throw new ProjectError(`Invalid agent description: ${id}`);
   if (!Number.isSafeInteger(fields.maxToolCalls) || (fields.maxToolCalls as number) < 1) {
-    throw new Error(`Invalid agent tool call limit: ${id}`);
+    throw new ProjectError(`Invalid agent tool call limit: ${id}`);
   }
   const mcp = record(fields.mcp);
   if (!mcp || !httpUrl(mcp.url) || mcp.transport !== undefined) {
-    throw new Error(`Invalid agent MCP configuration: ${id}`);
+    throw new ProjectError(`Invalid agent MCP configuration: ${id}`);
   }
   return { ...base, description: fields.description, maxToolCalls: fields.maxToolCalls as number,
     mcp: { url: mcp.url,
@@ -87,16 +88,16 @@ export async function loadAgentConfigs(directory = '/etc/ambrogio/agents'): Prom
 }>> {
   let filenames: string[];
   try { filenames = await readdir(directory); }
-  catch { throw new Error('Agent configuration directory unavailable'); }
-  if (!filenames.includes('orchestrator.json')) throw new Error('Missing orchestrator configuration');
+  catch { throw new ProjectError('Agent configuration directory unavailable'); }
+  if (!filenames.includes('orchestrator.json')) throw new ProjectError('Missing orchestrator configuration');
   const specialistNames = filenames.filter((name) => name.endsWith('.json') && name !== 'orchestrator.json');
   for (const filename of specialistNames) {
-    if (!agentId.test(filename.slice(0, -5))) throw new Error('Invalid agent configuration filename');
+    if (!agentId.test(filename.slice(0, -5))) throw new ProjectError('Invalid agent configuration filename');
   }
   const load = async (filename: string): Promise<AgentConfig> => {
     const id = filename.slice(0, -5);
     try { return parseAgent(id, JSON.parse(await readFile(join(directory, filename), 'utf8'))); }
-    catch { throw new Error(`Invalid agent configuration: ${id}`); }
+    catch { throw new ProjectError(`Invalid agent configuration: ${id}`); }
   };
   const orchestrator = await load('orchestrator.json');
   const specialists = await Promise.all(specialistNames.sort().map(load));

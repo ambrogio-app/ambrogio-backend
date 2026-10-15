@@ -153,6 +153,7 @@ Quando il logger del server serializza il campo `err` di un log diagnostico defi
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -401,6 +402,7 @@ Quando il runtime del server HTTP emette un evento diagnostico tecnico, deve scr
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -587,6 +589,10 @@ Quando il confine tecnico HTTP del server gestisce definitivamente un guasto ina
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [history-route.ts](../../packages/conversations/src/adapters/in/http/history-route.ts)
+  * satisfiedBy: [list-route.ts](../../packages/conversations/src/adapters/in/http/list-route.ts)
+  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -598,6 +604,7 @@ Quando il confine HTTP del server chiama il logger per un log diagnostico defini
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -655,6 +662,8 @@ Quando un guasto tecnico inatteso o un bug si verifica nel server, il componente
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [get-conversation.use-case.ts](../../packages/conversations/src/application/get-conversation.use-case.ts)
+  * satisfiedBy: [list-conversations.use-case.ts](../../packages/conversations/src/application/list-conversations.use-case.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -688,6 +697,8 @@ Quando il logger del server emette la riga JSON di un log diagnostico definitivo
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [project-error.ts](../../packages/conversations/src/project-error.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 

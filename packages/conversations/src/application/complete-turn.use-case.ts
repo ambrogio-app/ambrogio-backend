@@ -1,3 +1,4 @@
+import { ProjectError } from '../project-error.js';
 import type { Result } from '../domain/turn.js';
 import type { CompleteTurn, ConversationWrite, TurnNotActive } from './conversation-write.js';
 import type { CurrentTime } from './turn-capabilities.js';
@@ -19,7 +20,7 @@ export function createCompleteTurn(dependencies: Readonly<{
     const result = await dependencies.archive.complete({ turnId, outcome, finishedAt: dependencies.clock.now() });
     if (!result.ok) return { ok: false, error: projectRejection(result.error) };
     const status = result.value.status;
-    if (status === 'pending') throw new Error('Archive reported an unfinished turn');
+    if (status === 'pending') throw new ProjectError('Archive reported an unfinished turn');
     return { ok: true, value: { turnId, status } };
   };
 }

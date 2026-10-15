@@ -1,3 +1,4 @@
+import { ProjectError } from '../../project-error.js';
 import { Mistral } from '@mistralai/mistralai';
 import type { ConversationHistory } from '../../application/conversation-history-read.js';
 import type { ProduceConversationReply } from '../../application/produce-conversation-reply.js';
@@ -28,9 +29,9 @@ function streamFor(settings: MistralAgentSettings, stream?: FunctionStream): Fun
 
 function parseArguments(value: string): Record<string, unknown> {
   let parsed: unknown;
-  try { parsed = JSON.parse(value); } catch { throw new Error('Invalid model tool arguments'); }
+  try { parsed = JSON.parse(value); } catch { throw new ProjectError('Invalid model tool arguments'); }
   if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error('Invalid model tool arguments');
+    throw new ProjectError('Invalid model tool arguments');
   }
   return parsed as Record<string, unknown>;
 }
@@ -55,9 +56,9 @@ async function* completion(stream: FunctionStream, request: StreamRequest): Asyn
       }
     }
   }
-  if (calls.size && emittedText) throw new Error('Mixed model text and tool calls');
+  if (calls.size && emittedText) throw new ProjectError('Mixed model text and tool calls');
   return [...calls].sort(([a], [b]) => a - b).map(([index, value]) => {
-    if (!value.id || !value.name) throw new Error('Incomplete model tool call');
+    if (!value.id || !value.name) throw new ProjectError('Incomplete model tool call');
     return { id: value.id, index, function: { name: value.name, arguments: value.args } };
   });
 }
@@ -79,7 +80,7 @@ export class MistralToolAgentReply implements ProduceConversationReply {
     private readonly maxToolCalls: number, stream?: FunctionStream) {
     if (!settings.instructions.trim() || !settings.model.trim() || !settings.apiKey.trim()
       || !Number.isSafeInteger(maxToolCalls) || maxToolCalls < 1) {
-      throw new Error('Invalid Mistral tool agent configuration');
+      throw new ProjectError('Invalid Mistral tool agent configuration');
     }
     this.requestOptions = mistralOptions(settings.options);
     this.stream = streamFor(settings, stream);
@@ -101,10 +102,10 @@ export class MistralToolAgentReply implements ProduceConversationReply {
       while (!step.done) { yield step.value; step = await response.next(); }
       const calls = step.value;
       if (!calls.length) return;
-      if (used + calls.length > this.maxToolCalls) throw new Error('MCP tool call limit exceeded');
+      if (used + calls.length > this.maxToolCalls) throw new ProjectError('MCP tool call limit exceeded');
       const requested = calls.map((call) => {
         const tool = this.names.get(call.function.name);
-        if (!tool) throw new Error('Unknown MCP tool selected by model');
+        if (!tool) throw new ProjectError('Unknown MCP tool selected by model');
         return { call, tool, args: parseArguments(call.function.arguments) };
       });
       messages.push({ role: 'assistant', content: null, toolCalls: calls });
@@ -131,7 +132,7 @@ export class MistralOrchestratorReply implements ProduceConversationReply {
   constructor(private readonly settings: MistralAgentSettings,
     specialists: readonly DelegatedAgent[], stream?: FunctionStream) {
     if (!settings.instructions.trim() || !settings.model.trim() || !settings.apiKey.trim()) {
-      throw new Error('Invalid Mistral orchestrator configuration');
+      throw new ProjectError('Invalid Mistral orchestrator configuration');
     }
     this.requestOptions = mistralOptions(settings.options);
     this.stream = streamFor(settings, stream);
@@ -152,14 +153,14 @@ export class MistralOrchestratorReply implements ProduceConversationReply {
     while (!step.done) { yield step.value; step = await response.next(); }
     const calls = step.value;
     if (!calls.length) return;
-    if (calls.length !== 1) throw new Error('Multiple agent delegations selected');
+    if (calls.length !== 1) throw new ProjectError('Multiple agent delegations selected');
     const call = calls[0]!;
     const agent = this.agents.get(call.function.name);
-    if (!agent) throw new Error('Unknown agent selected by model');
+    if (!agent) throw new ProjectError('Unknown agent selected by model');
     const args = parseArguments(call.function.arguments);
     if (typeof args.task !== 'string' || !args.task.trim()
       || Object.keys(args).some((key) => key !== 'task')) {
-      throw new Error('Invalid agent delegation task');
+      throw new ProjectError('Invalid agent delegation task');
     }
     yield* agent.reply.produce(history, args.task);
   }

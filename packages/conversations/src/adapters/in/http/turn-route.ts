@@ -1,3 +1,4 @@
+import { ProjectError } from '../../../project-error.js';
 import { PassThrough } from 'node:stream';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { ExchangeTurn } from '../../../application/exchange-turn.use-case.js';
@@ -136,7 +137,7 @@ export function registerTurnRoute(server: FastifyInstance, options: Readonly<{
       if (first === 'finished') {
         const result = await execution;
         stream.destroy();
-        if (result.ok) throw new Error('Conversation turn finished without an admission notice');
+        if (result.ok) throw new ProjectError('Conversation turn finished without an admission notice');
         switch (result.error.kind) {
           case 'occupied': return publicError(reply, 409, message('occupied'));
           case 'conversation_not_found': return publicError(reply, 404, message('missing'));
@@ -148,7 +149,7 @@ export function registerTurnRoute(server: FastifyInstance, options: Readonly<{
         .header('Cache-Control', 'no-store');
       reply.send(stream);
       void execution.then(async result => {
-        if (!result.ok) throw new Error('Admitted turn was later rejected');
+        if (!result.ok) throw new ProjectError('Admitted turn was later rejected');
         if (result.value.outcome === 'answered') await deliver({ kind: 'done' });
         else if (result.value.outcome === 'failed') {
           await deliver({ kind: 'error', error: result.value.error });

@@ -1,3 +1,4 @@
+import { ProjectError } from '@ambrogio/conversations/application/project-error';
 import { loadConversationConfig } from '@ambrogio/conversations/adapters/out/conversation-config';
 import type { ConversationConfig } from '@ambrogio/conversations/adapters/out/conversation-config';
 import { SystemCurrentTime } from '@ambrogio/conversations/adapters/out/system-current-time';
@@ -30,7 +31,7 @@ export async function prepareConversations(
 
 /** Prepare the configured archive without reading the component JSON again. */
 export async function prepareConfiguredConversations(config: ConversationConfig, interruptedAt: Date) {
-  if (!config.archivePath?.trim()) throw new Error('Missing conversation archive path');
+  if (!config.archivePath?.trim()) throw new ProjectError('Missing conversation archive path');
   return openPreparedConversations(config.archivePath, interruptedAt, config);
 }
 

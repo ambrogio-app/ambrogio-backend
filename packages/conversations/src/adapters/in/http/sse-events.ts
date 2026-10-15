@@ -1,3 +1,4 @@
+import { ProjectError } from '../../../project-error.js';
 export type TurnSseEvent =
   | Readonly<{ kind: 'conversation'; conversationId: string }>
   | Readonly<{ kind: 'delta'; text: string }>
@@ -16,5 +17,5 @@ export function encodeTurnSseEvent(event: TurnSseEvent): string {
 }
 
 function assertNever(_value: never): never {
-  throw new Error('Unexpected SSE event');
+  throw new ProjectError('Unexpected SSE event');
 }

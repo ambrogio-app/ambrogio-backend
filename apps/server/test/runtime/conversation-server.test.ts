@@ -3,8 +3,10 @@ import { createServer as createHttpServer } from 'node:http';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { afterEach, expect, test, vi } from 'vitest';
 import { openConversationArchive } from '@ambrogio/conversations/adapters/out/sqlite/archive';
+import { conversationMigrations } from '@ambrogio/conversations/adapters/out/sqlite/migrations';
 import { SqliteConversationHistoryRead } from '@ambrogio/conversations/adapters/out/sqlite/history-read';
 import { SqliteConversationWrite } from '@ambrogio/conversations/adapters/out/sqlite/write';
 import { McpToolClient } from '@ambrogio/conversations/adapters/out/mcp-tool-client';
@@ -35,6 +37,20 @@ async function freePort(): Promise<number> {
   if (!address || typeof address === 'string') throw new Error('No test port');
   await new Promise<void>((resolve) => server.close(() => resolve()));
   return address.port;
+}
+
+async function downgradeArchiveToInitial(filename: string) {
+  const archive = await openConversationArchive(filename, new Date());
+  try {
+    for (const name of ['005_remove_turn_owner', '004_turn_owner',
+      '003_list_order', '002_ordered_turns'] as const) {
+      await conversationMigrations[name].down(archive.db);
+    }
+  } finally { await archive.close(); }
+  const sqlite = new DatabaseSync(filename);
+  try {
+    sqlite.prepare("delete from kysely_migration where name <> '001_initial'").run();
+  } finally { sqlite.close(); }
 }
 
 function gate() {
@@ -502,6 +518,36 @@ test.each([
   }
 });
 
+test('does not emit SSE done when the answer transaction cannot commit', async () => {
+  const files = await fixture();
+  const prepared = await prepareConfiguredConversations({ archivePath: files.archive,
+    listPageSize: 20, maxListPageSize: 100, language: 'en' }, new Date());
+  const sqlite = new DatabaseSync(files.archive);
+  try {
+    sqlite.exec("create trigger reject_answer_release before update on installation when new.active_turn_id is null begin select raise(abort, 'injected'); end");
+  } finally { sqlite.close(); }
+  const built = await buildConversationServer({ host: '127.0.0.1', port: 3000,
+    allowedOrigins: [], publicHttps: false }, prepared,
+  { async *produce() { yield 'partial answer'; } });
+  try {
+    const response = await built.server.inject({ method: 'POST', url: '/api/conversations/turns',
+      headers: { 'content-type': 'application/json' }, payload: { text: 'question' } });
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('event: delta');
+    expect(response.body).not.toContain('event: done');
+    expect(await prepared.archive.db.selectFrom('turns')
+      .select(['status', 'answer', 'finished_at']).executeTakeFirst())
+      .toEqual({ status: 'pending', answer: null, finished_at: null });
+    const pending = await prepared.archive.db.selectFrom('turns').select('id').executeTakeFirstOrThrow();
+    expect(await prepared.archive.db.selectFrom('installation')
+      .select('active_turn_id').executeTakeFirst())
+      .toEqual({ active_turn_id: pending.id });
+  } finally {
+    await built.server.close();
+    await prepared.archive.close();
+  }
+});
+
 test('invalid agent files prevent the conversation listener from starting', async () => {
   const files = await fixture();
   const port = await freePort();
@@ -511,6 +557,69 @@ test('invalid agent files prevent the conversation listener from starting', asyn
   await expect(startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
     AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory))
     .rejects.toThrow('Invalid agent configuration: orchestrator');
+  const probe = createServer();
+  await new Promise<void>((resolve, reject) => {
+    probe.once('error', reject);
+    probe.listen(port, '127.0.0.1', resolve);
+  });
+  await new Promise<void>((resolve) => probe.close(() => resolve()));
+});
+
+test('migrates an existing archive before listening and preserves its history', async () => {
+  const files = await fixture();
+  const port = await freePort();
+  await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
+  await writeFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
+  const priorConversationId = 'dc89cb5e-e695-43cc-8a04-917316771ea4';
+  const priorTurnId = '79e437a8-c11a-48ba-b476-e4fd4712ea58';
+  const archive = await openConversationArchive(files.archive, new Date());
+  try {
+    await archive.db.insertInto('conversations').values({
+      id: priorConversationId, created_at: 1234, last_activity_at: 1234,
+    }).execute();
+    await archive.db.insertInto('turns').values({ id: priorTurnId, conversation_id: priorConversationId,
+      text: 'old question', accepted_at: 1234, status: 'answered', answer: 'old answer',
+      error: null, finished_at: 2345, ordinal: 1,
+    }).execute();
+  } finally { await archive.close(); }
+  await downgradeArchiveToInitial(files.archive);
+
+  const runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
+    AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory,
+  async () => ({ orchestrator: { async *produce() { yield 'new answer'; } }, async close() {} }));
+  try {
+    const origin = `http://127.0.0.1:${port}`;
+    const history = await fetch(`${origin}/api/conversations/${priorConversationId}`);
+    expect(history.status).toBe(200);
+    expect((await history.json() as { turns: Array<{ id: string; text: string; answer: string }> }).turns)
+      .toMatchObject([{ id: priorTurnId, text: 'old question', answer: 'old answer' }]);
+    const next = await fetch(`${origin}/api/conversations/turns`, { method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ conversationId: priorConversationId, text: 'new question' }),
+    });
+    expect(next.status).toBe(200);
+    expect(await next.text()).toContain('event: done');
+    const updated = await fetch(`${origin}/api/conversations/${priorConversationId}`);
+    expect((await updated.json() as { turns: Array<{ text: string }> }).turns.map(turn => turn.text))
+      .toEqual(['old question', 'new question']);
+  } finally { await runtime.close(); }
+});
+
+test('a failed archive migration prevents the conversation listener', async () => {
+  const files = await fixture();
+  const port = await freePort();
+  await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
+  await writeFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
+  await downgradeArchiveToInitial(files.archive);
+  const sqlite = new DatabaseSync(files.archive);
+  sqlite.exec('alter table turns add column ordinal integer');
+  sqlite.close();
+  let agentClosed = false;
+  await expect(startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
+    AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory,
+  async () => ({ orchestrator: { async *produce() { yield 'unused'; } },
+    async close() { agentClosed = true; } }))).rejects.toThrow();
+  expect(agentClosed).toBe(true);
   const probe = createServer();
   await new Promise<void>((resolve, reject) => {
     probe.once('error', reject);

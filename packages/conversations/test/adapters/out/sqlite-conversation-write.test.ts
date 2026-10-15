@@ -99,6 +99,9 @@ describe('SQLite conversation writer', () => {
     await expect(writer.admit({ conversationId: conversationA, createConversation: true, turn: accepted(turnA, 1234) }))
       .rejects.toThrow();
     expect(await db.selectFrom('conversations').selectAll().execute()).toHaveLength(0);
+    expect(await db.selectFrom('turns').selectAll().execute()).toHaveLength(0);
+    expect(await db.selectFrom('installation').select('active_turn_id').executeTakeFirst())
+      .toEqual({ active_turn_id: null });
     await sql.raw('drop trigger reject_turn').execute(db);
     await writer.admit({ conversationId: conversationA, createConversation: true, turn: accepted(turnA, 1234) });
     await sql.raw("create trigger reject_release before update on installation when new.active_turn_id is null begin select raise(abort, 'injected'); end").execute(db);
@@ -115,6 +118,32 @@ describe('SQLite conversation writer', () => {
       .toEqual({ ok: false, error: { kind: 'turn_not_active' } });
     expect(await db.selectFrom('turns').select('status').where('id', '=', turnA).executeTakeFirst())
       .toEqual({ status: 'interrupted' });
+  });
+
+  it('keeps the turn pending and occupied when releasing after an answer fails', async () => {
+    const db = open();
+    await migrateConversationArchive(db);
+    const writer = new SqliteConversationWrite(db);
+    expect(await writer.admit({ conversationId: conversationA, createConversation: true,
+      turn: accepted(turnA, 1234) })).toMatchObject({ ok: true });
+    await sql.raw("create trigger reject_answer_release before update on installation when new.active_turn_id is null begin select raise(abort, 'injected'); end").execute(db);
+    await expect(writer.complete({ turnId: turnA,
+      outcome: { kind: 'answer', text: 'risposta' }, finishedAt: new Date(2345) }))
+      .rejects.toThrow();
+    expect(await db.selectFrom('turns').select(['status', 'answer', 'finished_at'])
+      .where('id', '=', turnA).executeTakeFirst())
+      .toEqual({ status: 'pending', answer: null, finished_at: null });
+    expect(await db.selectFrom('installation').select('active_turn_id').executeTakeFirst())
+      .toEqual({ active_turn_id: turnA });
+    await sql.raw('drop trigger reject_answer_release').execute(db);
+    expect(await writer.complete({ turnId: turnA,
+      outcome: { kind: 'answer', text: 'risposta' }, finishedAt: new Date(2345) }))
+      .toMatchObject({ ok: true, value: { status: 'answered', answer: 'risposta' } });
+    expect(await db.selectFrom('turns').select(['status', 'answer', 'finished_at'])
+      .where('id', '=', turnA).executeTakeFirst())
+      .toEqual({ status: 'answered', answer: 'risposta', finished_at: 2345 });
+    expect(await db.selectFrom('installation').select('active_turn_id').executeTakeFirst())
+      .toEqual({ active_turn_id: null });
   });
 
   it('admits at most one turn across separate SQLite connections', async () => {

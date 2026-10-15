@@ -401,6 +401,7 @@ La prova passa se ogni richiesta riceve un `correlationId` UUID v4 distinto, tut
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
+  * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
   * verify: [Identificativo di correlazione delle richieste HTTP](../Requirements/ServerFoundation.md#identificativo-di-correlazione-delle-richieste-http)
   * verify: [Identificativo di richiesta nelle risposte HTTP](../Requirements/ServerFoundation.md#identificativo-di-richiesta-nelle-risposte-http)
 ---
@@ -693,6 +694,7 @@ La prova passa se `@fastify/helmet` è registrato globalmente e le tre risposte 
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
   * verify: [Header di sicurezza sulle risposte HTTP](../Requirements/ServerFoundation.md#header-di-sicurezza-sulle-risposte-http)
 ---
 
@@ -784,6 +786,7 @@ La prova passa se HSTS è assente quando la configurazione pubblica è HTTP o no
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
   * verify: [HSTS legato all'HTTPS pubblico](../Requirements/ServerFoundation.md#hsts-legato-allhttps-pubblico)
 ---
 
@@ -799,6 +802,7 @@ La prova passa se il processo ascolta solo all'indirizzo e alla porta espliciti 
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
   * verify: [Configurazione esplicita dell'ascolto HTTP](../Requirements/ServerFoundation.md#configurazione-esplicita-dellascolto-http)
 ---
 
@@ -814,5 +818,7 @@ La prova passa se, senza elenco, nessuna risposta autorizza CORS; con l'elenco, 
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
   * verify: [Origini CORS esplicite dell'API HTTP](../Requirements/ServerFoundation.md#origini-cors-esplicite-dellapi-http)
 ---
+

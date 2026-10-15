@@ -1,16 +1,5 @@
 # Elements
 
-### Ammissione del primo turno CLI
-
-La CLI considera valido un testo che, eliminati gli spazi iniziali e finali per la sola verifica, contiene almeno un carattere; il testo accettato resta quello originale. Una riga vuota o composta solo da spazi viene ignorata in silenzio e la CLI torna a chiedere input, senza invocare il caso d'uso né modificare l'archivio. L'avvio della CLI e un turno valido rifiutato perché l'installazione è occupata non creano né conservano una conversazione. La prima ammissione crea la conversazione e conserva atomicamente il turno iniziale; i turni successivi ammessi nella stessa esecuzione usano tale conversazione. Se l'esecuzione termina senza turni ammessi, l'archivio non contiene una conversazione vuota attribuita a essa.
-
-#### Metadata
-  * type: behavior
-
-#### Relations
-  * define: [Creazione della conversazione CLI al primo turno ammesso](../Requirements/FamilyConversation.md#creazione-della-conversazione-cli-al-primo-turno-ammesso)
----
-
 ### Archivio SQLite con Kysely
 
 Le conversazioni e i loro scambi testuali sono conservati in un database SQLite dell'installazione. Le operazioni applicative di lettura e scrittura dell'archivio usano Kysely. La scelta riguarda l'archivio delle conversazioni; non prescrive lo stack degli altri componenti del monorepo.
@@ -44,20 +33,9 @@ Il client che riapre una conversazione mentre un turno testuale è in corso apre
   * define: [Flusso degli aggiornamenti del turno riaperto](../Requirements/FamilyConversation.md#flusso-degli-aggiornamenti-del-turno-riaperto)
 ---
 
-### Ciclo della sessione CLI interattiva
-
-L'esecuzione CLI presenta un ingresso testuale per il primo turno senza creare ancora una conversazione. Se il primo turno valido viene rifiutato perché l'installazione è occupata, la CLI comunica il rifiuto secondo il profilo testuale degli errori, resta pronta a ricevere un nuovo input e non crea una conversazione; non conserva il turno per dopo e non lo riprova automaticamente. Dopo un turno ammesso, attende la conservazione del suo esito e, quando l'installazione è nuovamente disponibile, consente un nuovo turno nella stessa conversazione. Questo vale anche quando l'esito del turno è un errore, purché la CLI e l'archivio restino operativi; il turno fallito non viene ripetuto automaticamente. Durante il turno attivo la CLI non presenta un ingresso per nuovi turni e non acquisisce input da elaborare più tardi; una richiesta concorrente che raggiunga comunque il caso d'uso è rifiutata secondo la regola comune dell'installazione. La sessione prosegue con turni sequenziali fino alla chiusura richiesta dalla persona; la chiusura non cancella la conversazione già conservata. La forma del comando di uscita resta da definire nel contratto pubblico CLI.
-
-#### Metadata
-  * type: behavior
-
-#### Relations
-  * define: [Sessione conversazionale interattiva nella CLI](../Requirements/FamilyConversation.md#sessione-conversazionale-interattiva-nella-cli)
----
-
 ### Ciclo di vita della risorsa SQLite conversazionale
 
-Per ciascun processo che usa l'archivio delle conversazioni, la composition root costruisce e possiede una risorsa SQLite/Kysely condivisa dagli adapter interessati. Gli adapter ricevono l'accesso necessario per le proprie operazioni e non ne controllano la chiusura; Domain e Application non ricevono handle tecnici SQLite o Kysely. Prima di abilitare il lavoro che dipende dall'archivio, il proprietario ne verifica l'apertura e completa le migrazioni richieste. Se la preparazione fallisce, chiude la risorsa già creata. Al termine del processo, la chiude dopo il completamento o l'interruzione delle operazioni che la usano; la CLI la chiude anche quando il comando termina con errore. Processi distinti possiedono risorse distinte che accedono allo stesso archivio dell'installazione. Non si prescrive un pool PostgreSQL né un numero di connessioni fisiche SQLite.
+La composition root del server costruisce e possiede una risorsa SQLite/Kysely condivisa dagli adapter interessati. Gli adapter ricevono l'accesso necessario per le proprie operazioni e non ne controllano la chiusura; Domain e Application non ricevono handle tecnici SQLite o Kysely. Prima di abilitare il lavoro che dipende dall'archivio, il proprietario ne verifica l'apertura e completa le migrazioni richieste. Se la preparazione fallisce, chiude la risorsa già creata. Al termine del processo, la chiude dopo il completamento o l'interruzione delle operazioni che la usano. Non si prescrive un pool PostgreSQL né un numero di connessioni fisiche SQLite.
 
 #### Metadata
   * type: specification
@@ -66,20 +44,9 @@ Per ciascun processo che usa l'archivio delle conversazioni, la composition root
   * define: [Proprietà della risorsa SQLite conversazionale](../Requirements/FamilyConversation.md#proprietà-della-risorsa-sqlite-conversazionale)
 ---
 
-### Classificazione dei fallimenti di avvio CLI
-
-Un argomento mancante, sconosciuto o non valido secondo il contratto del comando è un errore d'uso: la CLI non invoca il caso d'uso conversazionale, comunica l'errore pubblico e termina con codice 2. Una configurazione richiesta assente o non valida impedisce l'avvio e produce un messaggio pubblico specifico che indica il problema di configurazione, con codice 1. Un guasto tecnico inatteso durante l'avvio produce un messaggio pubblico generico, con codice 1; il dettaglio tecnico resta nella diagnostica e non è copiato nel messaggio. Se sono state aperte risorse prima del fallimento, la CLI ne completa la chiusura prima di terminare. I messaggi pubblici seguono il profilo testuale degli errori CLI.
-
-#### Metadata
-  * type: specification
-
-#### Relations
-  * define: [Esito pubblico dell'avvio CLI fallito](../Requirements/FamilyConversation.md#esito-pubblico-dellavvio-cli-fallito)
----
-
 ### Configurazione facoltativa dell'interazione vocale
 
-Un'installazione può non abilitare l'ingresso vocale. In tal caso la configurazione richiesta soltanto dai componenti vocali può essere assente e la composition root non costruisce né avvia tali componenti. La chat testuale HTTP e la CLI restano utilizzabili con le rispettive dipendenze. Quando la voce è abilitata, i suoi componenti sono configurati e avviati secondo i requisiti dell'interazione vocale.
+Un'installazione può non abilitare l'ingresso vocale. In tal caso la configurazione richiesta soltanto dai componenti vocali può essere assente e la composition root non costruisce né avvia tali componenti. La chat testuale HTTP resta utilizzabile con le proprie dipendenze. Quando la voce è abilitata, i suoi componenti sono configurati e avviati secondo i requisiti dell'interazione vocale.
 
 #### Metadata
   * type: specification
@@ -132,17 +99,6 @@ La richiesta HTTP POST della chat testuale usa `Content-Type: application/json` 
   * define: [Invio HTTP del turno della chat testuale](../Requirements/FamilyConversation.md#invio-http-del-turno-della-chat-testuale)
 ---
 
-### Errore CLI dopo testo parziale
-
-Se il turno termina con errore dopo che la CLI ha già mostrato frammenti di risposta, i frammenti restano visibili su `stdout`. La CLI separa dal testo parziale una segnalazione pubblica leggibile su `stderr` che indica esplicitamente il fallimento del turno e che il testo precedente è incompleto; non prova a cancellare o riscrivere l'output già emesso. Il messaggio non espone dettagli tecnici del guasto e non usa JSON. Lo storico conserva l'esito di errore del turno e il relativo messaggio pubblico, senza considerare i frammenti una risposta completata.
-
-#### Metadata
-  * type: input-output
-
-#### Relations
-  * define: [Segnalazione dell'errore dopo risposta CLI parziale](../Requirements/FamilyConversation.md#segnalazione-dellerrore-dopo-risposta-cli-parziale)
----
-
 ### Esclusione dell'audio persistente
 
 L'audio acquisito dalla famiglia e quello generato per la risposta possono essere trattati durante l'interazione, ma non fanno parte dello stato persistente della conversazione. Nessuna registrazione audio del turno o della risposta viene conservata.
@@ -152,28 +108,6 @@ L'audio acquisito dalla famiglia e quello generato per la risposta possono esser
 
 #### Relations
   * define: [Conservazione solo testuale della conversazione](../Requirements/FamilyConversation.md#conservazione-solo-testuale-della-conversazione)
----
-
-### Esito della chiusura normale della CLI
-
-Un errore conclusivo di un singolo turno è comunicato durante la sessione e resta registrato nello storico; non determina retroattivamente il codice di uscita dell'intera esecuzione. Quando la persona chiude volontariamente una sessione funzionante, anche dopo uno o più turni falliti, il processo completa la chiusura delle risorse e termina con codice 0. Un guasto che impedisce alla CLI o all'archivio di proseguire non costituisce una chiusura normale; il suo esito pubblico è definito separatamente.
-
-#### Metadata
-  * type: specification
-
-#### Relations
-  * define: [Codice di uscita della sessione CLI chiusa normalmente](../Requirements/FamilyConversation.md#codice-di-uscita-della-sessione-cli-chiusa-normalmente)
----
-
-### Esito della sessione CLI resa inutilizzabile
-
-Un errore del singolo turno non rende di per sé inutilizzabile la sessione: se CLI e archivio restano operativi, vale la prosecuzione nella stessa conversazione e la successiva chiusura normale può terminare con codice 0. Se invece un guasto tecnico impedisce alla CLI di ricevere altri turni o di usare correttamente l'archivio, la sessione non presenta più un ingresso, segnala un errore pubblico testuale su `stderr` senza esporre il dettaglio tecnico, prova a chiudere le risorse possedute e termina con codice 1. Non conserva input per una futura elaborazione e non ripete il turno. Un turno già ammesso segue le regole esistenti di conservazione dell'esito o di riconoscimento dell'interruzione al riavvio se l'archivio non permette di conservarlo prima dell'uscita; nessuna risposta parziale diventa un successo.
-
-#### Metadata
-  * type: behavior
-
-#### Relations
-  * define: [Uscita CLI dopo guasto irreversibile della sessione](../Requirements/FamilyConversation.md#uscita-cli-dopo-guasto-irreversibile-della-sessione)
 ---
 
 ### Esito della trascrizione vocale
@@ -233,7 +167,7 @@ La composition root fornisce ai soli casi d'uso che ne hanno bisogno una capacit
 
 ### Occupazione dell'installazione e ammissione dei turni
 
-L'ammissione di un turno è coordinata in modo atomico tra gli ingressi HTTP, CLI e voce dell'installazione, anche se operano in processi distinti. L'installazione è occupata dall'accettazione di un turno fino alla conservazione del suo esito o dello stato `interrotto`; durante l'arresto non torna disponibile per nuovi turni. Tra richieste simultanee, al massimo una ottiene l'ammissione: le altre ricevono un rifiuto previsto e non vengono conservate né accodate. Al riavvio, il riconoscimento dei turni interrotti libera l'occupazione residua prima che gli ingressi accettino nuovi turni.
+L'ammissione di un turno è coordinata in modo atomico tra gli ingressi HTTP e voce del server. L'installazione è occupata dall'accettazione di un turno fino alla conservazione del suo esito o dello stato `interrotto`; durante l'arresto non torna disponibile per nuovi turni. Tra richieste simultanee, al massimo una ottiene l'ammissione: le altre ricevono un rifiuto previsto e non vengono conservate né accodate. A ogni avvio, dopo le migrazioni e prima di abilitare gli ingressi, tutti i turni ancora `in elaborazione` sono contrassegnati come `interrotti` e l'occupazione residua viene liberata nella stessa transazione SQLite. Solo il server apre l’archivio per elaborare conversazioni; una conclusione tardiva non può sostituire lo stato `interrotto`.
 
 #### Metadata
   * type: specification
@@ -244,7 +178,7 @@ L'ammissione di un turno è coordinata in modo atomico tra gli ingressi HTTP, CL
 
 ### Pagine dell'elenco conversazioni
 
-L'elenco delle conversazioni conservate è restituito in pagine di dimensione limitata. Ogni pagina segue l'ordine decrescente dell'ultima attività della conversazione; a parità di ultima attività usa un criterio stabile e univoco. L'ultima attività corrisponde all'accettazione del turno più recente della conversazione, indipendentemente dall'ingresso testuale, CLI o vocale. Ogni richiesta di pagina consulta lo stato corrente dell'archivio, senza mantenere una fotografia fissa tra richieste. Il contratto di continuazione consente di richiedere la pagina successiva senza perdere o duplicare conversazioni quando l'archivio non cambia durante la consultazione; se cambia, un aggiornamento dell'elenco riparte dalla prima pagina. La dimensione massima e la rappresentazione del riferimento alla pagina successiva restano da precisare nel contratto pubblico dell'ingresso.
+L'elenco delle conversazioni conservate è restituito in pagine di dimensione limitata. Ogni pagina segue l'ordine decrescente dell'ultima attività della conversazione; a parità di ultima attività usa un criterio stabile e univoco. L'ultima attività corrisponde all'accettazione del turno più recente della conversazione, indipendentemente dall'ingresso testuale o vocale. Ogni richiesta di pagina consulta lo stato corrente dell'archivio, senza mantenere una fotografia fissa tra richieste. Il contratto di continuazione consente di richiedere la pagina successiva senza perdere o duplicare conversazioni quando l'archivio non cambia durante la consultazione; se cambia, un aggiornamento dell'elenco riparte dalla prima pagina. La dimensione massima e la rappresentazione del riferimento alla pagina successiva restano da precisare nel contratto pubblico dell'ingresso.
 
 #### Metadata
   * type: input-output
@@ -264,20 +198,9 @@ Il client invia il turno della chat testuale con una richiesta HTTP POST. Il bac
   * define: [Risposta progressiva SSE nella chat testuale](../Requirements/FamilyConversation.md#risposta-progressiva-sse-nella-chat-testuale)
 ---
 
-### Profilo testuale degli errori CLI
-
-La CLI presenta ogni errore pubblico come testo leggibile su `stderr`, distinguibile dalla risposta del turno che compare su `stdout`. Il profilo vale per argomenti non validi, configurazione non valida, guasti tecnici che impediscono l'avvio ed esiti di errore dei turni durante la sessione. Non è previsto un renderer JSON per questi messaggi pubblici. Se una risposta parziale è già comparsa su `stdout`, resta visibile e il messaggio su `stderr` indica che il turno è fallito e la risposta è incompleta. Gli eventuali log diagnostici tecnici su `stderr` restano distinti dai messaggi pubblici e non ne determinano il contenuto.
-
-#### Metadata
-  * type: input-output
-
-#### Relations
-  * define: [Presentazione testuale degli errori nella CLI](../Requirements/FamilyConversation.md#presentazione-testuale-degli-errori-nella-cli)
----
-
 ### Proprietà dei controlli del turno conversazionale
 
-Gli adapter HTTP e CLI possiedono la verifica della forma dell'input e della decodifica del proprio protocollo: fermano i dati non validi prima del caso d'uso, senza decidere invarianti o precondizioni di business. Application riceve dati già interpretati e coordina le precondizioni che richiedono contesto, per esempio il recupero della conversazione richiesta, tramite porte; un rifiuto previsto ferma il turno prima degli effetti successivi. Domain garantisce gli stati e le transizioni del singolo turno anche se un ingresso ha eseguito controlli preliminari. L'archivio SQLite garantisce atomicamente l'ammissione di al massimo un turno nell'installazione; una lettura o un controllo preliminare non sostituisce tale garanzia. I controlli pubblici aggiuntivi sono ammessi solo se servono al rispettivo confine e non ridefiniscono la regola autorevole di un altro livello.
+L'adapter HTTP possiede la verifica della forma dell'input e della decodifica del proprio protocollo: ferma i dati non validi prima del caso d'uso, senza decidere invarianti o precondizioni di business. Application riceve dati già interpretati e coordina le precondizioni che richiedono contesto, per esempio il recupero della conversazione richiesta, tramite porte; un rifiuto previsto ferma il turno prima degli effetti successivi. Domain garantisce gli stati e le transizioni del singolo turno anche se un ingresso ha eseguito controlli preliminari. L'archivio SQLite garantisce atomicamente l'ammissione di al massimo un turno nell'installazione; una lettura o un controllo preliminare non sostituisce tale garanzia. I controlli pubblici aggiuntivi sono ammessi solo se servono al rispettivo confine e non ridefiniscono la regola autorevole di un altro livello.
 
 #### Metadata
   * type: specification
@@ -354,7 +277,7 @@ L'interazione vocale ha gli stati `chiusa` e `attiva`. Nello stato `attiva` è a
 
 ### Stati persistenti dei turni conversazionali
 
-Un turno della chat testuale, della CLI o della voce trascritta è conservato come accettato con il suo testo e lo stato `in elaborazione` prima che Ambrogio ne avvii l'elaborazione. Quando l'esito è conservato, il turno diventa uno scambio concluso con risposta oppure errore. Al riavvio, un turno ancora nello stato `in elaborazione` senza esito conservato diventa `interrotto`: resta consultabile con il testo originario, non è rappresentato come risposta o errore concluso e non viene rielaborato automaticamente. La sola disconnessione del client non cambia lo stato persistente in `interrotto`.
+Un turno della chat testuale o della voce trascritta è conservato come accettato con il suo testo e lo stato `in elaborazione` prima che Ambrogio ne avvii l'elaborazione. Quando l'esito è conservato, il turno diventa uno scambio concluso con risposta oppure errore. A ogni avvio del server, tutti i turni ancora nello stato `in elaborazione` senza esito conservato diventano `interrotti`: restano consultabili con il testo originario, non sono rappresentati come risposte o errori conclusi e non vengono rielaborati automaticamente. La sola disconnessione del client non cambia lo stato persistente in `interrotto`.
 
 #### Metadata
   * type: state
@@ -372,17 +295,6 @@ Lo storico di una conversazione è una sequenza ordinata di scambi. Ogni scambio
 
 #### Relations
   * define: [Conservazione dello scambio testuale](../Requirements/FamilyConversation.md#conservazione-dello-scambio-testuale)
----
-
-### Uscita progressiva della risposta CLI
-
-La CLI scrive su `stdout` il testo della risposta di un turno man mano che riceve nuovi incrementi dal caso d'uso conversazionale. Gli incrementi sono mostrati una sola volta, nell'ordine di produzione, così che il testo visibile risultante corrisponda alla risposta completa quando il turno riesce. La CLI non trattiene tutti gli incrementi fino al termine e non presenta un nuovo ingresso per turni mentre la risposta è in corso. I log tecnici restano su `stderr` secondo il profilo comune. La rappresentazione pubblica di un errore dopo testo parziale è definita separatamente.
-
-#### Metadata
-  * type: input-output
-
-#### Relations
-  * define: [Risposta progressiva nella CLI](../Requirements/FamilyConversation.md#risposta-progressiva-nella-cli)
 ---
 
 ### Valori Date della conversazione

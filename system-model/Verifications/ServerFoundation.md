@@ -178,7 +178,7 @@ Il controllo passa se ogni caso d'uso dichiara nel proprio contratto un insieme 
 
 ### Controllo del logger tecnico Pino
 
-Esaminare la configurazione dei runtime HTTP e CLI e seguire le chiamate che emettono eventi diagnostici tecnici.
+Esaminare la configurazione del runtime HTTP e seguire le chiamate che emettono eventi diagnostici tecnici.
 
 #### Details
 Il controllo passa se entrambi gli ingressi usano Pino per emettere tali eventi. Fallisce se un ingresso usa un logger alternativo per gli eventi tecnici. La verifica per un ingresso non ancora presente resta da eseguire quando viene introdotto.
@@ -193,7 +193,7 @@ Il controllo passa se entrambi gli ingressi usano Pino per emettere tali eventi.
 
 ### Controllo della raccolta esterna dei log
 
-Esaminare gli ingressi HTTP e CLI, la configurazione di Pino e le configurazioni di deployment presenti per identificare dove vengono definiti l'inoltro e il backend di raccolta dei log.
+Esaminare l'ingresso HTTP, la configurazione di Pino e le configurazioni di deployment presenti per identificare dove vengono definiti l'inoltro e il backend di raccolta dei log.
 
 #### Details
 Il controllo passa se il codice applicativo emette eventi verso i flussi standard senza integrare direttamente un backend specifico e se ogni inoltro centralizzato presente è configurato nel deployment. Fallisce se il codice applicativo contiene un'integrazione diretta con un backend di log per questo inoltro. Il controllo della configurazione di raccolta resta da eseguire quando un deployment che la richiede viene introdotto.
@@ -238,7 +238,7 @@ Il controllo passa se ogni eccezione costruita dal progetto in questi casi è un
 
 ### Prova dei campi diagnostici espliciti
 
-Per eventi diagnostici HTTP e CLI presenti, predisporre oggetti di ingresso, uscita e contesto con campi marcatori non selezionati; produrre gli eventi e confrontare le chiavi e i valori delle righe JSON con i campi dichiarati nel punto di emissione e nella configurazione del logger.
+Per eventi diagnostici HTTP presenti, predisporre oggetti di ingresso, uscita e contesto con campi marcatori non selezionati; produrre gli eventi e confrontare le chiavi e i valori delle righe JSON con i campi dichiarati nel punto di emissione e nella configurazione del logger.
 
 #### Details
 La prova passa se tutti i campi della riga appartengono alla selezione esplicita e nessun marcatore non selezionato compare nel log. Fallisce se il logger serializza automaticamente un oggetto intero o aggiunge un campo di origine non dichiarato. La prova per un ingresso o evento non ancora presente resta da eseguire quando viene introdotto.
@@ -253,10 +253,10 @@ La prova passa se tutti i campi della riga appartengono alla selezione esplicita
 
 ### Prova dei flussi dei log tecnici
 
-Avviare separatamente HTTP e CLI con i flussi standard intercettati, indurre almeno un evento diagnostico tecnico per ciascun ingresso e acquisire `stdout` e `stderr` separatamente.
+Avviare il server HTTP con i flussi standard intercettati, indurre un evento diagnostico tecnico e acquisire `stdout` e `stderr` separatamente.
 
 #### Details
-La prova passa se ogni evento Pino occupa una sola riga JSON strutturata, il processo HTTP la emette per impostazione predefinita su `stdout`, la CLI su `stderr` e l'output CLI rivolto all'utente resta separato su `stdout`. Fallisce se un evento è spezzato su più righe, non è JSON valido o compare sul flusso predefinito errato. La prova per un ingresso non ancora presente resta da eseguire quando viene introdotto.
+La prova passa se ogni evento Pino occupa una sola riga JSON strutturata, il processo HTTP la emette per impostazione predefinita su `stdout`. Fallisce se un evento è spezzato su più righe, non è JSON valido o compare sul flusso predefinito errato. La prova per un ingresso non ancora presente resta da eseguire quando viene introdotto.
 
 #### Metadata
   * type: test-verification
@@ -268,7 +268,7 @@ La prova passa se ogni evento Pino occupa una sola riga JSON strutturata, il pro
 
 ### Prova dei nomi degli eventi diagnostici
 
-Per ogni punto di emissione diagnostica HTTP e CLI presente, individuare il nome `event` dichiarato nel codice ed emettere lo stesso evento con dati di esecuzione differenti; acquisire le righe JSON.
+Per ogni punto di emissione diagnostica HTTP presente, individuare il nome `event` dichiarato nel codice ed emettere lo stesso evento con dati di esecuzione differenti; acquisire le righe JSON.
 
 #### Details
 La prova passa se ogni riga contiene `event`, il suo valore corrisponde al nome dichiarato nel punto di emissione e resta uguale nelle esecuzioni dello stesso evento nonostante varino i dati. Fallisce se il campo manca, è ricavato da dati della singola esecuzione o cambia per lo stesso evento. La prova per un punto di emissione non ancora presente resta da eseguire quando viene introdotto.
@@ -298,7 +298,7 @@ La prova passa se ogni rifiuto è restituito come valore distinguibile dal succe
 
 ### Prova del campo err nel log definitivo
 
-Nei fallback HTTP e CLI presenti, indurre separatamente un `Error` costruito dal progetto con catena `cause`, errori esterni con marcatori distinti in messaggio, stack e proprietà aggiuntive, e valori lanciati sconosciuti; intercettare l'argomento del logger e le righe JSON emesse. Prima della serializzazione acquisire riferimenti e proprietà proprie dell'`Error` originale e degli oggetti della sua catena `cause`, poi confrontarli dopo l'emissione. Confrontare le chiavi serializzate con i campi ammessi esplicitamente dal serializzatore.
+Nei fallback HTTP presenti, indurre separatamente un `Error` costruito dal progetto con catena `cause`, errori esterni con marcatori distinti in messaggio, stack e proprietà aggiuntive, e valori lanciati sconosciuti; intercettare l'argomento del logger e le righe JSON emesse. Prima della serializzazione acquisire riferimenti e proprietà proprie dell'`Error` originale e degli oggetti della sua catena `cause`, poi confrontarli dopo l'emissione. Confrontare le chiavi serializzate con i campi ammessi esplicitamente dal serializzatore.
 
 #### Details
 La prova passa se per l'`Error` del progetto il campo strutturato `err` conserva in memoria la catena `cause`, i riferimenti e le proprietà degli oggetti originali restano invariati, e la vista JSON include lo stack diagnostico; se ogni vista contiene soltanto campi ammessi; e se errori esterni e valori sconosciuti producono una descrizione costante sicura senza riportare messaggio, stack o proprietà aggiuntive di origine. Fallisce se la serializzazione modifica l'`Error` originale o un oggetto della sua catena `cause`, se l'argomento in memoria perde la catena delle cause, se la riga omette `err` o lo stack previsto, se compaiono campi non ammessi o se la descrizione esterna dipende dal valore originale. La prova per un ingresso non ancora presente resta da eseguire quando viene introdotto.
@@ -315,7 +315,7 @@ La prova passa se per l'`Error` del progetto il campo strutturato `err` conserva
 
 ### Prova del log error nei fallback pubblici
 
-Per ogni fallback pubblico HTTP o CLI presente nel server, rendere disponibile un logger di prova e indurre separatamente un guasto tecnico inatteso, un bug e un valore lanciato sconosciuto; osservare gli eventi prodotti dal confine che decide l'esito esterno.
+Per ogni fallback pubblico HTTP presente nel server, rendere disponibile un logger di prova e indurre separatamente un guasto tecnico inatteso, un bug e un valore lanciato sconosciuto; osservare gli eventi prodotti dal confine che decide l'esito esterno.
 
 #### Details
 La prova passa se, per ciascun caso e ciascun ingresso presente, il confine emette esattamente un log diagnostico definitivo di livello `error` relativo al guasto. Fallisce se il log manca, ha un livello diverso, è emesso da un componente intermedio o compare più volte. La prova per un ingresso non ancora presente resta da eseguire quando viene introdotto.
@@ -360,7 +360,7 @@ La prova passa se nessuno dei quattro esiti causa automaticamente un log dedicat
 
 ### Prova dell'assenza di raccolta automatica nei log
 
-Negli ingressi HTTP e CLI presenti, inserire marcatori distinti in testi delle conversazioni, corpi e header HTTP, argomenti CLI, input e output dei casi d'uso e credenziali di prova; generare eventi diagnostici ordinari e di guasto e acquisire le righe JSON. Esaminare anche la configurazione del logger e le integrazioni degli ingressi per individuare serializzazioni automatiche delle sorgenti indicate.
+Nell'ingresso HTTP presente, inserire marcatori distinti in testi delle conversazioni, corpi e header HTTP, input e output dei casi d'uso e credenziali di prova; generare eventi diagnostici ordinari e di guasto e acquisire le righe JSON. Esaminare anche la configurazione del logger e le integrazioni degli ingressi per individuare serializzazioni automatiche delle sorgenti indicate.
 
 #### Details
 La prova passa se nessuno dei marcatori viene acquisito automaticamente dagli eventi e se la configurazione non abilita la registrazione automatica delle sorgenti elencate. Fallisce se un'integrazione o un serializer copia automaticamente una di tali sorgenti nei log. La prova per un ingresso o una sorgente non ancora presente resta da eseguire quando viene introdotto.
@@ -387,21 +387,6 @@ La prova passa se per il guasto esiste al massimo un log diagnostico definitivo,
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
   * verify: [Assenza di log definitivi nei componenti intermedi](../Requirements/ServerFoundation.md#assenza-di-log-definitivi-nei-componenti-intermedi)
   * verify: [Proprietà e unicità del log diagnostico definitivo](../Requirements/ServerFoundation.md#proprietà-e-unicità-del-log-diagnostico-definitivo)
----
-
-### Prova della correlazione CLI
-
-Eseguire almeno due volte ciascun ingresso CLI presente con un logger di prova e raccogliere gli eventi diagnostici di ogni esecuzione.
-
-#### Details
-La prova passa se ogni esecuzione ha un `correlationId` UUID v4 distinto e tutti i suoi eventi diagnostici riportano quell'ID. Fallisce se l'ID manca, non è UUID v4, varia entro la stessa esecuzione o viene riutilizzato fra esecuzioni. La prova per un ingresso non ancora presente resta da eseguire quando viene introdotto.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * verify: [Identificativo di correlazione delle esecuzioni CLI](../Requirements/ServerFoundation.md#identificativo-di-correlazione-delle-esecuzioni-cli)
 ---
 
 ### Prova della correlazione HTTP
@@ -438,7 +423,7 @@ La prova passa se il caso d'uso gestisce esplicitamente ogni variante e, quando 
 
 ### Prova della normalizzazione diagnostica al confine
 
-Nei fallback HTTP e CLI presenti, iniettare separatamente un'istanza `Error` con `cause` e più valori lanciati che non sono `Error`, distinguibili tra loro. Intercettare il valore strutturato `err` passato al logger definitivo e osservare il percorso dai componenti intermedi al confine che decide l'esito esterno.
+Nei fallback HTTP presenti, iniettare separatamente un'istanza `Error` con `cause` e più valori lanciati che non sono `Error`, distinguibili tra loro. Intercettare il valore strutturato `err` passato al logger definitivo e osservare il percorso dai componenti intermedi al confine che decide l'esito esterno.
 
 #### Details
 La prova passa se la normalizzazione avviene una sola volta nel confine definitivo: per l'`Error`, `err` è la stessa istanza catturata; per ogni altro valore, `err` è un nuovo `Error` con messaggio diagnostico fisso uguale nei casi provati e `cause` identica al valore catturato. Il valore originale resta invariato e non viene convertito in stringa. Fallisce se un componente intermedio normalizza il guasto, se sono creati wrapper ulteriori, se cambia l'identità dell'`Error` originale o della `cause`, o se il messaggio dipende dal valore catturato. La prova per un ingresso non ancora presente resta da eseguire quando viene introdotto.
@@ -576,7 +561,7 @@ Il controllo passa se tutte le fasi richieste vengono eseguite e un loro fallime
 
 ### Controllo del perimetro iniziale di osservabilità
 
-Esaminare runtime HTTP e CLI, dipendenze, configurazioni, endpoint e documentazione operativa della prima versione. Confrontare i segnali presenti con i contratti dei log strutturati e degli identificativi di correlazione; cercare raccoglitori o API distinti per metriche, tracing distribuito e audit.
+Esaminare runtime HTTP, dipendenze, configurazioni, endpoint e documentazione operativa della prima versione. Confrontare i segnali presenti con i contratti dei log strutturati e degli identificativi di correlazione; cercare raccoglitori o API distinti per metriche, tracing distribuito e audit.
 
 #### Details
 Il controllo passa se i runtime forniscono i log e i `correlationId` già previsti, senza attivare nella prima versione metriche, tracing o audit separati, e se nessun `correlationId` o log ordinario è presentato come traccia distribuita o registro di audit. Fallisce se viene introdotto un segnale separato senza una decisione e una verifica proprie, se i log sono descritti come audit garantito o se manca il profilo diagnostico previsto. I controlli funzionali dei log e della correlazione restano nelle rispettive verifiche. Il controllo è da svolgere quando il runtime esiste.
@@ -591,7 +576,7 @@ Il controllo passa se i runtime forniscono i log e i `correlationId` già previs
 
 ### Controllo dell'assenza di autenticazione applicativa
 
-Esaminare gli ingressi HTTP e CLI presenti, le dipendenze runtime e i modelli persistenti del server per individuare gestione di account, credenziali utente, login e controlli di autenticazione applicativa.
+Esaminare l'ingresso HTTP presente, le dipendenze runtime e i modelli persistenti del server per individuare gestione di account, credenziali utente, login e controlli di autenticazione applicativa.
 
 #### Details
 Il controllo passa se l'MVP non implementa account utente né autenticazione applicativa nei propri ingressi. Fallisce se sono presenti meccanismi applicativi di account o autenticazione. Il controllo per un ingresso non ancora presente resta da eseguire quando viene introdotto.
@@ -651,7 +636,7 @@ La prova passa se tutte le risposte che trasportano dati conversazionali includo
 
 ### Prova del bootstrap delle configurazioni JSON
 
-Avviare separatamente gli ingressi HTTP e CLI con file JSON di prova distinti per i componenti attivi; predisporre variabili d'ambiente con valori discordanti e un file vocale mancante quando la voce è disabilitata. Osservare letture dei file, valori ricevuti dai componenti e momento in cui vengono create e attivate le risorse. Ripetere con un JSON richiesto mancante, malformato o con un valore non valido, includendo un segreto marcatore.
+Avviare l'ingresso HTTP con file JSON di prova distinti per i componenti attivi; predisporre variabili d'ambiente con valori discordanti e un file vocale mancante quando la voce è disabilitata. Osservare letture dei file, valori ricevuti dai componenti e momento in cui vengono create e attivate le risorse. Ripetere con un JSON richiesto mancante, malformato o con un valore non valido, includendo un segreto marcatore.
 
 #### Details
 La prova passa se ciascun processo legge una volta all'avvio i soli file necessari, usa i valori validati dei JSON senza sovrascriverli con quelli d'ambiente e consegna a ogni componente solo i dati pertinenti già convertiti. L'assenza del file vocale non blocca gli ingressi quando la voce è disabilitata. Un file necessario mancante o invalido impedisce l'attivazione prima dell'uso delle risorse dipendenti e produce un errore sicuro senza riprodurre il segreto. Domain e casi d'uso non leggono direttamente file o ambiente. Fallisce se un valore d'ambiente prevale, un file non necessario diventa obbligatorio, la configurazione viene riletta durante il lavoro, una risorsa dipendente si attiva prima della validazione o un segreto appare nell'errore. La prova resta da eseguire quando i componenti esistono.

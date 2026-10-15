@@ -90,7 +90,7 @@ Il componente HTTP configura un limite di dimensione positivo per i corpi ricevu
 
 ### Profilo di bootstrap dei JSON dei componenti
 
-Per ogni processo HTTP o CLI, la composition root determina i componenti dell'ingresso da avviare e carica una sola volta i rispettivi file JSON locali prima di costruirne le risorse. Le configurazioni dei componenti non vengono sovrascritte da variabili d'ambiente; un eventuale meccanismo per scegliere il percorso dei file non modifica i valori letti dai file. Ogni componente dichiara quali campi sono richiesti e quali valori predefiniti sono ammessi. Il caricamento verifica struttura e valori, converte i dati nei tipi previsti e blocca l'attivazione se un file necessario manca o è invalido. I file dei componenti non attivi, compresi quelli vocali quando la voce è disabilitata, non sono richiesti. La composition root consegna a ogni componente solo la propria sezione validata; Domain e casi d'uso Application non leggono file, variabili d'ambiente o segreti dal processo. Messaggi di errore, log ed esempi non riproducono valori segreti. Il contratto non prescrive nomi di file, una libreria di schema o il meccanismo di immutabilità dei valori consegnati.
+Per il processo server, la composition root determina i componenti dell'ingresso da avviare e carica una sola volta i rispettivi file JSON locali prima di costruirne le risorse. Le configurazioni dei componenti non vengono sovrascritte da variabili d'ambiente; un eventuale meccanismo per scegliere il percorso dei file non modifica i valori letti dai file. Ogni componente dichiara quali campi sono richiesti e quali valori predefiniti sono ammessi. Il caricamento verifica struttura e valori, converte i dati nei tipi previsti e blocca l'attivazione se un file necessario manca o è invalido. I file dei componenti non attivi, compresi quelli vocali quando la voce è disabilitata, non sono richiesti. La composition root consegna a ogni componente solo la propria sezione validata; Domain e casi d'uso Application non leggono file, variabili d'ambiente o segreti dal processo. Messaggi di errore, log ed esempi non riproducono valori segreti. Il contratto non prescrive nomi di file, una libreria di schema o il meccanismo di immutabilità dei valori consegnati.
 
 #### Metadata
   * type: specification
@@ -101,7 +101,7 @@ Per ogni processo HTTP o CLI, la composition root determina i componenti dell'in
 
 ### Profilo di uscita dei log tecnici
 
-Ogni evento diagnostico tecnico emesso da Pino è una singola riga JSON strutturata. Il processo HTTP scrive per impostazione predefinita le righe su `stdout`; la CLI le scrive per impostazione predefinita su `stderr`, lasciando `stdout` disponibile per le risposte e l'output rivolto al suo utente. La configurazione del deployment determina la destinazione finale dei flussi, senza fissarla nel formato degli eventi.
+Ogni evento diagnostico tecnico emesso da Pino è una singola riga JSON strutturata. Il processo server scrive per impostazione predefinita le righe su `stdout`. La configurazione del deployment determina la destinazione finale dei flussi, senza fissarla nel formato degli eventi.
 
 #### Metadata
   * type: input-output
@@ -123,7 +123,7 @@ Il componente HTTP registra `@fastify/helmet` sulla radice dell'istanza Fastify 
 
 ### Profilo iniziale di osservabilità
 
-Il segnale diagnostico della prima versione è costituito dai log JSON strutturati dei runtime HTTP e CLI, con i rispettivi `correlationId` per collegare gli eventi di una richiesta o esecuzione. Un `correlationId` non è una traccia distribuita e i log non costituiscono un registro di audit garantito. Non sono attivati raccoglitori o API applicative separati per metriche, tracing o audit. Eventuali estensioni richiedono un bisogno concreto, un contratto proprio per dati e protezioni, una collocazione nei confini tecnici e verifiche dedicate; non ereditano automaticamente le garanzie dei log. La diagnostica tecnica non acquisisce automaticamente contenuti delle conversazioni o credenziali secondo i requisiti già definiti.
+Il segnale diagnostico della prima versione è costituito dai log JSON strutturati del runtime HTTP, con i `correlationId` per collegare gli eventi di una richiesta. Un `correlationId` non è una traccia distribuita e i log non costituiscono un registro di audit garantito. Non sono attivati raccoglitori o API applicative separati per metriche, tracing o audit. Eventuali estensioni richiedono un bisogno concreto, un contratto proprio per dati e protezioni, una collocazione nei confini tecnici e verifiche dedicate; non ereditano automaticamente le garanzie dei log. La diagnostica tecnica non acquisisce automaticamente contenuti delle conversazioni o credenziali secondo i requisiti già definiti.
 
 #### Metadata
   * type: specification

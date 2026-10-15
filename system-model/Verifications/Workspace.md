@@ -199,20 +199,3 @@ Il controllo passa se i meccanismi tecnici specifici del processo risiedono in `
   * verify: [Assemblaggio dei componenti nelle app](../Requirements/Workspace.md#assemblaggio-dei-componenti-nelle-app)
   * verify: [Coordinamento dell'esecuzione negli entrypoint](../Requirements/Workspace.md#coordinamento-dellesecuzione-negli-entrypoint)
   * verify: [Meccanismi tecnici del processo nelle app](../Requirements/Workspace.md#meccanismi-tecnici-del-processo-nelle-app)
----
-
-### Controllo delle composition root HTTP e CLI
-
-Quando un'applicazione espone sia HTTP sia CLI, esaminare gli entrypoint e le rispettive composition root nell'applicazione.
-
-#### Details
-Il controllo passa se entrambi gli entrypoint appartengono alla stessa app e usano composition root distinte collocate in `src/composition/http/` e `src/composition/cli/`. Fallisce se gli entrypoint sono suddivisi tra app diverse, se condividono una sola composition root o se le composition root non si trovano nei percorsi previsti. Se nessuna app espone ancora entrambi gli ingressi, il controllo resta da eseguire al primo caso pertinente.
-
-#### Metadata
-  * type: inspection-verification
-
-#### Relations
-  * derivedFrom: [Verifica della struttura del monorepo](#verifica-della-struttura-del-monorepo)
-  * verify: [Composition root distinte per HTTP e CLI](../Requirements/Workspace.md#composition-root-distinte-per-http-e-cli)
-  * verify: [Entrypoint HTTP e CLI nella stessa applicazione](../Requirements/Workspace.md#entrypoint-http-e-cli-nella-stessa-applicazione)
----

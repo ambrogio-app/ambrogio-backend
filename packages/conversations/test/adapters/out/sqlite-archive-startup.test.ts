@@ -1,8 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import Database from 'better-sqlite3';
-import { Kysely, SqliteDialect } from 'kysely';
+import { Kysely, sql, SqliteDialect } from 'kysely';
 import { Migrator } from 'kysely/migration';
-import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -17,14 +16,6 @@ const turnId = '79e437a8-c11a-48ba-b476-e4fd4712ea58';
 const otherConversationId = 'ab02e7da-7a10-4585-8b09-ab8f6b4b93ee';
 const otherTurnId = '82d590bb-216d-407d-8034-55f1db4a3212';
 const directories: string[] = [];
-const children: ChildProcess[] = [];
-
-function event(child: ChildProcess, name: 'spawn' | 'exit'): Promise<void> {
-  return new Promise(resolve => {
-    (child as unknown as { once(event: string, listener: () => void): void })
-      .once(name, () => resolve());
-  });
-}
 
 function file() {
   const directory = mkdtempSync(join(tmpdir(), 'ambrogio-startup-'));
@@ -36,80 +27,65 @@ function turn(id: string) {
   return Turn.accept({ id, text: '  domanda  ', acceptedAt: new Date(1234) });
 }
 
-async function liveProcess(): Promise<ChildProcess> {
-  const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });
-  children.push(child);
-  await event(child, 'spawn');
-  return child;
-}
-
-afterEach(async () => {
-  await Promise.all(children.splice(0).map(async child => {
-    if (child.exitCode === null && child.signalCode === null) {
-      child.kill();
-      await event(child, 'exit');
-    }
-  }));
+afterEach(() => {
   for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true });
 });
 
 describe('conversation archive startup', () => {
-  it('migrates a previous schema, preserves history, and recovers an orphan before returning the archive', async () => {
+  it('migrates an archive with the former PID column and recovers its pending turn before returning', async () => {
     const filename = file();
     const sqlite = new Database(filename);
     const db = new Kysely<ConversationDatabase>({ dialect: new SqliteDialect({ database: sqlite }) });
     const migrator = new Migrator({ db, provider: { async getMigrations() { return conversationMigrations; } } });
-    expect((await migrator.migrateTo('003_list_order')).error).toBeUndefined();
+    expect((await migrator.migrateTo('004_turn_owner')).error).toBeUndefined();
     await db.insertInto('conversations').values({ id: conversationId, created_at: 1234, last_activity_at: 1234 }).execute();
     await db.insertInto('turns').values({
       id: turnId, conversation_id: conversationId, ordinal: 1, text: '  domanda  ',
       accepted_at: 1234, status: 'pending', answer: null, error: null, finished_at: null,
     }).execute();
-    await db.updateTable('installation').set({ active_turn_id: turnId }).where('id', '=', 1).execute();
+    await sql`update installation set active_turn_id = ${turnId}, active_process_id = ${process.pid} where id = 1`.execute(db);
     await db.destroy();
 
     const archive = await openConversationArchive(filename, new Date(2345));
     expect(archive.recoveredTurns).toBe(1);
     expect(await archive.db.selectFrom('turns').select(['text', 'status', 'finished_at']).executeTakeFirst())
       .toEqual({ text: '  domanda  ', status: 'interrupted', finished_at: 2345 });
-    expect(await archive.db.selectFrom('installation').select(['active_turn_id', 'active_process_id']).executeTakeFirst())
-      .toEqual({ active_turn_id: null, active_process_id: null });
+    expect(await archive.db.selectFrom('installation').select('active_turn_id').executeTakeFirst())
+      .toEqual({ active_turn_id: null });
+    const columns = await sql<{ name: string }>`pragma table_info(installation)`.execute(archive.db);
+    expect(columns.rows.map(column => column.name)).not.toContain('active_process_id');
     await archive.close();
     const reopened = await openConversationArchive(filename, new Date(3456));
     expect(reopened.recoveredTurns).toBe(0);
     await reopened.close();
   });
 
-  it('keeps a turn owned by another live process pending and rejects a competing turn', async () => {
+  it('interrupts every pending turn and releases occupancy before admitting a new one', async () => {
     const filename = file();
     const first = await openConversationArchive(filename, new Date(1000));
-    const firstWriter = new SqliteConversationWrite(first.db);
-    expect(await firstWriter.admit({ conversationId, createConversation: true, turn: turn(turnId) }))
+    const writer = new SqliteConversationWrite(first.db);
+    expect(await writer.admit({ conversationId, createConversation: true, turn: turn(turnId) }))
       .toMatchObject({ ok: true });
-    const child = await liveProcess();
-    await first.db.updateTable('installation').set({ active_process_id: child.pid! }).where('id', '=', 1).execute();
+    await first.db.insertInto('conversations').values({
+      id: otherConversationId, created_at: 1234, last_activity_at: 1234,
+    }).execute();
+    await first.db.insertInto('turns').values({
+      id: otherTurnId, conversation_id: otherConversationId, ordinal: 1, text: 'altro',
+      accepted_at: 1234, status: 'pending', answer: null, error: null, finished_at: null,
+    }).execute();
+    await first.close();
 
     const second = await openConversationArchive(filename, new Date(2345));
-    expect(second.recoveredTurns).toBe(0);
-    expect(await second.db.selectFrom('turns').select(['status', 'finished_at']).executeTakeFirst())
-      .toEqual({ status: 'pending', finished_at: null });
+    expect(second.recoveredTurns).toBe(2);
+    expect(await second.db.selectFrom('turns').select(['status', 'finished_at']).execute())
+      .toEqual([{ status: 'interrupted', finished_at: 2345 }, { status: 'interrupted', finished_at: 2345 }]);
+    expect(await second.db.selectFrom('installation').select('active_turn_id').executeTakeFirst())
+      .toEqual({ active_turn_id: null });
     expect(await new SqliteConversationWrite(second.db).admit({
-      conversationId: otherConversationId, createConversation: true, turn: turn(otherTurnId),
-    })).toEqual({ ok: false, error: { kind: 'conversation_occupied' } });
-    expect(await second.db.selectFrom('turns').selectAll().execute()).toHaveLength(1);
-    await second.close();
-    child.kill();
-    await event(child, 'exit');
-
-    const third = await openConversationArchive(filename, new Date(3456));
-    expect(third.recoveredTurns).toBe(1);
-    expect(await third.db.selectFrom('turns').select(['status', 'finished_at']).executeTakeFirst())
-      .toEqual({ status: 'interrupted', finished_at: 3456 });
-    expect(await new SqliteConversationWrite(third.db).admit({
-      conversationId: otherConversationId, createConversation: true, turn: turn(otherTurnId),
+      conversationId: otherConversationId, createConversation: false,
+      turn: turn('13209c7e-c941-44df-a28b-a34bb7e29e10'),
     })).toMatchObject({ ok: true });
-    await third.close();
-    await first.close();
+    await second.close();
   });
 
   it('fails preparation when a migration fails, before an archive becomes available', async () => {

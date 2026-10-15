@@ -33,31 +33,9 @@ Il monorepo deve collocare le applicazioni eseguibili sotto `apps/` e i moduli b
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
-### Composition root distinte per HTTP e CLI
-
-Quando un'applicazione eseguibile espone sia HTTP sia CLI, deve mantenere composition root distinte rispettivamente in `src/composition/http/` e `src/composition/cli/`.
-
-#### Metadata
-  * type: requirement
-
-#### Relations
-  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
----
-
 ### Coordinamento dell'esecuzione negli entrypoint
 
 Gli entrypoint delle applicazioni eseguibili del monorepo devono coordinare l'esecuzione dei componenti assemblati.
-
-#### Metadata
-  * type: requirement
-
-#### Relations
-  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
----
-
-### Entrypoint HTTP e CLI nella stessa applicazione
-
-Quando un'applicazione eseguibile espone sia HTTP sia CLI, deve mantenere entrambi gli entrypoint nella stessa applicazione.
 
 #### Metadata
   * type: requirement

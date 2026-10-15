@@ -28,21 +28,6 @@ Quando una conversazione riaperta nel client della chat testuale mostra un turno
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Archiviazione comune degli scambi CLI
-
-Quando la CLI produce uno scambio testuale, Ambrogio deve conservarlo nell'archivio comune delle conversazioni usato anche dagli ingressi HTTP e voce.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Archivio SQLite con Kysely](../Contracts/FamilyConversation.md#archivio-sqlite-con-kysely)
-  * [Struttura testuale dello scambio](../Contracts/FamilyConversation.md#struttura-testuale-dello-scambio)
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
 ### Assemblaggio delle porte nella composition root
 
 Quando l'applicazione server assembla il modulo «Conversazioni», deve scegliere e fornire le implementazioni delle porte Application tramite la propria composition root.
@@ -71,31 +56,6 @@ Quando Ambrogio non può avviare l'elaborazione di un nuovo turno al momento del
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Assenza di conversazioni CLI senza turni ammessi
-
-Quando un'esecuzione CLI termina senza alcun turno testuale ammesso, Ambrogio non deve aver creato né conservato una conversazione per quell'esecuzione.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Ammissione del primo turno CLI](../Contracts/FamilyConversation.md#ammissione-del-primo-turno-cli)
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
-### CLI limitata alla conversazione dell'esecuzione corrente
-
-Quando la CLI elabora turni ammessi in un'esecuzione, deve operare soltanto sulla conversazione testuale creata per quell'esecuzione al primo turno ammesso e non deve offrire funzioni per leggere o riaprire conversazioni preesistenti.
-
-#### Metadata
-  * type: requirement
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
 ### Cartelle del modulo Conversazioni
 
 Il package del modulo business «Conversazioni» deve collocare il codice Domain in `src/domain/`, Application in `src/application/` e gli adapter che appartengono al package in `src/adapters/`.
@@ -112,7 +72,7 @@ Il package del modulo business «Conversazioni» deve collocare il codice Domain
 
 ### Chiusura della risorsa SQLite conversazionale
 
-Quando un processo che ha creato la risorsa SQLite/Kysely dell'archivio termina normalmente o fallisce durante l'avvio, il proprietario deve chiudere la risorsa dopo le operazioni che ne dipendono, anche nel percorso CLI.
+Quando il server termina normalmente o fallisce durante l'avvio dopo aver creato la risorsa SQLite/Kysely dell'archivio, il proprietario deve chiudere la risorsa dopo le operazioni che ne dipendono.
 
 #### Metadata
   * type: requirement
@@ -147,17 +107,6 @@ Quando l'adapter SQLite dell'archivio esegue una mutazione conversazionale, deve
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Codice di uscita della sessione CLI chiusa normalmente
-
-Quando la persona chiude normalmente una sessione CLI ancora operativa, la CLI deve terminare con codice di uscita 0 anche se uno o più turni precedenti sono terminati con errore e sono stati segnalati durante la sessione.
-
-#### Metadata
-  * type: requirement
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
 ### Completamento del turno accettato dopo disconnessione
 
 Quando il backend ha accettato un turno della chat testuale e il client si disconnette durante l'elaborazione, il backend deve proseguire il turno fino a un esito di risposta o di errore e conservarne lo scambio nella conversazione, indipendentemente dalla disponibilità del flusso SSE.
@@ -189,7 +138,7 @@ Quando un turno della chat testuale avvia una nuova conversazione, il backend de
 
 ### Conservazione del testo originale del turno
 
-Quando Ambrogio accetta un turno testuale dalla chat, dalla CLI o dalla trascrizione vocale, deve conservare il testo ricevuto senza rimuovere né modificare gli spazi iniziali, finali o interni. L'eventuale rimozione degli spazi per verificare se il testo è vuoto non modifica il testo accettato.
+Quando Ambrogio accetta un turno testuale dalla chat o dalla trascrizione vocale, deve conservare il testo ricevuto senza rimuovere né modificare gli spazi iniziali, finali o interni. L'eventuale rimozione degli spazi per verificare se il testo è vuoto non modifica il testo accettato.
 
 #### Metadata
   * type: requirement
@@ -228,17 +177,6 @@ Quando il backend ha trasmesso frammenti della risposta a un turno della chat te
 ### Conservazione solo testuale della conversazione
 
 Quando Ambrogio conserva una conversazione, deve conservarne la rappresentazione testuale senza conservare registrazioni audio.
-
-#### Metadata
-  * type: requirement
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
-### Consultazione familiare delle conversazioni CLI
-
-Quando la famiglia consulta lo storico delle conversazioni, Ambrogio deve rendere consultabili anche le conversazioni e gli scambi creati dalla CLI.
 
 #### Metadata
   * type: requirement
@@ -308,20 +246,9 @@ Quando un adapter del modulo «Conversazioni» legge o scrive l'archivio SQLite,
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Creazione della conversazione CLI al primo turno ammesso
-
-Quando un'esecuzione CLI presenta il primo turno testuale valido e Ambrogio lo ammette, deve creare per quell'esecuzione una nuova conversazione testuale distinta da quelle delle altre esecuzioni e conservarvi il turno.
-
-#### Metadata
-  * type: requirement
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
 ### Dati Application dei casi d'uso conversazionali
 
-Quando un caso d'uso del modulo «Conversazioni» riceve dati di ingresso o produce dati di successo, deve usare contratti definiti in Application e indipendenti dai formati HTTP, CLI e voce. Gli adapter di ingresso devono tradurre i rispettivi dati di protocollo in tali contratti e rappresentarne gli esiti nel proprio formato.
+Quando un caso d'uso del modulo «Conversazioni» riceve dati di ingresso o produce dati di successo, deve usare contratti definiti in Application e indipendenti dai formati HTTP e voce. Gli adapter di ingresso devono tradurre i rispettivi dati di protocollo in tali contratti e rappresentarne gli esiti nel proprio formato.
 
 #### Metadata
   * type: requirement
@@ -339,17 +266,6 @@ Quando l'installazione elabora un turno o ne comunica la risposta, i client devo
 
 #### Contract References
   * [Occupazione dell'installazione e ammissione dei turni](../Contracts/FamilyConversation.md#occupazione-dellinstallazione-e-ammissione-dei-turni)
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
-### Disponibilità degli agenti e tool conversazionali nella CLI
-
-Quando la composition root CLI assembla il caso d'uso del modulo «Conversazioni», deve rendere disponibili al dialogo gli stessi agenti e tool conversazionali assemblati dagli ingressi HTTP e voce.
-
-#### Metadata
-  * type: requirement
 
 #### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
@@ -380,20 +296,6 @@ Quando la famiglia consulta l'elenco delle conversazioni conservate, Ambrogio de
 
 #### Metadata
   * type: requirement
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
-### Esito pubblico dell'avvio CLI fallito
-
-Quando la CLI non può avviare la sessione, deve terminare con codice di uscita 2 per argomenti del comando non validi e con codice 1 per configurazione non valida o guasto tecnico inatteso, comunicando in ciascun caso un errore pubblico comprensibile e privo di dettagli tecnici sensibili.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Profilo testuale degli errori CLI](../Contracts/FamilyConversation.md#profilo-testuale-degli-errori-cli)
 
 #### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
@@ -458,20 +360,6 @@ Quando Ambrogio crea una nuova conversazione o accetta un nuovo turno, deve asse
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Ignorare le righe vuote nella CLI
-
-Quando la CLI interattiva riceve una riga vuota o composta solo da spazi bianchi, deve ignorarla senza invocare il caso d'uso conversazionale, creare o modificare una conversazione né mostrare un errore, e deve restare pronta a ricevere il turno successivo.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Ammissione del primo turno CLI](../Contracts/FamilyConversation.md#ammissione-del-primo-turno-cli)
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
 ### Import del Domain entro il proprio componente
 
 Il codice di produzione Domain del modulo «Conversazioni» deve importare soltanto codice Domain dello stesso modulo, anche quando l'importazione riguarda solo tipi.
@@ -516,7 +404,7 @@ Il codice di produzione Domain e Application del modulo «Conversazioni» deve u
 
 ### Ingressi testuali indipendenti dalla voce
 
-Quando un'installazione non abilita l'interazione vocale, Ambrogio deve consentire l'uso della chat testuale e della CLI senza richiedere la configurazione o l'avvio dei componenti necessari soltanto alla voce.
+Quando un'installazione non abilita l'interazione vocale, Ambrogio deve consentire l'uso della chat testuale senza richiedere la configurazione o l'avvio dei componenti necessari soltanto alla voce.
 
 #### Metadata
   * type: requirement
@@ -652,21 +540,6 @@ Quando Ambrogio fornisce una pagina dell'elenco delle conversazioni, deve ordina
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Permanenza della sessione CLI dopo rifiuto per occupazione
-
-Quando il primo turno valido di una sessione CLI viene rifiutato perché l'installazione è occupata, la CLI deve comunicare il rifiuto e restare aperta per un nuovo input, senza creare una conversazione, accodare il turno rifiutato o riprovarlo automaticamente.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Ciclo della sessione CLI interattiva](../Contracts/FamilyConversation.md#ciclo-della-sessione-cli-interattiva)
-  * [Profilo testuale degli errori CLI](../Contracts/FamilyConversation.md#profilo-testuale-degli-errori-cli)
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
 ### Persistenza degli istanti conversazionali in millisecondi Unix
 
 Quando l'adapter dell'archivio salva o ricostruisce un istante della conversazione, deve convertirlo esplicitamente tra un `Date` valido nel codice e un intero di millisecondi trascorsi dall'epoca Unix nella riga SQLite, preservando esattamente l'istante.
@@ -722,17 +595,6 @@ Quando il client della chat testuale riceve un evento SSE `error`, deve mostrare
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Presentazione testuale degli errori nella CLI
-
-Quando la CLI comunica alla persona un errore di avvio o l'esito di errore di un turno, deve scrivere un messaggio pubblico leggibile su `stderr`, separato dalle risposte conversazionali su `stdout`, senza usare JSON per la presentazione pubblica dell'errore.
-
-#### Metadata
-  * type: requirement
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
 ### Pronuncia della risposta vocale
 
 Quando Ambrogio produce una risposta a un turno vocale, deve pronunciare la risposta alla famiglia.
@@ -749,24 +611,10 @@ Quando Ambrogio produce una risposta a un turno vocale, deve pronunciare la risp
 
 ### Proprietà della risorsa SQLite conversazionale
 
-Quando un processo usa l'archivio delle conversazioni, la sua composition root deve creare un solo proprietario della risorsa SQLite/Kysely per quell'archivio e fornire agli adapter le capacità necessarie senza trasferire loro la responsabilità di chiuderla.
+Quando il server usa l'archivio delle conversazioni, la sua composition root deve creare un solo proprietario della risorsa SQLite/Kysely per quell'archivio e fornire agli adapter le capacità necessarie senza trasferire loro la responsabilità di chiuderla.
 
 #### Metadata
   * type: requirement
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
-### Prosecuzione della sessione CLI dopo errore del turno
-
-Quando un turno ammesso nella CLI termina con un esito di errore e la CLI con l'archivio restano operativi, la sessione deve tornare a consentire un nuovo turno senza ripetere automaticamente quello fallito; il nuovo turno ammesso deve appartenere alla stessa conversazione.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Ciclo della sessione CLI interattiva](../Contracts/FamilyConversation.md#ciclo-della-sessione-cli-interattiva)
 
 #### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
@@ -789,7 +637,7 @@ Quando il backend riceve da un client della chat testuale un nuovo turno con l'i
 
 ### Registrazione dei turni conversazionali accettati
 
-Quando Ambrogio accetta un turno rappresentato come testo dalla chat, dalla CLI o dalla trascrizione vocale, deve conservarne il testo e lo stato in elaborazione prima di avviarne l'elaborazione, affinché il turno sia riconoscibile dopo un riavvio.
+Quando Ambrogio accetta un turno rappresentato come testo dalla chat o dalla trascrizione vocale, deve conservarne il testo e lo stato in elaborazione prima di avviarne l'elaborazione, affinché il turno sia riconoscibile dopo un riavvio.
 
 #### Metadata
   * type: requirement
@@ -817,7 +665,7 @@ Mentre un'interazione vocale è attiva, quando la famiglia formula una replica i
 
 ### Riapertura delle conversazioni tramite chat testuale
 
-Quando un ingresso tenta di riaprire una conversazione conservata per aggiungere nuovi turni, Ambrogio deve consentire la riapertura soltanto tramite un client della chat testuale; una nuova interazione vocale o esecuzione CLI deve usare una nuova conversazione.
+Quando un ingresso tenta di riaprire una conversazione conservata per aggiungere nuovi turni, Ambrogio deve consentire la riapertura soltanto tramite un client della chat testuale; una nuova interazione vocale deve usare una nuova conversazione.
 
 #### Metadata
   * type: requirement
@@ -857,7 +705,7 @@ Quando il flusso SSE di un turno della chat testuale termina senza un evento `do
 
 ### Riconoscimento del turno interrotto dopo riavvio
 
-Quando Ambrogio si riavvia e trova un turno accettato senza esito conservato, deve mostrarlo alla famiglia come «Interrotto» nella conversazione.
+Quando il server si avvia e trova turni conservati come «In elaborazione» senza esito, Ambrogio deve contrassegnarli tutti come «Interrotti» prima di accettare nuovi turni e mostrarli come tali nelle rispettive conversazioni.
 
 #### Metadata
   * type: requirement
@@ -868,7 +716,7 @@ Quando Ambrogio si riavvia e trova un turno accettato senza esito conservato, de
 
 ### Rifiuto dei turni concorrenti nell'installazione
 
-Quando l'installazione ha un turno accettato il cui esito non è ancora conservato, Ambrogio deve rifiutare come esito previsto ogni nuovo turno proveniente da testo, CLI o voce, indipendentemente dal client e dalla conversazione, senza accettarlo né conservarlo.
+Quando l'installazione ha un turno accettato il cui esito non è ancora conservato, Ambrogio deve rifiutare come esito previsto ogni nuovo turno proveniente da testo o voce, indipendentemente dal client e dalla conversazione, senza accettarlo né conservarlo.
 
 #### Metadata
   * type: requirement
@@ -913,31 +761,9 @@ Quando il backend avvia il flusso di risposta a un turno della chat testuale, de
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Risposta progressiva nella CLI
-
-Quando un turno della sessione CLI produce una risposta testuale per incrementi, la CLI deve mostrare gli incrementi nell'ordine in cui diventano disponibili, prima che la risposta completa sia stata generata, senza attendere l'esito finale per mostrarla tutta insieme.
-
-#### Metadata
-  * type: requirement
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
 ### Risposta testuale nella conversazione
 
 Quando la famiglia invia un turno testuale, Ambrogio deve comunicare una risposta testuale o un messaggio di errore nella conversazione a cui appartiene il turno.
-
-#### Metadata
-  * type: requirement
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
-### Riutilizzo del caso d'uso conversazionale nella CLI
-
-Quando la CLI invia un turno testuale a una conversazione, deve invocare lo stesso caso d'uso Application del modulo «Conversazioni» usato dagli ingressi HTTP e voce per elaborare il turno, come ingresso alternativo alla conversazione.
 
 #### Metadata
   * type: requirement
@@ -1031,20 +857,6 @@ Quando una richiesta della chat testuale contiene un `text` valido e un `convers
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Segnalazione dell'errore dopo risposta CLI parziale
-
-Quando la CLI ha già mostrato incrementi di risposta e il turno termina con un errore, deve lasciare visibile il testo parziale e mostrare una segnalazione pubblica chiara che quel testo non è una risposta completata.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Profilo testuale degli errori CLI](../Contracts/FamilyConversation.md#profilo-testuale-degli-errori-cli)
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
 ### Segnalazione dell'errore nel flusso testuale
 
 Quando un errore impedisce di completare la risposta a un turno della chat testuale dopo l'avvio del flusso SSE, il backend deve trasmettere un evento SSE `error` con un messaggio pubblico sicuro e terminare il flusso senza inviare `done`.
@@ -1080,20 +892,6 @@ Il modulo business «Conversazioni» deve distinguere Domain, Application e adap
 
 #### Metadata
   * type: requirement
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
-### Sessione conversazionale interattiva nella CLI
-
-Quando la CLI è avviata per conversare, deve consentire alla persona di inviare più turni testuali in sequenza nella stessa esecuzione, usando per ogni turno ammesso dopo il primo la conversazione creata dal primo turno ammesso, fino alla chiusura della sessione.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Ammissione del primo turno CLI](../Contracts/FamilyConversation.md#ammissione-del-primo-turno-cli)
 
 #### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
@@ -1149,23 +947,9 @@ Se Ambrogio non ottiene una trascrizione utilizzabile di un turno vocale, non de
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Uscita CLI dopo guasto irreversibile della sessione
-
-Quando un guasto tecnico inatteso rende inutilizzabile una sessione CLI già avviata, la CLI deve smettere di accettare turni, comunicare un errore pubblico sicuro, chiudere le risorse che può chiudere e terminare con codice di uscita 1, senza ripetere automaticamente il turno in corso.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Profilo testuale degli errori CLI](../Contracts/FamilyConversation.md#profilo-testuale-degli-errori-cli)
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
 ### Validazione del formato negli ingressi conversazionali
 
-Quando un ingresso HTTP o CLI riceve un turno, il suo adapter deve verificare forma e decodifica dei dati del rispettivo protocollo prima di invocare il caso d'uso conversazionale, interrompendo il flusso per input non validi senza attribuirsi le regole di stato della conversazione.
+Quando l'ingresso HTTP riceve un turno, il suo adapter deve verificare forma e decodifica dei dati del rispettivo protocollo prima di invocare il caso d'uso conversazionale, interrompendo il flusso per input non validi senza attribuirsi le regole di stato della conversazione.
 
 #### Metadata
   * type: requirement

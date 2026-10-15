@@ -34,7 +34,7 @@ Raggruppa le verifiche della trascrizione, della risposta parlata, della conserv
 
 ### Prova degli ingressi testuali senza voce
 
-Avviare un'installazione con la configurazione e le risorse vocali assenti, mantenendo configurati i soli componenti necessari alla chat testuale e alla CLI. Eseguire un turno tramite ciascuno dei due ingressi.
+Avviare un'installazione con la configurazione e le risorse vocali assenti, mantenendo configurati i soli componenti necessari alla chat testuale. Eseguire un turno tramite la chat testuale.
 
 #### Details
 La prova passa se entrambi gli ingressi testuali si avviano e completano un turno senza caricare configurazione vocale né costruire componenti vocali. Fallisce se uno dei due richiede un file o una risorsa solo vocale o non può conversare. La prova resta da eseguire quando gli ingressi sono implementati.
@@ -120,10 +120,10 @@ Raggruppa i controlli sulla collocazione dei flussi testuali e vocali nel modulo
 
 ### Analisi dei dati al confine dei casi d'uso
 
-Esaminare le firme e i valori scambiati tra i casi d'uso Application di «Conversazioni» e gli adapter HTTP, CLI e voce disponibili. Seguire un turno dalla decodifica dell'ingresso fino alla rappresentazione dell'esito, compresi gli incrementi progressivi, e controllare anche i casi d'uso di lettura presenti.
+Esaminare le firme e i valori scambiati tra i casi d'uso Application di «Conversazioni» e gli adapter HTTP e voce disponibili. Seguire un turno dalla decodifica dell'ingresso fino alla rappresentazione dell'esito, compresi gli incrementi progressivi, e controllare anche i casi d'uso di lettura presenti.
 
 #### Details
-L'analisi passa se input e dati di successo sono definiti in Application con significato indipendente dal protocollo, gli adapter traducono in entrambe le direzioni e nessun caso d'uso espone oggetti Domain o tipi di trasporto. Fallisce se Application riceve un oggetto HTTP o vocale, produce direttamente SSE o output CLI, oppure se ingressi diversi mantengono contratti Application incompatibili per la stessa intenzione. L'analisi resta da svolgere quando casi d'uso e adapter esistono.
+L'analisi passa se input e dati di successo sono definiti in Application con significato indipendente dal protocollo, gli adapter traducono in entrambe le direzioni e nessun caso d'uso espone oggetti Domain o tipi di trasporto. Fallisce se Application riceve un oggetto HTTP o vocale, produce direttamente SSE, oppure se ingressi diversi mantengono contratti Application incompatibili per la stessa intenzione. L'analisi resta da svolgere quando casi d'uso e adapter esistono.
 
 #### Metadata
   * type: analysis-verification
@@ -341,7 +341,7 @@ La prova passa se nessun client permette l'invio di nuovi turni tramite testo o 
 
 ### Prova del rifiuto dei turni concorrenti
 
-Avviare un turno in una conversazione e, prima che il suo esito sia conservato, inviare nuovi turni tramite ingressi e client diversi, rivolti sia alla stessa conversazione sia a una nuova. Includere una richiesta HTTP con testo valido e acquisirne stato, `Content-Type` e corpo. Inviare anche due richieste contemporaneamente da processi diversi, per esempio HTTP e CLI. Ripetere dopo la conclusione del primo turno e dopo un'interruzione seguita dal riavvio del server.
+Avviare un turno in una conversazione e, prima che il suo esito sia conservato, inviare nuovi turni tramite ingressi e client diversi, rivolti sia alla stessa conversazione sia a una nuova. Includere una richiesta HTTP con testo valido e acquisirne stato, `Content-Type` e corpo. Inviare anche due richieste HTTP contemporaneamente da client diversi. Ripetere dopo la conclusione del primo turno e dopo un'interruzione seguita dal riavvio del server.
 
 #### Details
 La prova passa se ogni turno concorrente riceve un rifiuto previsto senza essere accettato, elaborato o conservato, se tra due richieste simultanee ne viene accettata al massimo una e se un nuovo turno può essere accettato dopo la conclusione del primo o, in caso di arresto, dopo il riavvio. La richiesta HTTP rifiutata riceve `409` con `Content-Type: application/json` e un campo stringa `error` sicuro, senza avviare SSE né lasciare il turno in coda. Fallisce se turni di conversazioni o ingressi diversi vengono elaborati insieme, se un turno rifiutato compare nello storico, se la risposta HTTP usa uno stato o formato diverso o se l'installazione resta bloccata quando torna operativa.
@@ -426,7 +426,7 @@ Raggruppa le verifiche della risposta testuale, dello storico degli scambi e del
 
 ### Analisi della proprietà dei controlli conversazionali
 
-Esaminare il percorso di un turno dagli adapter HTTP e CLI al caso d'uso Application, al Domain e all'archivio SQLite. Confrontare i controlli implementati con i contratti del turno vuoto, della conversazione richiesta, degli stati del turno e dell'ammissione concorrente; osservare anche dove il flusso si arresta dopo ciascun rifiuto.
+Esaminare il percorso di un turno dall'adapter HTTP al caso d'uso Application, al Domain e all'archivio SQLite. Confrontare i controlli implementati con i contratti del turno vuoto, della conversazione richiesta, degli stati del turno e dell'ammissione concorrente; osservare anche dove il flusso si arresta dopo ciascun rifiuto.
 
 #### Details
 L'analisi passa se gli adapter fermano forma e decodifica non valide prima del caso d'uso senza contenere regole di stato, Application coordina le precondizioni contestuali e i rifiuti tramite porte senza dipendere dal protocollo, Domain resta l'autorità per stati e transizioni, e SQLite mantiene l'ammissione atomica anche quando esiste un controllo preliminare. Fallisce se un ingresso decide un invariante Domain, se il caso d'uso riceve input non decodificato, se un rifiuto permette effetti successivi, se Domain legge il protocollo o se un controllo preliminare sostituisce la garanzia atomica. L'analisi resta da svolgere quando il codice è implementato.
@@ -438,36 +438,6 @@ L'analisi passa se gli adapter fermano forma e decodifica non valide prima del c
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * verify: [Precondizioni contestuali nel caso d'uso conversazionale](../Requirements/FamilyConversation.md#precondizioni-contestuali-nel-caso-duso-conversazionale)
   * verify: [Validazione del formato negli ingressi conversazionali](../Requirements/FamilyConversation.md#validazione-del-formato-negli-ingressi-conversazionali)
----
-
-### Controllo degli agenti e tool della CLI
-
-Per ogni agente e tool conversazionale presente, esaminare l'assemblaggio delle composition root CLI, HTTP e voce e confrontare gli insiemi resi disponibili al caso d'uso del modulo «Conversazioni».
-
-#### Details
-Il controllo passa se la CLI rende disponibili al dialogo tutti e soli gli agenti e tool conversazionali disponibili tramite HTTP e voce, anche quando le composition root creano istanze distinte. Fallisce se un agente o tool del dialogo manca nella CLI o se la CLI usa un insieme conversazionale diverso. Il controllo resta da eseguire quando tali componenti sono implementati.
-
-#### Metadata
-  * type: inspection-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * verify: [Disponibilità degli agenti e tool conversazionali nella CLI](../Requirements/FamilyConversation.md#disponibilità-degli-agenti-e-tool-conversazionali-nella-cli)
----
-
-### Controllo del caso d'uso condiviso dalla CLI
-
-Esaminare gli adapter d'ingresso e le composition root di CLI, HTTP e voce che inoltrano turni alla conversazione; seguire le chiamate fino all'Application del modulo «Conversazioni».
-
-#### Details
-Il controllo passa se la CLI invoca per il turno testuale lo stesso caso d'uso Application usato dagli ingressi HTTP e voce, senza duplicarne la logica in un percorso CLI separato. Fallisce se la CLI usa un caso d'uso distinto per la stessa elaborazione o reimplementa la logica conversazionale. Il controllo per un ingresso non ancora presente resta da eseguire quando viene introdotto.
-
-#### Metadata
-  * type: inspection-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * verify: [Riutilizzo del caso d'uso conversazionale nella CLI](../Requirements/FamilyConversation.md#riutilizzo-del-caso-duso-conversazionale-nella-cli)
 ---
 
 ### Controllo dell'archivio SQLite e dell'accesso Kysely
@@ -483,36 +453,6 @@ Il controllo passa se lo stato persistente delle conversazioni è in SQLite e le
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * verify: [Disponibilità dello storico dopo riavvio](../Requirements/FamilyConversation.md#disponibilità-dello-storico-dopo-riavvio)
----
-
-### Prova degli esiti di avvio CLI fallito
-
-Avviare la CLI separatamente con un argomento non valido, con una configurazione richiesta assente o non valida e con un guasto tecnico controllato nella preparazione delle dipendenze. Acquisire esito pubblico, codice di uscita, chiamate al caso d'uso e stato delle risorse eventualmente aperte.
-
-#### Details
-La prova passa se l'argomento non valido non invoca il caso d'uso e termina con codice 2, mentre configurazione non valida e guasto tecnico terminano con codice 1. Il messaggio di configurazione identifica la categoria del problema senza esporre segreti; quello del guasto tecnico è comprensibile ma non copia messaggi o stack della dipendenza. Le risorse già aperte vengono chiuse prima dell'uscita. Fallisce se le tre condizioni sono confuse, se un guasto tecnico viene presentato come errore d'uso o se un messaggio pubblico rivela dati tecnici sensibili. La prova resta da eseguire quando la CLI esiste.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * verify: [Esito pubblico dell'avvio CLI fallito](../Requirements/FamilyConversation.md#esito-pubblico-dellavvio-cli-fallito)
----
-
-### Prova dei canali degli errori CLI
-
-Acquisire separatamente `stdout` e `stderr` in una sessione CLI che produce una risposta riuscita, un turno con risposta parziale seguita da errore e poi un turno valido; ripetere con un errore di avvio per argomenti non validi e con un guasto tecnico controllato.
-
-#### Details
-La prova passa se il testo delle risposte e i frammenti parziali compaiono su `stdout` e ciascun messaggio pubblico di errore compare come testo leggibile su `stderr`, senza essere serializzato come JSON né contenere dettagli tecnici della dipendenza. Dopo il turno fallito, la sessione resta utilizzabile quando CLI e archivio sono operativi. Gli eventuali log diagnostici non sono scambiati per messaggi pubblici. Fallisce se un errore pubblico appare nella risposta su `stdout`, se un messaggio pubblico usa JSON, se i frammenti parziali sono cancellati o se trapelano dettagli tecnici. La prova resta da eseguire quando la CLI esiste.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * verify: [Presentazione testuale degli errori nella CLI](../Requirements/FamilyConversation.md#presentazione-testuale-degli-errori-nella-cli)
 ---
 
 ### Prova del completamento dopo disconnessione della chat testuale
@@ -608,43 +548,12 @@ La prova passa se, dopo la conservazione dell'esito, il client aggiorna automati
   * verify: [Aggiornamento automatico dell'esito alla riapertura](../Requirements/FamilyConversation.md#aggiornamento-automatico-dellesito-alla-riapertura)
 ---
 
-### Prova dell'ambito conversazionale della CLI
-
-Esaminare comandi e opzioni della CLI; avviare due esecuzioni con una conversazione testuale ciascuna e verificare quali conversazioni la seconda esecuzione può leggere o modificare, usando l'identificativo della prima dove un ingresso lo consente.
-
-#### Details
-La prova passa se ogni esecuzione opera soltanto sulla propria nuova conversazione e la CLI non offre comandi o opzioni per leggere, selezionare o riaprire conversazioni precedenti. Fallisce se la seconda esecuzione può leggere o aggiungere turni alla conversazione della prima. La prova resta da eseguire quando la CLI è implementata.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * verify: [CLI limitata alla conversazione dell'esecuzione corrente](../Requirements/FamilyConversation.md#cli-limitata-alla-conversazione-dellesecuzione-corrente)
----
-
-### Prova dell'archivio comune delle conversazioni CLI
-
-Con l'archivio dell'installazione avviato, creare uno scambio testuale dalla CLI e uno da HTTP o voce; ispezionare l'archivio usato dai due ingressi e consultare lo storico tramite l'ingresso destinato alla famiglia.
-
-#### Details
-La prova passa se entrambi gli scambi sono conservati nello stesso archivio delle conversazioni, la conversazione CLI è distinta e la famiglia può leggere la conversazione CLI e il suo scambio testuale dallo storico. Fallisce se la CLI conserva gli scambi in un archivio separato, se gli scambi non persistono o se la conversazione CLI non è consultabile dalla famiglia. La prova resta da eseguire quando gli ingressi e l'archivio sono implementati.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * verify: [Archiviazione comune degli scambi CLI](../Requirements/FamilyConversation.md#archiviazione-comune-degli-scambi-cli)
-  * verify: [Consultazione familiare delle conversazioni CLI](../Requirements/FamilyConversation.md#consultazione-familiare-delle-conversazioni-cli)
----
-
 ### Prova dell'arresto per input conversazionale non valido
 
-Inviare all'ingresso HTTP un corpo JSON malformato e poi un corpo ben formato con `text` di tipo errato; invocare la CLI con argomenti non validi per il comando conversazionale. Strumentare il caso d'uso e l'archivio per osservare eventuali chiamate ed effetti.
+Inviare all'ingresso HTTP un corpo JSON malformato e poi un corpo ben formato con `text` di tipo errato. Strumentare il caso d'uso e l'archivio per osservare eventuali chiamate ed effetti.
 
 #### Details
-La prova passa se gli adapter rifiutano ciascun input al proprio confine prima di invocare il caso d'uso, senza creare conversazioni o turni né tentare scritture. Gli esiti pubblici seguono i contratti HTTP e CLI previsti per errori di protocollo. Fallisce se un input non decodificato arriva ad Application, se il rifiuto avviene soltanto nel Domain o nell'archivio, oppure se resta un effetto persistente. La prova resta da eseguire quando gli ingressi esistono.
+La prova passa se gli adapter rifiutano ciascun input al proprio confine prima di invocare il caso d'uso, senza creare conversazioni o turni né tentare scritture. Gli esiti pubblici seguono il contratto HTTP previsto per errori di protocollo. Fallisce se un input non decodificato arriva ad Application, se il rifiuto avviene soltanto nel Domain o nell'archivio, oppure se resta un effetto persistente. La prova resta da eseguire quando gli ingressi esistono.
 
 #### Metadata
   * type: test-verification
@@ -668,21 +577,6 @@ La prova passa se ogni caso restituisce uno stato HTTP `4xx` o `5xx` e `Content-
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * verify: [Presentazione dell'errore HTTP prima del flusso testuale](../Requirements/FamilyConversation.md#presentazione-dellerrore-http-prima-del-flusso-testuale)
   * verify: [Segnalazione dell'errore HTTP prima del flusso testuale](../Requirements/FamilyConversation.md#segnalazione-dellerrore-http-prima-del-flusso-testuale)
----
-
-### Prova dell'errore dopo risposta CLI parziale
-
-Avviare nella CLI un turno che emette almeno due frammenti riconoscibili e poi termina con un errore controllato contenente dettagli diagnostici distintivi. Osservare l'output già mostrato, la segnalazione successiva e lo storico della conversazione.
-
-#### Details
-La prova passa se i frammenti restano visibili, una segnalazione separata indica chiaramente che la risposta è incompleta e fallita, i dettagli diagnostici non compaiono nel messaggio pubblico e lo storico registra un esito di errore con messaggio pubblico senza trattare i frammenti come risposta completata. Fallisce se la CLI cancella il testo parziale, presenta il turno come riuscito, omette l'errore o conserva i frammenti come esito di risposta.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * verify: [Segnalazione dell'errore dopo risposta CLI parziale](../Requirements/FamilyConversation.md#segnalazione-dellerrore-dopo-risposta-cli-parziale)
 ---
 
 ### Prova dell'errore nel flusso testuale
@@ -717,24 +611,9 @@ La prova passa se il primo evento applicativo SSE è `event: conversation` e ha 
   * verify: [Comunicazione dell'identificativo della nuova conversazione testuale](../Requirements/FamilyConversation.md#comunicazione-dellidentificativo-della-nuova-conversazione-testuale)
 ---
 
-### Prova dell'uscita CLI per guasto della sessione
-
-Avviare una sessione CLI con un turno ammesso, poi forzare un guasto tecnico che rende l'archivio inutilizzabile prima di conservare l'esito. Osservare ingresso, `stdout`, `stderr`, codice di uscita, tentativi di chiusura e numero di elaborazioni del turno. Ripristinare l'archivio e riavviare l'installazione per esaminare lo stato del turno.
-
-#### Details
-La prova passa se la CLI non presenta altri ingressi, segnala su `stderr` un errore pubblico sicuro distinto dai dettagli diagnostici, tenta di chiudere le risorse possedute e termina con codice 1 senza accodare input né ripetere il turno. Gli eventuali frammenti su `stdout` non sono presentati come risposta completata; al riavvio il turno accettato senza esito è riconosciuto come interrotto. Fallisce se la CLI resta interattiva pur non potendo usare l'archivio, esce con 0, espone il guasto tecnico, dichiara riuscito il turno parziale o lo ripete automaticamente. La prova resta da eseguire quando la CLI e l'archivio esistono.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * verify: [Uscita CLI dopo guasto irreversibile della sessione](../Requirements/FamilyConversation.md#uscita-cli-dopo-guasto-irreversibile-della-sessione)
----
-
 ### Prova della conservazione del testo originale
 
-Inviare tramite chat e CLI un turno valido con spazi iniziali, finali e interni e, quando la voce è abilitata, simulare una trascrizione valida con gli stessi caratteri. Consultare poi lo storico di ciascuna conversazione. Verificare separatamente il rifiuto già previsto per un input composto solo da spazi nei rispettivi ingressi che lo definiscono.
+Inviare tramite chat un turno valido con spazi iniziali, finali e interni e, quando la voce è abilitata, simulare una trascrizione valida con gli stessi caratteri. Consultare poi lo storico di ciascuna conversazione. Verificare separatamente il rifiuto già previsto per un input composto solo da spazi nei rispettivi ingressi che lo definiscono.
 
 #### Details
 La prova passa se ogni turno accettato compare nello storico con il testo identico a quello ricevuto, inclusi spazi iniziali, finali e interni, mentre la verifica di vuotezza non altera il testo. Fallisce se il testo accettato viene tagliato o normalizzato implicitamente.
@@ -765,10 +644,10 @@ La prova passa se il backend restituisce HTTP `404` prima di avviare SSE, con `C
 
 ### Prova della continuazione testuale delle conversazioni
 
-Creare e conservare separatamente una conversazione da un client della chat testuale, una dalla CLI e una dalla voce, ciascuna con scambi testuali distintivi. Terminare le interazioni CLI e vocali; riaprire ciascuna conversazione da un client della chat testuale e inviare un nuovo turno testuale con il solo identificativo della conversazione, senza reinviare gli scambi precedenti. Osservare l'accesso del backend all'archivio e il contesto usato per elaborare il turno. Avviare poi una nuova esecuzione CLI con un turno valido ammesso e una nuova interazione vocale e osservare quali conversazioni usano.
+Creare e conservare separatamente una conversazione da un client della chat testuale e una dalla voce, ciascuna con scambi testuali distintivi. Terminare l'interazione vocale; riaprire ciascuna conversazione da un client della chat testuale e inviare un nuovo turno testuale con il solo identificativo della conversazione, senza reinviare gli scambi precedenti. Osservare l'accesso del backend all'archivio e il contesto usato per elaborare il turno. Avviare poi una nuova interazione vocale e osservare quali conversazioni usano.
 
 #### Details
-La prova passa se, per ogni origine, il backend recupera dall'archivio lo storico della conversazione identificata e lo usa per elaborare il nuovo turno; la chat testuale aggiunge il nuovo scambio alla medesima conversazione mantenendo identificativo e ordine degli scambi; e le nuove esecuzioni CLI e vocali con turni ammessi creano conversazioni distinte senza riaprire quelle conservate. Fallisce se il backend dipende dallo storico inviato dal client, recupera lo storico di un'altra conversazione, il client della chat testuale crea una copia o una nuova conversazione per il turno aggiunto, non può continuare una delle conversazioni conservate o CLI o voce riaprono uno storico. Le repliche immediate dell'interazione vocale ancora attiva sono verificate separatamente.
+La prova passa se, per ogni origine, il backend recupera dall'archivio lo storico della conversazione identificata e lo usa per elaborare il nuovo turno; la chat testuale aggiunge il nuovo scambio alla medesima conversazione mantenendo identificativo e ordine degli scambi; e le nuove interazioni vocali con turni ammessi creano conversazioni distinte senza riaprire quelle conservate. Fallisce se il backend dipende dallo storico inviato dal client, recupera lo storico di un'altra conversazione, il client della chat testuale crea una copia o una nuova conversazione per il turno aggiunto, non può continuare una delle conversazioni conservate o la voce riapre uno storico. Le repliche immediate dell'interazione vocale ancora attiva sono verificate separatamente.
 
 #### Metadata
   * type: test-verification
@@ -778,23 +657,6 @@ La prova passa se, per ogni origine, il backend recupera dall'archivio lo storic
   * verify: [Continuazione testuale di ogni conversazione](../Requirements/FamilyConversation.md#continuazione-testuale-di-ogni-conversazione)
   * verify: [Recupero dello storico per il turno testuale](../Requirements/FamilyConversation.md#recupero-dello-storico-per-il-turno-testuale)
   * verify: [Riapertura delle conversazioni tramite chat testuale](../Requirements/FamilyConversation.md#riapertura-delle-conversazioni-tramite-chat-testuale)
----
-
-### Prova della creazione della conversazione al primo turno CLI
-
-Avviare la CLI e uscire senza inviare testo; ripetere inviando solo testo vuoto o spazi. Durante un turno già attivo nell'installazione, inviare da una nuova esecuzione CLI un testo valido che venga rifiutato. Verificare che la CLI resti aperta, poi liberare l'installazione e inviare dalla stessa esecuzione un nuovo testo valido; ripetere il rifiuto uscendo invece senza altri turni. Infine, in due esecuzioni distinte, inviare il primo turno valido e ammesso e osservare l'archivio prima e dopo l'ammissione.
-
-#### Details
-La prova passa se avvio, input vuoto e rifiuto per occupazione non creano conversazioni; dopo il rifiuto compare un messaggio pubblico testuale su `stderr`, la CLI resta pronta per un nuovo input e non ripete né accoda il testo rifiutato. Il nuovo turno inviato dalla persona, quando ammesso, crea insieme conversazione e turno iniziale solo in quel momento; ogni esecuzione ammessa usa un identificativo distinto. La sessione chiusa dopo il solo rifiuto non lascia una conversazione vuota. Fallisce se la CLI esce al rifiuto, crea la conversazione prima dell'ammissione, elabora più tardi il testo rifiutato o condivide la conversazione tra esecuzioni. La prova resta da eseguire quando la CLI è implementata.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * verify: [Assenza di conversazioni CLI senza turni ammessi](../Requirements/FamilyConversation.md#assenza-di-conversazioni-cli-senza-turni-ammessi)
-  * verify: [Creazione della conversazione CLI al primo turno ammesso](../Requirements/FamilyConversation.md#creazione-della-conversazione-cli-al-primo-turno-ammesso)
-  * verify: [Permanenza della sessione CLI dopo rifiuto per occupazione](../Requirements/FamilyConversation.md#permanenza-della-sessione-cli-dopo-rifiuto-per-occupazione)
 ---
 
 ### Prova della disponibilità dello storico dopo riavvio
@@ -810,22 +672,6 @@ La prova passa se, dopo il riavvio, la famiglia può recuperare la conversazione
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * verify: [Disponibilità dello storico dopo riavvio](../Requirements/FamilyConversation.md#disponibilità-dello-storico-dopo-riavvio)
----
-
-### Prova della prosecuzione CLI dopo errore
-
-In una sessione CLI, far concludere il primo turno ammesso con un errore controllato dopo alcuni frammenti, mantenendo operativi CLI e archivio. Dopo la segnalazione dell'errore, inviare un nuovo turno valido e farlo concludere correttamente; quindi chiudere normalmente la sessione. Consultare lo storico, osservare se il primo turno viene rielaborato e rilevare il codice di uscita del processo.
-
-#### Details
-La prova passa se, dopo che l'esito di errore è conservato, la CLI consente il nuovo turno nella stessa conversazione, lo storico contiene un solo scambio di errore per il primo turno e un successivo scambio riuscito, nessuna elaborazione del primo viene ripetuta automaticamente e la chiusura normale termina con codice 0. Ripetere chiudendo normalmente dopo il solo turno fallito: anche in questo caso il codice è 0. Fallisce se la sessione si chiude nonostante le risorse operative, crea una nuova conversazione, riavvia il turno fallito, permette il secondo prima che il primo abbia un esito conservato oppure usa il fallimento di un turno per assegnare un codice di uscita diverso da 0 alla chiusura normale.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * verify: [Codice di uscita della sessione CLI chiusa normalmente](../Requirements/FamilyConversation.md#codice-di-uscita-della-sessione-cli-chiusa-normalmente)
-  * verify: [Prosecuzione della sessione CLI dopo errore del turno](../Requirements/FamilyConversation.md#prosecuzione-della-sessione-cli-dopo-errore-del-turno)
 ---
 
 ### Prova della ripresa della risposta parziale
@@ -857,51 +703,6 @@ La prova passa se ogni turno riceve l'esito testuale nella conversazione corrett
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * verify: [Conservazione dello scambio testuale](../Requirements/FamilyConversation.md#conservazione-dello-scambio-testuale)
   * verify: [Risposta testuale nella conversazione](../Requirements/FamilyConversation.md#risposta-testuale-nella-conversazione)
----
-
-### Prova della risposta progressiva nella CLI
-
-Avviare una sessione CLI con una risposta controllata che produce almeno tre frammenti distinti separati da pause. Osservare `stdout`, `stderr` e la disponibilità dell'ingresso per il turno successivo dopo ogni frammento, prima di consentire la generazione del successivo.
-
-#### Details
-La prova passa se il primo frammento compare su `stdout` prima che la risposta sia completa, ogni frammento successivo compare una sola volta nell'ordine prodotto, il testo concatenato coincide con la risposta conclusa e la CLI non accetta un nuovo turno mentre emette i frammenti. Gli eventuali log tecnici non compaiono nel testo della risposta su `stdout`. Fallisce se tutti i frammenti sono mostrati solo alla fine, sono duplicati o riordinati, oppure se l'ingresso del turno successivo si abilita prima della conclusione.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * verify: [Risposta progressiva nella CLI](../Requirements/FamilyConversation.md#risposta-progressiva-nella-cli)
----
-
-### Prova della sessione CLI con più turni
-
-Avviare una CLI interattiva e inviare un primo turno valido; durante la sua elaborazione tentare un secondo invio. Dopo l'esito del primo, inviare un secondo turno valido e poi chiudere la sessione. Consultare lo storico e ripetere con una nuova esecuzione CLI.
-
-#### Details
-La prova passa se i due turni ammessi della prima esecuzione appartengono alla stessa conversazione, in ordine, e il secondo può partire solo quando il primo è terminato; nessun input tentato durante il turno attivo viene conservato per essere elaborato più tardi. La conversazione resta consultabile dopo la chiusura e la nuova esecuzione usa una conversazione distinta al suo primo turno ammesso. Fallisce se la CLI termina obbligatoriamente dopo il primo turno, crea una conversazione per ogni turno o accoda un input tentato durante l'elaborazione. La prova resta da eseguire quando la CLI è implementata.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * verify: [Sessione conversazionale interattiva nella CLI](../Requirements/FamilyConversation.md#sessione-conversazionale-interattiva-nella-cli)
----
-
-### Prova delle righe vuote nella CLI
-
-In una sessione CLI nuova inviare una riga vuota e una composta solo da spazi, poi un primo turno valido ammesso. Dopo il suo esito, inviare di nuovo una riga vuota e un'altra composta solo da spazi, quindi un secondo turno valido. Osservare le invocazioni del caso d'uso, l'output CLI e l'archivio dopo ogni input.
-
-#### Details
-La prova passa se ogni riga vuota o fatta solo di spazi non invoca il caso d'uso, non produce un messaggio d'errore, non crea né modifica turni o conversazioni e lascia la CLI pronta al prossimo input. I due turni validi sono conservati nella stessa conversazione, che nasce solo al primo turno ammesso. Fallisce se un input vuoto viene elaborato, genera un errore o cambia l'archivio.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * verify: [Ignorare le righe vuote nella CLI](../Requirements/FamilyConversation.md#ignorare-le-righe-vuote-nella-cli)
 ---
 
 ### Prova dello stato del turno alla riapertura
@@ -944,10 +745,10 @@ Il controllo passa se ogni processo ha un solo proprietario della risorsa SQLite
 
 ### Prova della chiusura della risorsa SQLite
 
-Avviare il server e la CLI con un archivio di prova, osservando l'apertura, le migrazioni e la chiusura della risorsa. Ripetere con un guasto controllato dopo la creazione della risorsa ma prima dell'attivazione degli ingressi e con un errore durante l'esecuzione CLI.
+Avviare il server con un archivio di prova, osservando l'apertura, le migrazioni e la chiusura della risorsa. Ripetere con un guasto controllato dopo la creazione della risorsa ma prima dell'attivazione degli ingressi e con un errore durante l’esecuzione del server.
 
 #### Details
-La prova passa se l'archivio è preparato prima degli ingressi, ogni risorsa creata viene chiusa una sola volta dal suo proprietario dopo le operazioni che la usano e la chiusura avviene anche dopo avvio fallito o errore CLI. Fallisce se il processo accetta turni prima della preparazione, lascia aperta una risorsa dopo un errore o la chiude mentre una transizione del turno ne ha ancora bisogno.
+La prova passa se l'archivio è preparato prima degli ingressi, ogni risorsa creata viene chiusa una sola volta dal suo proprietario dopo le operazioni che la usano e la chiusura avviene anche dopo avvio fallito o errore durante l’esecuzione. Fallisce se il processo accetta turni prima della preparazione, lascia aperta una risorsa dopo un errore o la chiude mentre una transizione del turno ne ha ancora bisogno.
 
 #### Metadata
   * type: test-verification
@@ -970,7 +771,7 @@ Raggruppa le verifiche del confine tra righe SQLite e valori Domain o proiezioni
 Esaminare gli adapter SQLite/Kysely, i contratti Application di scrittura e lettura e i tipi esposti a Domain e Application.
 
 #### Details
-Il controllo passa se ogni percorso di scrittura e lettura traduce esplicitamente le rappresentazioni delle righe nei valori del contratto pertinente e nessuna firma Domain o Application espone righe, tipi o handle Kysely. Fallisce se righe del database sono usate direttamente come modelli Domain o proiezioni Application, oppure se la conversione è demandata a un ingresso HTTP o CLI.
+Il controllo passa se ogni percorso di scrittura e lettura traduce esplicitamente le rappresentazioni delle righe nei valori del contratto pertinente e nessuna firma Domain o Application espone righe, tipi o handle Kysely. Fallisce se righe del database sono usate direttamente come modelli Domain o proiezioni Application, oppure se la conversione è demandata a un ingresso HTTP.
 
 #### Metadata
   * type: inspection-verification
@@ -1037,7 +838,7 @@ Il controllo passa se Application ottiene i nuovi valori dal generatore fornito 
 
 ### Prova degli UUID v4 conversazionali
 
-Creare conversazioni e turni tramite gli ingressi disponibili, anche da processi distinti; leggere i rispettivi identificativi nell'archivio, riavviare e rileggere le stesse conversazioni. Per la chat confrontare il conversationId comunicato dal server con quello conservato. Provare separatamente a persistere due nuovi oggetti con lo stesso identificativo tramite un generatore controllato.
+Creare conversazioni e turni tramite gli ingressi disponibili del server; leggere i rispettivi identificativi nell'archivio, riavviare e rileggere le stesse conversazioni. Per la chat confrontare il conversationId comunicato dal server con quello conservato. Provare separatamente a persistere due nuovi oggetti con lo stesso identificativo tramite un generatore controllato.
 
 #### Details
 La prova passa se ogni nuovo identificativo è un UUID v4, gli identificativi creati sono distinti, rimangono invariati dopo il riavvio e il conversationId pubblico coincide con quello conservato. Un duplicato non sovrascrive l'oggetto esistente. Fallisce se il formato è diverso, un identificativo cambia durante il ciclo di vita, è sostituito dalla persistenza o un duplicato corrompe un oggetto esistente.
@@ -1090,10 +891,10 @@ La prova passa se ogni turno e l'ultima attività della sua conversazione usano 
 
 ### Prova del turno interrotto dopo riavvio
 
-Accettare turni con elaborazione controllata dalla chat testuale, dalla CLI e dalla voce trascritta quando abilitata; terminare bruscamente il processo prima di conservarne l'esito e riavviare Ambrogio. Ripetere dopo un arresto ordinato che interrompe un turno attivo, con un turno concluso normalmente e con una semplice disconnessione del client.
+Accettare turni con elaborazione controllata dalla chat testuale e dalla voce trascritta quando abilitata; terminare bruscamente il processo prima di conservarne l'esito e riavviare Ambrogio. Ripetere dopo un arresto ordinato che interrompe un turno attivo, con un turno concluso normalmente e con una semplice disconnessione del client. Predisporre inoltre più turni pendenti nell’archivio di prova e verificare che siano recuperati tutti prima di abilitare gli ingressi.
 
 #### Details
-La prova passa se ciascun turno accettato è persistito con il suo testo prima dell'elaborazione e, dopo un'interruzione senza esito, compare come «Interrotto» senza risposta o errore concluso e senza nuova elaborazione o chiamata ai connettori. Un turno già concluso conserva il suo esito; la sola disconnessione del client lascia proseguire Ambrogio e non produce «Interrotto». Fallisce se il turno sparisce, resta indefinitamente «In elaborazione», viene ripetuto o viene presentato falsamente come concluso. La prova resta da eseguire quando gli ingressi sono implementati.
+La prova passa se ciascun turno accettato è persistito con il suo testo prima dell'elaborazione e, a ogni avvio, tutti i turni rimasti «In elaborazione» compaiono come «Interrotti» prima dell'attivazione degli ingressi, senza risposta o errore concluso e senza nuova elaborazione o chiamata ai connettori. Una conclusione tardiva non sostituisce «Interrotto». Un turno già concluso conserva il suo esito; la sola disconnessione del client lascia proseguire Ambrogio e non produce «Interrotto». Fallisce se un turno pendente sparisce, resta «In elaborazione», viene ripetuto o viene presentato falsamente come concluso. La prova completa resta da eseguire quando gli ingressi sono implementati.
 
 #### Metadata
   * type: test-verification
@@ -1107,7 +908,7 @@ La prova passa se ciascun turno accettato è persistito con il suo testo prima d
 
 ### Prova dell'elenco paginato per ultima attività
 
-Creare più conversazioni di quante ne contenga una pagina, da chat testuale, CLI e voce quando abilitata; aggiungere un turno a una conversazione meno recente e consultare tutte le pagine senza mutare ulteriormente l'archivio. Includere almeno due conversazioni con la stessa ultima attività.
+Creare più conversazioni di quante ne contenga una pagina, da chat testuale e voce quando abilitata; aggiungere un turno a una conversazione meno recente e consultare tutte le pagine senza mutare ulteriormente l'archivio. Includere almeno due conversazioni con la stessa ultima attività.
 
 #### Details
 La prova passa se l'elenco è diviso in pagine limitate, la conversazione aggiornata compare prima di quelle con attività più vecchia, l'ordine è deterministico anche a parità di ultima attività e la consultazione di tutte le pagine restituisce ciascuna conversazione una sola volta senza omissioni. Fallisce se l'intero elenco è restituito in una sola risposta, l'ordine dipende implicitamente dal database o una conversazione compare due volte o manca. La prova resta da eseguire quando l'ingresso di consultazione è implementato.

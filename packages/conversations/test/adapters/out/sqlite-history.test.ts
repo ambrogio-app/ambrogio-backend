@@ -87,8 +87,6 @@ describe('conversation history and startup recovery', () => {
     await writer.admit({ conversationId, createConversation: true, turn: accepted(firstTurnId) });
     await writer.complete({ turnId: firstTurnId, outcome: { kind: 'answer', text: 'Prima risposta' }, finishedAt: new Date(2345) });
     await writer.admit({ conversationId, createConversation: false, turn: accepted(secondTurnId) });
-    // The writer's former process has ended before the archive is reopened.
-    await firstDb.updateTable('installation').set({ active_process_id: 2147483647 }).where('id', '=', 1).execute();
     const pending = await new SqliteConversationHistoryRead(firstDb).find(conversationId);
     expect(pending?.turns.map(turn => turn.status)).toEqual(['answered', 'pending']);
     await firstDb.destroy();
@@ -122,7 +120,6 @@ describe('conversation history and startup recovery', () => {
     const db = open(':memory:');
     await migrateConversationArchive(db);
     await new SqliteConversationWrite(db).admit({ conversationId, createConversation: true, turn: accepted(firstTurnId) });
-    await db.updateTable('installation').set({ active_process_id: 2147483647 }).where('id', '=', 1).execute();
     await sql.raw("create trigger reject_recovery before update on installation when new.active_turn_id is null begin select raise(abort, 'injected'); end").execute(db);
     await expect(recoverPendingTurns(db, new Date(3456))).rejects.toThrow();
     expect(await db.selectFrom('turns').select(['status', 'finished_at']).where('id', '=', firstTurnId).executeTakeFirst())

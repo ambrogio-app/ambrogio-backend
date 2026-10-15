@@ -8,6 +8,7 @@ Queste istruzioni si applicano all'intero progetto.
 - Il modello ingegneristico risiede in `system-model/`.
 - Il sito e la documentazione utente appartengono a repository separati. Non aggiungerli a questo monorepo senza una nuova decisione esplicita.
 - Quando cambia un comportamento pubblico, valutare anche l'impatto su sito e documentazione utente e indicare gli aggiornamenti necessari. La validazione locale non dimostra la coerenza di quei repository esterni.
+- Prima di introdurre una scelta tecnica o architetturale non già stabilita dal modello Reqvire o da una decisione esplicita della persona, presentare le alternative e le conseguenze, chiedere la decisione e concordarla con la persona. Registrare la decisione nel punto pertinente di `system-model/` prima di implementarla; codice, test e commit non sostituiscono questa registrazione. Non assumere che un incarico generale di implementazione autorizzi scelte tecniche nuove. Non chiedere di riconfermare decisioni già prese e pubblicate.
 
 ## Fonte autorevole
 

@@ -308,7 +308,7 @@ Quando il server usa file di configurazione locali effettivi, tali file devono r
 
 ### Esclusione della raccolta automatica di dati nei log
 
-Quando i runtime HTTP e CLI del server emettono eventi diagnostici, il logger e le loro integrazioni non devono acquisire automaticamente testi delle conversazioni, corpi o header HTTP, argomenti CLI, input o output dei casi d'uso e credenziali.
+Quando il runtime HTTP del server emette eventi diagnostici, il logger e le loro integrazioni non devono acquisire automaticamente testi delle conversazioni, corpi o header HTTP, input o output dei casi d'uso e credenziali.
 
 #### Metadata
   * type: requirement
@@ -377,7 +377,7 @@ Quando una porta Application del server prevede rifiuti, la sua firma TypeScript
 
 ### Formato e flussi dei log tecnici
 
-Quando il runtime del server HTTP o della CLI emette un evento diagnostico tecnico, deve scrivere un evento JSON strutturato per riga nel flusso predefinito definito per il relativo ingresso.
+Quando il runtime del server HTTP emette un evento diagnostico tecnico, deve scrivere un evento JSON strutturato per riga nel flusso predefinito definito per il relativo ingresso.
 
 #### Metadata
   * type: requirement
@@ -430,17 +430,6 @@ Quando il server HTTP emette una risposta, incluse risposte di errore e rotte no
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
-### Identificativo di correlazione delle esecuzioni CLI
-
-Quando il server avvia un'esecuzione CLI, il confine CLI deve generare per quell'esecuzione un `correlationId` UUID v4 distinto e includerlo negli eventi diagnostici relativi all'esecuzione.
-
-#### Metadata
-  * type: requirement
-
-#### Relations
-  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
----
-
 ### Identificativo di correlazione delle richieste HTTP
 
 Quando il server riceve una richiesta HTTP, il confine HTTP deve generare per quella richiesta un `correlationId` UUID v4 distinto e includerlo negli eventi diagnostici relativi alla richiesta.
@@ -476,7 +465,7 @@ L'API HTTP del server deve essere implementata con Fastify.
 
 ### Inoltro dei log affidato al deployment
 
-Quando è richiesta la raccolta centralizzata dei log tecnici del server HTTP o della CLI, l'inoltro verso il sistema di raccolta deve essere configurato nel deployment, senza integrare nel codice applicativo un backend di log specifico.
+Quando è richiesta la raccolta centralizzata dei log tecnici del server HTTP, l'inoltro verso il sistema di raccolta deve essere configurato nel deployment, senza integrare nel codice applicativo un backend di log specifico.
 
 #### Metadata
   * type: requirement
@@ -520,7 +509,7 @@ Quando una rotta HTTP riceve un corpo, il server deve applicare un limite esplic
 
 ### Log error del fallback pubblico
 
-Quando un guasto tecnico inatteso, un bug o un valore lanciato sconosciuto raggiunge il fallback pubblico HTTP o CLI del server e il canale diagnostico è disponibile, il confine che decide l'esito esterno deve emettere un log diagnostico definitivo di livello `error` per quel guasto.
+Quando un guasto tecnico inatteso, un bug o un valore lanciato sconosciuto raggiunge il fallback pubblico HTTP del server e il canale diagnostico è disponibile, il confine che decide l'esito esterno deve emettere un log diagnostico definitivo di livello `error` per quel guasto.
 
 #### Metadata
   * type: requirement
@@ -553,7 +542,7 @@ Quando il server gestisce un rifiuto previsto di Domain o Application, un errore
 
 ### Nome stabile degli eventi diagnostici
 
-Quando il logger del server HTTP o della CLI emette un evento diagnostico, la riga JSON deve contenere un campo `event` con un nome stabile dichiarato nel punto di emissione, indipendente dai dati della singola esecuzione.
+Quando il logger del server HTTP emette un evento diagnostico, la riga JSON deve contenere un campo `event` con un nome stabile dichiarato nel punto di emissione, indipendente dai dati della singola esecuzione.
 
 #### Metadata
   * type: requirement
@@ -564,7 +553,7 @@ Quando il logger del server HTTP o della CLI emette un evento diagnostico, la ri
 
 ### Normalizzazione diagnostica nel confine definitivo
 
-Quando un confine tecnico HTTP o CLI del server gestisce definitivamente un guasto inatteso, deve normalizzare una sola volta il valore catturato per la diagnostica, conservando l'identità di un `Error` già presente oppure creando un `Error` per un valore diverso, secondo il contratto di normalizzazione diagnostica. I componenti intermedi non devono normalizzare nuovamente il guasto.
+Quando il confine tecnico HTTP del server gestisce definitivamente un guasto inatteso, deve normalizzare una sola volta il valore catturato per la diagnostica, conservando l'identità di un `Error` già presente oppure creando un `Error` per un valore diverso, secondo il contratto di normalizzazione diagnostica. I componenti intermedi non devono normalizzare nuovamente il guasto.
 
 #### Metadata
   * type: requirement
@@ -575,7 +564,7 @@ Quando un confine tecnico HTTP o CLI del server gestisce definitivamente un guas
 
 ### Oggetto Error nel campo err del log definitivo
 
-Quando il confine HTTP o CLI del server chiama il logger per un log diagnostico definitivo, il campo strutturato `err` deve contenere l'oggetto `Error` che rappresenta il guasto, conservando in memoria la catena `cause` presente.
+Quando il confine HTTP del server chiama il logger per un log diagnostico definitivo, il campo strutturato `err` deve contenere l'oggetto `Error` che rappresenta il guasto, conservando in memoria la catena `cause` presente.
 
 #### Metadata
   * type: requirement
@@ -597,7 +586,7 @@ Quando l'API HTTP riceve una richiesta con un'origine cross-origin, deve autoriz
 
 ### Perimetro iniziale dei segnali di osservabilità
 
-Nella prima versione, i runtime HTTP e CLI del server devono usare i log tecnici strutturati e gli identificativi di correlazione già previsti come segnali di osservabilità, senza introdurre sistemi separati di metriche, tracing distribuito o audit degli eventi applicativi.
+Nella prima versione, il runtime HTTP del server deve usare i log tecnici strutturati e gli identificativi di correlazione già previsti come segnali di osservabilità, senza introdurre sistemi separati di metriche, tracing distribuito o audit degli eventi applicativi.
 
 #### Metadata
   * type: requirement
@@ -663,7 +652,7 @@ Quando un componente del server decide definitivamente l'esito esterno di un gua
 
 ### Rappresentazione di err nel log JSON
 
-Quando il logger del server emette la riga JSON di un log diagnostico definitivo HTTP o CLI, la riga deve contenere una rappresentazione serializzata del campo `err` conforme al profilo controllato di serializzazione.
+Quando il logger del server emette la riga JSON di un log diagnostico definitivo HTTP, la riga deve contenere una rappresentazione serializzata del campo `err` conforme al profilo controllato di serializzazione.
 
 #### Metadata
   * type: requirement
@@ -696,7 +685,7 @@ Quando un'operazione Domain, un caso d'uso Application o una porta Application d
 
 ### Selezione esplicita dei campi diagnostici
 
-Quando i runtime HTTP e CLI del server emettono un evento diagnostico applicativo, la riga del log deve contenere soltanto i campi diagnostici scelti esplicitamente per quell'evento o per la configurazione del logger, senza acquisire automaticamente gli oggetti di ingresso, uscita o contesto.
+Quando il runtime HTTP del server emette un evento diagnostico applicativo, la riga del log deve contenere soltanto i campi diagnostici scelti esplicitamente per quell'evento o per la configurazione del logger, senza acquisire automaticamente gli oggetti di ingresso, uscita o contesto.
 
 #### Metadata
   * type: requirement
@@ -751,7 +740,7 @@ Ogni variante di rifiuto previsto di Domain, Application o di una porta del serv
 
 ### Uso di Pino per il logging tecnico
 
-Quando il server HTTP o la CLI emette un evento diagnostico tecnico, deve usare Pino come logger del proprio runtime.
+Quando il server HTTP emette un evento diagnostico tecnico, deve usare Pino come logger del proprio runtime.
 
 #### Metadata
   * type: requirement

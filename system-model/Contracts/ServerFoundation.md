@@ -1,5 +1,16 @@
 # Elements
 
+### Arresto immediato con richiesta remota non attesa
+
+Alla richiesta di arresto ordinato, il server impedisce subito nuove ammissioni e conserva come `interrotto` ogni turno ancora senza esito, prima di chiudere l'archivio. Non attende il completamento della produzione remota e non invia un annullamento esplicito al provider tramite la porta della risposta. Dopo la persistenza interrompe le connessioni HTTP locali attive e termina il processo; una risposta remota successiva non viene acquisita né conservata. La chiusura della connessione locale non garantisce l'arresto dell'elaborazione presso il provider. Un turno già concluso prima dell'interruzione conserva il proprio esito.
+
+#### Metadata
+  * type: behavior
+
+#### Relations
+  * define: [Interruzione dei turni durante l'arresto](../Requirements/ServerFoundation.md#interruzione-dei-turni-durante-larresto)
+---
+
 ### Contratto di normalizzazione diagnostica
 
 Il confine tecnico usa il valore catturato come `err` senza crearne un altro quando è già un `Error`: l'identità dell'istanza resta invariata. Se il valore catturato non è un `Error`, crea un nuovo `Error` con un messaggio diagnostico fisso, indipendente dal valore, e con `cause` pari per identità al valore catturato. La normalizzazione non converte il valore catturato in stringa e non lo modifica.

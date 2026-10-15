@@ -222,6 +222,28 @@ describe('conversation exchange use case', () => {
     });
     await expect(exchange({ text: '  domanda  ' })).rejects.toThrow('disk failed');
   });
+
+  it('discards a provider result arriving after shutdown without writing to the archive', async () => {
+    const deps = setup();
+    const started = deferred();
+    const release = deferred();
+    let stopping = false;
+    const deltas: string[] = [];
+    const exchange = createExchangeTurn({ ...deps, reply: { async *produce() {
+      started.resolve();
+      await release.promise;
+      yield 'too late';
+    } } });
+    const result = exchange({ text: '  domanda  ' }, { delta(text) { deltas.push(text); } },
+      () => stopping);
+    await started.promise;
+    stopping = true;
+    release.resolve();
+    expect(await result).toEqual({ ok: true, value: { conversationId, turnId,
+      outcome: 'interrupted' } });
+    expect(deltas).toEqual([]);
+    expect(deps.outcomes).toEqual([]);
+  });
 });
 
 function deferred(): { promise: Promise<void>; resolve: () => void } {

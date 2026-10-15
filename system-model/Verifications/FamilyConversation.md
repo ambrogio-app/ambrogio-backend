@@ -24,6 +24,91 @@ La prova passa se ogni turno nasce in elaborazione, raggiunge una sola volta uno
   * verify: [Integrità dello stato del turno nel Domain](../Requirements/FamilyConversation.md#integrità-dello-stato-del-turno-nel-domain)
 ---
 
+### Verifica dei connettori MCP
+
+Raggruppa le prove di connessione, scoperta e invocazione dei tool tramite il client MCP comune.
+
+#### Metadata
+  * type: verification-objective
+---
+
+### Prova del Bearer token per i connettori MCP
+
+Configurare due agenti con `mcp.url` verso endpoint MCP Streamable HTTP di prova e token Bearer distinti in `mcp.auth: { "type": "bearer", "token": "…" }`. Far inizializzare i client, scoprire i tool e invocare un tool per agente; osservare gli header ricevuti dai due server e i log del processo. Ripetere con un token errato per uno degli agenti. Configurare un terzo endpoint senza `mcp.auth` e ripetere inizializzazione e invocazione. Provare anche un tipo di autenticazione non supportato e un token assente o vuoto.
+
+#### Details
+La prova passa se ogni richiesta MCP dell'agente autenticato invia `Authorization: Bearer <token>` soltanto al proprio endpoint, l'agente senza `mcp.auth` non invia `Authorization`, i token non si mescolano tra agenti e non compaiono nei log o nei messaggi rivolti al modello. Con il token errato il server di prova rifiuta l'accesso e il client non presenta i tool come disponibili. Un tipo non supportato o un token mancante o vuoto impedisce l'attivazione dell'agente prima della connessione. Fallisce se una richiesta omette il token configurato, lo invia al server dell'altro agente o ne divulga il valore. La prova resta da eseguire dopo l'implementazione.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
+  * verify: [Autenticazione Bearer del client MCP](../Requirements/FamilyConversation.md#autenticazione-bearer-del-client-mcp)
+---
+
+### Prova del client MCP comune
+
+Configurare due agenti specializzati in file JSON distinti, ciascuno con `mcp.url` di un server MCP di prova che usa Streamable HTTP ed espone tool con nomi e schemi diversi. Le configurazioni non contengono un campo `transport`. Avviare gli agenti tramite la stessa implementazione client, completare l'inizializzazione MCP via HTTP, scoprire i rispettivi tool e invocarne uno con argomenti validi. Ripetere con `mcp.url` assente e con un URL non HTTP o HTTPS.
+
+#### Details
+La prova passa se ogni agente riceve soltanto l'endpoint MCP definito nel proprio file, entrambe le connessioni usano il client comune e Streamable HTTP, ciascuna espone i tool del proprio server e le invocazioni raggiungono il server corretto senza un campo `transport`. Una configurazione invalida impedisce l'attivazione dell'agente interessato prima di contattare un server. Fallisce se serve un client specifico per un server, se le connessioni o i tool si confondono tra agenti oppure se la configurazione invalida raggiunge un server. La prova resta da eseguire dopo l'implementazione.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
+  * verify: [Client MCP comune ai connettori](../Requirements/FamilyConversation.md#client-mcp-comune-ai-connettori)
+  * verify: [Configurazione MCP dell'agente specializzato](../Requirements/FamilyConversation.md#configurazione-mcp-dellagente-specializzato)
+  * verify: [Trasporto HTTP dei connettori MCP](../Requirements/FamilyConversation.md#trasporto-http-dei-connettori-mcp)
+---
+
+### Prova del limite di chiamate MCP per agente
+
+Preparare due agenti specializzati con limiti di chiamata differenti nei rispettivi JSON e usare modelli controllati che richiedano più chiamate MCP dei limiti previsti. Osservare le chiamate inoltrate ai due server MCP, l'esito pubblico e lo storico del turno.
+
+#### Details
+La prova passa se ciascun agente usa il proprio limite, nessuna chiamata viene inoltrata oltre tale limite e il turno eccedente termina con il messaggio pubblico di guasto nella propria conversazione. Fallisce se un limite viene condiviso tra agenti, se viene eseguita una chiamata eccedente o se il guasto espone dettagli tecnici.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
+  * verify: [Limite delle chiamate agli strumenti per agente](../Requirements/FamilyConversation.md#limite-delle-chiamate-agli-strumenti-per-agente)
+---
+
+### Prova della disponibilità degli agenti dai file JSON
+
+Avviare il server con `orchestrator.json` e un file specializzato valido in `/etc/ambrogio/agents`, usando agenti di prova osservabili dall'orchestratore. Aggiungere un secondo file `<id>.json` valido e riavviare; rimuovere il primo file e riavviare ancora, senza modificare altri elenchi di abilitazione.
+
+#### Details
+La prova passa se al primo avvio l'orchestratore può scegliere il primo agente, al secondo entrambi e al terzo soltanto il secondo. Fallisce se un file presente richiede registrazione altrove, se un agente rimosso resta disponibile dopo il riavvio o se un file viene associato all'identificativo sbagliato. La prova resta da eseguire dopo l'implementazione.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
+  * verify: [Disponibilità degli agenti MCP dai file JSON](../Requirements/FamilyConversation.md#disponibilità-degli-agenti-mcp-dai-file-json)
+---
+
+### Prova di OAuth tra servizi per i connettori MCP
+
+Configurare un agente con `mcp.auth` di tipo `oauth_client_credentials`, `clientId`, `clientSecret`, `issuer` e `scope` facoltativo. Usare un server MCP di prova che pubblica i metadata OAuth e un authorization server di prova associato all'issuer configurato. Eseguire inizializzazione, scoperta e invocazione di un tool; ripetere dopo la scadenza del token e con un secondo agente dotato di credenziali distinte. Ripetere con un issuer pubblicato diverso da quello configurato e con campi obbligatori mancanti o vuoti; osservare richieste, log e messaggi inviati al modello.
+
+#### Details
+La prova passa se il client ottiene un token con `client_credentials` senza login interattivo, usa l'eventuale scope configurato, invia il token solo al server MCP dell'agente e rinnova le credenziali secondo il comportamento del SDK. Un issuer diverso impedisce l'invio del segreto; una configurazione invalida impedisce l'attivazione prima della connessione. Credenziali e token non si mescolano tra agenti e non compaiono in log o messaggi al modello. Fallisce se il segreto raggiunge un issuer diverso, se il token viene usato per un altro agente o se l'agente espone tool dopo un fallimento di autenticazione. La prova resta da eseguire dopo l'implementazione.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
+  * verify: [Autenticazione OAuth tra servizi del client MCP](../Requirements/FamilyConversation.md#autenticazione-oauth-tra-servizi-del-client-mcp)
+---
+
 ### Verifica dell'interazione vocale
 
 Raggruppa le verifiche della trascrizione, della risposta parlata, della conservazione solo testuale e del ciclo di vita delle interazioni vocali.
@@ -581,6 +666,21 @@ La prova passa se il primo evento applicativo SSE è `event: conversation` e ha 
   * verify: [Comunicazione dell'identificativo della nuova conversazione testuale](../Requirements/FamilyConversation.md#comunicazione-dellidentificativo-della-nuova-conversazione-testuale)
 ---
 
+### Prova dell'ingresso dei turni con agenti configurati
+
+Avviare il processo con i JSON HTTP, Conversazioni, orchestratore e almeno un agente specializzato validi, usando un provider e un connettore MCP controllati. Inviare un turno con `POST /api/conversations/turns`, leggere il flusso SSE e lo storico, e richiedere anche i due GET. Ripetere con un JSON agente invalido e con un connettore non disponibile prima dell'ascolto.
+
+#### Details
+La prova passa se l'avvio valido espone POST e GET, il turno usa il produttore orchestratore e restituisce gli eventi SSE e lo storico previsti; l'avvio invalido non apre il listener e chiude le risorse già preparate. La preflight CORS autorizza POST solo per un'origine configurata e le risposte del turno conservano gli header di sicurezza, `Cache-Control: no-store` e l'identificativo di correlazione. Fallisce se il POST manca, usa un produttore diverso, espone dettagli segreti o lascia risorse aperte.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * verify: [Avvio dell'ingresso dei turni conversazionali](../Requirements/FamilyConversation.md#avvio-dellingresso-dei-turni-conversazionali)
+---
+
 ### Prova dell'invito ad aggiornare la conversazione
 
 Avviare un turno testuale con elaborazione controllabile, disconnettere il client e riaprire la stessa conversazione mentre il turno è ancora in corso. Osservare la pagina, far conservare al backend l'esito e aggiornare manualmente la pagina. Ripetere con una risposta completa e con un errore pubblico.
@@ -594,6 +694,22 @@ La prova passa se la pagina riaperta mostra il turno «In elaborazione» e invit
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * verify: [Invito ad aggiornare la conversazione in elaborazione](../Requirements/FamilyConversation.md#invito-ad-aggiornare-la-conversazione-in-elaborazione)
+---
+
+### Prova della configurazione dell'adapter Mistral
+
+Avviare l'ingresso conversazionale con un agente il cui oggetto `llm` indica `provider: "mistral"`, modello e chiave API ma nessun URL. Eseguire una prova senza `llm.options` e una con `temperature` e `max_tokens` validi in `llm.options`. Ripetere con modello o chiave mancanti, con un'opzione non riconosciuta e con valori invalidi separatamente per `temperature` e `max_tokens`. Usare un servizio di prova controllato per osservare le richieste senza esporre credenziali reali.
+
+#### Details
+La prova passa se l'adapter Mistral viene scelto senza richiedere un URL, usa l'endpoint previsto dall'adapter, inoltra soltanto le due opzioni valide configurate e omette quelle assenti. Modello, chiave o `options` invalidi impediscono l'attivazione prima delle richieste; le opzioni non riconosciute non raggiungono il servizio. Fallisce se il chiamante deve conoscere l'URL Mistral, se la configurazione invalida attiva l'ingresso o se un parametro non validato raggiunge l'API. La prova resta da eseguire dopo l'implementazione.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * verify: [Risposta testuale nella conversazione](../Requirements/FamilyConversation.md#risposta-testuale-nella-conversazione)
+  * verify: [Validazione preventiva della configurazione attiva](../Requirements/ServerFoundation.md#validazione-preventiva-della-configurazione-attiva)
 ---
 
 ### Prova della conservazione del testo originale
@@ -659,6 +775,36 @@ La prova passa se in entrambi i casi la produzione prosegue fino al proprio esit
   * verify: [Continuità del turno dopo un guasto di consegna](../Requirements/FamilyConversation.md#continuità-del-turno-dopo-un-guasto-di-consegna)
 ---
 
+### Prova della decisione e della delega dell'orchestratore
+
+Eseguire due turni con un orchestratore controllato: nel primo fargli scegliere una risposta diretta, nel secondo fargli affidare il compito a un agente specializzato controllato. Consultare la conversazione dopo ciascun esito.
+
+#### Details
+La prova passa se la risposta diretta non attiva un agente specializzato, il turno delegato attiva soltanto l'agente scelto e in entrambi i casi l'esito viene comunicato e conservato nella conversazione del turno. Fallisce se il turno viene perso, attribuito a un'altra conversazione o delegato a un agente non scelto. La prova resta da eseguire dopo l'implementazione.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * verify: [Orchestrazione della risposta conversazionale](../Requirements/FamilyConversation.md#orchestrazione-della-risposta-conversazionale)
+---
+
+### Prova della descrizione degli agenti specializzati
+
+Preparare l'orchestratore e due agenti specializzati con identificativi e `description` differenti; ripetere con `description` assente, vuota o non testuale in un file specializzato.
+
+#### Details
+La prova passa se l'orchestratore riceve per ciascun agente attivo solo identificativo e descrizione come definizione della funzione di delega, senza istruzioni o credenziali dell'agente, e se un file specializzato senza descrizione valida impedisce l'attivazione. Fallisce se la scelta usa le istruzioni private, se manca un agente valido o se viene attivato un agente privo di descrizione valida.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * verify: [Descrizione degli agenti specializzati per l'orchestrazione](../Requirements/FamilyConversation.md#descrizione-degli-agenti-specializzati-per-lorchestrazione)
+---
+
 ### Prova della diagnostica del guasto di consegna
 
 Con l'ingresso conversazionale attivo, provocare separatamente una normale disconnessione del client e un guasto tecnico inatteso nella consegna di una notifica; acquisire gli eventi diagnostici del server e lo storico del turno.
@@ -706,6 +852,21 @@ La prova passa se la risposta `200` è JSON senza cache, conserva identità, tes
   * verify: [Lettura HTTP dello storico conversazionale](../Requirements/FamilyConversation.md#lettura-http-dello-storico-conversazionale)
 ---
 
+### Prova della ricerca delle configurazioni degli agenti
+
+Preparare in `/etc/ambrogio/agents` `orchestrator.json`, `memory.json` e `home-assistant.json` con valori distinguibili. Per la prova isolata usare un filesystem controllato che rappresenti lo stesso percorso visto dal processo. Osservare i file scoperti e le associazioni; verificare separatamente nomi di file con identificativo invalido, come `Home.json` e `home_assistant.json`, e l'assenza di `orchestrator.json`.
+
+#### Details
+La prova passa se il server cerca nel percorso previsto, riconosce `orchestrator.json` come orchestratore e ricava `memory` e `home-assistant` dai rispettivi file. Nomi che non rispettano `^[a-z][a-z0-9-]*$` non identificano agenti specializzati. Senza `orchestrator.json` l'orchestratore non viene attivato e l'avvio interessato segnala l'errore secondo il contratto di configurazione. Fallisce se un file è associato all'agente sbagliato o se un nome invalido è accettato come identificativo. La prova resta da eseguire dopo l'implementazione.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * verify: [Scoperta delle configurazioni degli agenti](../Requirements/FamilyConversation.md#scoperta-delle-configurazioni-degli-agenti)
+---
+
 ### Prova della risposta e dello storico testuale
 
 Eseguire una conversazione con un turno che produce una risposta e uno che produce un errore controllato; riaprire lo storico.
@@ -720,6 +881,36 @@ La prova passa se ogni turno riceve l'esito testuale nella conversazione corrett
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * verify: [Conservazione dello scambio testuale](../Requirements/FamilyConversation.md#conservazione-dello-scambio-testuale)
   * verify: [Risposta testuale nella conversazione](../Requirements/FamilyConversation.md#risposta-testuale-nella-conversazione)
+---
+
+### Prova della selezione del modello per agente
+
+Preparare due file JSON di agenti attivi, uno per l'orchestratore e uno per un agente specializzato, con oggetti `llm` distinguibili e i campi `provider`, `model`, `apiKey` e `options`. Avviare il processo con adapter di prova e osservare i valori consegnati a ciascuno; ripetere con `llm` mancante, con uno dei suoi campi richiesti invalido e con opzioni specifiche non valide.
+
+#### Details
+La prova passa se ciascun agente usa soltanto provider, modello, chiave e opzioni validate del proprio oggetto `llm` e il processo non attiva un agente con configurazione necessaria mancante o invalida. Fallisce se i valori si mescolano tra agenti, provengono da variabili d'ambiente o una configurazione invalida raggiunge l'adapter. La prova resta da eseguire dopo l'implementazione.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * verify: [Configurazione del modello per agente](../Requirements/FamilyConversation.md#configurazione-del-modello-per-agente)
+---
+
+### Prova delle istruzioni per agente
+
+Preparare due file JSON locali dell'utente con istruzioni riconoscibili e diverse, uno per l'orchestratore e uno per un agente specializzato. Attivare entrambi con modelli di prova e osservare le istruzioni consegnate a ciascuno durante un turno delegato; modificare poi le istruzioni di uno solo dei file e ripetere.
+
+#### Details
+La prova passa se ogni modello riceve le istruzioni del proprio file e la modifica di un file cambia soltanto le istruzioni dell'agente corrispondente. Fallisce se le istruzioni sono scambiate, condivise tra agenti o ignorate. La prova resta da eseguire dopo l'implementazione.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * verify: [Istruzioni dell'agente nel JSON dell'utente](../Requirements/FamilyConversation.md#istruzioni-dellagente-nel-json-dellutente)
 ---
 
 ### Prova dello stato del turno alla riapertura

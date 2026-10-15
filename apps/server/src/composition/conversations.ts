@@ -73,8 +73,9 @@ export function registerConversationTurnRoute(
   server: FastifyInstance,
   prepared: Awaited<ReturnType<typeof prepareConversations>>,
   reply: ProduceConversationReply,
-): void {
-  registerTurnRoute(server, { exchange: assembleExchangeTurn(prepared, reply), language: prepared.language });
+): Readonly<{ stopAccepting(): Promise<void> }> {
+  return registerTurnRoute(server, { exchange: assembleExchangeTurn(prepared, reply),
+    language: prepared.language });
 }
 
 /** Attach the HTTP history ingress after archive recovery. */

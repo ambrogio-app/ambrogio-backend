@@ -2,16 +2,21 @@ import { randomUUID } from 'node:crypto';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import { loadConversationConfig } from '@ambrogio/conversations/adapters/out/conversation-config';
+import type { ProduceConversationReply } from '@ambrogio/conversations/application/produce-conversation-reply';
 import Fastify, { LogController, type FastifyInstance } from 'fastify';
 import { prepareConfiguredConversations, registerConversationHistoryRoute,
-  registerConversationListRoute } from '../composition/conversations.js';
+  registerConversationListRoute, registerConversationTurnRoute } from '../composition/conversations.js';
 import { conversationConfigPath } from './conversation-config-path.js';
 import { httpConfigPath, loadHttpConfig, type HttpConfig } from './http-config.js';
 
 type Prepared = Awaited<ReturnType<typeof prepareConfiguredConversations>>;
 
-export async function buildConsultationServer(config: HttpConfig, prepared: Prepared): Promise<FastifyInstance> {
+async function buildHttpServer(config: HttpConfig, prepared: Prepared,
+  replyProducer?: ProduceConversationReply): Promise<Readonly<{
+    server: FastifyInstance; turnIngress?: Readonly<{ stopAccepting(): Promise<void> }>;
+  }>> {
   const server = Fastify({
+    ...(replyProducer ? { forceCloseConnections: true } : {}),
     logger: { level: 'warn', serializers: {
       err: () => ({ type: 'Error', message: 'Unexpected HTTP failure', stack: '[redacted]' }),
     } },
@@ -37,14 +42,26 @@ export async function buildConsultationServer(config: HttpConfig, prepared: Prep
     await server.register(helmet, { global: true, hsts: config.publicHttps
       ? { maxAge: config.hstsMaxAgeSeconds!, includeSubDomains: false, preload: false } : false });
     await server.register(cors, { origin: config.allowedOrigins.length ? [...config.allowedOrigins] : false,
-      methods: ['GET'], exposedHeaders: ['X-Request-Id'] });
+      methods: replyProducer ? ['GET', 'POST'] : ['GET'], exposedHeaders: ['X-Request-Id'] });
     registerConversationListRoute(server, prepared);
     registerConversationHistoryRoute(server, prepared);
-    return server;
+    const turnIngress = replyProducer
+      ? registerConversationTurnRoute(server, prepared, replyProducer) : undefined;
+    return { server, ...(turnIngress ? { turnIngress } : {}) };
   } catch (error) {
     await server.close();
     throw error;
   }
+}
+
+export async function buildConsultationServer(config: HttpConfig, prepared: Prepared): Promise<FastifyInstance> {
+  return (await buildHttpServer(config, prepared)).server;
+}
+
+export async function buildConversationServer(config: HttpConfig, prepared: Prepared,
+  replyProducer: ProduceConversationReply) {
+  const built = await buildHttpServer(config, prepared, replyProducer);
+  return { server: built.server, turnIngress: built.turnIngress! };
 }
 
 export async function startConsultationServer(environment: NodeJS.ProcessEnv = process.env) {

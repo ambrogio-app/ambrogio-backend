@@ -11,6 +11,17 @@ Le conversazioni e i loro scambi testuali sono conservati in un database SQLite 
   * define: [Disponibilità dello storico dopo riavvio](../Requirements/FamilyConversation.md#disponibilità-dello-storico-dopo-riavvio)
 ---
 
+### Attivazione degli agenti MCP dai file presenti
+
+Ogni file `<id>.json` valido trovato in `/etc/ambrogio/agents` definisce un agente specializzato disponibile all'orchestratore dopo l'avvio. L'insieme degli agenti disponibili deriva dai file presenti nella directory: aggiungere un file rende disponibile l'agente corrispondente al successivo avvio; rimuoverlo lo rende indisponibile al successivo avvio. Non è previsto un elenco separato né un campo di abilitazione. La validazione dei file avviene prima dell'attivazione secondo il contratto comune di bootstrap.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Disponibilità degli agenti MCP dai file JSON](../Requirements/FamilyConversation.md#disponibilità-degli-agenti-mcp-dai-file-json)
+---
+
 ### Avvio con migrazioni dell'archivio conversazioni
 
 Prima di attivare gli ingressi conversazionali, il server confronta lo schema SQLite dell'archivio con le migrazioni versionate richieste dalla versione avviata e applica in ordine quelle pendenti tramite Kysely. Se una migrazione non riesce, il server non accetta turni e rende osservabile il guasto al confine tecnico. Le conversazioni e gli scambi già conservati restano dati da preservare durante l'evoluzione dello schema.
@@ -66,6 +77,39 @@ Application richiede all'archivio la persistenza delle transizioni complete del 
   * define: [Scritture atomiche dello stato dei turni](../Requirements/FamilyConversation.md#scritture-atomiche-dello-stato-dei-turni)
 ---
 
+### Conteggio delle chiamate agli strumenti MCP per turno
+
+Ogni file JSON di agente specializzato contiene al primo livello `maxToolCalls`, un intero positivo. Il valore è obbligatorio e vale solo per quell'agente. Per ogni turno delegato, Ambrogio conta ogni chiamata a uno strumento MCP effettivamente richiesta dal modello dell'agente, anche quando più chiamate sono richieste nella stessa risposta del modello. Prima di inoltrare una chiamata che eccederebbe `maxToolCalls`, interrompe la produzione del turno con un guasto; il caso d'uso comunica e conserva il messaggio pubblico standard senza dettagli tecnici. Il contatore riparte da zero al turno successivo. Il limite non impedisce al modello di formulare una risposta finale dopo l'ultima chiamata consentita.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Limite delle chiamate agli strumenti per agente](../Requirements/FamilyConversation.md#limite-delle-chiamate-agli-strumenti-per-agente)
+---
+
+### Credenziale Bearer per l'endpoint MCP
+
+Nel JSON di ogni agente specializzato, `mcp.auth` è facoltativo. Quando seleziona Bearer statico, è un oggetto con `type: "bearer"` e `token` stringa non vuota. Il client invia `Authorization: Bearer <token>` nelle richieste MCP dirette esclusivamente all'endpoint `mcp.url` di quell'agente. Quando `mcp.auth` è assente, il client non invia un header `Authorization` all'endpoint. Un tipo diverso da `bearer` e `oauth_client_credentials`, oppure un token Bearer mancante o vuoto, rende invalida la configurazione prima dell'attivazione dell'agente. Il token non è condiviso con altri agenti, non entra nei messaggi rivolti al modello linguistico e non compare in log o messaggi di errore. Il flusso OAuth con login interattivo non appartiene alla prima integrazione.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Autenticazione Bearer del client MCP](../Requirements/FamilyConversation.md#autenticazione-bearer-del-client-mcp)
+---
+
+### Credenziali OAuth tra servizi per l'endpoint MCP
+
+Quando un agente specializzato usa OAuth tra servizi, il suo JSON contiene `mcp.auth: { "type": "oauth_client_credentials", "clientId": "…", "clientSecret": "…", "issuer": "…" }`; può contenere `scope`, stringa non vuota se presente. `clientId` e `clientSecret` sono stringhe non vuote; `issuer` è l'identificativo URL assoluto HTTP o HTTPS dell'authorization server presso cui le credenziali sono registrate. Il client scopre l'authorization server tramite i metadata pubblicati dal server MCP e usa il flusso OAuth `client_credentials` del SDK MCP ufficiale. Prima di inviare il segreto, deve verificare che l'issuer scoperto corrisponda a quello configurato. Il client usa il token ottenuto soltanto per l'endpoint MCP di quell'agente; gestisce scadenza e rinnovo tramite il SDK durante la vita del processo senza richiedere un login nel browser. Credenziali e token non sono condivisi tra agenti, non entrano nei messaggi rivolti ai modelli e non compaiono in log o errori. La configurazione invalida impedisce l'attivazione dell'agente.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Autenticazione OAuth tra servizi del client MCP](../Requirements/FamilyConversation.md#autenticazione-oauth-tra-servizi-del-client-mcp)
+---
+
 ### Dati dei casi d'uso indipendenti dagli ingressi
 
 Il caso d'uso del turno conversazionale riceve un input Application costruito dall'adapter di ingresso a partire dai dati già decodificati. I suoi dati di successo, compresi gli eventuali incrementi della risposta progressiva, hanno significato proprio del modulo e non sono oggetti HTTP, eventi SSE, righe di terminale o dati audio. Ogni adapter di ingresso converte tali valori nella rappresentazione richiesta dal proprio protocollo; il caso d'uso non restituisce direttamente oggetti Domain o rappresentazioni del trasporto. Il caso d'uso consegna prima la notifica di ammissione e poi ciascun incremento nell'ordine di produzione, attendendo che la consegna di una notifica sia terminata prima di iniziare la successiva. Tale attesa riguarda la consegna all'adapter, non la lettura da parte della persona. Se la consegna fallisce dopo l'ammissione, anche per un guasto tecnico diverso dalla disconnessione, il caso d'uso continua il turno e conserva l'esito prodotto senza trasformare il solo guasto di consegna in un errore conversazionale. L'adapter che esegue la consegna distingue la disconnessione dal guasto tecnico e registra quest'ultimo nel canale diagnostico prima che il caso d'uso ignori il fallimento della notifica; non delega al caso d'uso la classificazione o il log. La normale disconnessione del client non richiede di per sé un log di errore. Gli altri casi d'uso del modulo seguono lo stesso confine quando ricevono input o producono dati di successo.
@@ -86,6 +130,17 @@ La richiesta HTTP `POST /api/conversations/turns` della chat testuale usa `Conte
 
 #### Relations
   * define: [Invio HTTP del turno della chat testuale](../Requirements/FamilyConversation.md#invio-http-del-turno-della-chat-testuale)
+---
+
+### Decisione di delega mediante chiamata di funzione
+
+Per ogni agente specializzato attivo, l'adapter presenta all'orchestratore una funzione di delega identificata dall'agente e descritta mediante il suo campo `description`. L'orchestratore riceve lo storico del turno e può produrre direttamente testo oppure richiedere una chiamata strutturata a una di queste funzioni, con il compito da affidare. Ambrogio accetta una sola delega per turno, esegue soltanto la funzione corrispondente a un agente attivo e usa la risposta dell'agente come esito del turno nella conversazione corrente. Una funzione sconosciuta, argomenti invalidi o più deleghe nello stesso turno causano il guasto pubblico previsto per la produzione della risposta. Le istruzioni e le credenziali dell'agente specializzato restano nel suo adapter.
+
+#### Metadata
+  * type: behavior
+
+#### Relations
+  * define: [Orchestrazione della risposta conversazionale](../Requirements/FamilyConversation.md#orchestrazione-della-risposta-conversazionale)
 ---
 
 ### Esclusione dell'audio persistente
@@ -165,6 +220,17 @@ La composition root fornisce ai soli casi d'uso che ne hanno bisogno una capacit
   * define: [Fornitura esplicita dell'ora corrente alla conversazione](../Requirements/FamilyConversation.md#fornitura-esplicita-dellora-corrente-alla-conversazione)
 ---
 
+### Istruzioni per gli agenti nei file dell'utente
+
+Ogni agente attivo, compreso l'orchestratore, riceve il proprio testo di istruzioni dal campo `instructions` del file JSON locale dedicato a quell'agente, gestito dall'utente in `/etc/ambrogio/agents`. Il server carica e valida il file prima di costruire l'agente e mantiene separate le istruzioni dei diversi agenti. Le istruzioni sono consegnate al modello dell'agente come istruzioni, insieme al contesto del compito, senza essere incorporate nel codice o negli esempi versionati.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Istruzioni dell'agente nel JSON dell'utente](../Requirements/FamilyConversation.md#istruzioni-dellagente-nel-json-dellutente)
+---
+
 ### Lingua nel JSON conversazionale
 
 Il file JSON locale del componente «Conversazioni», già usato per i limiti della paginazione, ammette il campo opzionale `language`, una stringa con `en` per l'inglese o `it` per l'italiano. Se il campo è assente o contiene una lingua non supportata, la lingua effettiva è `en`. Un valore non stringa è una struttura incompatibile e impedisce l'attivazione dell'ingresso interessato. La variabile d'ambiente indica solo il percorso del file e non sostituisce `language`.
@@ -220,6 +286,39 @@ Per l'ingresso HTTP di consultazione, il file JSON del componente «Conversazion
   * define: [Selezione dell'archivio conversazionale all'avvio](../Requirements/FamilyConversation.md#selezione-dellarchivio-conversazionale-allavvio)
 ---
 
+### Presentazione degli agenti specializzati all'orchestratore
+
+Ogni file JSON di agente specializzato contiene al primo livello `description`, una stringa non vuota che descrive la capacità dell'agente per la selezione della delega. L'orchestratore riceve l'identificativo e la descrizione degli agenti attivi come definizioni delle funzioni disponibili; non riceve le loro istruzioni o credenziali. Il file `orchestrator.json` non richiede `description`.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Descrizione degli agenti specializzati per l'orchestrazione](../Requirements/FamilyConversation.md#descrizione-degli-agenti-specializzati-per-lorchestrazione)
+---
+
+### Produzione remota della risposta con Mistral AI
+
+Per la prima integrazione concreta della porta `ProduceConversationReply`, il componente «Conversazioni» usa un adapter dedicato a Mistral AI basato su `@mistralai/mistralai` versione 2.7.0 dietro il contratto applicativo comune. L'adapter invia al servizio remoto lo storico conversazionale necessario alla generazione, traduce le risposte in frammenti testuali e mantiene i tipi del fornitore fuori da Domain e Application. La configurazione dell'agente sceglie `mistral` come provider e indica l'identificativo del modello e la chiave API; l'endpoint previsto dall'adapter non è richiesto nella configurazione dell'agente. Le sole `options` iniziali sono `temperature` e `max_tokens`, entrambe facoltative. L'adapter valida i valori secondo il contratto dell'API Mistral prima dell'attivazione, rifiuta opzioni non riconosciute e inoltra soltanto quelle esplicitamente configurate; se un'opzione manca, lascia applicare il valore previsto dal modello remoto. Le opzioni non attraversano la porta Application. Gli altri parametri operativi saranno definiti prima dell'implementazione che li richiede.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Risposta testuale nella conversazione](../Requirements/FamilyConversation.md#risposta-testuale-nella-conversazione)
+---
+
+### Profilo del trasporto MCP iniziale
+
+Per la prima implementazione, ogni agente specializzato usa il medesimo client MCP basato su `@modelcontextprotocol/client` versione 2.3.1, con trasporto Streamable HTTP verso l'endpoint indicato in `mcp.url` nel proprio file JSON. `mcp.url` è un URL HTTP o HTTPS assoluto. Il client segue il ciclo di inizializzazione del protocollo e usa la connessione per scoprire e invocare i tool del server configurato. La sezione `mcp` non contiene un campo `transport` e non richiede un comando locale da eseguire: il trasporto iniziale è determinato dal contratto. L'autenticazione segue i contratti del Bearer statico e di OAuth `client_credentials`. La compatibilità con il precedente trasporto HTTP+SSE sarà valutata separatamente prima di introdurla; il trasporto stdio non appartiene alla prima implementazione.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Trasporto HTTP dei connettori MCP](../Requirements/FamilyConversation.md#trasporto-http-dei-connettori-mcp)
+---
+
 ### Profilo dell'ingresso HTTP consultivo
 
 L'ingresso eseguibile di questa tranche registra `GET /api/conversations` e `GET /api/conversations/:conversationId` sugli adapter esistenti. Non registra la rotta di invio dei turni perché non è ancora scelto un produttore concreto delle risposte. Prima di ascoltare, valida i JSON HTTP e Conversazioni, apre l'archivio e recupera i turni pendenti secondo il contratto esistente. All'arresto chiude il listener e l'archivio. Il futuro ingresso che accetterà i turni richiederà il proprio assemblaggio e la verifica dell'interruzione dei turni attivi.
@@ -229,6 +328,28 @@ L'ingresso eseguibile di questa tranche registra `GET /api/conversations` e `GET
 
 #### Relations
   * define: [Avvio consultivo dell'API conversazioni](../Requirements/FamilyConversation.md#avvio-consultivo-dellapi-conversazioni)
+---
+
+### Profilo dell'ingresso HTTP conversazionale con agenti
+
+L'ingresso eseguibile valida prima dell'ascolto i JSON HTTP, Conversazioni e degli agenti attivi, apre l'archivio e recupera i turni pendenti, prepara gli adapter dei provider e i client MCP degli agenti specializzati, quindi registra `POST /api/conversations/turns` insieme ai due GET già disponibili. La rotta POST usa l'agente orchestratore come produttore concreto della risposta tramite la porta Application `ProduceConversationReply`. La politica CORS autorizza il metodo POST per le origini configurate. L'arresto dell'ingresso segue la politica generale del ciclo di vita del server; la richiesta al provider non viene annullata esplicitamente dall'adapter.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Avvio dell'ingresso dei turni conversazionali](../Requirements/FamilyConversation.md#avvio-dellingresso-dei-turni-conversazionali)
+---
+
+### Profilo della configurazione del modello per agente
+
+Ogni agente attivo ha un file JSON locale separato, gestito dall'utente e individuato in `/etc/ambrogio/agents`. Il file contiene al primo livello `instructions` e `llm`. `instructions` è il testo delle istruzioni dell'agente. `llm` è un oggetto con i campi `provider`, `model` e `apiKey`, che indicano rispettivamente l'adapter del fornitore, l'identificativo del modello e la chiave API; può contenere `options`, un oggetto di opzioni specifiche del provider. L'orchestratore e ciascun agente specializzato usano i valori del proprio file. La composition root valida i campi comuni e consegna le opzioni all'adapter selezionato, che valida i campi specifici prima di attivare l'agente. Il file di un agente specializzato contiene inoltre `mcp`, con `url` e l'eventuale `auth` definiti dai contratti del trasporto MCP e della credenziale Bearer. I file dell'utente non sono materiale versionato del repository.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Configurazione del modello per agente](../Requirements/FamilyConversation.md#configurazione-del-modello-per-agente)
 ---
 
 ### Profilo di trasporto SSE della chat
@@ -262,6 +383,17 @@ Nel modulo business «Conversazioni», Domain contiene le regole e i tipi del do
 
 #### Relations
   * define: [Separazione delle responsabilità nel modulo Conversazioni](../Requirements/FamilyConversation.md#separazione-delle-responsabilità-nel-modulo-conversazioni)
+---
+
+### Ricerca dei file degli agenti nella directory del prodotto
+
+Il server cerca i file JSON degli agenti nella directory `/etc/ambrogio/agents`. In Docker l'installatore può montare una directory di configurazione scelta sull'host in `/etc/ambrogio`, così da fornire `agents/` insieme agli altri JSON locali senza incorporarli nell'immagine. La directory contiene configurazioni gestite dall'utente. Il nome `orchestrator.json` identifica l'orchestratore ed è riservato. Ogni altro file `<id>.json` identifica un agente specializzato: `id` inizia con una lettera minuscola e prosegue soltanto con lettere minuscole, cifre o trattini, secondo `^[a-z][a-z0-9-]*$`; `orchestrator` non è un identificativo valido per un agente specializzato. Ogni file JSON con nome valido presente nella directory è preso in carico secondo il contratto di attivazione degli agenti e quello di bootstrap dei componenti.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Scoperta delle configurazioni degli agenti](../Requirements/FamilyConversation.md#scoperta-delle-configurazioni-degli-agenti)
 ---
 
 ### Risposta HTTP dell'elenco conversazioni

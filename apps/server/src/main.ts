@@ -1,12 +1,12 @@
-import { startConsultationServer } from './runtime/consultation-server.js';
+import { startConversationServer } from './runtime/conversation-server.js';
 
 try {
-  const runtime = await startConsultationServer();
+  const runtime = await startConversationServer();
   let closing = false;
   const shutdown = () => {
     if (closing) return;
     closing = true;
-    void runtime.close().catch(() => { process.exitCode = 1; });
+    void runtime.close().then(() => process.exit(0), () => process.exit(1));
   };
   process.once('SIGINT', shutdown);
   process.once('SIGTERM', shutdown);

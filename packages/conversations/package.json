@@ -74,6 +74,18 @@
       "types": "./dist/adapters/out/conversation-config.d.ts",
       "import": "./dist/adapters/out/conversation-config.js"
     },
+    "./adapters/out/mistral-conversation-reply": {
+      "types": "./dist/adapters/out/mistral-conversation-reply.d.ts",
+      "import": "./dist/adapters/out/mistral-conversation-reply.js"
+    },
+    "./adapters/out/mistral-function-reply": {
+      "types": "./dist/adapters/out/mistral-function-reply.d.ts",
+      "import": "./dist/adapters/out/mistral-function-reply.js"
+    },
+    "./adapters/out/mcp-tool-client": {
+      "types": "./dist/adapters/out/mcp-tool-client.d.ts",
+      "import": "./dist/adapters/out/mcp-tool-client.js"
+    },
     "./adapters/in/http/sse-events": {
       "types": "./dist/adapters/in/http/sse-events.d.ts",
       "import": "./dist/adapters/in/http/sse-events.js"
@@ -108,6 +120,8 @@
     }
   },
   "dependencies": {
+    "@mistralai/mistralai": "2.7.0",
+    "@modelcontextprotocol/client": "2.3.1",
     "better-sqlite3": "13.0.3",
     "fastify": "5.12.7",
     "kysely": "0.29.6"

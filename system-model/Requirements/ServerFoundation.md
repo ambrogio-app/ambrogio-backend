@@ -11,6 +11,7 @@ Quando il server riceve una richiesta di arresto ordinato, deve smettere di acce
   * [Politica di interruzione nell'arresto ordinato](../Contracts/ServerFoundation.md#politica-di-interruzione-nellarresto-ordinato)
 
 #### Relations
+  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -114,6 +115,7 @@ Quando il server conclude un arresto ordinato, deve chiudere le risorse dei turn
   * [Politica di interruzione nell'arresto ordinato](../Contracts/ServerFoundation.md#politica-di-interruzione-nellarresto-ordinato)
 
 #### Relations
+  * satisfiedBy: [main.ts](../../apps/server/src/main.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -502,6 +504,8 @@ Quando il server riceve una richiesta di arresto ordinato, deve interrompere i t
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [main.ts](../../apps/server/src/main.ts)
+  * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 

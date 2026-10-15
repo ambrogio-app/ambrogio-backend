@@ -42,9 +42,45 @@ Quando Ambrogio non può avviare l'elaborazione di un nuovo turno al momento del
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
+### Autenticazione Bearer del client MCP
+
+Quando un agente specializzato accede al proprio server MCP tramite Streamable HTTP, il client MCP comune deve poter usare un Bearer token letto dalla configurazione JSON di quell'agente per autenticare le richieste verso l'endpoint configurato.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
+---
+
+### Autenticazione OAuth tra servizi del client MCP
+
+Quando la configurazione JSON di un agente specializzato richiede OAuth `client_credentials`, il client MCP comune deve ottenere e usare un token di accesso per il server MCP di quell'agente, senza richiedere un accesso interattivo della persona e senza presentare le credenziali a un authorization server diverso da quello configurato.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
+---
+
 ### Avvio consultivo dell'API conversazioni
 
 Quando il processo avvia l'ingresso HTTP di consultazione delle conversazioni, deve rendere disponibili le rotte di elenco e storico dopo aver validato le configurazioni attive e preparato l'archivio.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
+  * satisfiedBy: [main.ts](../../apps/server/src/main.ts)
+  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Avvio dell'ingresso dei turni conversazionali
+
+Quando il server avvia la conversazione testuale con agenti configurati, deve rendere disponibile l'invio HTTP dei turni con risposta SSE insieme alle rotte di elenco e storico, dopo aver validato i file degli agenti e preparato i loro connettori.
 
 #### Metadata
   * type: requirement
@@ -107,6 +143,17 @@ Quando l'adapter SQLite dell'archivio esegue una mutazione conversazionale, deve
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
+### Client MCP comune ai connettori
+
+Quando Ambrogio abilita un connettore a un server MCP configurato, deve usare un client MCP comune per stabilire la connessione, scoprire i tool disponibili e invocare quelli richiesti, senza richiedere un'implementazione del protocollo distinta per ogni server.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
+---
+
 ### Completamento del turno accettato dopo disconnessione
 
 Quando il backend ha accettato un turno della chat testuale e il client si disconnette durante l'elaborazione, il backend deve proseguire il turno fino a un esito di risposta o di errore e conservarne lo scambio nella conversazione, indipendentemente dalla disponibilità del flusso SSE.
@@ -131,6 +178,28 @@ Quando un turno della chat testuale avvia una nuova conversazione, il backend de
 #### Contract References
   * [Identità di conversazioni e turni](../Contracts/FamilyConversation.md#identità-di-conversazioni-e-turni)
   * [Profilo di trasporto SSE della chat](../Contracts/FamilyConversation.md#profilo-di-trasporto-sse-della-chat)
+
+#### Relations
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Configurazione MCP dell'agente specializzato
+
+Quando il server attiva un agente con connettore MCP, deve leggere la configurazione della sua connessione MCP dal file JSON dell'agente e consegnarla al client MCP comune.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
+---
+
+### Configurazione del modello per agente
+
+Quando il server attiva un agente, incluso l'orchestratore, deve leggere il file JSON locale dedicato a quell'agente e selezionare l'adapter del provider indicato, fornendogli l'identificativo del modello, la chiave API e soltanto le opzioni specifiche validate.
+
+#### Metadata
+  * type: requirement
 
 #### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
@@ -289,6 +358,17 @@ Quando un caso d'uso del modulo «Conversazioni» riceve dati di ingresso o prod
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
+### Descrizione degli agenti specializzati per l'orchestrazione
+
+Quando Ambrogio prepara un agente specializzato da un file JSON, deve rendere disponibile all'orchestratore una descrizione dell'agente per permettere la scelta della delega.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
 ### Diagnostica del guasto tecnico di consegna
 
 Quando la consegna di una notifica conversazionale fallisce per un guasto tecnico diverso dalla disconnessione del client, il componente tecnico che gestisce la consegna deve registrare il guasto nel canale diagnostico del server.
@@ -313,6 +393,17 @@ Quando l'installazione elabora un turno o ne comunica la risposta, i client devo
 
 #### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Disponibilità degli agenti MCP dai file JSON
+
+Quando il server avvia la conversazione con la directory degli agenti, deve rendere disponibile all'orchestratore ogni agente specializzato descritto da un file `<id>.json` valido presente nella directory, senza richiedere un elenco separato di agenti da abilitare.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
 ---
 
 ### Disponibilità dello storico dopo riavvio
@@ -524,6 +615,17 @@ Quando Application e Domain rappresentano un istante della conversazione, devono
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
+### Istruzioni dell'agente nel JSON dell'utente
+
+Quando il server attiva un agente, incluso l'orchestratore, deve leggere le istruzioni destinate a quell'agente dal suo file JSON locale gestito dall'utente e consegnarle soltanto al modello dell'agente interessato.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
 ### Lettura HTTP dell'elenco conversazioni
 
 Quando un client della chat testuale consulta l'elenco delle conversazioni conservate, il backend deve restituire una pagina dell'elenco e un riferimento utilizzabile per richiedere la pagina successiva secondo il contratto HTTP pubblico dell'elenco.
@@ -551,6 +653,17 @@ Quando un client della chat testuale consulta una conversazione conservata, il b
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
   * satisfiedBy: [history-route.ts](../../packages/conversations/src/adapters/in/http/history-route.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Limite delle chiamate agli strumenti per agente
+
+Quando un agente specializzato usa gli strumenti del proprio connettore MCP per elaborare un turno, Ambrogio deve arrestare ulteriori chiamate agli strumenti al raggiungimento del limite configurato nel file JSON di quell'agente e comunicare il guasto secondo il contratto pubblico del turno.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
 ---
 
 ### Localizzazione dell'errore conversazionale inatteso
@@ -623,6 +736,17 @@ Quando la famiglia avvia esplicitamente una nuova interazione vocale, Ambrogio d
 
 #### Contract References
   * [Stati dell'interazione vocale](../Contracts/FamilyConversation.md#stati-dellinterazione-vocale)
+
+#### Relations
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Orchestrazione della risposta conversazionale
+
+Quando Ambrogio elabora un turno della famiglia, l'agente orchestratore deve scegliere se formulare la risposta direttamente oppure affidare il compito a un agente con connettore MCP configurato, e l'esito deve appartenere alla stessa conversazione.
+
+#### Metadata
+  * type: requirement
 
 #### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
@@ -865,6 +989,17 @@ Quando la famiglia invia un turno testuale, Ambrogio deve comunicare una rispost
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
+### Scoperta delle configurazioni degli agenti
+
+Quando il server prepara gli agenti attivi, deve cercare i rispettivi file JSON in una directory dedicata stabilita dal prodotto e distinguere la configurazione dell'orchestratore da quelle degli agenti specializzati.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
 ### Scritture atomiche dello stato dei turni
 
 Quando Ambrogio accetta, conclude o interrompe un turno, deve confermare insieme lo stato persistente del turno e l'occupazione dell'installazione in una transazione SQLite.
@@ -1056,6 +1191,17 @@ Se Ambrogio non ottiene una trascrizione utilizzabile di un turno vocale, non de
 
 #### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Trasporto HTTP dei connettori MCP
+
+Quando Ambrogio connette un agente specializzato al suo server MCP nella prima implementazione, deve usare il trasporto MCP Streamable HTTP verso l'endpoint configurato per quell'agente.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
 ---
 
 ### Validazione del formato negli ingressi conversazionali

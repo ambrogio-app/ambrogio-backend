@@ -7,3 +7,7 @@
 # File del sistema operativo
 .DS_Store
 Thumbs.db
+
+# Dipendenze e artefatti del workspace
+node_modules/
+dist/

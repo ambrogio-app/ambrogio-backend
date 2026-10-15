@@ -20,6 +20,7 @@ La prova passa se ogni turno nasce in elaborazione, raggiunge una sola volta uno
 
 #### Relations
   * derivedFrom: [Verifica degli invarianti dei turni](#verifica-degli-invarianti-dei-turni)
+  * satisfiedBy: [turn.test.ts](../../packages/conversations/test/domain/turn.test.ts)
   * verify: [Integrità dello stato del turno nel Domain](../Requirements/FamilyConversation.md#integrità-dello-stato-del-turno-nel-domain)
 ---
 
@@ -1144,6 +1145,7 @@ La prova passa se gli istanti validi conservano il valore temporale fornito, que
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
+  * satisfiedBy: [turn.test.ts](../../packages/conversations/test/domain/turn.test.ts)
   * verify: [Istanti validi e protetti della conversazione](../Requirements/FamilyConversation.md#istanti-validi-e-protetti-della-conversazione)
 ---
 

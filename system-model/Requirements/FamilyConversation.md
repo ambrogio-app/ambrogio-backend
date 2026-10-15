@@ -542,6 +542,7 @@ Quando il modulo «Conversazioni» crea, modifica o ricostruisce lo stato di un 
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [turn.ts](../../packages/conversations/src/domain/turn.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -564,6 +565,7 @@ Quando Application e Domain rappresentano un istante della conversazione, devono
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [turn.ts](../../packages/conversations/src/domain/turn.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 

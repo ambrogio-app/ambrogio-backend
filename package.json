@@ -1,0 +1,13 @@
+{
+  "name": "ambrogio-app",
+  "private": true,
+  "packageManager": "pnpm@12.11.2",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "vitest": "5.0.4"
+  }
+}

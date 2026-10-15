@@ -18,6 +18,14 @@
       "types": "./dist/application/complete-turn.use-case.d.ts",
       "import": "./dist/application/complete-turn.use-case.js"
     },
+    "./application/exchange-turn": {
+      "types": "./dist/application/exchange-turn.use-case.d.ts",
+      "import": "./dist/application/exchange-turn.use-case.js"
+    },
+    "./application/produce-conversation-reply": {
+      "types": "./dist/application/produce-conversation-reply.d.ts",
+      "import": "./dist/application/produce-conversation-reply.js"
+    },
     "./application/conversation-write": {
       "types": "./dist/application/conversation-write.d.ts",
       "import": "./dist/application/conversation-write.js"

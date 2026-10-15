@@ -79,7 +79,7 @@ Application richiede all'archivio la persistenza delle transizioni complete del 
 
 ### Dati dei casi d'uso indipendenti dagli ingressi
 
-Il caso d'uso del turno conversazionale riceve un input Application costruito dall'adapter di ingresso a partire dai dati già decodificati. I suoi dati di successo, compresi gli eventuali incrementi della risposta progressiva, hanno significato proprio del modulo e non sono oggetti HTTP, eventi SSE, righe di terminale o dati audio. Ogni adapter di ingresso converte tali valori nella rappresentazione richiesta dal proprio protocollo; il caso d'uso non restituisce direttamente oggetti Domain o rappresentazioni del trasporto. Gli altri casi d'uso del modulo seguono lo stesso confine quando ricevono input o producono dati di successo.
+Il caso d'uso del turno conversazionale riceve un input Application costruito dall'adapter di ingresso a partire dai dati già decodificati. I suoi dati di successo, compresi gli eventuali incrementi della risposta progressiva, hanno significato proprio del modulo e non sono oggetti HTTP, eventi SSE, righe di terminale o dati audio. Ogni adapter di ingresso converte tali valori nella rappresentazione richiesta dal proprio protocollo; il caso d'uso non restituisce direttamente oggetti Domain o rappresentazioni del trasporto. Il caso d'uso consegna prima la notifica di ammissione e poi ciascun incremento nell'ordine di produzione, attendendo che la consegna di una notifica sia terminata prima di iniziare la successiva. Tale attesa riguarda la consegna all'adapter, non la lettura da parte della persona. Il fallimento della consegna a un client disconnesso non interrompe da solo l'elaborazione di un turno già ammesso. Gli altri casi d'uso del modulo seguono lo stesso confine quando ricevono input o producono dati di successo.
 
 #### Metadata
   * type: input-output
@@ -284,6 +284,28 @@ Un turno della chat testuale o della voce trascritta è conservato come accettat
 
 #### Relations
   * define: [Riconoscimento del turno interrotto dopo riavvio](../Requirements/FamilyConversation.md#riconoscimento-del-turno-interrotto-dopo-riavvio)
+---
+
+### Guasto dello storico dopo ammissione
+
+Se la lettura dello storico fallisce oppure non restituisce il turno appena ammesso come ancora in elaborazione, il caso d'uso non avvia la produzione della risposta e tenta una sola conclusione con esito `errore` e messaggio pubblico sicuro. Il successo di tale conclusione conserva l'errore e libera l'occupazione nella stessa transazione. Se la conclusione non viene conservata, il guasto raggiunge il confine tecnico del server; il server non abilita ulteriori ingressi conversazionali fino al riavvio. Un eventuale turno rimasto `in elaborazione` segue il recupero già previsto al riavvio. Non si ripete automaticamente il turno né la conclusione.
+
+#### Metadata
+  * type: behavior
+
+#### Relations
+  * define: [Gestione del turno ammesso senza storico utilizzabile](../Requirements/FamilyConversation.md#gestione-del-turno-ammesso-senza-storico-utilizzabile)
+---
+
+### Messaggio standard del guasto conversazionale
+
+Per un guasto inatteso di un turno già ammesso, il server sceglie il messaggio pubblico nella lingua selezionata dall'utente nella configurazione dell'installazione. Le lingue inizialmente supportate sono inglese e italiano; se la lingua non è indicata oppure non è supportata, usa l'inglese. La formulazione inglese è «I can't complete the response.»; quella italiana è «Non riesco a completare la risposta.». La composition root passa al caso d'uso la formulazione scelta dai valori di configurazione, senza far leggere il file al caso d'uso. Il caso d'uso usa il medesimo testo per l'esito persistente e per la comunicazione al client.
+
+#### Metadata
+  * type: input-output
+
+#### Relations
+  * define: [Localizzazione dell'errore conversazionale inatteso](../Requirements/FamilyConversation.md#localizzazione-dellerrore-conversazionale-inatteso)
 ---
 
 ### Struttura testuale dello scambio

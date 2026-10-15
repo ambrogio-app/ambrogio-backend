@@ -167,6 +167,11 @@ describe('consultation HTTP runtime', () => {
     const files = await fixture();
     const prepared = await prepareConfiguredConversations({ archivePath: files.archive,
       listPageSize: 20, maxListPageSize: 100, language: 'en' }, new Date());
+    const output: string[] = [];
+    const write = vi.spyOn(process.stdout, 'write').mockImplementation(chunk => {
+      output.push(String(chunk));
+      return true;
+    });
     const server = await buildConsultationServer(base, prepared);
     server.get('/test-fallback', async () => { throw new Error('private diagnostic marker'); });
     const diagnostics = new Map<string, { binding: unknown; events: unknown[][] }>();
@@ -195,7 +200,20 @@ describe('consultation HTTP runtime', () => {
         expect(diagnostic?.events[0]?.[0]).toMatchObject({ event });
         expect(diagnostic?.events[0]?.[1]).toBe('HTTP request failed');
       }
+      const rows = output.flatMap(chunk => chunk.split('\n')).filter(line => line.startsWith('{'))
+        .map(line => JSON.parse(line) as { event?: string; correlationId?: string; msg?: string });
+      expect(rows).toEqual(expect.arrayContaining([
+        expect.objectContaining({ event: 'conversation_list_http_failed',
+          correlationId: list.headers['x-request-id'], msg: 'HTTP request failed' }),
+        expect.objectContaining({ event: 'conversation_history_http_failed',
+          correlationId: history.headers['x-request-id'], msg: 'HTTP request failed' }),
+        expect.objectContaining({ event: 'http.unexpected_failure',
+          correlationId: fallback.headers['x-request-id'], msg: 'HTTP request failed' }),
+      ]));
+      expect(output.join('')).not.toContain('private diagnostic marker');
+      expect(output.join('')).not.toContain('driver has already been destroyed');
     } finally {
+      write.mockRestore();
       await server.close();
     }
   });
@@ -210,6 +228,7 @@ describe('consultation HTTP runtime', () => {
       error: null, finished_at: null }).execute();
     await archive.db.updateTable('installation').set({ active_turn_id: 'turn' }).where('id', '=', 1).execute();
     await archive.close();
+    const destroy = vi.spyOn(Object.getPrototypeOf(archive.db) as { destroy: () => Promise<void> }, 'destroy');
 
     const port = await freePort();
     await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
@@ -232,6 +251,8 @@ describe('consultation HTTP runtime', () => {
       expect((await fetch(`${origin}/api/conversations/turns`, { method: 'POST' })).status).toBe(404);
     } finally {
       await runtime.close();
+      expect(destroy).toHaveBeenCalledTimes(1);
+      destroy.mockRestore();
       expect(runtime.server.server.listening).toBe(false);
       await expectPortAvailable(port);
     }

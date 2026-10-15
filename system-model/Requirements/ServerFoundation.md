@@ -714,6 +714,9 @@ Quando il runtime HTTP del server emette un evento diagnostico applicativo, la r
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [history-route.ts](../../packages/conversations/src/adapters/in/http/history-route.ts)
+  * satisfiedBy: [list-route.ts](../../packages/conversations/src/adapters/in/http/list-route.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -807,4 +810,3 @@ Quando la suite automatica del backend esegue le verifiche implementate nei pack
 #### Relations
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
-

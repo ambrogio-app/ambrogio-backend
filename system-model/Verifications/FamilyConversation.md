@@ -1069,4 +1069,3 @@ La prova passa se le migrazioni pendenti sono applicate automaticamente prima ch
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
   * verify: [Migrazione automatica dell'archivio delle conversazioni](../Requirements/FamilyConversation.md#migrazione-automatica-dellarchivio-delle-conversazioni)
 ---
-

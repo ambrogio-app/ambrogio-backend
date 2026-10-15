@@ -1068,4 +1068,3 @@ Quando l'ingresso HTTP riceve un turno, il suo adapter deve verificare forma e d
 #### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
-

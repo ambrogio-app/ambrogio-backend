@@ -199,3 +199,4 @@ Il controllo passa se i meccanismi tecnici specifici del processo risiedono in `
   * verify: [Assemblaggio dei componenti nelle app](../Requirements/Workspace.md#assemblaggio-dei-componenti-nelle-app)
   * verify: [Coordinamento dell'esecuzione negli entrypoint](../Requirements/Workspace.md#coordinamento-dellesecuzione-negli-entrypoint)
   * verify: [Meccanismi tecnici del processo nelle app](../Requirements/Workspace.md#meccanismi-tecnici-del-processo-nelle-app)
+---

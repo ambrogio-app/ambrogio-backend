@@ -26,9 +26,17 @@
       "types": "./dist/application/conversation-history-read.d.ts",
       "import": "./dist/application/conversation-history-read.js"
     },
+    "./application/conversation-list-read": {
+      "types": "./dist/application/conversation-list-read.d.ts",
+      "import": "./dist/application/conversation-list-read.js"
+    },
     "./application/get-conversation": {
       "types": "./dist/application/get-conversation.use-case.d.ts",
       "import": "./dist/application/get-conversation.use-case.js"
+    },
+    "./application/list-conversations": {
+      "types": "./dist/application/list-conversations.use-case.d.ts",
+      "import": "./dist/application/list-conversations.use-case.js"
     },
     "./application/turn-capabilities": {
       "types": "./dist/application/turn-capabilities.d.ts",
@@ -45,6 +53,10 @@
     "./adapters/out/sqlite/history-read": {
       "types": "./dist/adapters/out/sqlite/sqlite-conversation-history-read.d.ts",
       "import": "./dist/adapters/out/sqlite/sqlite-conversation-history-read.js"
+    },
+    "./adapters/out/sqlite/list-read": {
+      "types": "./dist/adapters/out/sqlite/sqlite-conversation-list-read.d.ts",
+      "import": "./dist/adapters/out/sqlite/sqlite-conversation-list-read.js"
     },
     "./adapters/out/sqlite/recover-pending-turns": {
       "types": "./dist/adapters/out/sqlite/recover-pending-turns.d.ts",

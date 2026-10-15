@@ -56,7 +56,21 @@ const orderedTurns: Migration = {
   },
 };
 
-export const conversationMigrations = { '001_initial': initial, '002_ordered_turns': orderedTurns };
+const listOrder: Migration = {
+  async up(db) {
+    await db.schema.createIndex('conversations_by_activity')
+      .on('conversations').columns(['last_activity_at', 'id']).execute();
+  },
+  async down(db) {
+    await db.schema.dropIndex('conversations_by_activity').execute();
+  },
+};
+
+export const conversationMigrations = {
+  '001_initial': initial,
+  '002_ordered_turns': orderedTurns,
+  '003_list_order': listOrder,
+};
 
 /** Must finish successfully before any conversational ingress is enabled. */
 export async function migrateConversationArchive(db: Kysely<ConversationDatabase>): Promise<void> {

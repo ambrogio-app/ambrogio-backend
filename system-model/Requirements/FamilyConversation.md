@@ -280,6 +280,8 @@ Quando Application del modulo «Conversazioni» consulta lo storico o l'elenco d
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [conversation-history-read.ts](../../packages/conversations/src/application/conversation-history-read.ts)
+  * satisfiedBy: [conversation-list-read.ts](../../packages/conversations/src/application/conversation-list-read.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -646,6 +648,7 @@ Quando Ambrogio fornisce una pagina dell'elenco delle conversazioni, deve ordina
   * [Pagine dell'elenco conversazioni](../Contracts/FamilyConversation.md#pagine-dellelenco-conversazioni)
 
 #### Relations
+  * satisfiedBy: [sqlite-conversation-list-read.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-list-read.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 

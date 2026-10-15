@@ -46,6 +46,10 @@
       "types": "./dist/adapters/out/sqlite/migrations.d.ts",
       "import": "./dist/adapters/out/sqlite/migrations.js"
     },
+    "./adapters/out/sqlite/archive": {
+      "types": "./dist/adapters/out/sqlite/conversation-archive.d.ts",
+      "import": "./dist/adapters/out/sqlite/conversation-archive.js"
+    },
     "./adapters/out/sqlite/write": {
       "types": "./dist/adapters/out/sqlite/sqlite-conversation-write.d.ts",
       "import": "./dist/adapters/out/sqlite/sqlite-conversation-write.js"

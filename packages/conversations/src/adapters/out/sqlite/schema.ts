@@ -19,6 +19,7 @@ export interface TurnRows {
 export interface InstallationRows {
   id: number;
   active_turn_id: string | null;
+  active_process_id: number | null;
 }
 
 export interface ConversationDatabase {

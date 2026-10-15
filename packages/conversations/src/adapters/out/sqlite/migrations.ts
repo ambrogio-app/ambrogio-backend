@@ -66,10 +66,20 @@ const listOrder: Migration = {
   },
 };
 
+const turnOwner: Migration = {
+  async up(db) {
+    await db.schema.alterTable('installation').addColumn('active_process_id', 'integer').execute();
+  },
+  async down(db) {
+    await db.schema.alterTable('installation').dropColumn('active_process_id').execute();
+  },
+};
+
 export const conversationMigrations = {
   '001_initial': initial,
   '002_ordered_turns': orderedTurns,
   '003_list_order': listOrder,
+  '004_turn_owner': turnOwner,
 };
 
 /** Must finish successfully before any conversational ingress is enabled. */

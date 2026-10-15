@@ -60,7 +60,7 @@ export class SqliteConversationWrite implements ConversationWrite {
           ordinal: ordinalResult.last + 1,
           accepted_at: acceptedAt, status: 'pending', answer: null, error: null, finished_at: null,
         }).execute();
-        const occupied = await db.updateTable('installation').set({ active_turn_id: state.id })
+        const occupied = await db.updateTable('installation').set({ active_turn_id: state.id, active_process_id: process.pid })
           .where('id', '=', 1).where('active_turn_id', 'is', null).executeTakeFirst();
         if (occupied.numUpdatedRows !== 1n) throw new Error('Installation admission postcondition failed');
         return { ok: true, value: undefined };
@@ -99,7 +99,7 @@ export class SqliteConversationWrite implements ConversationWrite {
         finished_at: toMillis(state.finishedAt),
       }).where('id', '=', input.turnId).where('status', '=', 'pending').executeTakeFirst();
       if (updated.numUpdatedRows !== 1n) throw new Error('Turn completion postcondition failed');
-      const released = await db.updateTable('installation').set({ active_turn_id: null })
+        const released = await db.updateTable('installation').set({ active_turn_id: null, active_process_id: null })
         .where('id', '=', 1).where('active_turn_id', '=', input.turnId).executeTakeFirst();
       if (released.numUpdatedRows !== 1n) throw new Error('Installation release postcondition failed');
       return { ok: true, value: state };

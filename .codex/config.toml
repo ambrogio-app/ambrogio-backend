@@ -1,2 +1,14 @@
 [mcp_servers.reqvire]
 url = "http://127.0.0.1:8082/mcp"
+
+[mcp_servers.reqvire.tools."reqvire.add_element"]
+approval_mode = "approve"
+
+[mcp_servers.reqvire.tools."reqvire.link"]
+approval_mode = "approve"
+
+[mcp_servers.reqvire.tools."reqvire.rename_element"]
+approval_mode = "approve"
+
+[mcp_servers.reqvire.tools."reqvire.unlink"]
+approval_mode = "approve"

@@ -1,6 +1,9 @@
 import Fastify from 'fastify';
-import { Writable } from 'node:stream';
-import { afterEach, describe, expect, it } from 'vitest';
+import { request as httpRequest } from 'node:http';
+import { PassThrough, Writable } from 'node:stream';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createExchangeTurn } from '../../../src/application/exchange-turn.use-case.js';
+import { Turn } from '../../../src/domain/turn.js';
 import type { ExchangeTurn } from '../../../src/application/exchange-turn.use-case.js';
 import { registerTurnRoute, TURN_BODY_LIMIT } from '../../../src/adapters/in/http/turn-route.js';
 
@@ -21,8 +24,24 @@ function fixture(exchange: ExchangeTurn, language: 'en' | 'it' = 'en') {
 }
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await Promise.all(servers.splice(0).map(server => server.close()));
 });
+
+function loggedFixture(exchange: ExchangeTurn) {
+  const lines: string[] = [];
+  const server = Fastify({ logger: { level: 'error',
+    stream: new Writable({ write(chunk, _encoding, callback) {
+      lines.push(chunk.toString());
+      callback();
+    } }),
+    serializers: { err: () => ({ type: 'Error', message: 'Unexpected HTTP failure',
+      stack: '[redacted]' }) },
+  } });
+  servers.push(server);
+  registerTurnRoute(server, { exchange, language: 'en' });
+  return { server, lines };
+}
 
 describe('text turn HTTP ingress', () => {
   it('rejects empty text before a missing conversation, malformed JSON and unsupported fields', async () => {
@@ -63,11 +82,40 @@ describe('text turn HTTP ingress', () => {
   it('caps the actual JSON body at 64 KiB before admission', async () => {
     let calls = 0;
     const server = fixture(async () => { calls += 1; throw new Error('must not run'); }, 'it');
-    const request = jsonPost({ text: 'x'.repeat(TURN_BODY_LIMIT) });
+    const overhead = Buffer.byteLength(JSON.stringify({ text: '' }), 'utf8');
+    const request = jsonPost({ text: 'x'.repeat(TURN_BODY_LIMIT - overhead + 1) });
+    expect(Buffer.byteLength(request.payload, 'utf8')).toBe(65_537);
     const response = await server.inject(request);
     expect(response.statusCode).toBe(413);
     expect(response.headers['content-type']).toMatch(/^application\/json/);
+    expect(response.headers['cache-control']).toBe('no-store');
     expect(response.json()).toEqual({ error: 'Richiesta troppo grande.' });
+    expect(calls).toBe(0);
+  });
+
+  it('rejects a 65 537-byte chunked body without trusting Content-Length', async () => {
+    let calls = 0;
+    const server = fixture(async () => { calls += 1; throw new Error('must not run'); }, 'it');
+    const address = await server.listen({ port: 0, host: '127.0.0.1' });
+    const overhead = Buffer.byteLength(JSON.stringify({ text: '' }), 'utf8');
+    const payload = JSON.stringify({ text: 'x'.repeat(TURN_BODY_LIMIT - overhead + 1) });
+    expect(Buffer.byteLength(payload, 'utf8')).toBe(65_537);
+    const response = await new Promise<{ status: number; type: string | undefined; body: string }>((resolve, reject) => {
+      const request = httpRequest(`${address}/api/conversations/turns`, { method: 'POST',
+        headers: { 'content-type': 'application/json', 'transfer-encoding': 'chunked' } }, reply => {
+        let body = '';
+        reply.setEncoding('utf8');
+        reply.on('data', chunk => { body += chunk; });
+        reply.on('end', () => resolve({ status: reply.statusCode!,
+          type: reply.headers['content-type'], body }));
+      });
+      request.on('error', reject);
+      request.write(payload.slice(0, 32_768));
+      request.end(payload.slice(32_768));
+    });
+    expect(response.status).toBe(413);
+    expect(response.type).toMatch(/^application\/json/);
+    expect(JSON.parse(response.body)).toEqual({ error: 'Richiesta troppo grande.' });
     expect(calls).toBe(0);
   });
 
@@ -184,6 +232,7 @@ describe('text turn HTTP ingress', () => {
     }, 'it');
     const response = await server.inject(jsonPost({ text: 'ciao', conversationId: 'conversation-1' }));
     expect(response.statusCode).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-store');
     expect(response.body).toBe('event: delta\ndata: {"text":"partial"}\n\n'
       + 'event: error\ndata: {"error":"Non riesco a completare la risposta."}\n\n');
     const next = await server.inject(jsonPost({ text: 'un altro turno', conversationId: 'conversation-1' }));
@@ -250,5 +299,124 @@ describe('text turn HTTP ingress', () => {
     expect(logged.msg).toBe('Conversation turn completion failed');
     expect(logged.err.message).toBe('Unexpected HTTP failure');
     expect(lines[0]).not.toContain('private completion failure');
+  });
+
+  it.each(['conversation', 'delta'] as const)(
+    'logs a technical %s delivery failure while the admitted turn completes', async failedEvent => {
+      const privateError = new Error('private SSE transport detail');
+      const originalWrite = PassThrough.prototype.write;
+      let failed = false;
+      vi.spyOn(PassThrough.prototype, 'write').mockImplementation(function (
+        this: PassThrough, chunk: unknown, ...args: unknown[]
+      ) {
+        if (!failed && typeof chunk === 'string' && chunk.startsWith(`event: ${failedEvent}\n`)) {
+          failed = true;
+          throw privateError;
+        }
+        return Reflect.apply(originalWrite, this, [chunk, ...args]) as boolean;
+      });
+      const produced: string[] = [];
+      const completedOutcomes: unknown[] = [];
+      const turnId = '79e437a8-c11a-48ba-b476-e4fd4712ea58';
+      const pending = Turn.accept({ id: turnId, text: 'hello', acceptedAt: new Date(1234) }).snapshot();
+      const exchange = createExchangeTurn({
+        begin: async () => ({ ok: true, value: { conversationId: 'conversation-1', turnId,
+          acceptedAt: new Date(1234) } }),
+        history: { async find() { return { id: 'conversation-1', createdAt: new Date(1234),
+          lastActivityAt: new Date(1234), turns: [pending] }; } },
+        reply: { async *produce() {
+          produced.push('first');
+          yield 'first';
+          produced.push('second');
+          yield 'second';
+        } },
+        complete: async input => {
+          completedOutcomes.push(input.outcome);
+          return { ok: true, value: { turnId, status: 'answered' } };
+        },
+        failureMessage: "I can't complete the response.",
+      });
+      const { server, lines } = loggedFixture(exchange);
+
+      const response = await server.inject(jsonPost({ text: 'hello' }));
+      expect(failed).toBe(true);
+      expect(produced).toEqual(['first', 'second']);
+      expect(completedOutcomes).toEqual([{ kind: 'answer', text: 'firstsecond' }]);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain('event: done\ndata: {}\n\n');
+      expect(response.body).not.toContain('event: error');
+      expect(response.body).not.toContain('private SSE transport detail');
+      expect(lines).toHaveLength(1);
+      const logged = JSON.parse(lines[0]!) as { event: string; err: { message: string } };
+      expect(logged.event).toBe('conversation_turn_sse_delivery_failed');
+      expect(logged.err.message).toBe('Unexpected HTTP failure');
+      expect(lines[0]).not.toContain('private SSE transport detail');
+    },
+  );
+
+  it('diagnoses a stream error even when it closes the HTTP response', async () => {
+    const privateError = new Error('private SSE stream failure');
+    const originalWrite = PassThrough.prototype.write;
+    let failed = false;
+    vi.spyOn(PassThrough.prototype, 'write').mockImplementation(function (
+      this: PassThrough, chunk: unknown, ...args: unknown[]
+    ) {
+      if (!failed && typeof chunk === 'string' && chunk.startsWith('event: delta\n')) {
+        failed = true;
+        this.destroy(privateError);
+        return false;
+      }
+      return Reflect.apply(originalWrite, this, [chunk, ...args]) as boolean;
+    });
+    const notifications: string[] = [];
+    const { server, lines } = loggedFixture(async (_input, observer) => {
+      await observer?.admitted?.('conversation-1', 'turn-1');
+      await observer?.delta?.('first');
+      notifications.push('first');
+      await observer?.delta?.('second');
+      notifications.push('second');
+      return { ok: true, value: { conversationId: 'conversation-1', turnId: 'turn-1',
+        outcome: 'answered' } };
+    });
+
+    await server.inject(jsonPost({ text: 'hello' }));
+    expect(failed).toBe(true);
+    expect(notifications).toEqual(['first', 'second']);
+    expect(lines.map(line => (JSON.parse(line) as { event: string }).event))
+      .toEqual(['conversation_turn_sse_delivery_failed']);
+    expect(lines[0]).not.toContain('private SSE stream failure');
+  });
+
+  it('does not log a normal SSE client disconnection as a delivery failure', async () => {
+    let release!: () => void;
+    const continueTurn = new Promise<void>(resolve => { release = resolve; });
+    let completed!: () => void;
+    const turnCompleted = new Promise<void>(resolve => { completed = resolve; });
+    const { server, lines } = loggedFixture(async (_input, observer) => {
+      await observer?.admitted?.('conversation-1', 'turn-1');
+      await observer?.delta?.('first');
+      await continueTurn;
+      await observer?.delta?.('second');
+      completed();
+      return { ok: true, value: { conversationId: 'conversation-1', turnId: 'turn-1',
+        outcome: 'answered' } };
+    });
+    const address = await server.listen({ port: 0, host: '127.0.0.1' });
+    try {
+      const response = await fetch(`${address}/api/conversations/turns`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text: 'hello' }),
+      });
+      const reader = response.body!.getReader();
+      const first = new TextDecoder().decode((await reader.read()).value);
+      expect(first).toContain('event: delta\ndata: {"text":"first"}\n\n');
+      await reader.cancel();
+      release();
+      await turnCompleted;
+      await new Promise<void>(resolve => setImmediate(resolve));
+      expect(lines).toEqual([]);
+    } finally {
+      release();
+    }
   });
 });

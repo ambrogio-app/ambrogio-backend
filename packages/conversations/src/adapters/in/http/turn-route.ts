@@ -61,12 +61,16 @@ export function registerTurnRoute(server: FastifyInstance, options: Readonly<{
   let acceptingTurns = true;
   const admissions = new Set<Promise<unknown>>();
   const streams = new Set<PassThrough>();
+  const loggedDeliveryErrors = new WeakMap<object, FastifyRequest>();
 
   server.route({
     method: 'POST',
     url: '/api/conversations/turns',
     bodyLimit: TURN_BODY_LIMIT,
     errorHandler(error, request, reply) {
+      if (loggedDeliveryErrors.get(error) === request) {
+        return reply.raw.headersSent ? reply : publicError(reply, 500, message('failure'));
+      }
       if (!acceptingTurns) return publicError(reply, 503, message('unavailable'));
       const code = (error as { code?: string }).code;
       if (code === 'FST_ERR_CTP_BODY_TOO_LARGE') return publicError(reply, 413, message('oversized'));
@@ -87,13 +91,16 @@ export function registerTurnRoute(server: FastifyInstance, options: Readonly<{
       stream.once('close', () => { streams.delete(stream); });
       let clientDisconnected = false;
       reply.raw.once('close', () => { clientDisconnected = !reply.raw.writableEnded; });
-      const logDeliveryFailure = (error: unknown) => {
-        if (!clientDisconnected && !reply.raw.destroyed) {
-          request.log.error({ event: 'conversation_turn_sse_delivery_failed', err: normalizeError(error) },
-            'Conversation turn SSE delivery failed');
+      const logDeliveryFailure = (error: unknown, streamError = false) => {
+        if (!streamError && (clientDisconnected || reply.raw.destroyed)) return;
+        if (typeof error === 'object' && error !== null) {
+          if (loggedDeliveryErrors.get(error) === request) return;
+          loggedDeliveryErrors.set(error, request);
         }
+        request.log.error({ event: 'conversation_turn_sse_delivery_failed', err: normalizeError(error) },
+          'Conversation turn SSE delivery failed');
       };
-      stream.on('error', logDeliveryFailure);
+      stream.on('error', error => { logDeliveryFailure(error, true); });
       const deliver = async (event: TurnSseEvent) => {
         try { await writeEvent(stream, event); } catch (error) { logDeliveryFailure(error); }
       };

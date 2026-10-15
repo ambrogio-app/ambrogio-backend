@@ -307,6 +307,8 @@ Quando la consegna di una notifica di un turno già ammesso all'ingresso fallisc
   * [Dati dei casi d'uso indipendenti dagli ingressi](../Contracts/FamilyConversation.md#dati-dei-casi-duso-indipendenti-dagli-ingressi)
 
 #### Relations
+  * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
+  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -390,6 +392,7 @@ Quando la consegna di una notifica conversazionale fallisce per un guasto tecnic
 
 #### Relations
   * derivedFrom: [Diagnostica dei guasti nei componenti tecnici](ServerFoundation.md#diagnostica-dei-guasti-nei-componenti-tecnici)
+  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 

@@ -782,13 +782,15 @@ La prova passa se, per ogni origine, il backend recupera dall'archivio lo storic
 Ammettere un turno con risposta controllata in più frammenti e far fallire con un guasto tecnico la consegna della notifica di ammissione oppure di un frammento. Osservare la produzione della risposta, l'esito restituito dal caso d'uso e lo scambio conservato.
 
 #### Details
-La prova passa se in entrambi i casi la produzione prosegue fino al proprio esito, il turno conserva la risposta completa se la produzione riesce e il solo guasto di consegna non crea uno scambio di errore. Fallisce se il caso d'uso interrompe la produzione, perde un frammento nella risposta conservata o attribuisce al turno un errore causato soltanto dalla consegna. La verifica dell'ingresso resta da eseguire quando l'adapter è implementato.
+La prova passa se in entrambi i casi la produzione prosegue fino al proprio esito, il turno conserva la risposta completa se la produzione riesce e il solo guasto di consegna non crea uno scambio di errore. Fallisce se il caso d'uso interrompe la produzione, perde un frammento nella risposta conservata o attribuisce al turno un errore causato soltanto dalla consegna.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * satisfiedBy: [exchange-turn.test.ts](../../packages/conversations/test/application/exchange-turn.test.ts)
+  * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
   * verify: [Continuità del turno dopo un guasto di consegna](../Requirements/FamilyConversation.md#continuità-del-turno-dopo-un-guasto-di-consegna)
 ---
 
@@ -830,13 +832,15 @@ La prova passa se l'orchestratore riceve per ciascun agente attivo solo identifi
 Con l'ingresso conversazionale attivo, provocare separatamente una normale disconnessione del client e un guasto tecnico inatteso nella consegna di una notifica; acquisire gli eventi diagnostici del server e lo storico del turno.
 
 #### Details
-La prova passa se il guasto tecnico inatteso è registrato dal componente tecnico che lo gestisce nel canale diagnostico, senza dettagli tecnici nel messaggio pubblico e senza cambiare l'esito conversazionale conservato. La sola disconnessione non produce un log di errore per il turno. Fallisce se il guasto tecnico sparisce senza diagnostica, se il caso d'uso registra direttamente il log, se la disconnessione è trattata come errore del turno o se l'errore diagnostico entra nello storico. La prova resta da eseguire quando l'adapter di ingresso è implementato.
+La prova passa se il guasto tecnico inatteso è registrato dal componente tecnico che lo gestisce nel canale diagnostico, senza dettagli tecnici nel messaggio pubblico e senza cambiare l'esito conversazionale conservato. La sola disconnessione non produce un log di errore per il turno. Fallisce se il guasto tecnico sparisce senza diagnostica, se il caso d'uso registra direttamente il log, se la disconnessione è trattata come errore del turno o se l'errore diagnostico entra nello storico.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
+  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
   * verify: [Diagnostica del guasto tecnico di consegna](../Requirements/FamilyConversation.md#diagnostica-del-guasto-tecnico-di-consegna)
 ---
 

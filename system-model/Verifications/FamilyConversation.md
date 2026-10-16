@@ -125,10 +125,10 @@ Raggruppa le verifiche della trascrizione, della risposta parlata, della conserv
 
 ### Dimostrazione della segnalazione di replica attesa
 
-Verifica pianificata dell’estensione; nessuna esecuzione o evidenza positiva è ancora disponibile.
+Verifica pianificata dell'estensione; nessuna esecuzione o evidenza positiva è ancora disponibile.
 
 #### Details
-Dopo aver definito il contratto completo, usare casi controllati in cui la risposta chiede una replica e casi in cui conclude lo scambio. Accertare che la determinazione sia eseguita dal backend e che il satellite riceva un’indicazione esplicita riferita alla risposta corretta in entrambi i casi. Riprodurre il messaggio fino alla fine e verificare che la replica senza wake word sia accettata nella stessa interazione solo quando richiesta, entro la finestra di inattività. La prova deve usare il backend reale della revisione compatibile e un client conforme; un mock da solo non dimostra la compatibilità tra repository.
+Dopo aver definito il contratto pubblico completo, usare casi controllati in cui la risposta chiede una replica e casi in cui conclude lo scambio. Accertare che l'agente produca il booleano strutturato `expectsReply` durante la generazione della stessa risposta, senza una seconda chiamata al modello dedicata alla classificazione. Accertare che il satellite riceva un'indicazione esplicita riferita alla risposta corretta in entrambi i casi. Riprodurre il messaggio fino alla fine e verificare che la replica senza wake word sia accettata nella stessa interazione solo quando richiesta, entro la finestra di inattività. La prova deve usare il backend reale della revisione compatibile e un client conforme; un mock da solo non dimostra la compatibilità tra repository.
 
 #### Metadata
   * type: demonstration-verification

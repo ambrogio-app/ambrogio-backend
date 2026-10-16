@@ -1,7 +1,5 @@
 # Elements
 
-# Elements
-
 ### Archivio SQLite con Kysely
 
 Le conversazioni e i loro scambi testuali sono conservati in un database SQLite dell'installazione. Le operazioni applicative di lettura e scrittura dell'archivio usano Kysely. La scelta riguarda l'archivio delle conversazioni; non prescrive lo stack degli altri componenti del monorepo.
@@ -198,6 +196,19 @@ Ogni nuova conversazione e ogni nuovo turno ricevono un UUID versione 4. Il caso
 
 #### Relations
   * define: [Identificativi UUID v4 di conversazioni e turni](../Requirements/FamilyConversation.md#identificativi-uuid-v4-di-conversazioni-e-turni)
+---
+
+### Indicazione di attesa della replica vocale
+
+La prima versione del satellite riconosce localmente la wake word. Dopo la risposta parlata permette una replica senza nuova wake word soltanto quando il backend indica che attende una risposta della famiglia. Il backend determina questa informazione e la comunica esplicitamente, associandola alla risposta pertinente; il satellite non la deduce dalla punteggiatura. La replica usa la stessa interazione attiva. La fine effettiva della riproduzione e l’inattività seguono i contratti vocali esistenti.
+
+Questa è un’estensione concordata del protocollo: il backend al commit 76e656f08f2e6675762bd93f28208b3ac3fe299d non la implementa. Restano da concordare il meccanismo di determinazione, nome e schema del segnale, ordine rispetto ai messaggi e all’audio, correlazione concreta e gestione di un’indicazione assente o tardiva. Il nome expectsReply presente nello spike non costituisce una scelta del contratto di prodotto. Le verifiche di integrazione dovranno fissare una revisione che implementa questa estensione; il solo aggiornamento del modello non rende compatibile il codice corrente.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Segnalazione della replica vocale attesa](../Requirements/FamilyConversation.md#segnalazione-della-replica-vocale-attesa)
 ---
 
 ### Invarianti dello stato del turno
@@ -568,3 +579,4 @@ Il percorso del file è indicato dalla variabile d'ambiente `AMBROGIO_CONVERSATI
 #### Relations
   * define: [Configurazione della paginazione conversazionale](../Requirements/FamilyConversation.md#configurazione-della-paginazione-conversazionale)
 ---
+

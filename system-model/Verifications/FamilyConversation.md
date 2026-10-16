@@ -1,7 +1,5 @@
 # Elements
 
-# Elements
-
 ### Verifica degli invarianti dei turni
 
 Raggruppa le prove delle transizioni di stato e della ricostruzione dei turni nel Domain.
@@ -123,6 +121,22 @@ Raggruppa le verifiche della trascrizione, della risposta parlata, della conserv
 
 #### Metadata
   * type: verification-objective
+---
+
+### Dimostrazione della segnalazione di replica attesa
+
+Verifica pianificata dell’estensione; nessuna esecuzione o evidenza positiva è ancora disponibile.
+
+#### Details
+Dopo aver definito il contratto completo, usare casi controllati in cui la risposta chiede una replica e casi in cui conclude lo scambio. Accertare che la determinazione sia eseguita dal backend e che il satellite riceva un’indicazione esplicita riferita alla risposta corretta in entrambi i casi. Riprodurre il messaggio fino alla fine e verificare che la replica senza wake word sia accettata nella stessa interazione solo quando richiesta, entro la finestra di inattività. La prova deve usare il backend reale della revisione compatibile e un client conforme; un mock da solo non dimostra la compatibilità tra repository.
+
+#### Metadata
+  * type: demonstration-verification
+
+#### Relations
+  * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
+  * verify: [Determinazione della replica vocale attesa](../Requirements/FamilyConversation.md#determinazione-della-replica-vocale-attesa)
+  * verify: [Segnalazione della replica vocale attesa](../Requirements/FamilyConversation.md#segnalazione-della-replica-vocale-attesa)
 ---
 
 ### Prova degli ingressi testuali senza voce
@@ -1297,3 +1311,4 @@ La prova passa se le migrazioni pendenti sono applicate automaticamente prima ch
   * satisfiedBy: [sqlite-archive-startup.test.ts](../../packages/conversations/test/adapters/out/sqlite-archive-startup.test.ts)
   * verify: [Migrazione automatica dell'archivio delle conversazioni](../Requirements/FamilyConversation.md#migrazione-automatica-dellarchivio-delle-conversazioni)
 ---
+

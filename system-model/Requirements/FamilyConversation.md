@@ -1,7 +1,5 @@
 # Elements
 
-# Elements
-
 ### Adapter tecnici nel package Conversazioni
 
 Quando un componente tecnico esterno viene integrato come ingresso del modulo «Conversazioni» o come implementazione di una sua porta Application, l'adapter deve risiedere nel package «Conversazioni», rispettivamente in `src/adapters/in/` o `src/adapters/out/`.
@@ -390,6 +388,20 @@ Quando Ambrogio prepara un agente specializzato da un file JSON, deve rendere di
 #### Relations
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
   * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Determinazione della replica vocale attesa
+
+Quando produce una risposta vocale, il backend deve determinare se essa richiede una replica della famiglia, mantenendo sul backend la responsabilità di questa decisione.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Indicazione di attesa della replica vocale](../Contracts/FamilyConversation.md#indicazione-di-attesa-della-replica-vocale)
+
+#### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -1056,6 +1068,20 @@ Quando un errore impedisce di completare la risposta a un turno della chat testu
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
+### Segnalazione della replica vocale attesa
+
+Quando comunica una risposta vocale, il backend deve fornire al satellite un’indicazione esplicita che distingua se attende oppure non attende una replica della famiglia per quella risposta.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Protocollo vocale del prodotto](../Contracts/FamilyConversation.md#protocollo-vocale-del-prodotto)
+
+#### Relations
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
 ### Selezione dell'archivio conversazionale all'avvio
 
 Quando il processo prepara l'ingresso HTTP di consultazione, deve aprire l'archivio SQLite al percorso dichiarato nel JSON locale del componente «Conversazioni» e impedire l'avvio se il percorso manca o è invalido.
@@ -1173,3 +1199,4 @@ Quando un ingresso HTTP riceve una richiesta per le operazioni conversazionali, 
   * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
+

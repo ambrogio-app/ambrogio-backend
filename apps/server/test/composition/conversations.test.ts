@@ -161,10 +161,10 @@ describe('server conversation composition', () => {
         payload: JSON.stringify({ text: 'ciao' }),
       });
       expect(response.statusCode).toBe(200);
-      expect(response.body).toMatch(/^event: conversation\ndata: \{"conversationId":"[^"]+"\}\n\n/);
-      expect(response.body).toContain('event: delta\ndata: {"text":"Buon"}\n\n');
-      expect(response.body).toContain('event: delta\ndata: {"text":"giorno"}\n\n');
-      expect(response.body).toMatch(/event: done\ndata: \{\}\n\n$/);
+      expect(response.body).toMatch(/^data: \{"type":"start","messageId":"[^"]+","messageMetadata":\{"conversationId":"[^"]+","turnId":"[^"]+"\}\}\n\n/);
+      expect(response.body).toContain('"delta":"Buon"');
+      expect(response.body).toContain('"delta":"giorno"');
+      expect(response.body).toContain('"type":"finish","finishReason":"stop"');
       const stored = await prepared.archive.db.selectFrom('turns')
         .select(['text', 'status', 'answer']).executeTakeFirst();
       expect(stored).toEqual({ text: 'ciao', status: 'answered', answer: 'Buongiorno' });
@@ -193,7 +193,7 @@ describe('server conversation composition', () => {
       });
       registerConversationHistoryRoute(server, prepared);
       const post = server.inject({ method: 'POST', url: '/api/conversations/turns',
-        headers: { 'content-type': 'application/json' }, payload: JSON.stringify({ text: ' domanda ' }) });
+        headers: { 'content-type': 'application/json' }, payload: JSON.stringify({ text: '  domanda  interna  ' }) });
       await started;
       const conversation = await prepared.archive.db.selectFrom('conversations').select('id').executeTakeFirstOrThrow();
       const url = `/api/conversations/${conversation.id}`;
@@ -202,15 +202,15 @@ describe('server conversation composition', () => {
       expect(pending.headers['content-type']).toMatch(/^application\/json/);
       expect(pending.headers['cache-control']).toBe('no-store');
       expect(pending.json()).toMatchObject({ id: conversation.id,
-        turns: [{ text: ' domanda ', status: 'pending' }] });
+        turns: [{ text: '  domanda  interna  ', status: 'pending' }] });
       expect(pending.json().turns[0]).not.toHaveProperty('answer');
       expect(pending.json().turns[0]).not.toHaveProperty('finishedAt');
 
       release();
-      expect((await post).body).toContain('event: done');
+      expect((await post).body).toContain('"type":"finish"');
       const completed = await server.inject({ method: 'GET', url });
       expect(completed.json()).toMatchObject({ id: conversation.id,
-        turns: [{ text: ' domanda ', status: 'answered', answer: 'risposta completa' }] });
+        turns: [{ text: '  domanda  interna  ', status: 'answered', answer: 'risposta completa' }] });
       expect(completed.json().turns).toHaveLength(1);
       expect(completed.json().turns[0].finishedAt).toMatch(/Z$/);
       const missing = await server.inject({ method: 'GET', url: '/api/conversations/missing' });
@@ -218,6 +218,43 @@ describe('server conversation composition', () => {
       expect(missing.json()).toEqual({ error: 'Conversazione non trovata.' });
     } finally {
       release();
+      await server.close();
+      await prepared.archive.close();
+    }
+  });
+
+  it('rejects empty text before admission for new, existing, and missing conversations', async () => {
+    const files = await fixture();
+    await writeFile(files.configFilename, '{}');
+    const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
+    const server = Fastify();
+    try {
+      registerConversationTurnRoute(server, prepared, { async *produce() { yield 'answer'; } });
+      const submit = (text: string, conversationId?: string) => server.inject({
+        method: 'POST', url: '/api/conversations/turns',
+        headers: { 'content-type': 'application/json' },
+        payload: JSON.stringify({ text, ...(conversationId ? { conversationId } : {}) }),
+      });
+      const accepted = await submit('valid');
+      expect(accepted.statusCode).toBe(200);
+      const conversation = await prepared.archive.db.selectFrom('conversations').select('id').executeTakeFirstOrThrow();
+      const beforeConversations = await prepared.archive.db.selectFrom('conversations').select('id').execute();
+      const beforeTurns = await prepared.archive.db.selectFrom('turns').select('id').execute();
+      for (const conversationId of [undefined, conversation.id, 'missing']) {
+        for (const text of ['', '  \t  ']) {
+          const response = await submit(text, conversationId);
+          expect(response.statusCode).toBe(400);
+          expect(response.headers['content-type']).toMatch(/^application\/json/);
+          expect(response.headers['cache-control']).toBe('no-store');
+          expect(response.json()).toEqual({ error: 'Invalid message.' });
+          expect(response.body).not.toContain('data: ');
+          expect(await prepared.archive.db.selectFrom('conversations').select('id').execute())
+            .toEqual(beforeConversations);
+          expect(await prepared.archive.db.selectFrom('turns').select('id').execute())
+            .toEqual(beforeTurns);
+        }
+      }
+    } finally {
       await server.close();
       await prepared.archive.close();
     }
@@ -251,7 +288,7 @@ describe('server conversation composition', () => {
       expect(await prepared.archive.db.selectFrom('turns').select('text').execute())
         .toEqual([{ text: 'first' }]);
       releaseFirst();
-      expect((await first).body).toContain('event: done\ndata: {}\n\n');
+      expect((await first).body).toContain('"type":"finish"');
     } finally {
       releaseFirst();
       await server.close();
@@ -278,8 +315,8 @@ describe('server conversation composition', () => {
         payload: JSON.stringify({ text }) });
       const first = await server.inject(request('prima domanda'));
       expect(first.statusCode).toBe(200);
-      expect(first.body).toContain('event: error\ndata: {"error":"Non riesco a completare la risposta."}\n\n');
-      expect(first.body).not.toContain('event: done');
+      expect(first.body).toContain('"type":"error","errorText":"Non riesco a completare la risposta."');
+      expect(first.body).not.toContain('"type":"finish"');
       const blocked = await server.inject(request('seconda domanda'));
       expect(blocked.statusCode).toBe(503);
       expect(blocked.json()).toEqual({ error: 'Servizio temporaneamente non disponibile.' });
@@ -298,7 +335,7 @@ describe('server conversation composition', () => {
       const response = await restartedServer.inject({ method: 'POST', url: '/api/conversations/turns',
         headers: { 'content-type': 'application/json' }, payload: JSON.stringify({ text: 'nuova domanda' }) });
       expect(response.statusCode).toBe(200);
-      expect(response.body).toContain('event: done\ndata: {}\n\n');
+      expect(response.body).toContain('"type":"finish"');
     } finally {
       await restartedServer.close();
       await restarted.archive.close();

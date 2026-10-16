@@ -370,8 +370,9 @@ describe('consultation HTTP runtime', () => {
           'x-context': 'PRIVATE_CONTEXT' },
         payload: { text: 'PRIVATE_CONVERSATION_TEXT' } });
       expect(turn.statusCode).toBe(200);
-      const conversationId = JSON.parse(turn.body.match(/event: conversation\ndata: ([^\n]+)/)![1]!)
-        .conversationId as string;
+      const startPart: { messageMetadata: { conversationId: string } } =
+        JSON.parse(turn.body.match(/^data: (\{"type":"start"[^\n]+)/m)![1]!);
+      const conversationId = startPart.messageMetadata.conversationId;
       const history = await server.inject({ method: 'GET',
         url: `/api/conversations/${conversationId}` });
       expect(history.statusCode).toBe(200);

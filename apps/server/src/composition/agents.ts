@@ -1,7 +1,6 @@
 import { McpToolClient } from '@ambrogio/conversations/adapters/out/mcp-tool-client';
 import type { AvailableMcpTool, McpConnection } from '@ambrogio/conversations/adapters/out/mcp-tool-client';
-import { mistralOptions } from '@ambrogio/conversations/adapters/out/mistral-conversation-reply';
-import { MistralOrchestratorReply, MistralToolAgentReply } from '@ambrogio/conversations/adapters/out/mistral-function-reply';
+import { aiSdkOptions, AiSdkOrchestratorReply, AiSdkToolAgentReply } from '@ambrogio/conversations/adapters/out/ai-sdk-reply';
 import { loadAgentConfigs } from '../runtime/agent-config.js';
 import type { AgentConfig } from '../runtime/agent-config.js';
 
@@ -17,15 +16,15 @@ export async function prepareAgents(
   directory = '/etc/ambrogio/agents',
   connect: (connection: McpConnection) => Promise<ToolConnection> = McpToolClient.connect,
 ): Promise<Readonly<{
-  orchestrator: MistralOrchestratorReply;
+  orchestrator: AiSdkOrchestratorReply;
   specialists: readonly Readonly<{ id: string; description: string; maxToolCalls: number;
-    reply: MistralToolAgentReply;
+    reply: AiSdkToolAgentReply;
     tools: readonly AvailableMcpTool[]; mcp: ToolConnection }>[];
   close(): Promise<void>;
 }>> {
   const configs = await loadAgentConfigs(directory);
   for (const config of [configs.orchestrator, ...configs.specialists]) {
-    mistralOptions(config.llm.options);
+    aiSdkOptions(config.llm.options);
   }
   const opened: ToolConnection[] = [];
   try {
@@ -34,12 +33,12 @@ export async function prepareAgents(
       const mcp = await connect(config.mcp!);
       opened.push(mcp);
       const tools = await mcp.listTools();
-      const reply = new MistralToolAgentReply(settingsFor(config), tools, mcp,
+      const reply = new AiSdkToolAgentReply(settingsFor(config), tools, mcp,
         config.maxToolCalls!);
       specialists.push({ id: config.id, description: config.description!,
         maxToolCalls: config.maxToolCalls!, reply, tools, mcp });
     }
-    const orchestrator = new MistralOrchestratorReply(settingsFor(configs.orchestrator), specialists);
+    const orchestrator = new AiSdkOrchestratorReply(settingsFor(configs.orchestrator), specialists);
     return { orchestrator, specialists,
       async close() { await Promise.all(opened.map((mcp) => mcp.close())); } };
   } catch (error) {

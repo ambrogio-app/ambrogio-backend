@@ -5,12 +5,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { afterEach, expect, test, vi } from 'vitest';
+import { simulateReadableStream } from 'ai';
+import { MockLanguageModelV4 } from 'ai/test';
 import { openConversationArchive } from '@ambrogio/conversations/adapters/out/sqlite/archive';
 import { conversationMigrations } from '@ambrogio/conversations/adapters/out/sqlite/migrations';
 import { SqliteConversationHistoryRead } from '@ambrogio/conversations/adapters/out/sqlite/history-read';
 import { SqliteConversationWrite } from '@ambrogio/conversations/adapters/out/sqlite/write';
 import { McpToolClient } from '@ambrogio/conversations/adapters/out/mcp-tool-client';
-import { MistralOrchestratorReply, MistralToolAgentReply } from '@ambrogio/conversations/adapters/out/mistral-function-reply';
+import { AiSdkOrchestratorReply, AiSdkToolAgentReply } from '@ambrogio/conversations/adapters/out/ai-sdk-reply';
 import { prepareConfiguredConversations } from '../../src/composition/conversations.js';
 import { loadAgentConfigs } from '../../src/runtime/agent-config.js';
 import { buildConversationServer } from '../../src/runtime/consultation-server.js';
@@ -78,6 +80,13 @@ async function waitForTurn(origin: string, id: string, status: string) {
   throw new Error(`Turn did not reach ${status}`);
 }
 
+function streamConversationId(body: string): string {
+  const start = body.split('\n').find(line => line.startsWith('data: {"type":"start"'));
+  expect(start).toBeDefined();
+  const part = JSON.parse(start!.slice(6)) as { messageMetadata: { conversationId: string } };
+  return part.messageMetadata.conversationId;
+}
+
 test('POST/SSE uses the orchestrator and retains security, CORS and correlation headers', async () => {
   const files = await fixture();
   const prepared = await prepareConfiguredConversations({ archivePath: files.archive,
@@ -97,9 +106,9 @@ test('POST/SSE uses the orchestrator and retains security, CORS and correlation 
       headers: { origin: 'https://client.test', 'content-type': 'application/json' },
       payload: { text: 'Hi' } });
     expect(turn.statusCode).toBe(200);
-    expect(turn.body).toContain('event: conversation');
-    expect(turn.body).toContain('event: delta');
-    expect(turn.body).toContain('event: done');
+    expect(turn.body).toContain('\"type\":\"start\"');
+    expect(turn.body).toContain('\"type\":\"text-delta\"');
+    expect(turn.body).toContain('\"type\":\"finish\"');
     expect(turn.headers['content-type']).toContain('text/event-stream');
     expect(turn.headers['cache-control']).toBe('no-store');
     expect(turn.headers['strict-transport-security']).toBe('max-age=600');
@@ -171,7 +180,7 @@ test('shutdown interrupts a pending turn without waiting for the remote reply', 
     const lateAdmission = await rejectedDuringShutdown.catch(() => undefined);
     if (lateAdmission) expect(lateAdmission.statusCode).not.toBe(200);
     release();
-    expect(await response.text().catch(() => '')).not.toContain('event: done');
+    expect(await response.text().catch(() => '')).not.toContain('\"type\":\"finish\"');
     await new Promise<void>((resolve) => setImmediate(resolve));
     const archive = await openConversationArchive(files.archive, new Date());
     try {
@@ -209,7 +218,7 @@ test('shutdown preserves a turn already completed before interruption', async ()
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ text: 'Finish first' }),
     });
-    expect(await response.text()).toContain('event: done');
+    expect(await response.text()).toContain('\"type\":\"finish\"');
     await runtime.close();
     const archive = await openConversationArchive(files.archive, new Date());
     try {
@@ -256,7 +265,7 @@ test('keeps SQLite writable while waiting for an agent and while streaming SSE',
     const reader = response.body!.getReader();
     const decoder = new TextDecoder();
     let body = '';
-    while (!body.includes('event: delta')) {
+    while (!body.includes('\"type\":\"text-delta\"')) {
       const next = await reader.read();
       expect(next.done).toBe(false);
       body += decoder.decode(next.value, { stream: true });
@@ -269,7 +278,7 @@ test('keeps SQLite writable while waiting for an agent and while streaming SSE',
       if (next.done) break;
       body += decoder.decode(next.value, { stream: true });
     }
-    expect(body).toContain('event: done');
+    expect(body).toContain('\"type\":\"finish\"');
     expect(independent.prepare('select phase from independent_writes order by rowid').all())
       .toEqual([{ phase: 'agent' }, { phase: 'stream' }]);
   } finally {
@@ -313,16 +322,15 @@ test('restores completed history after restart and uses it for textual continuat
     const first = await firstRuntime.server.inject({ method: 'POST', url: '/api/conversations/turns',
       headers: { 'content-type': 'application/json' }, payload: { text: 'first question' } });
     expect(first.statusCode).toBe(200);
-    id = JSON.parse(first.body.match(/event: conversation\ndata: ([^\n]+)/)![1]!)
-      .conversationId as string;
+    id = streamConversationId(first.body);
     expect(first.body).toContain('first answer');
     const second = await firstRuntime.server.inject({ method: 'POST', url: '/api/conversations/turns',
       headers: { 'content-type': 'application/json' }, payload: {
         text: 'second question', conversationId: id,
       } });
     expect(second.statusCode).toBe(200);
-    expect(second.body).toContain('event: error');
-    expect(second.body).not.toContain('event: conversation');
+    expect(second.body).toContain('\"type\":\"error\"');
+    expect(streamConversationId(second.body)).toBe(id);
     expect(second.body).not.toContain('private provider failure');
     expect(seen).toEqual([
       [{ text: 'first question', status: 'pending' }],
@@ -370,7 +378,7 @@ test('restores completed history after restart and uses it for textual continuat
       } });
     expect(third.statusCode).toBe(200);
     expect(third.body).toContain('third answer');
-    expect(third.body).not.toContain('event: conversation');
+    expect(streamConversationId(third.body)).toBe(id);
     expect(afterRestartSeen).toEqual([['first question', 'second question', 'third question']]);
     const finalHistory = await restarted.server.inject({ method: 'GET',
       url: `/api/conversations/${id}` });
@@ -426,7 +434,7 @@ test('rejects concurrent HTTP turns across conversations without queuing or pers
     }
     expect(await conversationTurns(origin, id)).toMatchObject([{ text: 'first', status: 'pending' }]);
     firstGate.release();
-    expect(await active.text()).toContain('event: done\ndata: {}\n\n');
+    expect(await active.text()).toContain('\"type\":\"finish\"');
     expect(await waitForTurn(origin, id, 'answered')).toHaveLength(1);
 
     const simultaneous = await Promise.all([submit('one of two'), submit('other of two')]);
@@ -436,7 +444,7 @@ test('rejects concurrent HTTP turns across conversations without queuing or pers
     expect(refused.headers.get('content-type')).toMatch(/^application\/json/);
     expect(await refused.json()).toEqual({ error: 'Another turn is in progress.' });
     secondGate.release();
-    expect(await simultaneous.find(response => response.status === 200)!.text()).toContain('event: done');
+    expect(await simultaneous.find(response => response.status === 200)!.text()).toContain('\"type\":\"finish\"');
     expect(productions).toBe(2);
     const after = await fetch(`${origin}/api/conversations`);
     expect((await after.json() as { items: unknown[] }).items).toHaveLength(2);
@@ -477,10 +485,10 @@ test.each(['answered', 'failed'] as const)(
       expect(response.status).toBe(200);
       const reader = response.body!.getReader();
       const first = new TextDecoder().decode((await reader.read()).value);
-      expect(first).toContain('event: conversation\ndata: ');
-      expect(first).toContain('event: delta\ndata: {"text":"partial"}\n\n');
-      const id = JSON.parse(first.match(/event: conversation\ndata: ([^\n]+)/)![1]!)
-        .conversationId as string;
+      expect(first).toContain('"type":"start"');
+      expect(first).toContain('"type":"text-delta"');
+      expect(first).toContain('"delta":"partial"');
+      const id = streamConversationId(first);
       await reader.cancel();
       continuation.release();
       const turns = await waitForTurn(origin, id, outcome);
@@ -524,8 +532,8 @@ test.each([
     const first = await built.server.inject({ method: 'POST', url: '/api/conversations/turns',
       headers: { 'content-type': 'application/json' }, payload: { text: 'first' } });
     expect(first.statusCode).toBe(200);
-    expect(first.body).toContain('event: error\ndata: {"error":"I can\'t complete the response."}\n\n');
-    expect(first.body).not.toContain('event: done');
+    expect(first.body).toContain('"type":"error","errorText":"I can\'t complete the response."');
+    expect(first.body).not.toContain('\"type\":\"finish\"');
     expect(first.body).not.toContain('private');
     expect(productions).toBe(0);
     historyFault.mockRestore();
@@ -547,7 +555,7 @@ test.each([
       expect(productions).toBe(0);
     } else {
       expect(next.statusCode).toBe(200);
-      expect(next.body).toContain('event: done');
+      expect(next.body).toContain('\"type\":\"finish\"');
       expect(productions).toBe(1);
     }
   } finally {
@@ -570,7 +578,7 @@ test.each([
         headers: { 'content-type': 'application/json' }, payload: { text: 'after restart' } });
       expect(next.statusCode).toBe(200);
       expect(next.body).toContain('after restart');
-      expect(next.body).toContain('event: done');
+      expect(next.body).toContain('\"type\":\"finish\"');
     } finally {
       await restarted.server.close();
       await recovered.archive.close();
@@ -578,7 +586,7 @@ test.each([
   }
 });
 
-test('does not emit SSE done when the answer transaction cannot commit', async () => {
+test('does not confirm success when the answer transaction cannot commit', async () => {
   const files = await fixture();
   const prepared = await prepareConfiguredConversations({ archivePath: files.archive,
     listPageSize: 20, maxListPageSize: 100, language: 'en' }, new Date());
@@ -593,8 +601,8 @@ test('does not emit SSE done when the answer transaction cannot commit', async (
     const response = await built.server.inject({ method: 'POST', url: '/api/conversations/turns',
       headers: { 'content-type': 'application/json' }, payload: { text: 'question' } });
     expect(response.statusCode).toBe(200);
-    expect(response.body).toContain('event: delta');
-    expect(response.body).not.toContain('event: done');
+    expect(response.body).toContain('\"type\":\"text-delta\"');
+    expect(response.body).not.toContain('\"type\":\"finish\"');
     expect(await prepared.archive.db.selectFrom('turns')
       .select(['status', 'answer', 'finished_at']).executeTakeFirst())
       .toEqual({ status: 'pending', answer: null, finished_at: null });
@@ -658,7 +666,7 @@ test('migrates an existing archive before listening and preserves its history', 
       body: JSON.stringify({ conversationId: priorConversationId, text: 'new question' }),
     });
     expect(next.status).toBe(200);
-    expect(await next.text()).toContain('event: done');
+    expect(await next.text()).toContain('\"type\":\"finish\"');
     const updated = await fetch(`${origin}/api/conversations/${priorConversationId}`);
     expect((await updated.json() as { turns: Array<{ text: string }> }).turns.map(turn => turn.text))
       .toEqual(['old question', 'new question']);
@@ -736,31 +744,41 @@ test('POST/SSE delegates to a configured MCP tool and persists the answer', asyn
     try {
       const tools = await mcp.listTools();
       let specialistStep = 0;
-      const specialist = new MistralToolAgentReply({ instructions: config.instructions,
+      const usage = { inputTokens: { total: 1, noCache: 1, cacheRead: undefined,
+        cacheWrite: undefined }, outputTokens: { total: 1, text: 1, reasoning: undefined } };
+      const finish = (reason: 'stop' | 'tool-calls') => ({ type: 'finish',
+        finishReason: { unified: reason, raw: undefined }, usage });
+      const text = (value: string) => [{ type: 'text-start', id: 'text-1' },
+        { type: 'text-delta', id: 'text-1', delta: value }, { type: 'text-end', id: 'text-1' }];
+      const specialistModel = new MockLanguageModelV4({ modelId: 'controlled-model',
+        doStream: async (request) => {
+          modelRequests.push({ model: 'controlled-model',
+            instructions: String(request.prompt[0]?.content ?? '') });
+          const first = specialistStep++ === 0;
+          return { stream: simulateReadableStream({ chunks: first ? [
+            { type: 'tool-call', toolCallId: 'tool-1', toolName: 'mcp_0',
+              input: '{"key":"answer"}' }, finish('tool-calls'),
+          ] as any[] : [...text('Answer from tool.'), finish('stop')] as any[] }) };
+        } });
+      const specialist = new AiSdkToolAgentReply({ instructions: config.instructions,
         model: config.llm.model, apiKey: config.llm.apiKey },
-        tools, mcp, config.maxToolCalls!, async (request) => {
-          modelRequests.push({ model: request.model, instructions: request.messages[0]?.content ?? '' });
-          return (async function* () {
-            if (specialistStep++ === 0) yield { data: { choices: [{ delta: { toolCalls: [{
-              id: 'tool-1', index: 0, function: { name: 'mcp_0', arguments: '{"key":"answer"}' },
-            }] } }] } };
-            else yield { data: { choices: [{ delta: { content: 'Answer from tool.' } }] } };
-          })();
-        });
-      const orchestrator = new MistralOrchestratorReply({
+        tools, mcp, config.maxToolCalls!, specialistModel);
+      const orchestratorModel = new MockLanguageModelV4({ modelId: 'controlled-model',
+        doStream: async (request) => {
+          modelRequests.push({ model: 'controlled-model',
+            instructions: String(request.prompt[0]?.content ?? '') });
+          expect(request.tools?.[0]?.description).toBe('Find facts.');
+          const first = orchestratorStep++ === 0;
+          return { stream: simulateReadableStream({ chunks: first ? [
+            { type: 'tool-call', toolCallId: 'delegate-1', toolName: 'delegate_0',
+              input: '{"task":"Find answer"}' }, finish('tool-calls'),
+          ] as any[] : [...text('Direct answer.'), finish('stop')] as any[] }) };
+        } });
+      const orchestrator = new AiSdkOrchestratorReply({
         instructions: configs.orchestrator.instructions, model: configs.orchestrator.llm.model,
         apiKey: configs.orchestrator.llm.apiKey,
       }, [{ id: config.id, description: config.description!, reply: specialist }],
-      async (request) => {
-        modelRequests.push({ model: request.model, instructions: request.messages[0]?.content ?? '' });
-        expect(request.tools?.[0]?.function.description).toBe('Find facts.');
-        return (async function* () {
-          if (orchestratorStep++ === 0) yield { data: { choices: [{ delta: { toolCalls: [{
-            id: 'delegate-1', index: 0, function: { name: 'delegate_0', arguments: '{"task":"Find answer"}' },
-          }] } }] } };
-          else yield { data: { choices: [{ delta: { content: 'Direct answer.' } }] } };
-        })();
-      });
+      orchestratorModel);
       return { orchestrator, close: () => mcp.close() };
     } catch (error) { await mcp.close(); throw error; }
   };
@@ -773,10 +791,10 @@ test('POST/SSE delegates to a configured MCP tool and persists the answer', asyn
     });
     expect(response.status).toBe(200);
     const events = await response.text();
-    expect(events).toContain('event: conversation');
-    expect(events).toContain('event: delta');
+    expect(events).toContain('\"type\":\"start\"');
+    expect(events).toContain('\"type\":\"text-delta\"');
     expect(events).toContain('Answer from tool.');
-    expect(events).toContain('event: done');
+    expect(events).toContain('\"type\":\"finish\"');
     expect(calls).toEqual(['lookup']);
     const list = await fetch(`http://127.0.0.1:${port}/api/conversations`);
     const items = (await list.json() as { items: Array<{ id: string }> }).items;

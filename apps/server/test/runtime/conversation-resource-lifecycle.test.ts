@@ -70,7 +70,7 @@ test.each(['answer', 'agent failure'] as const)(
       });
       const body = await response.text();
       expect(response.status).toBe(200);
-      expect(body).toContain(scenario === 'answer' ? 'event: done' : 'event: error');
+      expect(body).toContain(scenario === 'answer' ? '"type":"finish"' : '"type":"error"');
       expect(resource.closed).toBe(0);
     } finally { await runtime.close(); }
     await runtime.close();

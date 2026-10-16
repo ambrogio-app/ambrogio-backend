@@ -212,8 +212,7 @@ Quando il server attiva un agente, incluso l'orchestratore, deve leggere il file
 #### Relations
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
   * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
-  * satisfiedBy: [mistral-conversation-reply.ts](../../packages/conversations/src/adapters/out/mistral-conversation-reply.ts)
-  * satisfiedBy: [mistral-function-reply.ts](../../packages/conversations/src/adapters/out/mistral-function-reply.ts)
+  * satisfiedBy: [ai-sdk-reply.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -259,7 +258,7 @@ Quando Ambrogio comunica l'esito di un turno rappresentato come testo, deve cons
 
 ### Conservazione dell'errore dopo risposta testuale parziale
 
-Quando il backend ha trasmesso frammenti della risposta a un turno della chat testuale e poi comunica un errore SSE, deve conservare lo scambio con esito di errore e con il messaggio pubblico comunicato nell'evento `error`, senza registrare i frammenti precedenti come risposta completata.
+Quando il backend ha trasmesso frammenti della risposta a un turno della chat testuale e poi comunica un errore conversazionale nel flusso, deve conservare lo scambio con esito di errore e con il messaggio pubblico della parte `error` definita dal profilo di trasporto, senza registrare i frammenti precedenti come risposta completata.
 
 #### Metadata
   * type: requirement
@@ -322,6 +321,9 @@ Quando un caso d'uso del modulo «Conversazioni» richiede una capacità esterna
 #### Metadata
   * type: requirement
 
+#### Contract References
+  * [Adozione di AI SDK nei layer conversazionali](../Contracts/AiSdkIntegration.md#adozione-di-ai-sdk-nei-layer-conversazionali)
+
 #### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
@@ -368,6 +370,9 @@ Quando un caso d'uso del modulo «Conversazioni» riceve dati di ingresso o prod
 
 #### Metadata
   * type: requirement
+
+#### Contract References
+  * [Adozione di AI SDK nei layer conversazionali](../Contracts/AiSdkIntegration.md#adozione-di-ai-sdk-nei-layer-conversazionali)
 
 #### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
@@ -646,8 +651,7 @@ Quando il server attiva un agente, incluso l'orchestratore, deve leggere le istr
 #### Relations
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
   * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
-  * satisfiedBy: [mistral-conversation-reply.ts](../../packages/conversations/src/adapters/out/mistral-conversation-reply.ts)
-  * satisfiedBy: [mistral-function-reply.ts](../../packages/conversations/src/adapters/out/mistral-function-reply.ts)
+  * satisfiedBy: [ai-sdk-reply.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -688,7 +692,7 @@ Quando un agente specializzato usa gli strumenti del proprio connettore MCP per 
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [mistral-function-reply.ts](../../packages/conversations/src/adapters/out/mistral-function-reply.ts)
+  * satisfiedBy: [ai-sdk-reply.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.ts)
   * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
 ---
 
@@ -778,7 +782,7 @@ Quando Ambrogio elabora un turno della famiglia, l'agente orchestratore deve sce
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [mistral-function-reply.ts](../../packages/conversations/src/adapters/out/mistral-function-reply.ts)
+  * satisfiedBy: [ai-sdk-reply.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -841,7 +845,7 @@ Quando il client della chat testuale riceve una risposta HTTP di errore in forma
 
 ### Presentazione dell'errore del flusso testuale
 
-Quando il client della chat testuale riceve un evento SSE `error`, deve mostrare il messaggio pubblico contenuto nell'evento come esito di errore del turno nella conversazione, sostituendo gli eventuali frammenti di risposta già mostrati per quel turno.
+Quando il client della chat testuale riceve una parte `error` del profilo di trasporto UI, deve mostrare il messaggio pubblico contenuto in `errorText` come esito di errore del turno nella conversazione, sostituendo gli eventuali frammenti di risposta già mostrati per quel turno.
 
 #### Metadata
   * type: requirement
@@ -937,7 +941,7 @@ Quando un ingresso tenta di riaprire una conversazione conservata per aggiungere
 
 ### Riconoscimento del completamento della risposta testuale
 
-Quando il flusso SSE di un turno della chat testuale termina, il client deve considerare la risposta completata correttamente soltanto se ha ricevuto l'evento `done`.
+Quando il flusso di un turno della chat testuale termina, il client deve considerare la risposta completata correttamente soltanto se ha ricevuto la conferma di successo definita dal profilo di trasporto UI.
 
 #### Metadata
   * type: requirement
@@ -951,7 +955,7 @@ Quando il flusso SSE di un turno della chat testuale termina, il client deve con
 
 ### Segnalazione locale dell'interruzione della chat testuale
 
-Quando il flusso SSE di un turno della chat testuale termina senza un evento `done` né un evento `error`, il client deve mostrare lo stato locale «Risposta interrotta» senza trasformare automaticamente la disconnessione in uno scambio di errore conservato.
+Quando il flusso di un turno della chat testuale termina senza la conferma di successo né una parte `error` definite dal profilo di trasporto UI, il client deve mostrare lo stato locale «Risposta interrotta» senza trasformare automaticamente la disconnessione in uno scambio di errore conservato.
 
 #### Metadata
   * type: requirement
@@ -1006,9 +1010,11 @@ Quando il backend avvia il flusso di risposta a un turno della chat testuale, de
 #### Metadata
   * type: requirement
 
+#### Contract References
+  * [Adozione di AI SDK nei layer conversazionali](../Contracts/AiSdkIntegration.md#adozione-di-ai-sdk-nei-layer-conversazionali)
+
 #### Relations
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
-  * satisfiedBy: [sse-events.ts](../../packages/conversations/src/adapters/in/http/sse-events.ts)
   * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
@@ -1021,8 +1027,7 @@ Quando la famiglia invia un turno testuale, Ambrogio deve comunicare una rispost
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [mistral-conversation-reply.ts](../../packages/conversations/src/adapters/out/mistral-conversation-reply.ts)
-  * satisfiedBy: [mistral-function-reply.ts](../../packages/conversations/src/adapters/out/mistral-function-reply.ts)
+  * satisfiedBy: [ai-sdk-reply.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -1052,7 +1057,7 @@ Quando Ambrogio accetta, conclude o interrompe un turno, deve confermare insieme
 
 ### Segnalazione del completamento della risposta testuale
 
-Quando il backend completa correttamente la risposta a un turno della chat testuale, deve trasmettere un evento SSE `done` dopo tutti gli incrementi testuali e prima di chiudere il flusso.
+Quando il backend completa correttamente la risposta a un turno della chat testuale, deve trasmettere la conferma di successo definita dal profilo di trasporto UI dopo tutti gli incrementi testuali e dopo la conferma del commit dell'esito riuscito, prima di chiudere il flusso.
 
 #### Metadata
   * type: requirement
@@ -1129,7 +1134,7 @@ Quando una richiesta della chat testuale contiene un `text` valido e un `convers
 
 ### Segnalazione dell'errore nel flusso testuale
 
-Quando un errore impedisce di completare la risposta a un turno della chat testuale dopo l'avvio del flusso SSE, il backend deve trasmettere un evento SSE `error` con un messaggio pubblico sicuro e terminare il flusso senza inviare `done`.
+Quando un errore impedisce di completare la risposta a un turno della chat testuale dopo l'avvio del flusso, il backend deve trasmettere una parte `error` del profilo di trasporto UI con un messaggio pubblico sicuro e terminare il flusso senza la conferma di successo.
 
 #### Metadata
   * type: requirement

@@ -1,8 +1,8 @@
 import { ProjectError } from '../../../project-error.js';
-import { PassThrough } from 'node:stream';
+import { Readable } from 'node:stream';
+import { createUIMessageStream, createUIMessageStreamResponse, generateId } from 'ai';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { ExchangeTurn } from '../../../application/exchange-turn.use-case.js';
-import { encodeTurnSseEvent, type TurnSseEvent } from './sse-events.js';
 
 type Language = 'en' | 'it';
 type PublicError = 'invalid' | 'missing' | 'occupied' | 'unavailable' | 'oversized' | 'failure';
@@ -38,21 +38,6 @@ function normalizeError(value: unknown): Error {
   return value instanceof Error ? value : new Error('Unknown conversation turn failure', { cause: value });
 }
 
-async function writeEvent(stream: PassThrough, event: TurnSseEvent): Promise<void> {
-  if (stream.destroyed || stream.writableEnded) return;
-  if (stream.write(encodeTurnSseEvent(event), 'utf8')) return;
-  await new Promise<void>(resolve => {
-    const finish = () => {
-      stream.off('drain', finish);
-      stream.off('close', finish);
-      resolve();
-    };
-    stream.once('drain', finish);
-    stream.once('close', finish);
-    if (stream.destroyed) finish();
-  });
-}
-
 /** Register the textual turn ingress after conversation resources have been prepared. */
 export function registerTurnRoute(server: FastifyInstance, options: Readonly<{
   exchange: ExchangeTurn;
@@ -61,7 +46,7 @@ export function registerTurnRoute(server: FastifyInstance, options: Readonly<{
   const message = (kind: PublicError) => messages[kind][options.language];
   let acceptingTurns = true;
   const admissions = new Set<Promise<unknown>>();
-  const streams = new Set<PassThrough>();
+  const streams = new Set<Readable>();
   const loggedDeliveryErrors = new WeakMap<object, FastifyRequest>();
 
   server.route({
@@ -87,13 +72,10 @@ export function registerTurnRoute(server: FastifyInstance, options: Readonly<{
       const input = parsedTurn(request.body);
       if (!input) return publicError(reply, 400, message('invalid'));
 
-      const stream = new PassThrough();
-      streams.add(stream);
-      stream.once('close', () => { streams.delete(stream); });
       let clientDisconnected = false;
       reply.raw.once('close', () => { clientDisconnected = !reply.raw.writableEnded; });
-      const logDeliveryFailure = (error: unknown, streamError = false) => {
-        if (!streamError && (clientDisconnected || reply.raw.destroyed)) return;
+      const logDeliveryFailure = (error: unknown) => {
+        if (clientDisconnected || reply.raw.destroyed) return;
         if (typeof error === 'object' && error !== null) {
           if (loggedDeliveryErrors.get(error) === request) return;
           loggedDeliveryErrors.set(error, request);
@@ -101,21 +83,51 @@ export function registerTurnRoute(server: FastifyInstance, options: Readonly<{
         request.log.error({ event: 'conversation_turn_sse_delivery_failed', err: normalizeError(error) },
           'Conversation turn SSE delivery failed');
       };
-      stream.on('error', error => { logDeliveryFailure(error, true); });
-      const deliver = async (event: TurnSseEvent) => {
-        try { await writeEvent(stream, event); } catch (error) { logDeliveryFailure(error); }
-      };
       let signalAdmitted!: () => void;
       const admitted = new Promise<void>(resolve => { signalAdmitted = resolve; });
-      const execution = options.exchange(input, {
-        async admitted(conversationId) {
-          signalAdmitted();
-          if (input.conversationId === undefined) {
-            await deliver({ kind: 'conversation', conversationId });
+      let wasAdmitted = false;
+      let textBlockId = '';
+      let execution!: ReturnType<ExchangeTurn>;
+      const uiStream = createUIMessageStream({
+        execute: async ({ writer }) => {
+          execution = Promise.resolve().then(() => options.exchange(input, {
+            admitted(conversationId, turnId) {
+              wasAdmitted = true;
+              textBlockId = turnId;
+              writer.write({ type: 'start', messageId: generateId(),
+                messageMetadata: { conversationId, turnId } });
+              writer.write({ type: 'text-start', id: turnId });
+              signalAdmitted();
+            },
+            delta(text) { writer.write({ type: 'text-delta', id: textBlockId, delta: text }); },
+          }, () => !acceptingTurns));
+          try {
+            const result = await execution;
+            if (!result.ok) return;
+            writer.write({ type: 'text-end', id: result.value.turnId });
+            if (result.value.outcome === 'answered') {
+              writer.write({ type: 'finish', finishReason: 'stop',
+                messageMetadata: { turnStatus: 'answered' } });
+              writer.setOutcome({ status: 'completed' });
+            } else if (result.value.outcome === 'failed') {
+              writer.write({ type: 'error', errorText: result.value.error });
+              writer.setOutcome({ status: 'failed' });
+            } else {
+              writer.write({ type: 'abort' });
+              writer.setOutcome({ status: 'aborted' });
+            }
+          } catch (error) {
+            if (wasAdmitted) {
+              acceptingTurns = false;
+              request.log.error({ event: 'conversation_turn_completion_failed', err: normalizeError(error) },
+                'Conversation turn completion failed');
+              writer.write({ type: 'error', errorText: message('failure') });
+              writer.setOutcome({ status: 'failed' });
+            }
           }
         },
-        async delta(text) { await deliver({ kind: 'delta', text }); },
-      }, () => !acceptingTurns);
+        onError: () => message('failure'),
+      });
 
       let first: 'admitted' | 'finished';
       const admission = Promise.race([
@@ -126,7 +138,6 @@ export function registerTurnRoute(server: FastifyInstance, options: Readonly<{
       try {
         first = await admission;
       } catch (error) {
-        stream.destroy();
         request.log.error({ event: 'conversation_turn_admission_failed', err: normalizeError(error) },
           'Conversation turn admission failed');
         return publicError(reply, 500, message('failure'));
@@ -136,7 +147,6 @@ export function registerTurnRoute(server: FastifyInstance, options: Readonly<{
 
       if (first === 'finished') {
         const result = await execution;
-        stream.destroy();
         if (result.ok) throw new ProjectError('Conversation turn finished without an admission notice');
         switch (result.error.kind) {
           case 'occupied': return publicError(reply, 409, message('occupied'));
@@ -145,27 +155,20 @@ export function registerTurnRoute(server: FastifyInstance, options: Readonly<{
         }
       }
 
-      reply.header('Content-Type', 'text/event-stream; charset=utf-8')
-        .header('Cache-Control', 'no-store');
+      const response = createUIMessageStreamResponse({ stream: uiStream,
+        headers: { 'Cache-Control': 'no-store' } });
+      for (const [key, value] of response.headers) reply.header(key, value);
+      const stream = Readable.from(response.body! as AsyncIterable<Uint8Array>);
+      streams.add(stream);
+      stream.once('close', () => { streams.delete(stream); });
+      stream.on('error', logDeliveryFailure);
       reply.send(stream);
-      void execution.then(async result => {
-        if (!result.ok) throw new ProjectError('Admitted turn was later rejected');
-        if (result.value.outcome === 'answered') await deliver({ kind: 'done' });
-        else if (result.value.outcome === 'failed') {
-          await deliver({ kind: 'error', error: result.value.error });
-        }
-      }).catch(async error => {
-        acceptingTurns = false;
-        request.log.error({ event: 'conversation_turn_completion_failed', err: normalizeError(error) },
-          'Conversation turn completion failed');
-        await deliver({ kind: 'error', error: message('failure') });
-      }).finally(() => { stream.end(); });
       return reply;
     },
   });
   return { async stopAccepting() {
     acceptingTurns = false;
-    for (const stream of streams) stream.end();
+    for (const stream of streams) stream.destroy();
     await Promise.allSettled([...admissions]);
   } };
 }

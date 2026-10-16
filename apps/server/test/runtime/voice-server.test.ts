@@ -48,7 +48,7 @@ test('WebSocket voice and HTTP share the archive, admission, and HTTP listener',
     listPageSize: 20, maxListPageSize: 100, language: 'it' }, new Date());
   const pending = gate();
   const httpPending = gate();
-  const transcripts = ['prima domanda', 'seconda domanda', 'nuova interazione'];
+  const transcripts = ['prima domanda', '  seconda  domanda  ', 'nuova interazione'];
   const components: typeof createVoiceComponents = () => {
     const stt = new class extends EventEmitter {
       transcribe(stream: Readable) {
@@ -97,7 +97,7 @@ test('WebSocket voice and HTTP share the archive, admission, and HTTP listener',
     const history = await server.inject({ method: 'GET',
       url: `/api/conversations/${first.conversationId}` });
     expect(history.json().turns.map((turn: { text: string }) => turn.text))
-      .toEqual(['prima domanda', 'seconda domanda']);
+      .toEqual(['prima domanda', '  seconda  domanda  ']);
     first.ws.send('Played');
     await until(() => first!.ws.readyState === WebSocket.CLOSED);
     second = await connect(origin.replace('http:', 'ws:') + '/api/voice');
@@ -119,6 +119,7 @@ test('WebSocket voice and HTTP share the archive, admission, and HTTP listener',
     expect(deniedMessages.some(message => message.startsWith('Ready '))).toBe(false);
     httpPending.release();
     expect((await httpTurn).statusCode).toBe(200);
+    expect(replies).toBe(4);
     await built.turnIngress.stopAccepting();
     await server.close();
     await prepared.archive.close();
@@ -131,7 +132,7 @@ test('WebSocket voice and HTTP share the archive, admission, and HTTP listener',
       const persisted = await consultation.inject({ method: 'GET',
         url: `/api/conversations/${first.conversationId}` });
       expect(persisted.json().turns.map((turn: { text: string }) => turn.text))
-        .toEqual(['prima domanda', 'seconda domanda']);
+        .toEqual(['prima domanda', '  seconda  domanda  ']);
       expect((await readdir(directory)).filter(name => /\.(wav|pcm|raw|opus|mp3)$/i.test(name)))
         .toEqual([]);
     } finally {

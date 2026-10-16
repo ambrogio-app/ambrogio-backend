@@ -4,7 +4,7 @@ import { STT, TTS } from '@micdrop/server';
 import type { WebSocket } from 'ws';
 import { describe, expect, it } from 'vitest';
 import type { ExchangeTurn } from '../../../src/application/exchange-turn.use-case.js';
-import { attachVoiceSession } from '../../../src/adapters/in/voice/voice-session.js';
+import { attachVoiceSession } from '../../../src/adapters/in/voice/voice-session.adapter.js';
 
 class Socket extends EventEmitter {
   readonly sent: Array<string | Buffer> = [];

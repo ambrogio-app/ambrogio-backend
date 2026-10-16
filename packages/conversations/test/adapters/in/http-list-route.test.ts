@@ -1,6 +1,6 @@
 import Fastify from 'fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { registerListRoute } from '../../../src/adapters/in/http/list-route.js';
+import { registerListRoute } from '../../../src/adapters/in/http/list-route.adapter.js';
 import { httpAjvOptions } from '../../../src/adapters/in/http/http-validation.js';
 import { createListConversations } from '../../../src/application/list-conversations.use-case.js';
 import { ProjectError } from '../../../src/project-error.js';

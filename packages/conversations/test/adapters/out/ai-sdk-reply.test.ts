@@ -1,7 +1,7 @@
 import { expect, test, vi } from 'vitest';
 import { simulateReadableStream } from 'ai';
 import { MockLanguageModelV4 } from 'ai/test';
-import { AiSdkOrchestratorReply, AiSdkToolAgentReply, aiSdkOptions } from '../../../src/adapters/out/ai-sdk-reply.js';
+import { AiSdkOrchestratorReply, AiSdkToolAgentReply, aiSdkOptions } from '../../../src/adapters/out/ai-sdk-reply.adapter.js';
 
 const settings = { instructions: 'Use available tools when needed.', model: 'mistral-small-latest',
   apiKey: 'fake-key' };

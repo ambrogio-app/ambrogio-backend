@@ -117,7 +117,7 @@ Quando il client vocale chiude la WebSocket dopo una risposta conclusiva o per i
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [voice-session.ts](../../packages/conversations/src/adapters/in/voice/voice-session.ts)
+  * satisfiedBy: [voice-session.adapter.ts](../../packages/conversations/src/adapters/in/voice/voice-session.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -143,7 +143,7 @@ Quando l'adapter SQLite dell'archivio esegue una mutazione conversazionale, deve
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [sqlite-conversation-write.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.ts)
+  * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -211,7 +211,7 @@ Quando il server attiva un agente, incluso l'orchestratore, deve leggere il file
 #### Relations
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
   * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
-  * satisfiedBy: [ai-sdk-reply.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -279,7 +279,7 @@ Quando Ambrogio conserva una conversazione, deve conservarne la rappresentazione
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [conversation-agent.ts](../../packages/conversations/src/adapters/in/voice/conversation-agent.ts)
+  * satisfiedBy: [conversation-agent.adapter.ts](../../packages/conversations/src/adapters/in/voice/conversation-agent.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -308,7 +308,7 @@ Quando la consegna di una notifica di un turno già ammesso all'ingresso fallisc
   * [Dati dei casi d'uso indipendenti dagli ingressi](../Contracts/FamilyConversation.md#dati-dei-casi-duso-indipendenti-dagli-ingressi)
 
 #### Relations
-  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
+  * satisfiedBy: [turn-route.adapter.ts](../../packages/conversations/src/adapters/in/http/turn-route.adapter.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
@@ -401,7 +401,7 @@ Quando produce una risposta vocale, il backend deve determinare se essa richiede
   * [Indicazione di attesa della replica vocale](../Contracts/FamilyConversation.md#indicazione-di-attesa-della-replica-vocale)
 
 #### Relations
-  * satisfiedBy: [ai-sdk-reply.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
   * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
@@ -415,7 +415,7 @@ Quando la consegna di una notifica conversazionale fallisce per un guasto tecnic
 
 #### Relations
   * derivedFrom: [Diagnostica dei guasti nei componenti tecnici](ServerFoundation.md#diagnostica-dei-guasti-nei-componenti-tecnici)
-  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
+  * satisfiedBy: [turn-route.adapter.ts](../../packages/conversations/src/adapters/in/http/turn-route.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -477,7 +477,7 @@ Quando riceve turni validi destinati a conversazioni diverse mentre è operativo
 
 #### Relations
   * satisfiedBy: [voice.ts](../../apps/server/src/composition/voice.ts)
-  * satisfiedBy: [sqlite-conversation-write.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.ts)
+  * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -489,8 +489,8 @@ Quando la famiglia consulta l'elenco delle conversazioni conservate, Ambrogio de
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [list-route.ts](../../packages/conversations/src/adapters/in/http/list-route.ts)
-  * satisfiedBy: [sqlite-conversation-list-read.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-list-read.ts)
+  * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
+  * satisfiedBy: [sqlite-conversation-list-read.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-list-read.adapter.ts)
   * satisfiedBy: [list-conversations.use-case.ts](../../packages/conversations/src/application/list-conversations.use-case.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
@@ -540,7 +540,7 @@ Quando, dopo l'ammissione di un turno, il server non riesce a leggere uno storic
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
+  * satisfiedBy: [turn-route.adapter.ts](../../packages/conversations/src/adapters/in/http/turn-route.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -657,7 +657,7 @@ Quando il server attiva un agente, incluso l'orchestratore, deve leggere le istr
 #### Relations
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
   * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
-  * satisfiedBy: [ai-sdk-reply.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -673,7 +673,7 @@ Quando un client della chat testuale consulta l'elenco delle conversazioni conse
 
 #### Relations
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
-  * satisfiedBy: [list-route.ts](../../packages/conversations/src/adapters/in/http/list-route.ts)
+  * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -686,7 +686,7 @@ Quando un client della chat testuale consulta una conversazione conservata, il b
 
 #### Relations
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
-  * satisfiedBy: [history-route.ts](../../packages/conversations/src/adapters/in/http/history-route.ts)
+  * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -698,7 +698,7 @@ Quando un agente specializzato usa gli strumenti del proprio connettore MCP per 
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [ai-sdk-reply.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
   * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
 ---
 
@@ -772,7 +772,7 @@ Quando la famiglia richiede l'apertura di una nuova interazione vocale, Ambrogio
 
 #### Relations
   * satisfiedBy: [voice.ts](../../apps/server/src/composition/voice.ts)
-  * satisfiedBy: [sqlite-conversation-write.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.ts)
+  * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
   * satisfiedBy: [start-voice-conversation.use-case.ts](../../packages/conversations/src/application/start-voice-conversation.use-case.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
@@ -785,7 +785,7 @@ Quando Ambrogio elabora un turno della famiglia, l'agente orchestratore deve sce
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [ai-sdk-reply.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -801,7 +801,7 @@ Quando Ambrogio fornisce una pagina dell'elenco delle conversazioni, deve ordina
   * [Pagine dell'elenco conversazioni](../Contracts/FamilyConversation.md#pagine-dellelenco-conversazioni)
 
 #### Relations
-  * satisfiedBy: [sqlite-conversation-list-read.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-list-read.ts)
+  * satisfiedBy: [sqlite-conversation-list-read.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-list-read.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -813,7 +813,7 @@ Quando l'adapter dell'archivio salva o ricostruisce un istante della conversazio
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [sqlite-conversation-write.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.ts)
+  * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -843,7 +843,7 @@ Quando Ambrogio produce una risposta a un turno vocale, deve pronunciare la risp
   * [Esclusione dell'audio persistente](../Contracts/FamilyConversation.md#esclusione-dellaudio-persistente)
 
 #### Relations
-  * satisfiedBy: [voice-session.ts](../../packages/conversations/src/adapters/in/voice/voice-session.ts)
+  * satisfiedBy: [voice-session.adapter.ts](../../packages/conversations/src/adapters/in/voice/voice-session.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -899,9 +899,9 @@ Mentre un'interazione vocale è attiva, quando la famiglia formula una replica i
 
 #### Relations
   * satisfiedBy: [voice-server.test.ts](../../apps/server/test/runtime/voice-server.test.ts)
-  * satisfiedBy: [conversation-agent.ts](../../packages/conversations/src/adapters/in/voice/conversation-agent.ts)
-  * satisfiedBy: [voice-session.ts](../../packages/conversations/src/adapters/in/voice/voice-session.ts)
-  * satisfiedBy: [sqlite-conversation-write.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.ts)
+  * satisfiedBy: [conversation-agent.adapter.ts](../../packages/conversations/src/adapters/in/voice/conversation-agent.adapter.ts)
+  * satisfiedBy: [voice-session.adapter.ts](../../packages/conversations/src/adapters/in/voice/voice-session.adapter.ts)
+  * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -935,8 +935,8 @@ Quando una conversazione ha un turno accettato il cui esito non è ancora conser
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [conversation-agent.ts](../../packages/conversations/src/adapters/in/voice/conversation-agent.ts)
-  * satisfiedBy: [sqlite-conversation-write.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.ts)
+  * satisfiedBy: [conversation-agent.adapter.ts](../../packages/conversations/src/adapters/in/voice/conversation-agent.adapter.ts)
+  * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -952,7 +952,7 @@ Quando il backend avvia il flusso di risposta a un turno della chat testuale, de
 
 #### Relations
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
-  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
+  * satisfiedBy: [turn-route.adapter.ts](../../packages/conversations/src/adapters/in/http/turn-route.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -964,7 +964,7 @@ Quando la famiglia invia un turno testuale, Ambrogio deve comunicare una rispost
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [ai-sdk-reply.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -990,7 +990,7 @@ Quando Ambrogio accetta, conclude o interrompe un turno, deve confermare insieme
 #### Relations
   * satisfiedBy: [migrations.ts](../../packages/conversations/src/adapters/out/sqlite/migrations.ts)
   * satisfiedBy: [recover-pending-turns.ts](../../packages/conversations/src/adapters/out/sqlite/recover-pending-turns.ts)
-  * satisfiedBy: [sqlite-conversation-write.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.ts)
+  * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -1018,7 +1018,7 @@ Quando un turno della chat testuale non può avviare la risposta SSE, il backend
 
 #### Relations
   * derivedFrom: [Esclusione dei dettagli tecnici dal messaggio pubblico](ServerFoundation.md#esclusione-dei-dettagli-tecnici-dal-messaggio-pubblico)
-  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
+  * satisfiedBy: [turn-route.adapter.ts](../../packages/conversations/src/adapters/in/http/turn-route.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -1034,7 +1034,7 @@ Quando il backend riceve un turno valido della chat testuale e lo rifiuta perch�
 
 #### Relations
   * derivedFrom: [Segnalazione dell'errore HTTP prima del flusso testuale](#segnalazione-dellerrore-http-prima-del-flusso-testuale)
-  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
+  * satisfiedBy: [turn-route.adapter.ts](../../packages/conversations/src/adapters/in/http/turn-route.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -1051,7 +1051,7 @@ Quando il campo `text` di un turno della chat testuale è vuoto o contiene solta
 
 #### Relations
   * derivedFrom: [Segnalazione dell'errore HTTP prima del flusso testuale](#segnalazione-dellerrore-http-prima-del-flusso-testuale)
-  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
+  * satisfiedBy: [turn-route.adapter.ts](../../packages/conversations/src/adapters/in/http/turn-route.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -1067,7 +1067,7 @@ Quando una richiesta della chat testuale contiene un `text` valido e un `convers
 
 #### Relations
   * derivedFrom: [Segnalazione dell'errore HTTP prima del flusso testuale](#segnalazione-dellerrore-http-prima-del-flusso-testuale)
-  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
+  * satisfiedBy: [turn-route.adapter.ts](../../packages/conversations/src/adapters/in/http/turn-route.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -1097,7 +1097,7 @@ Quando comunica una risposta vocale, il backend deve fornire al satellite un’i
   * [Protocollo vocale del prodotto](../Contracts/FamilyConversation.md#protocollo-vocale-del-prodotto)
 
 #### Relations
-  * satisfiedBy: [conversation-agent.ts](../../packages/conversations/src/adapters/in/voice/conversation-agent.ts)
+  * satisfiedBy: [conversation-agent.adapter.ts](../../packages/conversations/src/adapters/in/voice/conversation-agent.adapter.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
   * satisfiedBy: [voice-session.test.ts](../../packages/conversations/test/adapters/in/voice-session.test.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
@@ -1215,9 +1215,8 @@ Quando un ingresso HTTP riceve una richiesta per le operazioni conversazionali, 
 
 #### Relations
   * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
-  * satisfiedBy: [history-route.ts](../../packages/conversations/src/adapters/in/http/history-route.ts)
-  * satisfiedBy: [list-route.ts](../../packages/conversations/src/adapters/in/http/list-route.ts)
-  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
+  * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
+  * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
+  * satisfiedBy: [turn-route.adapter.ts](../../packages/conversations/src/adapters/in/http/turn-route.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
-

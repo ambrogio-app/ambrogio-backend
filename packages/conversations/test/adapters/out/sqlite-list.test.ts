@@ -8,8 +8,8 @@ import { Turn } from '../../../src/domain/turn.js';
 import { createListConversations } from '../../../src/application/list-conversations.use-case.js';
 import { loadConversationConfig } from '../../../src/adapters/out/conversation-config.js';
 import { migrateConversationArchive } from '../../../src/adapters/out/sqlite/migrations.js';
-import { SqliteConversationListRead } from '../../../src/adapters/out/sqlite/sqlite-conversation-list-read.js';
-import { SqliteConversationWrite } from '../../../src/adapters/out/sqlite/sqlite-conversation-write.js';
+import { SqliteConversationListRead } from '../../../src/adapters/out/sqlite/sqlite-conversation-list-read.adapter.js';
+import { SqliteConversationWrite } from '../../../src/adapters/out/sqlite/sqlite-conversation-write.adapter.js';
 import type { ConversationDatabase } from '../../../src/adapters/out/sqlite/schema.js';
 
 const ids = [

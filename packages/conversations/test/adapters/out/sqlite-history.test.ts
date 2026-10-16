@@ -8,8 +8,8 @@ import { join } from 'node:path';
 import { Turn } from '../../../src/domain/turn.js';
 import { createGetConversation } from '../../../src/application/get-conversation.use-case.js';
 import { conversationMigrations, migrateConversationArchive } from '../../../src/adapters/out/sqlite/migrations.js';
-import { SqliteConversationWrite } from '../../../src/adapters/out/sqlite/sqlite-conversation-write.js';
-import { SqliteConversationHistoryRead } from '../../../src/adapters/out/sqlite/sqlite-conversation-history-read.js';
+import { SqliteConversationWrite } from '../../../src/adapters/out/sqlite/sqlite-conversation-write.adapter.js';
+import { SqliteConversationHistoryRead } from '../../../src/adapters/out/sqlite/sqlite-conversation-history-read.adapter.js';
 import { recoverPendingTurns } from '../../../src/adapters/out/sqlite/recover-pending-turns.js';
 import type { ConversationDatabase } from '../../../src/adapters/out/sqlite/schema.js';
 

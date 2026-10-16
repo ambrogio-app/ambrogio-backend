@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import { openConversationArchive } from '../../src/adapters/out/sqlite/conversation-archive.js';
-import { SqliteConversationWrite } from '../../src/adapters/out/sqlite/sqlite-conversation-write.js';
-import { SqliteConversationHistoryRead } from '../../src/adapters/out/sqlite/sqlite-conversation-history-read.js';
+import { SqliteConversationWrite } from '../../src/adapters/out/sqlite/sqlite-conversation-write.adapter.js';
+import { SqliteConversationHistoryRead } from '../../src/adapters/out/sqlite/sqlite-conversation-history-read.adapter.js';
 import { createStartVoiceConversation } from '../../src/application/start-voice-conversation.use-case.js';
 import { createBeginTurn } from '../../src/application/begin-turn.use-case.js';
 

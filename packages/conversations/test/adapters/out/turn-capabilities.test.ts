@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { UuidIdentifiers } from '../../../src/adapters/out/uuid-identifiers.js';
-import { SystemCurrentTime } from '../../../src/adapters/out/system-current-time.js';
+import { UuidIdentifiers } from '../../../src/adapters/out/uuid-identifiers.adapter.js';
+import { SystemCurrentTime } from '../../../src/adapters/out/system-current-time.adapter.js';
 
 describe('technical turn capabilities', () => {
   it('provides distinct UUID v4 identities for conversations and turns', () => {

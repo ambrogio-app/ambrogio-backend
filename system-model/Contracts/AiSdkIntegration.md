@@ -30,4 +30,3 @@ Sito e documentazione utente risiedono in repository separati. Il cambiamento de
 #### Relations
   * define: [Separazione delle responsabilità nel modulo Conversazioni](../Requirements/FamilyConversation.md#separazione-delle-responsabilità-nel-modulo-conversazioni)
 ---
-

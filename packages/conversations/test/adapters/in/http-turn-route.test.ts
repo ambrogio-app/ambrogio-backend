@@ -8,7 +8,7 @@ import { createBeginTurn } from '../../../src/application/begin-turn.use-case.js
 import { Turn } from '../../../src/domain/turn.js';
 import { ProjectError } from '../../../src/project-error.js';
 import type { ExchangeTurn } from '../../../src/application/exchange-turn.use-case.js';
-import { registerTurnRoute, TURN_BODY_LIMIT } from '../../../src/adapters/in/http/turn-route.js';
+import { registerTurnRoute, TURN_BODY_LIMIT } from '../../../src/adapters/in/http/turn-route.adapter.js';
 import { httpAjvOptions } from '../../../src/adapters/in/http/http-validation.js';
 
 const servers: ReturnType<typeof Fastify>[] = [];

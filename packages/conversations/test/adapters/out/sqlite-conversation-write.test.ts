@@ -8,9 +8,9 @@ import { Turn } from '../../../src/domain/turn.js';
 import { createBeginTurn } from '../../../src/application/begin-turn.use-case.js';
 import { createCompleteTurn } from '../../../src/application/complete-turn.use-case.js';
 import { migrateConversationArchive } from '../../../src/adapters/out/sqlite/migrations.js';
-import { SqliteConversationWrite } from '../../../src/adapters/out/sqlite/sqlite-conversation-write.js';
-import { SqliteConversationHistoryRead } from '../../../src/adapters/out/sqlite/sqlite-conversation-history-read.js';
-import { SqliteConversationListRead } from '../../../src/adapters/out/sqlite/sqlite-conversation-list-read.js';
+import { SqliteConversationWrite } from '../../../src/adapters/out/sqlite/sqlite-conversation-write.adapter.js';
+import { SqliteConversationHistoryRead } from '../../../src/adapters/out/sqlite/sqlite-conversation-history-read.adapter.js';
+import { SqliteConversationListRead } from '../../../src/adapters/out/sqlite/sqlite-conversation-list-read.adapter.js';
 import { recoverPendingTurns } from '../../../src/adapters/out/sqlite/recover-pending-turns.js';
 import type { ConversationDatabase } from '../../../src/adapters/out/sqlite/schema.js';
 

@@ -67,16 +67,16 @@
       "import": "./dist/adapters/out/sqlite/conversation-archive.js"
     },
     "./adapters/out/sqlite/write": {
-      "types": "./dist/adapters/out/sqlite/sqlite-conversation-write.d.ts",
-      "import": "./dist/adapters/out/sqlite/sqlite-conversation-write.js"
+      "types": "./dist/adapters/out/sqlite/sqlite-conversation-write.adapter.d.ts",
+      "import": "./dist/adapters/out/sqlite/sqlite-conversation-write.adapter.js"
     },
     "./adapters/out/sqlite/history-read": {
-      "types": "./dist/adapters/out/sqlite/sqlite-conversation-history-read.d.ts",
-      "import": "./dist/adapters/out/sqlite/sqlite-conversation-history-read.js"
+      "types": "./dist/adapters/out/sqlite/sqlite-conversation-history-read.adapter.d.ts",
+      "import": "./dist/adapters/out/sqlite/sqlite-conversation-history-read.adapter.js"
     },
     "./adapters/out/sqlite/list-read": {
-      "types": "./dist/adapters/out/sqlite/sqlite-conversation-list-read.d.ts",
-      "import": "./dist/adapters/out/sqlite/sqlite-conversation-list-read.js"
+      "types": "./dist/adapters/out/sqlite/sqlite-conversation-list-read.adapter.d.ts",
+      "import": "./dist/adapters/out/sqlite/sqlite-conversation-list-read.adapter.js"
     },
     "./adapters/out/conversation-config": {
       "types": "./dist/adapters/out/conversation-config.d.ts",
@@ -87,32 +87,32 @@
       "import": "./dist/adapters/out/voice-config.js"
     },
     "./adapters/out/ai-sdk-reply": {
-      "types": "./dist/adapters/out/ai-sdk-reply.d.ts",
-      "import": "./dist/adapters/out/ai-sdk-reply.js"
+      "types": "./dist/adapters/out/ai-sdk-reply.adapter.d.ts",
+      "import": "./dist/adapters/out/ai-sdk-reply.adapter.js"
     },
     "./adapters/out/mcp-tool-client": {
       "types": "./dist/adapters/out/mcp-tool-client.d.ts",
       "import": "./dist/adapters/out/mcp-tool-client.js"
     },
     "./adapters/in/voice/voice-session": {
-      "types": "./dist/adapters/in/voice/voice-session.d.ts",
-      "import": "./dist/adapters/in/voice/voice-session.js"
+      "types": "./dist/adapters/in/voice/voice-session.adapter.d.ts",
+      "import": "./dist/adapters/in/voice/voice-session.adapter.js"
     },
     "./adapters/in/voice/vosk-streaming-stt": {
       "types": "./dist/adapters/in/voice/vosk-streaming-stt.d.ts",
       "import": "./dist/adapters/in/voice/vosk-streaming-stt.js"
     },
     "./adapters/in/http/turn-route": {
-      "types": "./dist/adapters/in/http/turn-route.d.ts",
-      "import": "./dist/adapters/in/http/turn-route.js"
+      "types": "./dist/adapters/in/http/turn-route.adapter.d.ts",
+      "import": "./dist/adapters/in/http/turn-route.adapter.js"
     },
     "./adapters/in/http/history-route": {
-      "types": "./dist/adapters/in/http/history-route.d.ts",
-      "import": "./dist/adapters/in/http/history-route.js"
+      "types": "./dist/adapters/in/http/history-route.adapter.d.ts",
+      "import": "./dist/adapters/in/http/history-route.adapter.js"
     },
     "./adapters/in/http/list-route": {
-      "types": "./dist/adapters/in/http/list-route.d.ts",
-      "import": "./dist/adapters/in/http/list-route.js"
+      "types": "./dist/adapters/in/http/list-route.adapter.d.ts",
+      "import": "./dist/adapters/in/http/list-route.adapter.js"
     },
     "./adapters/in/http/http-validation": {
       "types": "./dist/adapters/in/http/http-validation.d.ts",
@@ -127,12 +127,12 @@
       "import": "./dist/adapters/out/sqlite/schema.js"
     },
     "./adapters/out/uuid-identifiers": {
-      "types": "./dist/adapters/out/uuid-identifiers.d.ts",
-      "import": "./dist/adapters/out/uuid-identifiers.js"
+      "types": "./dist/adapters/out/uuid-identifiers.adapter.d.ts",
+      "import": "./dist/adapters/out/uuid-identifiers.adapter.js"
     },
     "./adapters/out/system-current-time": {
-      "types": "./dist/adapters/out/system-current-time.d.ts",
-      "import": "./dist/adapters/out/system-current-time.js"
+      "types": "./dist/adapters/out/system-current-time.adapter.d.ts",
+      "import": "./dist/adapters/out/system-current-time.adapter.js"
     }
   },
   "dependencies": {

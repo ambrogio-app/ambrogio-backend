@@ -4,7 +4,7 @@ import type { WebSocket } from 'ws';
 import type { ExchangeTurn } from '../../../application/exchange-turn.use-case.js';
 import type { BeginTurnRejection } from '../../../application/begin-turn.use-case.js';
 import type { VoiceConfig } from '../../out/voice-config.js';
-import { ConversationVoiceAgent } from './conversation-agent.js';
+import { ConversationVoiceAgent } from './conversation-agent.adapter.js';
 import { VoskStreamingSTT } from './vosk-streaming-stt.js';
 
 export const voiceRoute = '/api/voice';

@@ -1,6 +1,6 @@
 import Fastify from 'fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { registerHistoryRoute } from '../../../src/adapters/in/http/history-route.js';
+import { registerHistoryRoute } from '../../../src/adapters/in/http/history-route.adapter.js';
 import { httpAjvOptions } from '../../../src/adapters/in/http/http-validation.js';
 import { createGetConversation } from '../../../src/application/get-conversation.use-case.js';
 import { ProjectError } from '../../../src/project-error.js';

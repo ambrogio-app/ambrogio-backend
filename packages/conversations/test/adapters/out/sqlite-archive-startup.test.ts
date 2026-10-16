@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { Turn } from '../../../src/domain/turn.js';
 import { openConversationArchive } from '../../../src/adapters/out/sqlite/conversation-archive.js';
 import { conversationMigrations } from '../../../src/adapters/out/sqlite/migrations.js';
-import { SqliteConversationWrite } from '../../../src/adapters/out/sqlite/sqlite-conversation-write.js';
+import { SqliteConversationWrite } from '../../../src/adapters/out/sqlite/sqlite-conversation-write.adapter.js';
 import type { ConversationDatabase } from '../../../src/adapters/out/sqlite/schema.js';
 
 const conversationId = 'dc89cb5e-e695-43cc-8a04-917316771ea4';

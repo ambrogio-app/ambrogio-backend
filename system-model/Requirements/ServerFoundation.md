@@ -11,7 +11,7 @@ Quando il server riceve una richiesta di arresto ordinato, deve smettere di acce
   * [Politica di interruzione nell'arresto ordinato](../Contracts/ServerFoundation.md#politica-di-interruzione-nellarresto-ordinato)
 
 #### Relations
-  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
+  * satisfiedBy: [turn-route.adapter.ts](../../packages/conversations/src/adapters/in/http/turn-route.adapter.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -233,6 +233,9 @@ Quando un caso d'uso Application del server espone rifiuti previsti, la sua firm
 #### Metadata
   * type: requirement
 
+#### Contract References
+  * [Convenzione dei nomi di casi d'uso e adapter](../Contracts/ServerFoundation.md#convenzione-dei-nomi-di-casi-duso-e-adapter)
+
 #### Relations
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
@@ -316,9 +319,9 @@ Quando un confine del server comunica alla famiglia un messaggio per un guasto, 
 
 #### Relations
   * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
-  * satisfiedBy: [history-route.ts](../../packages/conversations/src/adapters/in/http/history-route.ts)
-  * satisfiedBy: [list-route.ts](../../packages/conversations/src/adapters/in/http/list-route.ts)
-  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
+  * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
+  * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
+  * satisfiedBy: [turn-route.adapter.ts](../../packages/conversations/src/adapters/in/http/turn-route.adapter.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -548,7 +551,7 @@ Quando una rotta HTTP riceve un corpo, il server deve applicare un limite esplic
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
+  * satisfiedBy: [turn-route.adapter.ts](../../packages/conversations/src/adapters/in/http/turn-route.adapter.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -596,6 +599,17 @@ Quando il logger del server HTTP emette un evento diagnostico, la riga JSON deve
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
+### Nomi dei file secondo il ruolo architetturale
+
+I file del codice di produzione devono seguire una convenzione esplicita e uniforme che renda riconoscibili i casi d'uso e gli adapter secondo la responsabilità effettivamente realizzata.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
 ### Normalizzazione diagnostica nel confine definitivo
 
 Quando il confine tecnico HTTP del server gestisce definitivamente un guasto inatteso, deve normalizzare una sola volta il valore catturato per la diagnostica, conservando l'identità di un `Error` già presente oppure creando un `Error` per un valore diverso, secondo il contratto di normalizzazione diagnostica. I componenti intermedi non devono normalizzare nuovamente il guasto.
@@ -605,9 +619,9 @@ Quando il confine tecnico HTTP del server gestisce definitivamente un guasto ina
 
 #### Relations
   * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
-  * satisfiedBy: [history-route.ts](../../packages/conversations/src/adapters/in/http/history-route.ts)
-  * satisfiedBy: [list-route.ts](../../packages/conversations/src/adapters/in/http/list-route.ts)
-  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
+  * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
+  * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
+  * satisfiedBy: [turn-route.adapter.ts](../../packages/conversations/src/adapters/in/http/turn-route.adapter.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -704,9 +718,9 @@ Quando un componente del server decide definitivamente l'esito esterno di un gua
 
 #### Relations
   * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
-  * satisfiedBy: [history-route.ts](../../packages/conversations/src/adapters/in/http/history-route.ts)
-  * satisfiedBy: [list-route.ts](../../packages/conversations/src/adapters/in/http/list-route.ts)
-  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
+  * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
+  * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
+  * satisfiedBy: [turn-route.adapter.ts](../../packages/conversations/src/adapters/in/http/turn-route.adapter.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -755,7 +769,7 @@ Quando un'operazione Domain, un caso d'uso Application o una porta Application d
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [sqlite-conversation-write.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.ts)
+  * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
   * satisfiedBy: [begin-turn.use-case.ts](../../packages/conversations/src/application/begin-turn.use-case.ts)
   * satisfiedBy: [complete-turn.use-case.ts](../../packages/conversations/src/application/complete-turn.use-case.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
@@ -772,8 +786,8 @@ Quando il runtime HTTP del server emette un evento diagnostico applicativo, la r
 
 #### Relations
   * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
-  * satisfiedBy: [history-route.ts](../../packages/conversations/src/adapters/in/http/history-route.ts)
-  * satisfiedBy: [list-route.ts](../../packages/conversations/src/adapters/in/http/list-route.ts)
+  * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
+  * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -786,9 +800,9 @@ Quando un confine del server produce per lo stesso guasto un messaggio per la fa
 
 #### Relations
   * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
-  * satisfiedBy: [history-route.ts](../../packages/conversations/src/adapters/in/http/history-route.ts)
-  * satisfiedBy: [list-route.ts](../../packages/conversations/src/adapters/in/http/list-route.ts)
-  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
+  * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
+  * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
+  * satisfiedBy: [turn-route.adapter.ts](../../packages/conversations/src/adapters/in/http/turn-route.adapter.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 

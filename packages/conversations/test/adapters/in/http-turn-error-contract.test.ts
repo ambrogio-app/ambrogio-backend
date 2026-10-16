@@ -1,7 +1,7 @@
 import Fastify from 'fastify';
 import { httpAjvOptions } from '../../../src/adapters/in/http/http-validation.js';
 import { describe, expect, it, vi } from 'vitest';
-import { registerTurnRoute, TURN_BODY_LIMIT } from '../../../src/adapters/in/http/turn-route.js';
+import { registerTurnRoute, TURN_BODY_LIMIT } from '../../../src/adapters/in/http/turn-route.adapter.js';
 import type { ExchangeTurn } from '../../../src/application/exchange-turn.use-case.js';
 
 const route = '/api/conversations/turns';

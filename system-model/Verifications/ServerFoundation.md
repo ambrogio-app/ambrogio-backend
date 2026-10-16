@@ -680,6 +680,86 @@ Il controllo passa se il server crea un'istanza Fastify, vi registra gli endpoin
   * verify: [Implementazione Fastify dell'API HTTP](../Requirements/ServerFoundation.md#implementazione-fastify-dellapi-http)
 ---
 
+### Ispezione dei nomi secondo le responsabilità
+
+#### Details
+Partire dall'elenco completo dei file di produzione, dalle porte Application e dai punti di ingresso; non limitare la ricerca ai nomi che contengono già `.adapter` o `.use-case`. Per ciascun componente interessato registrare percorso, responsabilità, eventuale porta implementata o caso d'uso invocato, classificazione e nome atteso.
+
+L'ispezione passa se tutti i casi d'uso hanno il suffisso `.use-case.ts`, tutti gli adapter di ingresso e di uscita hanno il suffisso `.adapter.ts` e i file di supporto non sono classificati come adapter soltanto per la cartella che li contiene. Considerare anche le implementazioni strutturali di porte a oggetto o callable; non affidarsi al solo `implements`. I ruoli ambigui devono essere risolti con motivazione documentata. L'ispezione fallisce se manca un suffisso richiesto o se un suffisso descrive un ruolo non realizzato.
+
+Per ogni rinomina controllare import, export pubblici, riferimenti nei test e collegamenti Reqvire. La compilazione e i test pertinenti devono continuare a passare. Registrare revisione Git esaminata, elenco dei file classificati, difetti ed esito; la presenza di una relazione `satisfiedBy` e il successo di `validate` o `lint` non sostituiscono questa ispezione.
+
+#### Esito dell'ispezione del 16 ottobre 2026
+Esito: PASS sul worktree successivo alla revisione base `512317c9e93b4e6ab7a1e32dd9c210436b7b5c06`. Esaminati tutti i 45 file TypeScript di produzione, comprese le implementazioni strutturali delle porte e i punti di ingresso. Nessuna non conformità residua di naming nel perimetro esaminato.
+
+Identificazione riproducibile dei sorgenti esaminati: SHA-256 `5478c849663b10b54351af2d2d93398cb810d4da3b89f6a1fb0b88bff02ecf43`, calcolato concatenando, in ordine lessicografico, percorso relativo UTF-8, byte NUL, contenuto del file, byte NUL, per tutti i file dell'inventario. Il risultato riguarda questo stato del worktree, non attesta modifiche successive.
+
+Corretti 11 adapter senza suffisso; i sei casi d'uso avevano già il nome richiesto. Estratta la rotta WebSocket dalla composition root in `apps/server/src/adapters/in/voice-route.adapter.ts`: appartiene al server che possiede il plugin Fastify WebSocket. Restano nel package gli adapter della sessione Micdrop. Gli export pubblici esistenti conservano i rispettivi subpath, con target aggiornati.
+
+#### Inventario completo
+Il percorso in tabella è anche il nome atteso. Classificazione basata su responsabilità, porte e chiamate esaminate; la cartella non determina il ruolo.
+
+| File di produzione e nome atteso | Responsabilità e classificazione | Controllo |
+| --- | --- | --- |
+| `apps/server/src/adapters/in/voice-route.adapter.ts` | Adapter inbound: ammissione WebSocket → start-voice-conversation e sessione vocale. | Suffisso richiesto presente |
+| `apps/server/src/composition/agents.ts` | Composition root: costruisce e collega risorse, casi d'uso e adapter. | Nome descrittivo, nessun suffisso richiesto |
+| `apps/server/src/composition/conversations.ts` | Composition root: costruisce e collega risorse, casi d'uso e adapter. | Nome descrittivo, nessun suffisso richiesto |
+| `apps/server/src/composition/voice.ts` | Composition root: costruisce e collega risorse, casi d'uso e adapter. | Nome descrittivo, nessun suffisso richiesto |
+| `apps/server/src/main.ts` | Bootstrap del processo e arresto delle risorse. | Nome descrittivo, nessun suffisso richiesto |
+| `apps/server/src/runtime/agent-config.ts` | Supporto bootstrap: caricamento e validazione configurazione. | Nome descrittivo, nessun suffisso richiesto |
+| `apps/server/src/runtime/consultation-server.ts` | Runtime: avvio, gestione listener e arresto risorse. | Nome descrittivo, nessun suffisso richiesto |
+| `apps/server/src/runtime/conversation-config-path.ts` | Supporto bootstrap: caricamento e validazione configurazione. | Nome descrittivo, nessun suffisso richiesto |
+| `apps/server/src/runtime/conversation-server.ts` | Runtime: avvio, gestione listener e arresto risorse. | Nome descrittivo, nessun suffisso richiesto |
+| `apps/server/src/runtime/http-config.ts` | Supporto bootstrap: caricamento e validazione configurazione. | Nome descrittivo, nessun suffisso richiesto |
+| `packages/conversations/src/adapters/in/http/history-route.adapter.ts` | Adapter inbound: GET storico → get-conversation. | Suffisso richiesto presente |
+| `packages/conversations/src/adapters/in/http/http-validation.ts` | Supporto HTTP: validazione e mapping degli errori. | Nome descrittivo, nessun suffisso richiesto |
+| `packages/conversations/src/adapters/in/http/list-route.adapter.ts` | Adapter inbound: GET elenco → list-conversations. | Suffisso richiesto presente |
+| `packages/conversations/src/adapters/in/http/turn-route.adapter.ts` | Adapter inbound: POST/SSE → exchange-turn. | Suffisso richiesto presente |
+| `packages/conversations/src/adapters/in/voice/conversation-agent.adapter.ts` | Adapter inbound: Agent Micdrop → exchange-turn. | Suffisso richiesto presente |
+| `packages/conversations/src/adapters/in/voice/voice-session.adapter.ts` | Adapter inbound: sessione WebSocket Micdrop → ConversationVoiceAgent/ExchangeTurn. | Suffisso richiesto presente |
+| `packages/conversations/src/adapters/in/voice/vosk-streaming-stt.ts` | Driver STT di Micdrop; non implementa una porta Application. | Nome descrittivo, nessun suffisso richiesto |
+| `packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts` | Adapter outbound: implementa ProduceConversationReply con AI SDK. | Suffisso richiesto presente |
+| `packages/conversations/src/adapters/out/conversation-config.ts` | Supporto bootstrap: caricamento e validazione configurazione. | Nome descrittivo, nessun suffisso richiesto |
+| `packages/conversations/src/adapters/out/mcp-tool-client.ts` | Client tecnico MCP usato dall'adapter AI; non implementa una porta Application. | Nome descrittivo, nessun suffisso richiesto |
+| `packages/conversations/src/adapters/out/sqlite/conversation-archive.ts` | Supporto: apertura e ciclo di vita archivio SQLite. | Nome descrittivo, nessun suffisso richiesto |
+| `packages/conversations/src/adapters/out/sqlite/migrations.ts` | Supporto: migrazioni del database. | Nome descrittivo, nessun suffisso richiesto |
+| `packages/conversations/src/adapters/out/sqlite/recover-pending-turns.ts` | Supporto di startup SQLite: recupero dei turni pendenti. | Nome descrittivo, nessun suffisso richiesto |
+| `packages/conversations/src/adapters/out/sqlite/schema.ts` | Supporto: schema e tipi delle tabelle. | Nome descrittivo, nessun suffisso richiesto |
+| `packages/conversations/src/adapters/out/sqlite/sqlite-conversation-history-read.adapter.ts` | Adapter outbound: implementa ConversationHistoryRead. | Suffisso richiesto presente |
+| `packages/conversations/src/adapters/out/sqlite/sqlite-conversation-list-read.adapter.ts` | Adapter outbound: implementa ConversationListRead. | Suffisso richiesto presente |
+| `packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts` | Adapter outbound: implementa ConversationWrite e VoiceConversationStartWrite. | Suffisso richiesto presente |
+| `packages/conversations/src/adapters/out/sqlite/sqlite-transaction.ts` | Supporto: transazioni SQLite. | Nome descrittivo, nessun suffisso richiesto |
+| `packages/conversations/src/adapters/out/sqlite/sqlite-turn-mapper.ts` | Supporto: mapping righe SQLite ed entità. | Nome descrittivo, nessun suffisso richiesto |
+| `packages/conversations/src/adapters/out/system-current-time.adapter.ts` | Adapter outbound: implementa CurrentTime. | Suffisso richiesto presente |
+| `packages/conversations/src/adapters/out/uuid-identifiers.adapter.ts` | Adapter outbound: implementa NewIdentifier. | Suffisso richiesto presente |
+| `packages/conversations/src/adapters/out/voice-config.ts` | Supporto bootstrap: caricamento e validazione configurazione. | Nome descrittivo, nessun suffisso richiesto |
+| `packages/conversations/src/application/begin-turn.use-case.ts` | Caso d'uso: ammissione turno; porte archivio, identificatori e orologio. | Suffisso richiesto presente |
+| `packages/conversations/src/application/complete-turn.use-case.ts` | Caso d'uso: completamento turno; porte archivio e orologio. | Suffisso richiesto presente |
+| `packages/conversations/src/application/conversation-history-read.ts` | Porta Application e DTO dello storico. | Nome descrittivo, nessun suffisso richiesto |
+| `packages/conversations/src/application/conversation-list-read.ts` | Porta Application e DTO della paginazione. | Nome descrittivo, nessun suffisso richiesto |
+| `packages/conversations/src/application/conversation-write.ts` | Porta Application e valori di ammissione/completamento. | Nome descrittivo, nessun suffisso richiesto |
+| `packages/conversations/src/application/exchange-turn.use-case.ts` | Caso d'uso: scambio turno; coordina ammissione, risposta e completamento. | Suffisso richiesto presente |
+| `packages/conversations/src/application/get-conversation.use-case.ts` | Caso d'uso: lettura storico; ConversationHistoryRead. | Suffisso richiesto presente |
+| `packages/conversations/src/application/list-conversations.use-case.ts` | Caso d'uso: elenco paginato; ConversationListRead. | Suffisso richiesto presente |
+| `packages/conversations/src/application/produce-conversation-reply.ts` | Porta Application per la produzione della risposta. | Nome descrittivo, nessun suffisso richiesto |
+| `packages/conversations/src/application/start-voice-conversation.use-case.ts` | Caso d'uso: apertura conversazione vocale; archivio, identificatori e orologio. | Suffisso richiesto presente |
+| `packages/conversations/src/application/turn-capabilities.ts` | Porte Application CurrentTime e NewIdentifier. | Nome descrittivo, nessun suffisso richiesto |
+| `packages/conversations/src/domain/turn.ts` | Domain: entità e invarianti del turno. | Nome descrittivo, nessun suffisso richiesto |
+| `packages/conversations/src/project-error.ts` | Tipo comune dei guasti e delle cause. | Nome descrittivo, nessun suffisso richiesto |
+
+#### Evidenze eseguite
+`npm run build` e `npm run typecheck`: PASS. `./node_modules/.bin/vitest run`, con apertura delle porte locali consentita: 28 file di test, 179 test PASS. Esercitati anche HTTP/SSE, WebSocket, ciclo di vita delle risorse e turni condivisi. Il tentativo in sandbox con networking limitato non è usato come esito di conformità.
+
+Riesaminati import relativi, export, riferimenti dei test e collegamenti del modello aggiornati dalle rinomine MCP. Questa ispezione attesta la convenzione dei nomi e la regressione software pertinente; non sostituisce le dimostrazioni audio su hardware o la validazione generale del prodotto.
+
+#### Metadata
+  * type: inspection-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * verify: [Nomi dei file secondo il ruolo architetturale](../Requirements/ServerFoundation.md#nomi-dei-file-secondo-il-ruolo-architetturale)
+---
+
 ### Prova degli header di cache conversazionali
 
 Richiedere elenco, storico, invio di un turno con risposta SSE e flusso di aggiornamento di un turno in corso; osservare gli header prima degli eventi e dopo un eventuale errore nel flusso.

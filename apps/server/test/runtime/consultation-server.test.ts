@@ -421,7 +421,7 @@ describe('consultation HTTP runtime', () => {
     await archive.db.insertInto('turns').values({ id: 'turn', conversation_id: 'conversation',
       ordinal: 1, text: 'hello', accepted_at: 100, status: 'pending', answer: null,
       error: null, finished_at: null }).execute();
-    await archive.db.updateTable('installation').set({ active_turn_id: 'turn' }).where('id', '=', 1).execute();
+    await archive.db.updateTable('conversations').set({ active_turn_id: 'turn' }).where('id', '=', 'conversation').execute();
     await archive.close();
     const destroy = vi.spyOn(Object.getPrototypeOf(archive.db) as { destroy: () => Promise<void> }, 'destroy');
 

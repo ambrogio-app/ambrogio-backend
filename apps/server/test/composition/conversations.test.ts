@@ -260,7 +260,7 @@ describe('server conversation composition', () => {
     }
   });
 
-  it('rejects a simultaneous turn without queuing or conserving it', async () => {
+  it('rejects a simultaneous turn in the same conversation without queuing it', async () => {
     const files = await fixture();
     await writeFile(files.configFilename, '{}');
     const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
@@ -277,12 +277,13 @@ describe('server conversation composition', () => {
           yield 'answer';
         },
       });
-      const request = (text: string) => ({ method: 'POST' as const,
+      const request = (text: string, conversationId?: string) => ({ method: 'POST' as const,
         url: '/api/conversations/turns', headers: { 'content-type': 'application/json' },
-        payload: JSON.stringify({ text }) });
+        payload: JSON.stringify({ text, ...(conversationId ? { conversationId } : {}) }) });
       const first = server.inject(request('first'));
       await started;
-      const second = await server.inject(request('second'));
+      const conversation = await prepared.archive.db.selectFrom('conversations').select('id').executeTakeFirstOrThrow();
+      const second = await server.inject(request('second', conversation.id));
       expect(second.statusCode).toBe(409);
       expect(second.json()).toEqual({ error: 'Another turn is in progress.' });
       expect(await prepared.archive.db.selectFrom('turns').select('text').execute())
@@ -353,7 +354,7 @@ describe('server conversation composition', () => {
       id: 'turn', conversation_id: 'conversation', ordinal: 1, text: 'hello', accepted_at: 100,
       status: 'pending', answer: null, error: null, finished_at: null,
     }).execute();
-    await first.archive.db.updateTable('installation').set({ active_turn_id: 'turn' }).where('id', '=', 1).execute();
+    await first.archive.db.updateTable('conversations').set({ active_turn_id: 'turn' }).where('id', '=', 'conversation').execute();
     await first.archive.close();
 
     const second = await prepareConversations(files.archiveFilename, new Date(2000), environment(files.configFilename));

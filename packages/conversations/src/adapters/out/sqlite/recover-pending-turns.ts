@@ -1,4 +1,3 @@
-import { ProjectError } from '../../../project-error.js';
 import type { Kysely } from 'kysely';
 import type { ConversationDatabase } from './schema.js';
 import { toMillis } from './sqlite-turn-mapper.js';
@@ -8,17 +7,11 @@ import { withImmediateTransaction } from './sqlite-transaction.js';
 export async function recoverPendingTurns(db: Kysely<ConversationDatabase>, interruptedAt: Date): Promise<number> {
   const finishedAt = toMillis(interruptedAt);
   return withImmediateTransaction(db, async connection => {
-    const installation = await connection.selectFrom('installation').select('active_turn_id')
-      .where('id', '=', 1).executeTakeFirst();
-    if (!installation) throw new ProjectError('Installation occupancy record missing');
     const changed = await connection.updateTable('turns')
       .set({ status: 'interrupted', finished_at: finishedAt })
       .where('status', '=', 'pending').executeTakeFirst();
-    if (changed.numUpdatedRows > 0n || installation.active_turn_id !== null) {
-      const released = await connection.updateTable('installation').set({ active_turn_id: null })
-        .where('id', '=', 1).executeTakeFirst();
-      if (released.numUpdatedRows !== 1n) throw new ProjectError('Installation recovery postcondition failed');
-    }
+    await connection.updateTable('conversations').set({ active_turn_id: null })
+      .where('active_turn_id', 'is not', null).execute();
     return Number(changed.numUpdatedRows);
   });
 }

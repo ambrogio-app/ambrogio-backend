@@ -1,7 +1,10 @@
+import type { Generated } from 'kysely';
+
 export interface ConversationRows {
   id: string;
   created_at: number;
   last_activity_at: number;
+  active_turn_id: Generated<string | null>;
 }
 
 export interface TurnRows {

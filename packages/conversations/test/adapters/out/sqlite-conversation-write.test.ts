@@ -41,18 +41,40 @@ afterEach(async () => {
 });
 
 describe('SQLite conversation writer', () => {
-  it('migrates once, admits one turn, rejects rather than queues another, then releases occupancy', async () => {
+  it('admits different conversations while one turn remains active and rejects a second turn in the same conversation', async () => {
+    const db = open();
+    await migrateConversationArchive(db);
+    const writer = new SqliteConversationWrite(db);
+    expect(await writer.admit({ conversationId: conversationA, createConversation: true,
+      turn: accepted(turnA, 1000) })).toMatchObject({ ok: true });
+    expect(await writer.admit({ conversationId: conversationB, createConversation: true,
+      turn: accepted(turnB, 1001) })).toMatchObject({ ok: true });
+    expect(await writer.admit({ conversationId: conversationA, createConversation: false,
+      turn: accepted('e057302a-1c68-4a99-8dfd-7998e390eb51', 1002) }))
+      .toEqual({ ok: false, error: { kind: 'conversation_occupied' } });
+    expect(await db.selectFrom('conversations').select(['id', 'active_turn_id']).orderBy('id').execute())
+      .toEqual([
+        { id: conversationB, active_turn_id: turnB },
+        { id: conversationA, active_turn_id: turnA },
+      ]);
+    expect(await writer.complete({ turnId: turnB, outcome: { kind: 'answer', text: 'B' },
+      finishedAt: new Date(2000) })).toMatchObject({ ok: true });
+    expect(await db.selectFrom('conversations').select('active_turn_id')
+      .where('id', '=', conversationA).executeTakeFirst()).toEqual({ active_turn_id: turnA });
+  });
+
+  it('migrates once, rejects a second turn in the same conversation, then releases occupancy', async () => {
     const db = open();
     await migrateConversationArchive(db);
     await migrateConversationArchive(db);
     const writer = new SqliteConversationWrite(db);
     expect(await writer.admit({ conversationId: conversationA, createConversation: true, turn: accepted(turnA, -1234) }))
       .toEqual({ ok: true, value: undefined });
-    expect(await writer.admit({ conversationId: conversationB, createConversation: true, turn: accepted(turnB, 1235) }))
+    expect(await writer.admit({ conversationId: conversationA, createConversation: false, turn: accepted(turnB, 1235) }))
       .toEqual({ ok: false, error: { kind: 'conversation_occupied' } });
     expect(await db.selectFrom('conversations').selectAll().execute()).toHaveLength(1);
     expect(await db.selectFrom('turns').selectAll().execute()).toHaveLength(1);
-    expect(await db.selectFrom('installation').select('active_turn_id').executeTakeFirst())
+    expect(await db.selectFrom('conversations').select('active_turn_id').where('id', '=', conversationA).executeTakeFirst())
       .toEqual({ active_turn_id: turnA });
 
     expect(await writer.complete({ turnId: turnA, outcome: { kind: 'answer', text: 'salve' }, finishedAt: new Date(1234) }))
@@ -61,7 +83,7 @@ describe('SQLite conversation writer', () => {
       .toEqual({ ok: false, error: { kind: 'turn_not_active' } });
     expect(await db.selectFrom('turns').select(['accepted_at', 'finished_at', 'status']).where('id', '=', turnA).executeTakeFirst())
       .toEqual({ accepted_at: -1234, finished_at: 1234, status: 'answered' });
-    expect(await db.selectFrom('installation').select('active_turn_id').executeTakeFirst())
+    expect(await db.selectFrom('conversations').select('active_turn_id').where('id', '=', conversationA).executeTakeFirst())
       .toEqual({ active_turn_id: null });
     await expect(writer.admit({ conversationId: conversationB, createConversation: true, turn: accepted(turnA, 1235) }))
       .rejects.toThrow();
@@ -100,16 +122,16 @@ describe('SQLite conversation writer', () => {
       .rejects.toThrow();
     expect(await db.selectFrom('conversations').selectAll().execute()).toHaveLength(0);
     expect(await db.selectFrom('turns').selectAll().execute()).toHaveLength(0);
-    expect(await db.selectFrom('installation').select('active_turn_id').executeTakeFirst())
-      .toEqual({ active_turn_id: null });
+    expect(await db.selectFrom('conversations').select('active_turn_id').where('id', '=', conversationA).executeTakeFirst())
+      .toBeUndefined();
     await sql.raw('drop trigger reject_turn').execute(db);
     await writer.admit({ conversationId: conversationA, createConversation: true, turn: accepted(turnA, 1234) });
-    await sql.raw("create trigger reject_release before update on installation when new.active_turn_id is null begin select raise(abort, 'injected'); end").execute(db);
+    await sql.raw("create trigger reject_release before update on conversations when new.active_turn_id is null begin select raise(abort, 'injected'); end").execute(db);
     await expect(writer.complete({ turnId: turnA, outcome: { kind: 'interrupted' }, finishedAt: new Date(5678) }))
       .rejects.toThrow();
     expect(await db.selectFrom('turns').select(['status', 'finished_at']).where('id', '=', turnA).executeTakeFirst())
       .toEqual({ status: 'pending', finished_at: null });
-    expect(await db.selectFrom('installation').select('active_turn_id').executeTakeFirst())
+    expect(await db.selectFrom('conversations').select('active_turn_id').where('id', '=', conversationA).executeTakeFirst())
       .toEqual({ active_turn_id: turnA });
     await sql.raw('drop trigger reject_release').execute(db);
     expect(await writer.complete({ turnId: turnA, outcome: { kind: 'interrupted' }, finishedAt: new Date(5678) }))
@@ -126,14 +148,14 @@ describe('SQLite conversation writer', () => {
     const writer = new SqliteConversationWrite(db);
     expect(await writer.admit({ conversationId: conversationA, createConversation: true,
       turn: accepted(turnA, 1234) })).toMatchObject({ ok: true });
-    await sql.raw("create trigger reject_answer_release before update on installation when new.active_turn_id is null begin select raise(abort, 'injected'); end").execute(db);
+    await sql.raw("create trigger reject_answer_release before update on conversations when new.active_turn_id is null begin select raise(abort, 'injected'); end").execute(db);
     await expect(writer.complete({ turnId: turnA,
       outcome: { kind: 'answer', text: 'risposta' }, finishedAt: new Date(2345) }))
       .rejects.toThrow();
     expect(await db.selectFrom('turns').select(['status', 'answer', 'finished_at'])
       .where('id', '=', turnA).executeTakeFirst())
       .toEqual({ status: 'pending', answer: null, finished_at: null });
-    expect(await db.selectFrom('installation').select('active_turn_id').executeTakeFirst())
+    expect(await db.selectFrom('conversations').select('active_turn_id').where('id', '=', conversationA).executeTakeFirst())
       .toEqual({ active_turn_id: turnA });
     await sql.raw('drop trigger reject_answer_release').execute(db);
     expect(await writer.complete({ turnId: turnA,
@@ -142,7 +164,7 @@ describe('SQLite conversation writer', () => {
     expect(await db.selectFrom('turns').select(['status', 'answer', 'finished_at'])
       .where('id', '=', turnA).executeTakeFirst())
       .toEqual({ status: 'answered', answer: 'risposta', finished_at: 2345 });
-    expect(await db.selectFrom('installation').select('active_turn_id').executeTakeFirst())
+    expect(await db.selectFrom('conversations').select('active_turn_id').where('id', '=', conversationA).executeTakeFirst())
       .toEqual({ active_turn_id: null });
   });
 
@@ -173,7 +195,7 @@ describe('SQLite conversation writer', () => {
     expect(await begin({ text: '  buongiorno  ' })).toMatchObject({
       ok: true, value: { conversationId: conversationA, turnId: turnA },
     });
-    expect(await begin({ text: 'secondo turno' })).toEqual({ ok: false, error: { kind: 'occupied' } });
+    expect(await begin({ text: 'secondo turno', conversationId: conversationA })).toEqual({ ok: false, error: { kind: 'occupied' } });
     expect(await complete({ turnId: turnA, outcome: { kind: 'answer', text: 'ciao' } })).toEqual({
       ok: true, value: { turnId: turnA, status: 'answered' },
     });
@@ -242,7 +264,7 @@ describe('SQLite conversation writer', () => {
     await sql.raw(`update turns set accepted_at = 'bad' where id = '${turnA}'`).execute(db);
     await expect(writer.complete({ turnId: turnA, outcome: { kind: 'answer', text: 'ciao' }, finishedAt: new Date(5678) }))
       .rejects.toThrow('Invalid persisted instant');
-    expect(await db.selectFrom('installation').select('active_turn_id').executeTakeFirst())
+    expect(await db.selectFrom('conversations').select('active_turn_id').where('id', '=', conversationA).executeTakeFirst())
       .toEqual({ active_turn_id: turnA });
     expect(await db.selectFrom('turns').select('status').where('id', '=', turnA).executeTakeFirst())
       .toEqual({ status: 'pending' });

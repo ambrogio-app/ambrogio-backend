@@ -160,7 +160,7 @@ describe('conversation history and startup recovery', () => {
     expect(await recoverPendingTurns(reopened, new Date(4567))).toBe(0);
     expect((await new SqliteConversationHistoryRead(reopened).find(conversationId))?.turns[1])
       .toMatchObject({ finishedAt: new Date(3456), status: 'interrupted' });
-    expect(await reopened.selectFrom('installation').select('active_turn_id').executeTakeFirst())
+    expect(await reopened.selectFrom('conversations').select('active_turn_id').where('id', '=', conversationId).executeTakeFirst())
       .toEqual({ active_turn_id: null });
   });
 
@@ -168,11 +168,11 @@ describe('conversation history and startup recovery', () => {
     const db = open(':memory:');
     await migrateConversationArchive(db);
     await new SqliteConversationWrite(db).admit({ conversationId, createConversation: true, turn: accepted(firstTurnId) });
-    await sql.raw("create trigger reject_recovery before update on installation when new.active_turn_id is null begin select raise(abort, 'injected'); end").execute(db);
+    await sql.raw("create trigger reject_recovery before update on conversations when new.active_turn_id is null begin select raise(abort, 'injected'); end").execute(db);
     await expect(recoverPendingTurns(db, new Date(3456))).rejects.toThrow();
     expect(await db.selectFrom('turns').select(['status', 'finished_at']).where('id', '=', firstTurnId).executeTakeFirst())
       .toEqual({ status: 'pending', finished_at: null });
-    expect(await db.selectFrom('installation').select('active_turn_id').executeTakeFirst())
+    expect(await db.selectFrom('conversations').select('active_turn_id').where('id', '=', conversationId).executeTakeFirst())
       .toEqual({ active_turn_id: firstTurnId });
   });
 

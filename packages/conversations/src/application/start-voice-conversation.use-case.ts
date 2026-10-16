@@ -1,7 +1,7 @@
 import type { Result } from '../domain/turn.js';
 import type { CurrentTime, NewIdentifier } from './turn-capabilities.js';
 
-export type VoiceConversationStartRejection = Readonly<{ kind: 'occupied' | 'temporarily_unavailable' }>;
+export type VoiceConversationStartRejection = Readonly<{ kind: 'temporarily_unavailable' }>;
 
 export interface VoiceConversationStartWrite {
   createWhenAvailable(id: string, createdAt: Date): Promise<Result<void, VoiceConversationStartRejection>>;

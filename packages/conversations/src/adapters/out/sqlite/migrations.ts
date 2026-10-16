@@ -84,12 +84,39 @@ const removeTurnOwner: Migration = {
   },
 };
 
+const perConversationOccupancy: Migration = {
+  async up(db) {
+    await db.schema.alterTable('conversations')
+      .addColumn('active_turn_id', 'text', column => column.references('turns.id')).execute();
+    await sql.raw(`
+      update conversations set active_turn_id = (
+        select installation.active_turn_id from installation
+        join turns on turns.id = installation.active_turn_id
+        where turns.conversation_id = conversations.id
+      )
+    `).execute(db);
+    await db.schema.dropTable('installation').execute();
+  },
+  async down(db) {
+    await db.schema.createTable('installation')
+      .addColumn('id', 'integer', column => column.primaryKey())
+      .addColumn('active_turn_id', 'text', column => column.references('turns.id'))
+      .execute();
+    const active = await db.selectFrom('conversations')
+      .select('active_turn_id').where('active_turn_id', 'is not', null).execute();
+    if (active.length > 1) throw new Error('Cannot restore global occupancy with multiple active conversations');
+    await db.insertInto('installation').values({ id: 1, active_turn_id: active[0]?.active_turn_id ?? null }).execute();
+    await db.schema.alterTable('conversations').dropColumn('active_turn_id').execute();
+  },
+};
+
 export const conversationMigrations = {
   '001_initial': initial,
   '002_ordered_turns': orderedTurns,
   '003_list_order': listOrder,
   '004_turn_owner': turnOwner,
   '005_remove_turn_owner': removeTurnOwner,
+  '006_per_conversation_occupancy': perConversationOccupancy,
 };
 
 /** Must finish successfully before any conversational ingress is enabled. */

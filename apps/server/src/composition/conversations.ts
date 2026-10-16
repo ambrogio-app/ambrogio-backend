@@ -48,7 +48,8 @@ async function openPreparedConversations(
       ? 'Non riesco a completare la risposta.'
       : "I can't complete the response.";
     return { listConversations, maxListPageSize: config.maxListPageSize,
-      failureMessage, language: config.language, archive };
+      failureMessage, language: config.language, archive,
+      write: new SqliteConversationWrite(archive.db) };
   } catch (error) {
     try { await archive.close(); } catch { /* preserve the preparation failure */ }
     throw error;
@@ -60,11 +61,10 @@ export function assembleExchangeTurn(
   prepared: Awaited<ReturnType<typeof prepareConversations>>,
   reply: ProduceConversationReply,
 ) {
-  const write = new SqliteConversationWrite(prepared.archive.db);
   const clock = new SystemCurrentTime();
   return createExchangeTurn({
-    begin: createBeginTurn({ archive: write, identifiers: new UuidIdentifiers(), clock }),
-    complete: createCompleteTurn({ archive: write, clock }),
+    begin: createBeginTurn({ archive: prepared.write, identifiers: new UuidIdentifiers(), clock }),
+    complete: createCompleteTurn({ archive: prepared.write, clock }),
     history: new SqliteConversationHistoryRead(prepared.archive.db),
     reply,
     failureMessage: prepared.failureMessage,

@@ -10,7 +10,7 @@ import { restoreTurn, toMillis } from './sqlite-turn-mapper.js';
 import { AdmissionLockBusy, withImmediateTransaction } from './sqlite-transaction.js';
 
 export class SqliteConversationWrite implements ConversationWrite, VoiceConversationStartWrite {
-  private writeInProgress = false;
+  private previousWrite: Promise<void> = Promise.resolve();
 
   constructor(private readonly db: Kysely<ConversationDatabase>) {}
 
@@ -18,28 +18,23 @@ export class SqliteConversationWrite implements ConversationWrite, VoiceConversa
     run: (connection: Kysely<ConversationDatabase>) => Promise<T>,
     classifyAdmissionLock = false,
   ): Promise<T> {
-    if (this.writeInProgress) throw new ProjectError('Concurrent archive write');
-    this.writeInProgress = true;
+    const previous = this.previousWrite;
+    let release!: () => void;
+    this.previousWrite = new Promise<void>(resolve => { release = resolve; });
+    await previous;
     try {
       return await withImmediateTransaction(this.db, run, classifyAdmissionLock);
     } finally {
-      this.writeInProgress = false;
+      release();
     }
   }
 
   async createWhenAvailable(id: string, createdAt: Date) {
-    if (this.writeInProgress) return { ok: false as const, error: { kind: 'temporarily_unavailable' as const } };
     try {
       return await this.transaction(async db => {
-        const installation = await db.selectFrom('installation').select('active_turn_id')
-          .where('id', '=', 1).executeTakeFirst();
-        if (!installation) throw new ProjectError('Installation occupancy record missing');
-        if (installation.active_turn_id !== null) {
-          return { ok: false as const, error: { kind: 'occupied' as const } };
-        }
         const time = toMillis(createdAt);
         await db.insertInto('conversations').values({
-          id, created_at: time, last_activity_at: time,
+          id, created_at: time, last_activity_at: time, active_turn_id: null,
         }).execute();
         return { ok: true as const, value: undefined };
       }, true);
@@ -52,31 +47,24 @@ export class SqliteConversationWrite implements ConversationWrite, VoiceConversa
   }
 
   async admit(input: AdmitTurn): Promise<Result<void, AdmissionRejection>> {
-    if (this.writeInProgress) return { ok: false, error: { kind: 'archive_busy' } };
     const state = input.turn.snapshot();
     if (state.status !== 'pending') throw new ProjectError('Only pending turns can be admitted');
     try {
       return await this.transaction(async db => {
         if (!input.createConversation) {
-          const conversation = await db.selectFrom('conversations').select('id')
+          const conversation = await db.selectFrom('conversations').select(['id', 'active_turn_id'])
             .where('id', '=', input.conversationId).executeTakeFirst();
           if (!conversation) return { ok: false, error: { kind: 'conversation_missing' } };
-        }
-        const installation = await db.selectFrom('installation').select('active_turn_id')
-          .where('id', '=', 1).executeTakeFirst();
-        if (!installation) throw new ProjectError('Installation occupancy record missing');
-        if (installation.active_turn_id !== null) {
-          return { ok: false, error: { kind: 'conversation_occupied' } };
+          if (conversation.active_turn_id !== null) {
+            return { ok: false, error: { kind: 'conversation_occupied' } };
+          }
         }
         const acceptedAt = toMillis(state.acceptedAt);
         if (input.createConversation) {
           await db.insertInto('conversations').values({
             id: input.conversationId, created_at: acceptedAt, last_activity_at: acceptedAt,
+            active_turn_id: null,
           }).execute();
-        } else {
-          const updated = await db.updateTable('conversations').set({ last_activity_at: acceptedAt })
-            .where('id', '=', input.conversationId).executeTakeFirst();
-          if (updated.numUpdatedRows !== 1n) throw new ProjectError('Conversation activity update failed');
         }
         const ordinalResult = await db.selectFrom('turns')
           .select(sql<number>`coalesce(max(ordinal), 0)`.as('last'))
@@ -86,9 +74,10 @@ export class SqliteConversationWrite implements ConversationWrite, VoiceConversa
           ordinal: ordinalResult.last + 1,
           accepted_at: acceptedAt, status: 'pending', answer: null, error: null, finished_at: null,
         }).execute();
-        const occupied = await db.updateTable('installation').set({ active_turn_id: state.id })
-          .where('id', '=', 1).where('active_turn_id', 'is', null).executeTakeFirst();
-        if (occupied.numUpdatedRows !== 1n) throw new ProjectError('Installation admission postcondition failed');
+        const occupied = await db.updateTable('conversations')
+          .set({ active_turn_id: state.id, last_activity_at: acceptedAt })
+          .where('id', '=', input.conversationId).where('active_turn_id', 'is', null).executeTakeFirst();
+        if (occupied.numUpdatedRows !== 1n) throw new ProjectError('Conversation admission postcondition failed');
         return { ok: true, value: undefined };
       }, true);
     } catch (error) {
@@ -99,14 +88,14 @@ export class SqliteConversationWrite implements ConversationWrite, VoiceConversa
 
   async complete(input: CompleteTurn): Promise<Result<TurnSnapshot, TurnNotActive>> {
     return this.transaction(async db => {
-      const installation = await db.selectFrom('installation').select('active_turn_id')
-        .where('id', '=', 1).executeTakeFirst();
-      if (!installation) throw new ProjectError('Installation occupancy record missing');
-      if (installation.active_turn_id !== input.turnId) {
+      const row = await db.selectFrom('turns').selectAll().where('id', '=', input.turnId).executeTakeFirst();
+      if (!row) return { ok: false, error: { kind: 'turn_not_active' } };
+      const conversation = await db.selectFrom('conversations').select('active_turn_id')
+        .where('id', '=', row.conversation_id).executeTakeFirst();
+      if (!conversation) throw new ProjectError('Conversation record missing for turn');
+      if (conversation.active_turn_id !== input.turnId) {
         return { ok: false, error: { kind: 'turn_not_active' } };
       }
-      const row = await db.selectFrom('turns').selectAll().where('id', '=', input.turnId).executeTakeFirst();
-      if (!row) throw new ProjectError('Active turn record missing');
       const turn = restoreTurn(row);
       let result: Result<void, { kind: 'already_closed' }>;
       switch (input.outcome.kind) {
@@ -125,9 +114,9 @@ export class SqliteConversationWrite implements ConversationWrite, VoiceConversa
         finished_at: toMillis(state.finishedAt),
       }).where('id', '=', input.turnId).where('status', '=', 'pending').executeTakeFirst();
       if (updated.numUpdatedRows !== 1n) throw new ProjectError('Turn completion postcondition failed');
-      const released = await db.updateTable('installation').set({ active_turn_id: null })
-        .where('id', '=', 1).where('active_turn_id', '=', input.turnId).executeTakeFirst();
-      if (released.numUpdatedRows !== 1n) throw new ProjectError('Installation release postcondition failed');
+      const released = await db.updateTable('conversations').set({ active_turn_id: null })
+        .where('id', '=', row.conversation_id).where('active_turn_id', '=', input.turnId).executeTakeFirst();
+      if (released.numUpdatedRows !== 1n) throw new ProjectError('Conversation release postcondition failed');
       return { ok: true, value: state };
     });
   }

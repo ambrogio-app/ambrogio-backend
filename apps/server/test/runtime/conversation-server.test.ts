@@ -44,7 +44,7 @@ async function freePort(): Promise<number> {
 async function downgradeArchiveToInitial(filename: string) {
   const archive = await openConversationArchive(filename, new Date());
   try {
-    for (const name of ['005_remove_turn_owner', '004_turn_owner',
+    for (const name of ['006_per_conversation_occupancy', '005_remove_turn_owner', '004_turn_owner',
       '003_list_order', '002_ordered_turns'] as const) {
       await conversationMigrations[name].down(archive.db);
     }
@@ -398,7 +398,7 @@ test('restores completed history after restart and uses it for textual continuat
   } finally { await restarted.close(); }
 });
 
-test('rejects concurrent HTTP turns across conversations without queuing or persisting them', async () => {
+test('processes separate conversations in parallel and rejects a second turn in the same conversation', async () => {
   const files = await fixture();
   const port = await freePort();
   await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
@@ -431,34 +431,33 @@ test('rejects concurrent HTTP turns across conversations without queuing or pers
     const items = (await list.json() as { items: Array<{ id: string }> }).items;
     expect(items).toHaveLength(1);
     const id = items[0]!.id;
-    for (const rejected of await Promise.all([
-      submit('same conversation', id), submit('new conversation'),
-    ])) {
-      expect(rejected.status).toBe(409);
-      expect(rejected.headers.get('content-type')).toMatch(/^application\/json/);
-      expect(await rejected.json()).toEqual({ error: 'Another turn is in progress.' });
-    }
+    const rejected = await submit('same conversation', id);
+    expect(rejected.status).toBe(409);
+    expect(rejected.headers.get('content-type')).toMatch(/^application\/json/);
+    expect(await rejected.json()).toEqual({ error: 'Another turn is in progress.' });
+    const other = await submit('new conversation');
+    expect(other.status).toBe(200);
+    await secondStarted;
+    secondGate.release();
+    expect(await other.text()).toContain('\"type\":\"finish\"');
     expect(await conversationTurns(origin, id)).toMatchObject([{ text: 'first', status: 'pending' }]);
     firstGate.release();
     expect(await active.text()).toContain('\"type\":\"finish\"');
     expect(await waitForTurn(origin, id, 'answered')).toHaveLength(1);
 
     const simultaneous = await Promise.all([submit('one of two'), submit('other of two')]);
-    expect(simultaneous.map(response => response.status).sort()).toEqual([200, 409]);
-    await secondStarted;
-    const refused = simultaneous.find(response => response.status === 409)!;
-    expect(refused.headers.get('content-type')).toMatch(/^application\/json/);
-    expect(await refused.json()).toEqual({ error: 'Another turn is in progress.' });
-    secondGate.release();
-    expect(await simultaneous.find(response => response.status === 200)!.text()).toContain('\"type\":\"finish\"');
-    expect(productions).toBe(2);
+    expect(simultaneous.map(response => response.status)).toEqual([200, 200]);
+    for (const response of simultaneous) {
+      expect(await response.text()).toContain('\"type\":\"finish\"');
+    }
+    expect(productions).toBe(4);
     const after = await fetch(`${origin}/api/conversations`);
-    expect((await after.json() as { items: unknown[] }).items).toHaveLength(2);
+    expect((await after.json() as { items: unknown[] }).items).toHaveLength(4);
     const archive = await openConversationArchive(files.archive, new Date());
     try {
       expect((await archive.db.selectFrom('turns').select('text').execute())
         .map(row => row.text).sort()).toEqual([
-        'first', simultaneous[0]!.status === 200 ? 'one of two' : 'other of two',
+        'first', 'new conversation', 'one of two', 'other of two',
       ].sort());
     } finally { await archive.close(); }
   } finally {
@@ -598,7 +597,7 @@ test('does not confirm success when the answer transaction cannot commit', async
     listPageSize: 20, maxListPageSize: 100, language: 'en' }, new Date());
   const sqlite = new DatabaseSync(files.archive);
   try {
-    sqlite.exec("create trigger reject_answer_release before update on installation when new.active_turn_id is null begin select raise(abort, 'injected'); end");
+    sqlite.exec("create trigger reject_answer_release before update on conversations when new.active_turn_id is null begin select raise(abort, 'injected'); end");
   } finally { sqlite.close(); }
   const built = await buildConversationServer({ host: '127.0.0.1', port: 3000,
     allowedOrigins: [], publicHttps: false }, prepared,
@@ -612,9 +611,9 @@ test('does not confirm success when the answer transaction cannot commit', async
     expect(await prepared.archive.db.selectFrom('turns')
       .select(['status', 'answer', 'finished_at']).executeTakeFirst())
       .toEqual({ status: 'pending', answer: null, finished_at: null });
-    const pending = await prepared.archive.db.selectFrom('turns').select('id').executeTakeFirstOrThrow();
-    expect(await prepared.archive.db.selectFrom('installation')
-      .select('active_turn_id').executeTakeFirst())
+    const pending = await prepared.archive.db.selectFrom('turns').select(['id', 'conversation_id']).executeTakeFirstOrThrow();
+    expect(await prepared.archive.db.selectFrom('conversations')
+      .select('active_turn_id').where('id', '=', pending.conversation_id).executeTakeFirst())
       .toEqual({ active_turn_id: pending.id });
   } finally {
     await built.server.close();

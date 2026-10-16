@@ -1,7 +1,6 @@
 import { attachVoiceSession, createVoiceComponents,
   voiceRoute } from '@ambrogio/conversations/adapters/in/voice/voice-session';
 import type { VoiceConfig } from '@ambrogio/conversations/adapters/out/voice-config';
-import { SqliteConversationWrite } from '@ambrogio/conversations/adapters/out/sqlite/write';
 import { SystemCurrentTime } from '@ambrogio/conversations/adapters/out/system-current-time';
 import { UuidIdentifiers } from '@ambrogio/conversations/adapters/out/uuid-identifiers';
 import { createStartVoiceConversation } from '@ambrogio/conversations/application/start-voice-conversation';
@@ -19,12 +18,11 @@ export function registerVoiceRoute(server: FastifyInstance, prepared: PreparedCo
   probe.stt.destroy();
   probe.tts.destroy();
   const start = createStartVoiceConversation({
-    archive: new SqliteConversationWrite(prepared.archive.db),
+    archive: prepared.write,
     identifiers: new UuidIdentifiers(), clock: new SystemCurrentTime(),
   });
   const exchange = assembleExchangeTurn(prepared, reply);
   let accepting = true;
-  let active: WebSocket | undefined;
   const sessions = new Set<WebSocket>();
   const live = new Map<WebSocket, ReturnType<typeof attachVoiceSession>>();
   server.get(voiceRoute, { websocket: true }, socket => {
@@ -33,7 +31,6 @@ export function registerVoiceRoute(server: FastifyInstance, prepared: PreparedCo
     socket.once('close', () => {
       sessions.delete(socket);
       live.delete(socket);
-      if (active === socket) active = undefined;
     });
     socket.on('error', () => { /* close event owns cleanup */ });
     void (async () => {
@@ -48,8 +45,6 @@ export function registerVoiceRoute(server: FastifyInstance, prepared: PreparedCo
       const session = attachVoiceSession(socket, { conversationId: started.value.conversationId,
         exchange, stt, tts, inactivityMs: config.inactivityMs });
       live.set(socket, session);
-      active?.close(1000, 'New voice interaction');
-      active = socket;
       socket.send(`Ready ${JSON.stringify({ conversationId: started.value.conversationId })}`);
     })().catch(error => {
       server.log.error({ event: 'voice.start_failed', err: error }, 'Voice start failed');

@@ -32,6 +32,27 @@ afterEach(() => {
 });
 
 describe('conversation archive startup', () => {
+  it('migrates a legacy active turn to its conversation before recovery', async () => {
+    const filename = file();
+    const sqlite = new Database(filename);
+    const db = new Kysely<ConversationDatabase>({ dialect: new SqliteDialect({ database: sqlite }) });
+    const migrator = new Migrator({ db, provider: { async getMigrations() { return conversationMigrations; } } });
+    try {
+      expect((await migrator.migrateTo('005_remove_turn_owner')).error).toBeUndefined();
+      await db.insertInto('conversations').values({ id: conversationId, created_at: 100,
+        last_activity_at: 100 }).execute();
+      await db.insertInto('turns').values({ id: turnId, conversation_id: conversationId,
+        ordinal: 1, text: 'legacy', accepted_at: 100, status: 'pending',
+        answer: null, error: null, finished_at: null }).execute();
+      await db.updateTable('installation').set({ active_turn_id: turnId }).where('id', '=', 1).execute();
+      expect((await migrator.migrateToLatest()).error).toBeUndefined();
+      expect(await db.selectFrom('conversations').select('active_turn_id')
+        .where('id', '=', conversationId).executeTakeFirst()).toEqual({ active_turn_id: turnId });
+      const tables = await sql<{ name: string }>`select name from sqlite_master where type = 'table'`.execute(db);
+      expect(tables.rows.map(row => row.name)).not.toContain('installation');
+    } finally { await db.destroy(); }
+  });
+
   it('migrates an archive with the former PID column and recovers its pending turn before returning', async () => {
     const filename = file();
     const sqlite = new Database(filename);
@@ -50,10 +71,10 @@ describe('conversation archive startup', () => {
     expect(archive.recoveredTurns).toBe(1);
     expect(await archive.db.selectFrom('turns').select(['text', 'status', 'finished_at']).executeTakeFirst())
       .toEqual({ text: '  domanda  ', status: 'interrupted', finished_at: 2345 });
-    expect(await archive.db.selectFrom('installation').select('active_turn_id').executeTakeFirst())
+    expect(await archive.db.selectFrom('conversations').select('active_turn_id').where('id', '=', conversationId).executeTakeFirst())
       .toEqual({ active_turn_id: null });
-    const columns = await sql<{ name: string }>`pragma table_info(installation)`.execute(archive.db);
-    expect(columns.rows.map(column => column.name)).not.toContain('active_process_id');
+    const columns = await sql<{ name: string }>`pragma table_info(conversations)`.execute(archive.db);
+    expect(columns.rows.map(column => column.name)).toContain('active_turn_id');
     await archive.close();
     const reopened = await openConversationArchive(filename, new Date(3456));
     expect(reopened.recoveredTurns).toBe(0);
@@ -79,7 +100,7 @@ describe('conversation archive startup', () => {
     expect(second.recoveredTurns).toBe(2);
     expect(await second.db.selectFrom('turns').select(['status', 'finished_at']).execute())
       .toEqual([{ status: 'interrupted', finished_at: 2345 }, { status: 'interrupted', finished_at: 2345 }]);
-    expect(await second.db.selectFrom('installation').select('active_turn_id').executeTakeFirst())
+    expect(await second.db.selectFrom('conversations').select('active_turn_id').where('id', '=', conversationId).executeTakeFirst())
       .toEqual({ active_turn_id: null });
     expect(await new SqliteConversationWrite(second.db).admit({
       conversationId: otherConversationId, createConversation: false,

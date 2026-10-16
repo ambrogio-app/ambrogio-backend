@@ -21,7 +21,7 @@ export type CompleteTurn = Readonly<{
   finishedAt: Date;
 }>;
 
-/** The archive owns atomic admission and completion, including installation occupancy. */
+/** The archive owns atomic admission and completion for each conversation. */
 export interface ConversationWrite {
   admit(input: AdmitTurn): Promise<Result<void, AdmissionRejection>>;
   complete(input: CompleteTurn): Promise<Result<TurnSnapshot, TurnNotActive>>;

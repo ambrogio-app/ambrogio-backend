@@ -84,7 +84,7 @@ test('WebSocket voice and HTTP share the archive, admission, and HTTP listener',
     speak(first.ws);
     await until(() => replies === 1);
     const busy = await server.inject({ method: 'POST', url: '/api/conversations/turns',
-      payload: { text: 'turno HTTP simultaneo' } });
+      payload: { text: 'turno HTTP simultaneo', conversationId: first.conversationId } });
     expect(busy.statusCode).toBe(409);
     const pendingHistory = await server.inject({ method: 'GET',
       url: `/api/conversations/${first.conversationId}` });
@@ -111,12 +111,9 @@ test('WebSocket voice and HTTP share the archive, admission, and HTTP listener',
     const httpTurn = server.inject({ method: 'POST', url: '/api/conversations/turns',
       payload: { text: 'turno HTTP in corso' } });
     await until(() => replies === 4);
-    const denied = new WebSocket(origin.replace('http:', 'ws:') + '/api/voice');
-    const deniedMessages: string[] = [];
-    denied.addEventListener('message', event => deniedMessages.push(String(event.data)));
-    await until(() => deniedMessages.some(message => message.startsWith('TurnRejected ')));
-    expect(deniedMessages).toContain('TurnRejected {"kind":"occupied"}');
-    expect(deniedMessages.some(message => message.startsWith('Ready '))).toBe(false);
+    const parallelVoice = await connect(origin.replace('http:', 'ws:') + '/api/voice');
+    expect(parallelVoice.conversationId).not.toBe(first.conversationId);
+    parallelVoice.ws.close();
     httpPending.release();
     expect((await httpTurn).statusCode).toBe(200);
     expect(replies).toBe(4);

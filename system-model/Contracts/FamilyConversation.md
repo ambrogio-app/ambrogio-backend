@@ -1,5 +1,7 @@
 # Elements
 
+# Elements
+
 ### Archivio SQLite con Kysely
 
 Le conversazioni e i loro scambi testuali sono conservati in un database SQLite dell'installazione. Le operazioni applicative di lettura e scrittura dell'archivio usano Kysely. La scelta riguarda l'archivio delle conversazioni; non prescrive lo stack degli altri componenti del monorepo.
@@ -140,7 +142,7 @@ La richiesta HTTP `POST /api/conversations/turns` della chat testuale usa `Conte
   * type: input-output
 
 #### Relations
-  * define: [Invio HTTP del turno della chat testuale](../Requirements/FamilyConversation.md#invio-http-del-turno-della-chat-testuale)
+  * define: [Validazione strutturale delle richieste conversazionali HTTP](../Requirements/FamilyConversation.md#validazione-strutturale-delle-richieste-conversazionali-http)
 ---
 
 ### Decisione di delega mediante chiamata di funzione
@@ -373,9 +375,9 @@ Il primo evento applicativo contiene una parte `start` con `messageId` stabile p
 
 Il testo usa le parti standard `text-start`, `text-delta` e `text-end` con un `id` coerente per ciascun blocco. Il campo `delta` di `text-delta` contiene soltanto il nuovo frammento. La concatenazione ordinata dei frammenti ricostruisce la risposta; gli incrementi disponibili vengono trasmessi durante la generazione. La serializzazione SSE e la chiusura del protocollo sono affidate agli helper AI SDK, senza un encoder SSE locale parallelo.
 
-La conferma di successo del prodotto è una parte `finish` con `finishReason: "stop"` e `messageMetadata.turnStatus: "answered"`, emessa dopo gli incrementi e la chiusura dei blocchi testuali, e soltanto dopo la conferma applicativa del commit dell'esito riuscito. Il client riconosce il successo da questa conferma. La fine della generazione del modello, `text-end`, la sola chiusura HTTP e il marcatore di trasporto `data: [DONE]` non attestano un esito conservato. L'adapter traduce l'esito applicativo in questa conferma; non inoltra come successo una parte `finish` del provider prima della persistenza.
+La conferma di successo del prodotto è una parte `finish` con `finishReason: "stop"` e `messageMetadata.turnStatus: "answered"`, emessa dopo gli incrementi e la chiusura dei blocchi testuali, e soltanto dopo la conferma applicativa del commit dell'esito riuscito. La fine della generazione del modello, `text-end`, la sola chiusura HTTP e il marcatore di trasporto `data: [DONE]` non attestano un esito conservato. L'adapter traduce l'esito applicativo in questa conferma; non inoltra come successo una parte `finish` del provider prima della persistenza.
 
-Se il turno fallisce dopo l'avvio del flusso, l'adapter emette una parte standard `error` con `errorText` uguale al messaggio pubblico sicuro e chiude il flusso senza la conferma di successo. Nel caso di esito di errore conservato, il messaggio coincide con quello nell'archivio. Un guasto della persistenza segue anche la politica di indisponibilità degli ingressi; non viene presentato come esito conservato. La normale chiusura può comunque includere `[DONE]`, che resta un marcatore di trasporto. Il client sostituisce l'eventuale risposta parziale con il messaggio pubblico. Se manca sia la conferma di successo sia una parte `error`, anche in presenza di `abort` o `[DONE]`, il client presenta «Risposta interrotta» senza scrivere autonomamente un errore nell'archivio.
+Se il turno fallisce dopo l'avvio del flusso, l'adapter emette una parte standard `error` con `errorText` uguale al messaggio pubblico sicuro e chiude il flusso senza la conferma di successo. Nel caso di esito di errore conservato, il messaggio coincide con quello nell'archivio. Un guasto della persistenza segue anche la politica di indisponibilità degli ingressi; non viene presentato come esito conservato. La normale chiusura può comunque includere `[DONE]`, che resta un marcatore di trasporto.
 
 Il profilo usa testo, metadata di correlazione ed esiti pubblici. La migrazione non pubblica ragionamento, credenziali o risultati interni dei tool. Non è prevista compatibilità simultanea con i precedenti eventi SSE nominati `conversation`, `delta`, `done` ed `error`. La consultazione dello storico e il comportamento dopo disconnessione continuano a seguire i rispettivi contratti del prodotto.
 
@@ -449,7 +451,7 @@ Un `cursor` malformato, un `limit` invalido o un parametro di query non previsto
 
 ### Risposta HTTP dello storico conversazionale
 
-`GET /api/conversations/:conversationId` restituisce uno snapshot della conversazione identificata dal parametro di percorso, senza aprire un flusso SSE, recuperare frammenti di risposta o aggiornare automaticamente la pagina. La risposta riuscita ha stato HTTP `200`, `Content-Type: application/json` e `Cache-Control: no-store`. Il corpo JSON contiene `id`, `createdAt`, `lastActivityAt` e `turns`; `turns` è un array completo, ordinato secondo l'ordine persistente dei turni. Ogni turno contiene `id`, `text`, `acceptedAt` e `status`. I valori temporali sono stringhe ISO 8601 in UTC. `status` vale `pending`, `answered`, `failed` o `interrupted`: `pending` non contiene esito né `finishedAt`; `answered` contiene `answer` e `finishedAt`; `failed` contiene `error` e `finishedAt`; `interrupted` contiene `finishedAt` senza `answer` né `error`. Il testo del turno e degli esiti è quello conservato, senza frammenti parziali non conclusi.
+`GET /api/conversations/:conversationId` restituisce uno snapshot della conversazione identificata dal parametro di percorso, senza aprire un flusso SSE, recuperare frammenti di risposta o aggiornare automaticamente la consultazione nel client. La risposta riuscita ha stato HTTP `200`, `Content-Type: application/json` e `Cache-Control: no-store`. Il corpo JSON contiene `id`, `createdAt`, `lastActivityAt` e `turns`; `turns` è un array completo, ordinato secondo l'ordine persistente dei turni. Ogni turno contiene `id`, `text`, `acceptedAt` e `status`. I valori temporali sono stringhe ISO 8601 in UTC. `status` vale `pending`, `answered`, `failed` o `interrupted`: `pending` non contiene esito né `finishedAt`; `answered` contiene `answer` e `finishedAt`; `failed` contiene `error` e `finishedAt`; `interrupted` contiene `finishedAt` senza `answer` né `error`. Il testo del turno e degli esiti è quello conservato, senza frammenti parziali non conclusi.
 
 Se la conversazione non esiste, la risposta ha stato `404`; se la lettura fallisce per un guasto tecnico, ha stato `500`. Entrambe sono JSON con il solo campo stringa `error`, un messaggio pubblico sicuro e `Cache-Control: no-store`. Per `404` il messaggio è «Conversation not found.» in inglese o «Conversazione non trovata.» in italiano. Per `500` è «I can't complete the response.» in inglese o «Non riesco a completare la risposta.» in italiano, secondo la lingua configurata. I dettagli tecnici restano nella diagnostica del server.
 
@@ -508,17 +510,6 @@ Per ogni mutazione dell'archivio, la porta di scrittura definisce la postcondizi
 
 #### Relations
   * define: [Classificazione degli esiti delle scritture conversazionali](../Requirements/FamilyConversation.md#classificazione-degli-esiti-delle-scritture-conversazionali)
----
-
-### Stati del turno testuale alla riapertura
-
-Un turno testuale accettato e ancora in elaborazione è distinguibile dagli scambi conclusi quando si consulta la conversazione. Finché l'esito non è conservato, la consultazione lo identifica come `in elaborazione` e lo associa al testo del turno; il client invita la persona ad aggiornare manualmente la pagina più tardi. Alla successiva consultazione, se l'esito è stato conservato, il client presenta lo scambio concluso con risposta oppure errore e non presenta più per lo stesso turno lo stato `in elaborazione`. La riapertura non crea una seconda connessione SSE, non recupera i frammenti parziali e non aggiorna automaticamente lo stato della pagina. Dopo un'interruzione del processo, il turno senza esito segue lo stato `interrotto` definito nel contratto degli stati persistenti del turno testuale.
-
-#### Metadata
-  * type: state
-
-#### Relations
-  * define: [Stato del turno in elaborazione alla riapertura](../Requirements/FamilyConversation.md#stato-del-turno-in-elaborazione-alla-riapertura)
 ---
 
 ### Stati dell'interazione vocale

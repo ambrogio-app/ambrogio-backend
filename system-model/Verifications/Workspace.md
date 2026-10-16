@@ -1,5 +1,20 @@
 # Elements
 
+### Controllo del confine tra repository
+
+Esaminare il repository backend e quello del client terminale, i rispettivi workspace Reqvire e le dipendenze fra i due.
+
+#### Details
+Il controllo passa se ciascun repository possiede il proprio modello e il client dipende dal contratto HTTP pubblico del backend senza importare codice interno o assumere un workspace Reqvire condiviso.
+
+#### Metadata
+  * type: inspection-verification
+
+#### Relations
+  * derivedFrom: [Verifica della struttura del monorepo](#verifica-della-struttura-del-monorepo)
+  * verify: [Confine del repository backend](../Requirements/Workspace.md#confine-del-repository-backend)
+---
+
 ### Verifica del workspace pnpm
 
 Raggruppa le verifiche della configurazione del workspace comune e dell'installazione delle dipendenze con pnpm.
@@ -13,7 +28,7 @@ Raggruppa le verifiche della configurazione del workspace comune e dell'installa
 In un checkout pulito, individuare i pacchetti del workspace dalla radice e installare le dipendenze con pnpm.
 
 #### Details
-La prova passa se il workspace radice include i pacchetti applicativi del server e del client e se `pnpm install` dalla radice completa l'installazione delle loro dipendenze senza errori. Fallisce se uno dei pacchetti non appartiene al workspace o richiede un'installazione separata fuori dal workspace.
+La prova passa se il workspace radice include l'applicazione server e i suoi package business e se `pnpm install` dalla radice completa l'installazione delle loro dipendenze senza errori. Fallisce se uno dei pacchetti non appartiene al workspace o richiede un'installazione separata fuori dal workspace.
 
 #### Metadata
   * type: test-verification

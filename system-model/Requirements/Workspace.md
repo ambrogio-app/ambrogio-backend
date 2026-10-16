@@ -1,5 +1,16 @@
 # Elements
 
+### Confine del repository backend
+
+Il backend Ambrogio deve essere sviluppato e versionato in `ambrogio-app`, con workspace Reqvire canonico alla radice del repository; i client, incluso il client terminale `ambrogio-cli`, devono avere repository e modelli autonomi e integrare il backend tramite il contratto HTTP pubblico.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
 ### Adapter tra moduli business nell'applicazione
 
 Quando un adapter collega due moduli business del server, l'applicazione che li assembla deve collocarlo in `src/adapters/out/<consumer>-to-<provider>/`, dove `<consumer>` identifica il modulo che usa la capacità e `<provider>` quello che la fornisce.
@@ -46,7 +57,7 @@ Gli entrypoint delle applicazioni eseguibili del monorepo devono coordinare l'es
 
 ### Gestione pnpm del workspace
 
-Il monorepo deve dichiarare alla radice un workspace pnpm che comprenda i pacchetti applicativi del server e del client e consenta di installarne le dipendenze tramite pnpm.
+Il repository backend deve dichiarare alla radice un workspace pnpm che comprenda l'applicazione server e i suoi package business e consenta di installarne le dipendenze tramite pnpm.
 
 #### Metadata
   * type: requirement

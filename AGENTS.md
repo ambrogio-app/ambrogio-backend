@@ -4,9 +4,10 @@
 
 Queste istruzioni si applicano all'intero progetto.
 
-- Server e client appartengono allo stesso monorepo, con un modello Reqvire comune e un unico workspace canonico alla radice del repository.
+- Questo repository contiene il backend e i suoi package business. Il client terminale vive nel repository separato `ambrogio-cli`; eventuali altri client avranno repository e modelli Reqvire propri dopo una decisione esplicita.
+- Prima di usare Reqvire, identificare repository Git, branch e radice del workspace interessato. Non trattare modelli, copertura o sessioni MCP di repository diversi come un unico grafo. Il contratto HTTP pubblico è posseduto dal backend; il modello del client ne registra la versione compatibile e le proprie obbligazioni.
 - Il modello ingegneristico risiede in `system-model/`.
-- Il sito e la documentazione utente appartengono a repository separati. Non aggiungerli a questo monorepo senza una nuova decisione esplicita.
+- Il sito e la documentazione utente appartengono a repository separati. Non aggiungerli a questo repository senza una nuova decisione esplicita.
 - Quando cambia un comportamento pubblico, valutare anche l'impatto su sito e documentazione utente e indicare gli aggiornamenti necessari. La validazione locale non dimostra la coerenza di quei repository esterni.
 - Prima di introdurre una scelta tecnica o architetturale non già stabilita dal modello Reqvire o da una decisione esplicita della persona, presentare le alternative e le conseguenze, chiedere la decisione e concordarla con la persona. Registrare la decisione nel punto pertinente di `system-model/` prima di implementarla; codice, test e commit non sostituiscono questa registrazione. Non assumere che un incarico generale di implementazione autorizzi scelte tecniche nuove. Non chiedere di riconfermare decisioni già prese e pubblicate.
 

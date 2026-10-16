@@ -1,5 +1,7 @@
 # Elements
 
+# Elements
+
 ### Adapter tecnici nel package Conversazioni
 
 Quando un componente tecnico esterno viene integrato come ingresso del modulo «Conversazioni» o come implementazione di una sua porta Application, l'adapter deve risiedere nel package «Conversazioni», rispettivamente in `src/adapters/in/` o `src/adapters/out/`.
@@ -604,31 +606,6 @@ Quando il modulo «Conversazioni» crea, modifica o ricostruisce lo stato di un 
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Invio HTTP del turno della chat testuale
-
-Quando la famiglia invia un turno testuale da un client della chat testuale, il client deve trasmettere il turno al backend mediante una richiesta HTTP POST.
-
-#### Metadata
-  * type: requirement
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
-### Invito ad aggiornare la conversazione in elaborazione
-
-Quando una conversazione riaperta nel client della chat testuale mostra un turno «In elaborazione», il client deve invitare la persona ad aggiornare manualmente la pagina più tardi per consultarne l'esito.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Stati del turno testuale alla riapertura](../Contracts/FamilyConversation.md#stati-del-turno-testuale-alla-riapertura)
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
 ### Istanti validi e protetti della conversazione
 
 Quando Application e Domain rappresentano un istante della conversazione, devono usare un `Date` valido. Gli oggetti Domain che ricevono o espongono un `Date` devono proteggerlo con copie difensive in ingresso e in uscita.
@@ -829,34 +806,6 @@ Quando un turno supera la validazione dell'ingresso, il caso d'uso Application d
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Presentazione dell'errore HTTP prima del flusso testuale
-
-Quando il client della chat testuale riceve una risposta HTTP di errore in formato JSON prima del flusso SSE, deve mostrare il messaggio pubblico contenuto nel campo `error` come esito di errore del turno nella chat.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Risposta di errore HTTP prima del flusso testuale](../Contracts/FamilyConversation.md#risposta-di-errore-http-prima-del-flusso-testuale)
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
-### Presentazione dell'errore del flusso testuale
-
-Quando il client della chat testuale riceve una parte `error` del profilo di trasporto UI, deve mostrare il messaggio pubblico contenuto in `errorText` come esito di errore del turno nella conversazione, sostituendo gli eventuali frammenti di risposta già mostrati per quel turno.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Profilo di trasporto SSE della chat](../Contracts/FamilyConversation.md#profilo-di-trasporto-sse-della-chat)
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
 ### Pronuncia della risposta vocale
 
 Quando Ambrogio produce una risposta a un turno vocale, deve pronunciare la risposta alla famiglia.
@@ -939,35 +888,6 @@ Quando un ingresso tenta di riaprire una conversazione conservata per aggiungere
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Riconoscimento del completamento della risposta testuale
-
-Quando il flusso di un turno della chat testuale termina, il client deve considerare la risposta completata correttamente soltanto se ha ricevuto la conferma di successo definita dal profilo di trasporto UI.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Profilo di trasporto SSE della chat](../Contracts/FamilyConversation.md#profilo-di-trasporto-sse-della-chat)
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
-### Segnalazione locale dell'interruzione della chat testuale
-
-Quando il flusso di un turno della chat testuale termina senza la conferma di successo né una parte `error` definite dal profilo di trasporto UI, il client deve mostrare lo stato locale «Risposta interrotta» senza trasformare automaticamente la disconnessione in uno scambio di errore conservato.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Profilo di trasporto SSE della chat](../Contracts/FamilyConversation.md#profilo-di-trasporto-sse-della-chat)
-
-#### Relations
-  * derivedFrom: [Riconoscimento del completamento della risposta testuale](#riconoscimento-del-completamento-della-risposta-testuale)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
 ### Riconoscimento del turno interrotto dopo riavvio
 
 Quando il server si avvia e trova turni conservati come «In elaborazione» senza esito, Ambrogio deve contrassegnarli tutti come «Interrotti» prima di accettare nuovi turni e mostrarli come tali nelle rispettive conversazioni.
@@ -989,17 +909,6 @@ Quando l'installazione ha un turno accettato il cui esito non è ancora conserva
 #### Relations
   * satisfiedBy: [conversation-agent.ts](../../packages/conversations/src/adapters/in/voice/conversation-agent.ts)
   * satisfiedBy: [sqlite-conversation-write.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
-### Ripartenza dell'elenco conversazioni dopo un aggiornamento
-
-Quando il client della chat testuale aggiorna l'elenco delle conversazioni conservate, deve scartare il riferimento alla pagina successiva della consultazione precedente e richiedere la prima pagina dell'elenco corrente.
-
-#### Metadata
-  * type: requirement
-
-#### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -1178,17 +1087,6 @@ Nel package del modulo business «Conversazioni», gli adapter d'ingresso presen
 ### Separazione delle responsabilità nel modulo Conversazioni
 
 Il modulo business «Conversazioni» deve distinguere Domain, Application e adapter secondo le rispettive responsabilità definite per il modulo.
-
-#### Metadata
-  * type: requirement
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
-### Stato del turno in elaborazione alla riapertura
-
-Quando la famiglia consulta tramite un client della chat testuale una conversazione con un turno testuale accettato il cui esito non è ancora conservato, Ambrogio deve mostrare quel turno come «In elaborazione»; a una nuova consultazione dopo la conservazione dell'esito deve mostrare lo scambio concluso.
 
 #### Metadata
   * type: requirement

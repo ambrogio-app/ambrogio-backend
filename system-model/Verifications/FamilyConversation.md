@@ -1,5 +1,7 @@
 # Elements
 
+# Elements
+
 ### Verifica degli invarianti dei turni
 
 Raggruppa le prove delle transizioni di stato e della ricostruzione dei turni nel Domain.
@@ -597,10 +599,10 @@ La prova passa se, in entrambi i casi, il backend prosegue l'elaborazione dopo l
 
 ### Prova del completamento esplicito della risposta testuale
 
-Eseguire un turno con almeno due frammenti attraverso un consumatore UI Message Stream di AI SDK e acquisire anche gli eventi SSE. Ritardare il commit del completamento dopo l'ultimo frammento, quindi consentirlo; ripetere facendolo fallire. Provare flussi troncati dopo il primo frammento, una chiusura con il solo marcatore `[DONE]`, una parte `abort` e un `finish` privo della conferma applicativa. Verificare il client reale quando sarà disponibile.
+Eseguire un turno con almeno due frammenti attraverso un consumatore UI Message Stream di AI SDK e acquisire anche gli eventi SSE. Ritardare il commit del completamento dopo l'ultimo frammento, quindi consentirlo; ripetere facendolo fallire. Provare flussi troncati dopo il primo frammento, una chiusura con il solo marcatore `[DONE]`, una parte `abort` e un `finish` privo della conferma applicativa.
 
 #### Details
-La prova passa se la conferma di successo (`finish`, `finishReason: "stop"`, `messageMetadata.turnStatus: "answered"`) arriva una sola volta dopo tutti i frammenti e dopo il commit riuscito. Finché il commit è bloccato non arriva; se fallisce, non viene emessa e il guasto segue il contratto pubblico. Il consumatore SDK ricostruisce la risposta e i metadata del profilo. La sola fine del testo, `[DONE]`, `abort`, la chiusura della connessione e un `finish` senza conferma non sono successi del prodotto. Il client reale presenta «Risposta interrotta» se non riceve né conferma né errore e non invia un esito da conservare per la sola disconnessione. Fallisce se viene confermato un esito non conservato o se un marcatore di trasporto è interpretato come successo. La prova con consumatore SDK copre l'integrazione tecnica; la presentazione del client reale resta da verificare alla sua implementazione.
+La prova passa se la conferma di successo (`finish`, `finishReason: "stop"`, `messageMetadata.turnStatus: "answered"`) arriva una sola volta dopo tutti i frammenti e dopo il commit riuscito. Finché il commit è bloccato non arriva; se fallisce, non viene emessa e il guasto segue il contratto pubblico. Il consumatore SDK ricostruisce la risposta e i metadata del profilo. La sola fine del testo, `[DONE]`, `abort`, la chiusura della connessione e un `finish` senza conferma non sono successi del prodotto. Fallisce se viene confermato un esito non conservato o se un marcatore di trasporto è interpretato come successo.
 
 #### Metadata
   * type: test-verification
@@ -608,9 +610,7 @@ La prova passa se la conferma di successo (`finish`, `finishReason: "stop"`, `me
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
-  * verify: [Riconoscimento del completamento della risposta testuale](../Requirements/FamilyConversation.md#riconoscimento-del-completamento-della-risposta-testuale)
   * verify: [Segnalazione del completamento della risposta testuale](../Requirements/FamilyConversation.md#segnalazione-del-completamento-della-risposta-testuale)
-  * verify: [Segnalazione locale dell'interruzione della chat testuale](../Requirements/FamilyConversation.md#segnalazione-locale-dellinterruzione-della-chat-testuale)
 ---
 
 ### Prova del rifiuto del turno vuoto della chat testuale
@@ -645,7 +645,6 @@ La prova passa se la richiesta contiene solo `text` e l'eventuale `conversationI
   * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
   * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
   * satisfiedBy: [exchange-turn.test.ts](../../packages/conversations/test/application/exchange-turn.test.ts)
-  * verify: [Invio HTTP del turno della chat testuale](../Requirements/FamilyConversation.md#invio-http-del-turno-della-chat-testuale)
   * verify: [Risposta progressiva SSE nella chat testuale](../Requirements/FamilyConversation.md#risposta-progressiva-sse-nella-chat-testuale)
 ---
 
@@ -667,10 +666,10 @@ La prova passa se gli adapter rifiutano ciascun input al proprio confine prima d
 
 ### Prova dell'errore HTTP prima del flusso testuale
 
-Da un client della chat testuale di prova, inviare un turno che il backend rifiuta prima di avviare SSE; ripetere simulando il rifiuto temporaneo dell'ammissione da parte dell'archivio e provocando un guasto tecnico controllato prima dell'ammissione e prima dell'invio degli header, con `language` impostato separatamente a `en` e `it`. Intercettare stato, header e corpo HTTP e osservare l'esito mostrato dal client.
+Da un client della chat testuale di prova, inviare un turno che il backend rifiuta prima di avviare SSE; ripetere simulando il rifiuto temporaneo dell'ammissione da parte dell'archivio e provocando un guasto tecnico controllato prima dell'ammissione e prima dell'invio degli header, con `language` impostato separatamente a `en` e `it`. Intercettare stato, header e corpo HTTP.
 
 #### Details
-La prova passa se ogni caso restituisce uno stato HTTP `4xx` o `5xx` e `Content-Type: application/json`, con un corpo JSON contenente un campo stringa `error` con messaggio pubblico sicuro. Il valore di `error` nei casi `400`, `404`, `409`, `413` e `503` corrisponde esattamente alla coppia inglese/italiano definita dal contratto. Per il rifiuto temporaneo dell'archivio lo stato è `503` e il turno non viene conservato; per il guasto inatteso prima dell'ammissione lo stato è `500` e il testo è esattamente «I can't complete the response.» con `en` oppure «Non riesco a completare la risposta.» con `it`, senza creare un turno. La risposta non dichiara `text/event-stream` e non invia eventi SSE. Il client mostra il messaggio come errore del turno; nel caso di guasto tecnico non compaiono dettagli diagnostici nel messaggio. La prova fallisce se la risposta è `2xx`, se il payload non rispetta il contratto, se viene avviato SSE, se l'errore non è mostrato o se trapelano dettagli tecnici. La presentazione nel futuro client resta da verificare.
+La prova passa se ogni caso restituisce uno stato HTTP `4xx` o `5xx` e `Content-Type: application/json`, con un corpo JSON contenente un campo stringa `error` con messaggio pubblico sicuro. Il valore di `error` nei casi `400`, `404`, `409`, `413` e `503` corrisponde esattamente alla coppia inglese/italiano definita dal contratto. Per il rifiuto temporaneo dell'archivio lo stato è `503` e il turno non viene conservato; per il guasto inatteso prima dell'ammissione lo stato è `500` e il testo è esattamente «I can't complete the response.» con `en` oppure «Non riesco a completare la risposta.» con `it`, senza creare un turno. La risposta non dichiara `text/event-stream` e non invia eventi SSE. Nel caso di guasto tecnico il messaggio pubblico non contiene dettagli diagnostici. La prova fallisce se la risposta è `2xx`, se il payload non rispetta il contratto, se viene avviato SSE o se trapelano dettagli tecnici.
 
 #### Metadata
   * type: test-verification
@@ -679,16 +678,15 @@ La prova passa se ogni caso restituisce uno stato HTTP `4xx` o `5xx` e `Content-
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * satisfiedBy: [http-turn-error-contract.test.ts](../../packages/conversations/test/adapters/in/http-turn-error-contract.test.ts)
   * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
-  * verify: [Presentazione dell'errore HTTP prima del flusso testuale](../Requirements/FamilyConversation.md#presentazione-dellerrore-http-prima-del-flusso-testuale)
   * verify: [Segnalazione dell'errore HTTP prima del flusso testuale](../Requirements/FamilyConversation.md#segnalazione-dellerrore-http-prima-del-flusso-testuale)
 ---
 
 ### Prova dell'errore nel flusso testuale
 
-Avviare un turno in una conversazione conservata con un produttore che emette un frammento e poi fallisce con dettagli diagnostici riconoscibili. Leggere il flusso con un consumatore AI SDK, acquisire la parte di errore e riaprire lo storico. Verificare la sostituzione della risposta parziale nel client reale quando sarà disponibile.
+Avviare un turno in una conversazione conservata con un produttore che emette un frammento e poi fallisce con dettagli diagnostici riconoscibili. Leggere il flusso con un consumatore AI SDK, acquisire la parte di errore e riaprire lo storico.
 
 #### Details
-La prova passa se il backend emette una parte `error` con `errorText` sicuro, chiude il flusso senza conferma di successo e lo storico contiene l'esito di errore con lo stesso messaggio, senza conservare i frammenti come risposta completata. L'eventuale `[DONE]` non cambia l'esito. Il consumatore riconosce l'errore e il client reale sostituisce il testo parziale con il messaggio pubblico. Fallisce se manca la parte di errore, se viene emessa una conferma di successo, se sono esposti dettagli tecnici o se lo storico conserva una risposta riuscita. Il guasto di commit, che non consente di attestare un esito conservato, è verificato separatamente dalla prova delle transizioni atomiche.
+La prova passa se il backend emette una parte `error` con `errorText` sicuro, chiude il flusso senza conferma di successo e lo storico contiene l'esito di errore con lo stesso messaggio, senza conservare i frammenti come risposta completata. L'eventuale `[DONE]` non cambia l'esito. Fallisce se manca la parte di errore, se viene emessa una conferma di successo, se sono esposti dettagli tecnici o se lo storico conserva una risposta riuscita. Il guasto di commit, che non consente di attestare un esito conservato, è verificato separatamente dalla prova delle transizioni atomiche.
 
 #### Metadata
   * type: test-verification
@@ -698,7 +696,6 @@ La prova passa se il backend emette una parte `error` con `errorText` sicuro, ch
   * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
   * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
   * verify: [Conservazione dell'errore dopo risposta testuale parziale](../Requirements/FamilyConversation.md#conservazione-dellerrore-dopo-risposta-testuale-parziale)
-  * verify: [Presentazione dell'errore del flusso testuale](../Requirements/FamilyConversation.md#presentazione-dellerrore-del-flusso-testuale)
   * verify: [Segnalazione dell'errore nel flusso testuale](../Requirements/FamilyConversation.md#segnalazione-dellerrore-nel-flusso-testuale)
 ---
 
@@ -707,7 +704,7 @@ La prova passa se il backend emette una parte `error` con `errorText` sicuro, ch
 Inviare un turno che crea una conversazione e uno che la continua. Acquisire le parti UI nell'ordine di ricezione e confrontare i metadata iniziali con gli identificativi dell'archivio. Ripetere con un rifiuto prima dell'ammissione.
 
 #### Details
-La prova passa se la prima parte applicativa è `start` e contiene `messageId` della risposta, `messageMetadata.conversationId` e `messageMetadata.turnId` coerenti con l'archivio, prima di qualsiasi `text-delta`. Il consumatore SDK conserva tali metadata e la continuità dell'identità durante la risposta. I rifiuti precedenti all'ammissione conservano la risposta HTTP JSON e non producono un `start` o nuove identità persistenti. Fallisce se l'identità è assente, cambia durante il flusso, identifica un altro turno o arriva dopo il testo. La presentazione nel client reale resta da verificare quando sarà implementato.
+La prova passa se la prima parte applicativa è `start` e contiene `messageId` della risposta, `messageMetadata.conversationId` e `messageMetadata.turnId` coerenti con l'archivio, prima di qualsiasi `text-delta`. Il consumatore SDK conserva tali metadata e la continuità dell'identità durante la risposta. I rifiuti precedenti all'ammissione conservano la risposta HTTP JSON e non producono un `start` o nuove identità persistenti. Fallisce se l'identità è assente, cambia durante il flusso, identifica un altro turno o arriva dopo il testo.
 
 #### Metadata
   * type: test-verification
@@ -733,21 +730,6 @@ La prova passa se l'avvio valido espone POST e GET, il turno usa il produttore o
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
   * verify: [Avvio dell'ingresso dei turni conversazionali](../Requirements/FamilyConversation.md#avvio-dellingresso-dei-turni-conversazionali)
----
-
-### Prova dell'invito ad aggiornare la conversazione
-
-Avviare un turno testuale con elaborazione controllabile, disconnettere il client e riaprire la stessa conversazione mentre il turno è ancora in corso. Osservare la pagina, far conservare al backend l'esito e aggiornare manualmente la pagina. Ripetere con una risposta completa e con un errore pubblico.
-
-#### Details
-La prova passa se la pagina riaperta mostra il turno «In elaborazione» e invita la persona ad aggiornarla più tardi, senza aprire un altro flusso SSE, interrogare periodicamente lo stato o mostrare frammenti temporanei come risposta completa. Prima dell'aggiornamento manuale il client non sostituisce da sé lo stato; dopo l'aggiornamento mostra l'esito conservato corretto senza duplicare il turno né inviarne uno nuovo. La prova resta da eseguire quando client e backend sono implementati.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * verify: [Invito ad aggiornare la conversazione in elaborazione](../Requirements/FamilyConversation.md#invito-ad-aggiornare-la-conversazione-in-elaborazione)
 ---
 
 ### Prova della configurazione dell'adapter AI SDK
@@ -984,21 +966,6 @@ La prova passa se ogni modello riceve le istruzioni del proprio file e la modifi
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
   * verify: [Istruzioni dell'agente nel JSON dell'utente](../Requirements/FamilyConversation.md#istruzioni-dellagente-nel-json-dellutente)
----
-
-### Prova dello stato del turno alla riapertura
-
-Avviare da un client della chat testuale un turno con elaborazione controllabile, poi disconnettere il client dopo l'accettazione e prima dell'esito. Mantenere l'elaborazione in corso, riaprire la stessa conversazione da un client della chat testuale e osservare lo stato del turno. Far poi terminare il turno, consultare nuovamente la conversazione e ripetere la prova con un esito di errore.
-
-#### Details
-La prova passa se, durante l'elaborazione, il client mostra il testo del turno con lo stato «In elaborazione» e non presenta eventuali frammenti ricevuti prima della disconnessione come risposta completa. Dopo la conservazione dell'esito e una nuova consultazione manuale, il client mostra un solo scambio concluso con risposta completa oppure messaggio pubblico di errore, e lo stato «In elaborazione» scompare per quel turno. Fallisce se il turno non è visibile durante l'elaborazione, se appare già concluso, se lo stato rimane dopo la nuova consultazione o se la riapertura crea uno scambio duplicato. La prova resta da eseguire quando client e backend sono implementati.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * verify: [Stato del turno in elaborazione alla riapertura](../Requirements/FamilyConversation.md#stato-del-turno-in-elaborazione-alla-riapertura)
 ---
 
 ### Verifica della risorsa SQLite conversazionale
@@ -1296,21 +1263,6 @@ La prova passa se l'inglese produce «I can't complete the response.», l'italia
   * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
   * satisfiedBy: [conversation-config.test.ts](../../packages/conversations/test/adapters/out/conversation-config.test.ts)
   * verify: [Localizzazione dell'errore conversazionale inatteso](../Requirements/FamilyConversation.md#localizzazione-dellerrore-conversazionale-inatteso)
----
-
-### Prova della ripartenza dell'elenco aggiornato
-
-Caricare almeno due pagine nel client della chat testuale, poi aggiungere una conversazione o aggiornare l'ultima attività di una conversazione meno recente nell'archivio. Attivare l'aggiornamento dell'elenco e osservare la richiesta successiva e le voci mostrate.
-
-#### Details
-La prova passa se il client scarta il riferimento alla vecchia pagina successiva, richiede la prima pagina e presenta l'ordine corrente delle conversazioni, compresa quella nuova o aggiornata. Fallisce se continua dalla pagina della consultazione precedente o tratta le pagine già caricate come una fotografia immutabile. La prova resta da eseguire quando il client è implementato.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * verify: [Ripartenza dell'elenco conversazioni dopo un aggiornamento](../Requirements/FamilyConversation.md#ripartenza-dellelenco-conversazioni-dopo-un-aggiornamento)
 ---
 
 ### Prova della validità e delle copie degli istanti

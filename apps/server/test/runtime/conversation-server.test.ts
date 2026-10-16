@@ -125,6 +125,12 @@ test('POST/SSE uses the orchestrator and retains security, CORS and correlation 
     expect(invalid.headers['x-request-id'])
       .toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     expect(invalid.headers['x-request-id']).not.toBe(turn.headers['x-request-id']);
+    for (const payload of [{ text: 7 }, { text: 'ignored', extra: 'unexpected' }]) {
+      const rejectedShape = await server.inject({ method: 'POST', url: '/api/conversations/turns',
+        headers: { 'content-type': 'application/json' }, payload });
+      expect(rejectedShape.statusCode).toBe(400);
+      expect(rejectedShape.json()).toEqual({ error: 'Invalid message.' });
+    }
     const list = await server.inject({ method: 'GET', url: '/api/conversations' });
     expect(list.statusCode).toBe(200);
     expect(list.json().items).toHaveLength(1);

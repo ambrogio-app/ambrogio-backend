@@ -560,6 +560,25 @@ Il controllo passa se lo stato persistente delle conversazioni è in SQLite e le
   * verify: [Disponibilità dello storico dopo riavvio](../Requirements/FamilyConversation.md#disponibilità-dello-storico-dopo-riavvio)
 ---
 
+### Prova degli schemi delle richieste HTTP conversazionali
+
+Inviare alle rotte HTTP di elenco, storico e turno richieste valide e rappresentazioni non valide per ciascuna parte usata. Osservare il risultato pubblico e le invocazioni dei casi d'uso.
+
+#### Details
+La prova passa se gli schemi TypeBox sono applicati da Fastify/Ajv prima dei gestori, gli oggetti dichiarati rifiutano campi sconosciuti e la validazione non converte tipi, inserisce valori predefiniti né rimuove proprietà. Richieste con dati di forma non validi o conversione impossibile non invocano il caso d'uso; richieste valide lo invocano una volta con i valori previsti. Il testo valido conserva gli spazi originari e il testo composto solo da spazi è rifiutato senza effetti. Le risposte di errore mantengono gli stati e i messaggi dei contratti HTTP esistenti. La prova fallisce se una richiesta invalida viene accettata dopo una modifica implicita o se cambia il comportamento pubblico concordato.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
+  * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
+  * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
+  * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
+  * verify: [Validazione strutturale delle richieste conversazionali HTTP](../Requirements/FamilyConversation.md#validazione-strutturale-delle-richieste-conversazionali-http)
+---
+
 ### Prova del completamento dopo disconnessione della chat testuale
 
 Avviare un turno della chat testuale la cui risposta sia controllabile e produca almeno un frammento; dopo aver ricevuto il primo frammento, chiudere la connessione del client e lasciare completare l'elaborazione. Riaprire la conversazione tramite un client della chat testuale e leggere lo storico. Ripetere con un guasto controllato che produca un errore dopo il primo frammento.

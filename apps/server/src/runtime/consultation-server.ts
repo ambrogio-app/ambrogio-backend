@@ -4,6 +4,7 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import websocket from '@fastify/websocket';
 import { loadConversationConfig } from '@ambrogio/conversations/adapters/out/conversation-config';
+import { httpAjvOptions } from '@ambrogio/conversations/adapters/in/http/http-validation';
 import type { VoiceConfig } from '@ambrogio/conversations/adapters/out/voice-config';
 import type { createVoiceComponents } from '@ambrogio/conversations/adapters/in/voice/voice-session';
 import type { ProduceConversationReply } from '@ambrogio/conversations/application/produce-conversation-reply';
@@ -31,6 +32,7 @@ async function buildHttpServer(config: HttpConfig, prepared: Prepared,
     server: FastifyInstance; turnIngress?: Readonly<{ stopAccepting(): Promise<void> }>;
   }>> {
   const server = Fastify({
+    ajv: { customOptions: httpAjvOptions },
     ...(replyProducer ? { forceCloseConnections: true } : {}),
     logger: { level: 'warn', serializers: {
       err: serializeDiagnosticError,

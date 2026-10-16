@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { registerHistoryRoute } from '../../../src/adapters/in/http/history-route.js';
+import { httpAjvOptions } from '../../../src/adapters/in/http/http-validation.js';
 import { createGetConversation } from '../../../src/application/get-conversation.use-case.js';
 import { ProjectError } from '../../../src/project-error.js';
 import type { GetConversation } from '../../../src/application/get-conversation.use-case.js';
@@ -8,7 +9,7 @@ import type { GetConversation } from '../../../src/application/get-conversation.
 const servers: ReturnType<typeof Fastify>[] = [];
 
 function fixture(getConversation: GetConversation, language: 'en' | 'it' = 'en') {
-  const server = Fastify();
+  const server = Fastify({ ajv: { customOptions: httpAjvOptions } });
   servers.push(server);
   registerHistoryRoute(server, { getConversation, language });
   return server;

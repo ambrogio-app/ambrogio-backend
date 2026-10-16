@@ -473,6 +473,19 @@ Quando il server ha disabilitato gli ingressi conversazionali perché non è riu
   * define: [Segnalazione dell'errore HTTP prima del flusso testuale](../Requirements/FamilyConversation.md#segnalazione-dellerrore-http-prima-del-flusso-testuale)
 ---
 
+### Schema delle richieste HTTP conversazionali
+
+Le rotte HTTP JSON di elenco, storico e turno dichiarano con TypeBox la forma delle parti di richiesta che usano: corpo, query e parametri di percorso. Fastify valida tali schemi con Ajv prima del gestore. Gli oggetti di richiesta dichiarati sono chiusi: campi non previsti producono un rifiuto, senza essere eliminati. La configurazione Ajv dell'ingresso usa `coerceTypes: false`, `useDefaults: false`, `removeAdditional: false` e `allErrors: false`; la validazione non converte tipi, inserisce valori predefiniti né altera i dati ricevuti.
+
+Lo schema controlla la forma del protocollo. L'adapter converte esplicitamente le rappresentazioni ammesse nei dati Application, come il limite decimale e il cursore dell'elenco. La verifica che il testo del turno non sia composto solo da spazi resta un controllo dell'ingresso che non modifica il testo accettato. Le precondizioni contestuali e gli invarianti restano ai rispettivi proprietari. Un errore di schema o di conversione interrompe la richiesta prima del caso d'uso e viene presentato secondo il contratto HTTP pubblico della rotta. Questa scelta non introduce la pubblicazione OpenAPI.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Validazione strutturale delle richieste conversazionali HTTP](../Requirements/FamilyConversation.md#validazione-strutturale-delle-richieste-conversazionali-http)
+---
+
 ### Semantica locale delle porte verso servizi esterni
 
 Ogni porta outbound di Application descrive una capacità coerente richiesta da uno o più casi d'uso del modulo «Conversazioni». Nomi delle operazioni, input, output e rifiuti descrivono il significato per il modulo, senza riprodurre automaticamente metodi, payload o tipi di SDK, protocollo o API del fornitore. L'adapter realizza la porta e converte richieste, risposte e rifiuti fra le due rappresentazioni. La granularità delle porte segue le capacità effettivamente richieste, senza imporre un numero di operazioni per porta.

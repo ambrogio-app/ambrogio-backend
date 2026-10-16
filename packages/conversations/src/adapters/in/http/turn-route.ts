@@ -2,6 +2,7 @@ import { ProjectError } from '../../../project-error.js';
 import { Readable } from 'node:stream';
 import { createUIMessageStream, createUIMessageStreamResponse, generateId } from 'ai';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { Type, type Static } from '@sinclair/typebox';
 import type { ExchangeTurn } from '../../../application/exchange-turn.use-case.js';
 
 type Language = 'en' | 'it';
@@ -18,20 +19,14 @@ const messages: Record<PublicError, Record<Language, string>> = {
 
 export const TURN_BODY_LIMIT = 65_536;
 
+const turnBodySchema = Type.Object({
+  text: Type.String(),
+  conversationId: Type.Optional(Type.String({ minLength: 1 })),
+}, { additionalProperties: false });
+type TurnBody = Static<typeof turnBodySchema>;
+
 function publicError(reply: FastifyReply, status: number, message: string): FastifyReply {
   return reply.code(status).header('Cache-Control', 'no-store').type('application/json').send({ error: message });
-}
-
-function parsedTurn(body: unknown): { text: string; conversationId?: string } | undefined {
-  if (body === null || typeof body !== 'object' || Array.isArray(body)) return undefined;
-  const fields = body as Record<string, unknown>;
-  if (typeof fields.text !== 'string' || fields.text.trim().length === 0) return undefined;
-  if (fields.conversationId !== undefined
-    && (typeof fields.conversationId !== 'string' || fields.conversationId.length === 0)) return undefined;
-  if (Object.keys(fields).some(key => key !== 'text' && key !== 'conversationId')) return undefined;
-  return fields.conversationId === undefined
-    ? { text: fields.text }
-    : { text: fields.text, conversationId: fields.conversationId as string };
 }
 
 function normalizeError(value: unknown): Error {
@@ -49,9 +44,10 @@ export function registerTurnRoute(server: FastifyInstance, options: Readonly<{
   const streams = new Set<Readable>();
   const loggedDeliveryErrors = new WeakMap<object, FastifyRequest>();
 
-  server.route({
+  server.route<{ Body: TurnBody }>({
     method: 'POST',
     url: '/api/conversations/turns',
+    schema: { body: turnBodySchema },
     bodyLimit: TURN_BODY_LIMIT,
     errorHandler(error, request, reply) {
       if (loggedDeliveryErrors.get(error) === request) {
@@ -67,10 +63,12 @@ export function registerTurnRoute(server: FastifyInstance, options: Readonly<{
         'Conversation turn HTTP request failed');
       return publicError(reply, 500, message('failure'));
     },
-    async handler(request: FastifyRequest, reply: FastifyReply) {
+    async handler(request, reply) {
       if (!acceptingTurns) return publicError(reply, 503, message('unavailable'));
-      const input = parsedTurn(request.body);
-      if (!input) return publicError(reply, 400, message('invalid'));
+      const input = request.body;
+      if (!input || input.text.trim().length === 0) {
+        return publicError(reply, 400, message('invalid'));
+      }
 
       let clientDisconnected = false;
       reply.raw.once('close', () => { clientDisconnected = !reply.raw.writableEnded; });

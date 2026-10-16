@@ -1260,3 +1260,18 @@ Quando l'ingresso HTTP riceve un turno, il suo adapter deve verificare forma e d
 #### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
+
+### Validazione strutturale delle richieste conversazionali HTTP
+
+Quando un ingresso HTTP riceve una richiesta per le operazioni conversazionali, deve verificare la forma dei dati ricevuti prima di invocare il caso d'uso, rifiutando le rappresentazioni non valide senza modificare implicitamente i valori.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [history-route.ts](../../packages/conversations/src/adapters/in/http/history-route.ts)
+  * satisfiedBy: [list-route.ts](../../packages/conversations/src/adapters/in/http/list-route.ts)
+  * satisfiedBy: [turn-route.ts](../../packages/conversations/src/adapters/in/http/turn-route.ts)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---

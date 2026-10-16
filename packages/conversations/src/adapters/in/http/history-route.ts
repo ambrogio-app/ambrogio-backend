@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
+import { Type, type Static } from '@sinclair/typebox';
 import type { GetConversation } from '../../../application/get-conversation.use-case.js';
 
 type Language = 'en' | 'it';
@@ -7,6 +8,11 @@ const messages = {
   missing: { en: 'Conversation not found.', it: 'Conversazione non trovata.' },
   failure: { en: "I can't complete the response.", it: 'Non riesco a completare la risposta.' },
 } as const;
+
+const historyParamsSchema = Type.Object({
+  conversationId: Type.String({ minLength: 1 }),
+}, { additionalProperties: false });
+type HistoryParams = Static<typeof historyParamsSchema>;
 
 function publicError(reply: FastifyReply, status: number, message: string): FastifyReply {
   return reply.code(status).header('Cache-Control', 'no-store').type('application/json').send({ error: message });
@@ -21,7 +27,9 @@ export function registerHistoryRoute(server: FastifyInstance, options: Readonly<
   getConversation: GetConversation;
   language: Language;
 }>): void {
-  server.get<{ Params: { conversationId: string } }>('/api/conversations/:conversationId', async (request, reply) => {
+  server.get<{ Params: HistoryParams }>('/api/conversations/:conversationId', {
+    schema: { params: historyParamsSchema },
+  }, async (request, reply) => {
     try {
       const result = await options.getConversation({ conversationId: request.params.conversationId });
       if (!result.ok) return publicError(reply, 404, messages.missing[options.language]);

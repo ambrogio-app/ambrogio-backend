@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { registerListRoute } from '../../../src/adapters/in/http/list-route.js';
+import { httpAjvOptions } from '../../../src/adapters/in/http/http-validation.js';
 import { createListConversations } from '../../../src/application/list-conversations.use-case.js';
 import { ProjectError } from '../../../src/project-error.js';
 import type { ListConversations } from '../../../src/application/list-conversations.use-case.js';
@@ -8,7 +9,7 @@ import type { ListConversations } from '../../../src/application/list-conversati
 const servers: ReturnType<typeof Fastify>[] = [];
 
 function fixture(listConversations: ListConversations, maxPageSize = 100, language: 'en' | 'it' = 'en') {
-  const server = Fastify();
+  const server = Fastify({ ajv: { customOptions: httpAjvOptions } });
   servers.push(server);
   registerListRoute(server, { listConversations, maxPageSize, language });
   return server;

@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
+import { Type, type Static } from '@sinclair/typebox';
 import type { ConversationListCursor } from '../../../application/conversation-list-read.js';
 import type { ListConversations } from '../../../application/list-conversations.use-case.js';
 
@@ -8,6 +9,12 @@ const messages = {
   invalid: { en: 'Invalid pagination request.', it: 'Richiesta di paginazione non valida.' },
   failure: { en: "I can't complete the response.", it: 'Non riesco a completare la risposta.' },
 } as const;
+
+const listQuerySchema = Type.Object({
+  cursor: Type.Optional(Type.String()),
+  limit: Type.Optional(Type.String()),
+}, { additionalProperties: false });
+type ListQuery = Static<typeof listQuerySchema>;
 
 function publicError(reply: FastifyReply, status: number, message: string): FastifyReply {
   return reply.code(status).header('Cache-Control', 'no-store').type('application/json').send({ error: message });
@@ -43,9 +50,8 @@ function decodeCursor(value: unknown): ConversationListCursor | undefined {
   }
 }
 
-function parseQuery(query: Record<string, unknown>, maxPageSize: number):
+function parseQuery(query: ListQuery, maxPageSize: number):
   Readonly<{ after?: ConversationListCursor; limit?: number }> | undefined {
-  if (Object.keys(query).some(key => key !== 'cursor' && key !== 'limit')) return undefined;
   const input: { after?: ConversationListCursor; limit?: number } = {};
   if (query.cursor !== undefined) {
     const after = decodeCursor(query.cursor);
@@ -53,7 +59,7 @@ function parseQuery(query: Record<string, unknown>, maxPageSize: number):
     input.after = after;
   }
   if (query.limit !== undefined) {
-    if (typeof query.limit !== 'string' || !/^[0-9]+$/.test(query.limit)) return undefined;
+    if (!/^[0-9]+$/.test(query.limit)) return undefined;
     const limit = Number(query.limit);
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > maxPageSize) return undefined;
     input.limit = limit;
@@ -67,7 +73,15 @@ export function registerListRoute(server: FastifyInstance, options: Readonly<{
   maxPageSize: number;
   language: Language;
 }>): void {
-  server.get<{ Querystring: Record<string, unknown> }>('/api/conversations', async (request, reply) => {
+  server.get<{ Querystring: ListQuery }>('/api/conversations', {
+    schema: { querystring: listQuerySchema },
+    errorHandler(error, request, reply) {
+      if (error.statusCode === 400) return publicError(reply, 400, messages.invalid[options.language]);
+      request.log.error({ event: 'conversation_list_http_failed', err: normalizeError(error) },
+        'HTTP request failed');
+      return publicError(reply, 500, messages.failure[options.language]);
+    },
+  }, async (request, reply) => {
     const input = parseQuery(request.query, options.maxPageSize);
     if (!input) return publicError(reply, 400, messages.invalid[options.language]);
     try {

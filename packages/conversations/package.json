@@ -114,6 +114,10 @@
       "types": "./dist/adapters/in/http/list-route.d.ts",
       "import": "./dist/adapters/in/http/list-route.js"
     },
+    "./adapters/in/http/http-validation": {
+      "types": "./dist/adapters/in/http/http-validation.d.ts",
+      "import": "./dist/adapters/in/http/http-validation.js"
+    },
     "./adapters/out/sqlite/recover-pending-turns": {
       "types": "./dist/adapters/out/sqlite/recover-pending-turns.d.ts",
       "import": "./dist/adapters/out/sqlite/recover-pending-turns.js"
@@ -136,6 +140,7 @@
     "@micdrop/piper": "1.0.0",
     "@micdrop/server": "2.9.0",
     "@modelcontextprotocol/client": "2.3.1",
+    "@sinclair/typebox": "0.34.52",
     "ai": "7.0.142",
     "better-sqlite3": "13.0.3",
     "fastify": "5.12.7",

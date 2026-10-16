@@ -9,6 +9,7 @@ import { Turn } from '../../../src/domain/turn.js';
 import { ProjectError } from '../../../src/project-error.js';
 import type { ExchangeTurn } from '../../../src/application/exchange-turn.use-case.js';
 import { registerTurnRoute, TURN_BODY_LIMIT } from '../../../src/adapters/in/http/turn-route.js';
+import { httpAjvOptions } from '../../../src/adapters/in/http/http-validation.js';
 
 const servers: ReturnType<typeof Fastify>[] = [];
 const post = (body: string) => ({
@@ -20,7 +21,7 @@ const post = (body: string) => ({
 const jsonPost = (body: unknown) => post(JSON.stringify(body));
 
 function fixture(exchange: ExchangeTurn, language: 'en' | 'it' = 'en') {
-  const server = Fastify();
+  const server = Fastify({ ajv: { customOptions: httpAjvOptions } });
   servers.push(server);
   registerTurnRoute(server, { exchange, language });
   return server;
@@ -33,7 +34,7 @@ afterEach(async () => {
 
 function loggedFixture(exchange: ExchangeTurn) {
   const lines: string[] = [];
-  const server = Fastify({ logger: { level: 'error',
+  const server = Fastify({ ajv: { customOptions: httpAjvOptions }, logger: { level: 'error',
     stream: new Writable({ write(chunk, _encoding, callback) {
       lines.push(chunk.toString());
       callback();
@@ -485,7 +486,7 @@ describe('text turn HTTP ingress', () => {
     failure.stack = 'TECH_STACK_MARKER';
     const diagnosticCalls: unknown[][][] = [];
     const warningCalls: unknown[][][] = [];
-    const server = Fastify({ logger: { level: 'error',
+    const server = Fastify({ ajv: { customOptions: httpAjvOptions }, logger: { level: 'error',
       stream: new Writable({ write(chunk, _encoding, callback) {
         lines.push(chunk.toString());
         callback();

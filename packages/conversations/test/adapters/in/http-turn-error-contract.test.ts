@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import { httpAjvOptions } from '../../../src/adapters/in/http/http-validation.js';
 import { describe, expect, it, vi } from 'vitest';
 import { registerTurnRoute, TURN_BODY_LIMIT } from '../../../src/adapters/in/http/turn-route.js';
 import type { ExchangeTurn } from '../../../src/application/exchange-turn.use-case.js';
@@ -15,7 +16,7 @@ describe('text turn HTTP error contract', () => {
       tooLarge: 'Richiesta troppo grande.' },
   ] as const)('returns the complete pre-SSE error matrix in $language', async messages => {
     const exchange = vi.fn<ExchangeTurn>(async () => ({ ok: false, error: { kind: 'occupied' } }));
-    const server = Fastify();
+    const server = Fastify({ ajv: { customOptions: httpAjvOptions } });
     registerTurnRoute(server, { exchange, language: messages.language });
     const post = (text: string) => server.inject({ method: 'POST', url: route,
       headers: { 'content-type': 'application/json' }, payload: { text } });

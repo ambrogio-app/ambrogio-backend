@@ -432,7 +432,7 @@ Il controllo passa se ogni adapter d'ingresso del package si trova in `src/adapt
 
 ### Verifica della concorrenza dei turni
 
-Raggruppa le verifiche sul singolo turno attivo nell'installazione e sul rifiuto immediato dei nuovi turni senza accodamento.
+Raggruppa le verifiche sul singolo turno attivo per conversazione, sull'elaborazione parallela di conversazioni diverse e sul rifiuto senza accodamento dei turni in conflitto. Criteri aggiornati il 16 ottobre 2026: le evidenze precedenti sul blocco globale non dimostrano la nuova politica.
 
 #### Metadata
   * type: verification-objective
@@ -440,10 +440,10 @@ Raggruppa le verifiche sul singolo turno attivo nell'installazione e sul rifiuto
 
 ### Prova degli ingressi disabilitati durante un turno
 
-Avviare un turno testuale e, quando la voce è abilitata, un turno vocale. Durante l'elaborazione e l'emissione della risposta controllare i comandi testuali e vocali su tutti i client collegati all'installazione; ripetere dopo conclusione, errore e interruzione, riavviando l'ingresso se il server si è fermato.
+Avviare un turno nella conversazione A e controllare l'ingresso della stessa interazione durante elaborazione e riproduzione; contemporaneamente avviare una conversazione B da un altro client. Ripetere con testo e voce.
 
 #### Details
-La prova passa se nessun client permette l'invio di nuovi turni tramite testo o voce mentre il turno è in corso e se l'interazione torna disponibile dopo il suo termine quando il server è operativo. Dopo un'interruzione dovuta all'arresto, l'interazione torna disponibile al riavvio. Fallisce se un client resta utilizzabile durante il turno o bloccato quando il server è nuovamente operativo.
+La prova passa se l'ingresso della stessa interazione impedisce un nuovo turno finché quello corrente termina, mentre B resta utilizzabile e può ricevere una risposta prima della conclusione di A. Dopo conclusione o errore A torna utilizzabile; dopo arresto il recupero avviene al riavvio. Verifica aggiornata e da eseguire; nessuna evidenza positiva della nuova politica è dichiarata.
 
 #### Metadata
   * type: test-verification
@@ -455,10 +455,10 @@ La prova passa se nessun client permette l'invio di nuovi turni tramite testo o 
 
 ### Prova del rifiuto dei turni concorrenti
 
-Avviare un turno in una conversazione e, prima che il suo esito sia conservato, inviare nuovi turni tramite ingressi e client diversi, rivolti sia alla stessa conversazione sia a una nuova. Includere una richiesta HTTP con testo valido e acquisirne stato, `Content-Type` e corpo. Inviare anche due richieste HTTP contemporaneamente da client diversi. Ripetere dopo la conclusione del primo turno e dopo un'interruzione seguita dal riavvio del server.
+Preparare una conversazione esistente A e inviare contemporaneamente due turni verso A tramite client diversi e, quando abilitati, ingressi HTTP e voce. Ritardare la produzione del turno ammesso. Inviare nel frattempo turni verso B e richieste che creano conversazioni nuove.
 
 #### Details
-La prova passa se ogni turno concorrente riceve un rifiuto previsto senza essere accettato, elaborato o conservato, se tra due richieste simultanee ne viene accettata al massimo una e se un nuovo turno può essere accettato dopo la conclusione del primo o, in caso di arresto, dopo il riavvio. La richiesta HTTP rifiutata riceve `409` con `Content-Type: application/json` e un campo stringa `error` sicuro, senza avviare SSE né lasciare il turno in coda. Fallisce se turni di conversazioni o ingressi diversi vengono elaborati insieme, se un turno rifiutato compare nello storico, se la risposta HTTP usa uno stato o formato diverso o se l'installazione resta bloccata quando torna operativa.
+Nella stessa conversazione viene ammesso al massimo un turno; gli altri sono rifiutati senza persistenza né coda. Il rifiuto HTTP usa 409, Content-Type application/json e un campo error sicuro, senza SSE. B e le conversazioni nuove possono progredire e concludersi mentre A è ancora in elaborazione. Storici, identificativi, frammenti e risultati restano separati. Dopo la conclusione di A si può ammettere un nuovo turno in A. Ripetere dopo errore e dopo interruzione con riavvio; un completamento tardivo non modifica un turno interrotto e non libera l'occupazione di un altro turno. Verifica aggiornata da eseguire; i file collegati devono essere adeguati e rieseguiti.
 
 #### Metadata
   * type: test-verification
@@ -467,16 +467,17 @@ La prova passa se ogni turno concorrente riceve un rifiuto previsto senza essere
   * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
   * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
   * satisfiedBy: [voice-server.test.ts](../../apps/server/test/runtime/voice-server.test.ts)
-  * verify: [Rifiuto dei turni concorrenti nell'installazione](../Requirements/FamilyConversation.md#rifiuto-dei-turni-concorrenti-nellinstallazione)
+  * verify: [Elaborazione parallela di conversazioni diverse](../Requirements/FamilyConversation.md#elaborazione-parallela-di-conversazioni-diverse)
+  * verify: [Rifiuto dei turni concorrenti nella stessa conversazione](../Requirements/FamilyConversation.md#rifiuto-dei-turni-concorrenti-nella-stessa-conversazione)
   * verify: [Rifiuto HTTP del turno concorrente](../Requirements/FamilyConversation.md#rifiuto-http-del-turno-concorrente)
 ---
 
 ### Prova dell'assenza di turni in coda
 
-Mantenere occupata l'installazione con un turno e tentare un altro invio tramite un ingresso diverso. Rendere poi nuovamente possibile l'elaborazione senza ripetere la seconda richiesta.
+Mantenere occupata una conversazione con un turno e tentare un altro invio verso la stessa conversazione tramite un ingresso diverso. Rendere poi nuovamente possibile l'elaborazione senza ripetere la seconda richiesta.
 
 #### Details
-La prova passa se il nuovo turno è rifiutato subito come esito previsto, non viene conservato e non parte successivamente da solo. Fallisce se resta accettato in attesa o viene elaborato quando la disponibilità torna. Ripetere durante l'arresto del server quando il relativo ingresso è implementato.
+La prova passa se il secondo turno è rifiutato subito, non viene conservato e non parte successivamente da solo. Un turno di un'altra conversazione può invece essere ammesso senza attendere il primo. Ripetere durante l'arresto, che impedisce nuove ammissioni globalmente. Verifica aggiornata da eseguire; i collegamenti esistenti non attestano il superamento dei nuovi criteri.
 
 #### Metadata
   * type: test-verification
@@ -522,7 +523,7 @@ La prova passa se nessuna transazione del turno resta aperta durante l'attesa de
 
 ### Prova delle transizioni atomiche del turno
 
-Forzare un errore dopo la prima scrittura dell'ammissione, della conclusione e dell'interruzione; ripetere senza errore e osservare turno, occupazione dell'installazione ed esito restituito. Nel percorso HTTP ritardare e poi far fallire il commit del completamento dopo l'ultimo frammento generato.
+Forzare un errore dopo la prima scrittura dell'ammissione, della conclusione e dell'interruzione; ripetere senza errore e osservare turno, occupazione della conversazione interessata ed esito restituito. Nel percorso HTTP ritardare e poi far fallire il commit del completamento dopo l'ultimo frammento generato.
 
 #### Details
 La prova passa se un errore non lascia transizioni parziali e il chiamante non riceve un successo; nei casi riusciti turno e occupazione cambiano insieme dopo il commit. La conferma di successo UI è emessa soltanto dopo il commit riuscito, senza equiparare la conclusione del modello alla conservazione dell'esito. Con commit fallito non arriva la conferma e si applica l'indisponibilità degli ingressi prevista dal prodotto. Fallisce se l'occupazione viene liberata prematuramente, se resta uno stato parziale o se un callback SDK conferma un esito non conservato.

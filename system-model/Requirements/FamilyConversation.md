@@ -36,7 +36,7 @@ Quando Ambrogio non può avviare l'elaborazione di un nuovo turno al momento del
   * type: requirement
 
 #### Contract References
-  * [Occupazione dell'installazione e ammissione dei turni](../Contracts/FamilyConversation.md#occupazione-dellinstallazione-e-ammissione-dei-turni)
+  * [Occupazione della conversazione e ammissione dei turni](../Contracts/FamilyConversation.md#occupazione-della-conversazione-e-ammissione-dei-turni)
 
 #### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
@@ -420,13 +420,13 @@ Quando la consegna di una notifica conversazionale fallisce per un guasto tecnic
 
 ### Disabilitazione degli ingressi durante un turno
 
-Quando l'installazione elabora un turno o ne comunica la risposta, i client devono impedire l'invio di nuovi turni tramite testo o voce nell'intera installazione fino alla conclusione o all'interruzione del turno in corso.
+Quando un client elabora un turno o ne riproduce la risposta, deve impedire nuovi turni nella medesima interazione fino alla conclusione o all'interruzione, senza bloccare gli ingressi di altre conversazioni.
 
 #### Metadata
   * type: requirement
 
 #### Contract References
-  * [Occupazione dell'installazione e ammissione dei turni](../Contracts/FamilyConversation.md#occupazione-dellinstallazione-e-ammissione-dei-turni)
+  * [Occupazione della conversazione e ammissione dei turni](../Contracts/FamilyConversation.md#occupazione-della-conversazione-e-ammissione-dei-turni)
 
 #### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
@@ -459,6 +459,20 @@ Quando Ambrogio viene riavviato, deve rendere nuovamente disponibili alla famigl
 
 #### Contract References
   * [Struttura testuale dello scambio](../Contracts/FamilyConversation.md#struttura-testuale-dello-scambio)
+
+#### Relations
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Elaborazione parallela di conversazioni diverse
+
+Quando riceve turni validi destinati a conversazioni diverse mentre è operativo, Ambrogio deve consentirne l'ammissione e l'elaborazione in parallelo senza attendere la conclusione dei turni delle altre conversazioni.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Occupazione della conversazione e ammissione dei turni](../Contracts/FamilyConversation.md#occupazione-della-conversazione-e-ammissione-dei-turni)
 
 #### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
@@ -805,7 +819,7 @@ Quando l'adapter dell'archivio salva o ricostruisce un istante della conversazio
 
 ### Precondizioni contestuali nel caso d'uso conversazionale
 
-Quando un turno supera la validazione dell'ingresso, il caso d'uso Application deve coordinare le precondizioni dipendenti dal contesto della conversazione tramite le proprie porte e interrompere il flusso con un rifiuto previsto quando esse non sono soddisfatte, lasciando al Domain gli invarianti del turno e all'archivio SQLite la garanzia atomica dell'unico turno attivo.
+Quando un turno supera la validazione dell'ingresso, il caso d'uso Application deve coordinare le precondizioni dipendenti dal contesto della conversazione tramite le proprie porte e interrompere il flusso con un rifiuto previsto quando esse non sono soddisfatte, lasciando al Domain gli invarianti del turno e all'archivio SQLite la garanzia atomica dell'unico turno attivo per conversazione.
 
 #### Metadata
   * type: requirement
@@ -911,9 +925,9 @@ Quando il server si avvia e trova turni conservati come «In elaborazione» senz
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Rifiuto dei turni concorrenti nell'installazione
+### Rifiuto dei turni concorrenti nella stessa conversazione
 
-Quando l'installazione ha un turno accettato il cui esito non è ancora conservato, Ambrogio deve rifiutare come esito previsto ogni nuovo turno proveniente da testo o voce, indipendentemente dal client e dalla conversazione, senza accettarlo né conservarlo.
+Quando una conversazione ha un turno accettato il cui esito non è ancora conservato, Ambrogio deve rifiutare come esito previsto ogni nuovo turno destinato alla stessa conversazione, da qualunque client o ingresso, senza accettarlo né conservarlo.
 
 #### Metadata
   * type: requirement
@@ -966,7 +980,7 @@ Quando il server prepara gli agenti attivi, deve cercare i rispettivi file JSON 
 
 ### Scritture atomiche dello stato dei turni
 
-Quando Ambrogio accetta, conclude o interrompe un turno, deve confermare insieme lo stato persistente del turno e l'occupazione dell'installazione in una transazione SQLite.
+Quando Ambrogio accetta, conclude o interrompe un turno, deve confermare insieme lo stato persistente del turno e l'occupazione della conversazione interessata in una transazione SQLite.
 
 #### Metadata
   * type: requirement
@@ -1006,7 +1020,7 @@ Quando un turno della chat testuale non può avviare la risposta SSE, il backend
 
 ### Rifiuto HTTP del turno concorrente
 
-Quando il backend riceve un turno valido della chat testuale e lo rifiuta perché l'installazione sta già elaborando un altro turno, deve rispondere con HTTP 409 e un messaggio pubblico sicuro nel corpo JSON di errore, senza avviare SSE né conservare il turno rifiutato.
+Quando il backend riceve un turno valido della chat testuale e lo rifiuta perché la stessa conversazione sta già elaborando un altro turno, deve rispondere con HTTP 409 e un messaggio pubblico sicuro nel corpo JSON di errore, senza avviare SSE né conservare il turno rifiutato.
 
 #### Metadata
   * type: requirement

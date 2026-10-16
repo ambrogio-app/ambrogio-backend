@@ -607,6 +607,9 @@ I file del codice di produzione devono seguire una convenzione esplicita e unifo
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [voice-route.adapter.ts](../../apps/server/src/adapters/in/voice-route.adapter.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
+  * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 

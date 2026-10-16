@@ -476,7 +476,7 @@ Quando riceve turni validi destinati a conversazioni diverse mentre è operativo
   * [Occupazione della conversazione e ammissione dei turni](../Contracts/FamilyConversation.md#occupazione-della-conversazione-e-ammissione-dei-turni)
 
 #### Relations
-  * satisfiedBy: [voice.ts](../../apps/server/src/composition/voice.ts)
+  * satisfiedBy: [voice-route.adapter.ts](../../apps/server/src/adapters/in/voice-route.adapter.ts)
   * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
@@ -771,7 +771,7 @@ Quando la famiglia richiede l'apertura di una nuova interazione vocale, Ambrogio
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [voice.ts](../../apps/server/src/composition/voice.ts)
+  * satisfiedBy: [voice-route.adapter.ts](../../apps/server/src/adapters/in/voice-route.adapter.ts)
   * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
   * satisfiedBy: [start-voice-conversation.use-case.ts](../../packages/conversations/src/application/start-voice-conversation.use-case.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)

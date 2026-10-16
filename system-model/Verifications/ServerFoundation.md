@@ -752,6 +752,11 @@ Il percorso in tabella è anche il nome atteso. Classificazione basata su respon
 
 Riesaminati import relativi, export, riferimenti dei test e collegamenti del modello aggiornati dalle rinomine MCP. Questa ispezione attesta la convenzione dei nomi e la regressione software pertinente; non sostituisce le dimostrazioni audio su hardware o la validazione generale del prodotto.
 
+#### Revisione della tracciabilità
+Revisione successiva al commit di implementazione `659ef97`: aggiornati i collegamenti alle implementazioni estratte. Reqvire validate: PASS; lint: nessun rilievo. Coverage: tutti i 177 requisiti foglia hanno una verifica collegata; questo dato non attesta l'esecuzione di tutte le verifiche. Traces conferma il percorso requisito dei nomi → questa ispezione.
+
+Change-impact rispetto alla revisione base propaga la modifica della capability e dell'obiettivo a 141 verifiche. Riesaminato il perimetro della modifica: nomi, import/export e spostamento dei confini voce; non cambiano contratti pubblici, porte Application, regole Domain, configurazione o dipendenze. Eseguite l'ispezione e la regressione software sopra registrate. Le altre verifiche pianificate e le dimostrazioni hardware mantengono il loro stato; non sono dichiarate superate da questo refactoring. La copertura implementativa complessiva resta parziale (48.3%), con lacune ulteriori fuori dal requisito dei nomi.
+
 #### Metadata
   * type: inspection-verification
 

@@ -534,7 +534,7 @@ Verificare che una release del backend renda disponibile nel registro l'immagine
 Su una release del backend, osservare l'esecuzione del workflow GitHub Actions e recuperare da GHCR il tag immagine corrispondente al tag Git.
 
 #### Details
-La verifica passa se il workflow avviato dal tag `v*` completa la build e la pubblicazione, `ghcr.io/adrianofoschi/ambrogio-backend:<tag Git>` è scaricabile con le credenziali previste dal deployment e il digest scaricato avvia il server con configurazione e archivio SQLite esterni. Fallisce se il tag manca, indica un'immagine non eseguibile o richiede Compose. La prova finale richiede una release effettivamente pubblicata.
+La verifica passa se il tag Git `vMAJOR.MINOR.PATCH` corrisponde alla versione del package server, il workflow verifica l'immagine prima del push e pubblica `ghcr.io/adrianofoschi/ambrogio-backend:<tag Git>` come pacchetto privato per `linux/amd64`. Con credenziali di lettura, il digest pubblicato deve essere scaricabile e avviare il server con configurazione e archivio SQLite esterni, senza Compose. Un tag diverso non deve pubblicare l'immagine. La prova finale richiede una release effettivamente pubblicata.
 
 #### Metadata
   * type: demonstration-verification

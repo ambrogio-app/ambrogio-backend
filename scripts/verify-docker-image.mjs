@@ -3,7 +3,8 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const image = 'ambrogio-server:verification';
+const existingImage = process.env.AMBROGIO_DOCKER_IMAGE;
+const image = existingImage || 'ambrogio-server:verification';
 const port = 34123;
 const temp = mkdtempSync(join(tmpdir(), 'ambrogio-docker-'));
 const config = join(temp, 'config');
@@ -28,7 +29,7 @@ try {
     llm: { provider: 'mistral', model: 'mistral-small-latest', apiKey: 'test-only-placeholder' },
   }));
 
-  docker('build', '--tag', image, '.');
+  if (!existingImage) docker('build', '--tag', image, '.');
   docker('run', '--rm', '--entrypoint', '/bin/sh', image, '-c',
     'test ! -e /etc/ambrogio/http.json && test ! -e /etc/ambrogio/conversations.json && test ! -e /var/lib/ambrogio/conversations.sqlite && /opt/piper/bin/piper --help >/dev/null && cd /workspace/packages/conversations && node -e "require(\'vosk-koffi\')"');
   container = docker('run', '--detach', '--rm',

@@ -149,7 +149,7 @@ Il percorso del file JSON di un componente attivo può essere indicato da una va
 
 ### Profilo di pubblicazione dell'immagine Docker del server
 
-Decisione concordata il 16 ottobre 2026: il backend pubblica l'immagine su GitHub Container Registry (`ghcr.io`) tramite GitHub Actions quando viene creato un tag Git di release che inizia con `v`. Il pacchetto OCI usa il nome `ghcr.io/adrianofoschi/ambrogio-backend` e riceve un tag immagine uguale al tag Git di release. Il workflow costruisce l'immagine dal Dockerfile del repository e usa il `GITHUB_TOKEN` del workflow per pubblicarla. Un commit ordinario su `main` non è un evento di pubblicazione.
+Decisione concordata il 16 ottobre 2026: il backend pubblica l'immagine su GitHub Container Registry (`ghcr.io`) tramite GitHub Actions quando viene creato un tag Git di release nel formato `vMAJOR.MINOR.PATCH`. La prima release è `v0.1.0`. La versione senza `v` corrisponde a `apps/server/package.json`. Il pacchetto OCI privato usa il nome `ghcr.io/adrianofoschi/ambrogio-backend` e riceve un tag immagine uguale al tag Git di release; non viene pubblicato un tag mobile `latest`. L'immagine supporta `linux/amd64`. Il workflow costruisce l'immagine dal Dockerfile del repository, la verifica prima del push e usa il `GITHUB_TOKEN` con permesso `packages: write` per pubblicarla. Un commit ordinario su `main` non è un evento di pubblicazione. L'immagine conserva le configurazioni JSON effettive, l'archivio SQLite e i modelli vocali fuori dal filesystem distribuito.
 
 #### Metadata
   * type: specification

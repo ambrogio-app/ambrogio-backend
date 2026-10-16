@@ -1,0 +1,62 @@
+name: Publish Docker image
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out release
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Validate release version
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Release tags must use vMAJOR.MINOR.PATCH" >&2
+            exit 1
+          fi
+          package_version=$(node -p "require('./apps/server/package.json').version")
+          if [[ "$package_version" != "${GITHUB_REF_NAME#v}" ]]; then
+            echo "Tag version and server package version differ" >&2
+            exit 1
+          fi
+          echo "IMAGE=ghcr.io/adrianofoschi/ambrogio-backend:${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+
+      - name: Build release image
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --platform linux/amd64 \
+            --label "org.opencontainers.image.version=$GITHUB_REF_NAME" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --tag "$IMAGE" .
+
+      - name: Verify release image
+        shell: bash
+        run: AMBROGIO_DOCKER_IMAGE="$IMAGE" node scripts/verify-docker-image.mjs
+
+      - name: Log in to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+
+      - name: Publish verified image
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker push "$IMAGE"
+          echo "Published $IMAGE" >> "$GITHUB_STEP_SUMMARY"

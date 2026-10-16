@@ -17,6 +17,8 @@ RUN pnpm build
 FROM node:24-bookworm-slim
 
 WORKDIR /workspace
+LABEL org.opencontainers.image.source="https://github.com/adrianofoschi/ambrogio-backend" \
+      org.opencontainers.image.licenses="MIT"
 RUN apt-get update && apt-get install -y --no-install-recommends python3 libgomp1 && rm -rf /var/lib/apt/lists/*
 COPY --from=build /opt/piper/ /opt/piper/
 COPY --from=build /workspace/package.json ./

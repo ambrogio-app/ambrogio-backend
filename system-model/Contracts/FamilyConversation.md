@@ -283,6 +283,9 @@ L'ammissione è atomica per identificativo di conversazione ed è condivisa dagl
 
 Decisione concordata il 16 ottobre 2026, da implementare e verificare: sostituisce il blocco globale dell'installazione. La migrazione ad AI SDK non dimostra da sola questa garanzia. Eventuali limiti globali di capacità richiedono una decisione separata. Il comportamento di indisponibilità globale già previsto per guasti di persistenza resta distinto dal normale conflitto tra turni.
 
+#### Realizzazione SQLite concordata
+L’occupazione è memorizzata nella riga della conversazione con il riferimento al turno attivo. Una migrazione incrementale trasferisce lo stato precedente senza perdere conversazioni o turni e rimuove la riga di occupazione globale. Le scritture locali brevi sono serializzate sulla connessione condivisa; questa attesa riguarda le transazioni, non una coda di turni in attesa di risposta. L’ammissione verifica atomicamente l’occupazione della conversazione; completamento e recupero liberano solo le occupazioni pertinenti. Generazione remota e streaming avvengono fuori dalla sezione di scrittura.
+
 #### Metadata
   * type: specification
 

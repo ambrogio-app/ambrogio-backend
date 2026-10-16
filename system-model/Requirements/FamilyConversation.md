@@ -475,6 +475,8 @@ Quando riceve turni validi destinati a conversazioni diverse mentre è operativo
   * [Occupazione della conversazione e ammissione dei turni](../Contracts/FamilyConversation.md#occupazione-della-conversazione-e-ammissione-dei-turni)
 
 #### Relations
+  * satisfiedBy: [voice.ts](../../apps/server/src/composition/voice.ts)
+  * satisfiedBy: [sqlite-conversation-write.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -986,6 +988,8 @@ Quando Ambrogio accetta, conclude o interrompe un turno, deve confermare insieme
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [migrations.ts](../../packages/conversations/src/adapters/out/sqlite/migrations.ts)
+  * satisfiedBy: [recover-pending-turns.ts](../../packages/conversations/src/adapters/out/sqlite/recover-pending-turns.ts)
   * satisfiedBy: [sqlite-conversation-write.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---

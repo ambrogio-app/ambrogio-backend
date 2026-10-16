@@ -5,7 +5,7 @@ import { SystemCurrentTime } from '@ambrogio/conversations/adapters/out/system-c
 import { UuidIdentifiers } from '@ambrogio/conversations/adapters/out/uuid-identifiers';
 import { createStartVoiceConversation } from '@ambrogio/conversations/application/start-voice-conversation';
 import type { ProduceConversationReply } from '@ambrogio/conversations/application/produce-conversation-reply';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { assembleExchangeTurn, type PreparedConversations } from './conversations.js';
 
 type WebSocket = Parameters<typeof attachVoiceSession>[0];
@@ -25,31 +25,39 @@ export function registerVoiceRoute(server: FastifyInstance, prepared: PreparedCo
   let accepting = true;
   const sessions = new Set<WebSocket>();
   const live = new Map<WebSocket, ReturnType<typeof attachVoiceSession>>();
-  server.get(voiceRoute, { websocket: true }, socket => {
+  const admitted = new WeakMap<FastifyRequest, string>();
+  server.get(voiceRoute, { websocket: true, async preValidation(request, response) {
+    if (!accepting) return response.code(503).send({ error: 'Voice unavailable.' });
+    try {
+      const started = await start();
+      if (!started.ok || !accepting) {
+        return response.code(503).send({ error: 'Voice unavailable.' });
+      }
+      admitted.set(request, started.value.conversationId);
+    } catch (error) {
+      server.log.error({ event: 'voice.start_failed', err: error }, 'Voice start failed');
+      return response.code(503).send({ error: 'Voice unavailable.' });
+    }
+  } }, (socket, request) => {
     if (!accepting) { socket.close(1013, 'Server stopping'); return; }
+    const conversationId = admitted.get(request);
+    if (!conversationId) { socket.close(1011, 'Voice admission missing'); return; }
+    admitted.delete(request);
     sessions.add(socket);
     socket.once('close', () => {
       sessions.delete(socket);
       live.delete(socket);
     });
     socket.on('error', () => { /* close event owns cleanup */ });
-    void (async () => {
-      const started = await start();
-      if (!started.ok) {
-        socket.send(`TurnRejected ${JSON.stringify(started.error)}`);
-        socket.close(1013, 'Voice interaction unavailable');
-        return;
-      }
-      if (!accepting || socket.readyState !== socket.OPEN) return;
+    try {
       const { stt, tts } = components(config);
-      const session = attachVoiceSession(socket, { conversationId: started.value.conversationId,
-        exchange, stt, tts, inactivityMs: config.inactivityMs });
+      const session = attachVoiceSession(socket, { conversationId,
+        exchange, stt, tts, language: prepared.language });
       live.set(socket, session);
-      socket.send(`Ready ${JSON.stringify({ conversationId: started.value.conversationId })}`);
-    })().catch(error => {
+    } catch (error) {
       server.log.error({ event: 'voice.start_failed', err: error }, 'Voice start failed');
       socket.close(1011, 'Voice unavailable');
-    });
+    }
   });
   return { async stopAccepting() {
     accepting = false;

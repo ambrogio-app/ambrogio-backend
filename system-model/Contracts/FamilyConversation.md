@@ -33,6 +33,17 @@ Prima di attivare gli ingressi conversazionali, il server confronta lo schema SQ
   * define: [Migrazione automatica dell'archivio delle conversazioni](../Requirements/FamilyConversation.md#migrazione-automatica-dellarchivio-delle-conversazioni)
 ---
 
+### Chiusura coordinata con la riproduzione
+
+Il satellite osserva `isAssistantSpeaking` e la fine effettiva dei campioni riprodotti dal proprio driver audio. Per una risposta che non attende replica chiude la chiamata dopo la riproduzione; per una risposta che attende replica avvia localmente l'intervallo di inattività e chiude la chiamata alla scadenza. Il backend non deduce la fine della riproduzione dalla generazione TTS e non richiede un comando di conferma dal client. Alla chiusura della WebSocket, anche anticipata, l'ingresso backend chiude la sessione vocale e ne rilascia le risorse; le altre interazioni restano attive.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Chiusura dell'interazione vocale](../Requirements/FamilyConversation.md#chiusura-dellinterazione-vocale)
+---
+
 ### Ciclo di vita della risorsa SQLite conversazionale
 
 La composition root del server costruisce e possiede una risorsa SQLite/Kysely condivisa dagli adapter interessati. Gli adapter ricevono l'accesso necessario per le proprie operazioni e non ne controllano la chiusura; Domain e Application non ricevono handle tecnici SQLite o Kysely. Prima di abilitare il lavoro che dipende dall'archivio, il proprietario ne verifica l'apertura e completa le migrazioni richieste. Se la preparazione fallisce, chiude la risorsa già creata. Al termine del processo, la chiude dopo il completamento o l'interruzione delle operazioni che la usano. Non si prescrive un pool PostgreSQL né un numero di connessioni fisiche SQLite.
@@ -44,20 +55,9 @@ La composition root del server costruisce e possiede una risorsa SQLite/Kysely c
   * define: [Proprietà della risorsa SQLite conversazionale](../Requirements/FamilyConversation.md#proprietà-della-risorsa-sqlite-conversazionale)
 ---
 
-### Conferma della fine della risposta parlata
-
-Il client vocale osserva la riproduzione della risposta tramite lo stato Micdrop `isAssistantSpeaking`. Quando tale stato passa da vero a falso dopo una risposta vocale, invia al server un evento di fine riproduzione riferito all'interazione attiva. Il backend usa la ricezione di questo evento come inizio dell'intervallo configurato di inattività; la sola fine della generazione TTS o dell'invio dei blocchi audio non avvia l'intervallo. Il VAD delimita il parlato della famiglia in ingresso e non determina la fine della riproduzione della risposta. L'ingresso ignora eventi duplicati o riferiti a un'interazione non attiva. Alla chiusura della connessione vocale l'interazione associata viene chiusa.
-
-#### Metadata
-  * type: specification
-
-#### Relations
-  * define: [Chiusura per inattività vocale](../Requirements/FamilyConversation.md#chiusura-per-inattività-vocale)
----
-
 ### Configurazione facoltativa dell'interazione vocale
 
-Un'installazione può non abilitare l'ingresso vocale. L'assenza della variabile di percorso `AMBROGIO_VOICE_CONFIG_PATH` lo disabilita: la composition root non legge file vocali e non costruisce né avvia Micdrop, Vosk o Piper. La chat testuale HTTP resta utilizzabile con le proprie dipendenze. Quando il percorso è presente, il file JSON vocale richiede `voskModelPath` (directory del modello), `piperModelPath` (file ONNX della voce) e `piperBinaryPath` (eseguibile Piper); ammette `inactivityMs` intero positivo, predefinito a 15000. I percorsi dei modelli devono essere leggibili all'avvio, il binario deve essere eseguibile e il file JSON della voce Piper adiacente al modello ONNX deve essere leggibile. Un valore mancante o invalido impedisce l'attivazione della voce prima dell'ascolto del server. I file di configurazione e i modelli restano esterni all'immagine del backend.
+Un'installazione può non abilitare l'ingresso vocale. L'assenza della variabile di percorso `AMBROGIO_VOICE_CONFIG_PATH` lo disabilita: la composition root non legge file vocali e non costruisce né avvia Micdrop, Vosk o Piper. La chat testuale HTTP resta utilizzabile con le proprie dipendenze. Quando il percorso è presente, il file JSON vocale richiede `voskModelPath` (directory del modello), `piperModelPath` (file ONNX della voce) e `piperBinaryPath` (eseguibile Piper). L'intervallo di inattività della replica è configurato dal satellite. I percorsi dei modelli devono essere leggibili all'avvio, il binario deve essere eseguibile e il file JSON della voce Piper adiacente al modello ONNX deve essere leggibile. Un valore mancante o invalido impedisce l'attivazione della voce prima dell'ascolto del server. I file di configurazione e i modelli restano esterni all'immagine del backend.
 
 #### Metadata
   * type: specification
@@ -200,11 +200,9 @@ Ogni nuova conversazione e ogni nuovo turno ricevono un UUID versione 4. Il caso
 
 ### Indicazione di attesa della replica vocale
 
-La prima versione del satellite riconosce localmente la wake word. Dopo la risposta parlata permette una replica senza nuova wake word soltanto quando il backend indica che attende una risposta della famiglia. Durante la generazione della risposta l'agente produce insieme al testo un valore booleano strutturato chiamato `expectsReply`, senza una seconda chiamata al modello dedicata alla classificazione. Il satellite non lo deduce dalla punteggiatura.
+La prima versione del satellite riconosce localmente la wake word. Durante la generazione della risposta, il caso d'uso condiviso riceve dall'agente il booleano strutturato `expectsReply` insieme al testo, senza una seconda chiamata al modello dedicata alla classificazione. Il backend consegna la risposta tramite il messaggio Micdrop standard `Message` con `role: "assistant"` e `metadata.expectsReply` booleano obbligatorio. Il valore vale soltanto per quella risposta e non si deduce dalla punteggiatura.
 
-Il backend consegna la risposta parlata mediante il messaggio Micdrop già esistente `Message` con `role: "assistant"`. Il suo oggetto `metadata` contiene `expectsReply` come booleano obbligatorio. Il valore vale soltanto per quella risposta; la correlazione deriva dalla stessa WebSocket e dal singolo turno vocale attivo per conversazione. Audio e messaggio possono terminare in ordini diversi: il client applica la decisione soltanto dopo aver ricevuto sia il messaggio valido sia la fine effettiva della riproduzione, che conferma con `Played`. Se `expectsReply` è `true`, la replica usa la stessa interazione entro l'intervallo di inattività. Se è `false`, l'interazione termina e il satellite torna alla wake word. Se il messaggio manca o contiene un `expectsReply` assente o non booleano, il satellite non apre una replica; alla fine della riproduzione attende al massimo l'intervallo di inattività configurato per un messaggio valido arrivato tardi, poi chiude l'interazione e torna alla wake word. Un messaggio arrivato dopo la chiusura è ignorato. Il backend non presenta un valore mancante come un `false` valido.
-
-Questa estensione non è implementata dal backend al commit b223daac073fe217cf6609d2173394f7f5bd6d04. La compatibilità richiede codice e prove di integrazione contro una revisione successiva; il solo aggiornamento del modello non la dimostra.
+Audio e messaggio possono terminare in ordini diversi. Il satellite applica la decisione soltanto dopo aver ricevuto il messaggio valido e completato la riproduzione: se `true`, ammette una replica senza wake word sulla stessa connessione entro l'intervallo locale configurato; se `false`, chiude la connessione e torna alla wake word. Se il messaggio manca o il valore non è booleano, non apre una replica, attende al massimo l'intervallo locale per un messaggio valido tardivo e poi chiude. Un messaggio arrivato dopo la chiusura è ignorato. Il backend non presenta un valore mancante come `false` valido. Il tipo di messaggio Micdrop prevede metadati applicativi: https://micdrop.dev/docs/client/display-conversation-messages .
 
 #### Metadata
   * type: specification
@@ -419,9 +417,11 @@ L'adapter HTTP possiede la verifica della forma dell'input e della decodifica de
 
 ### Protocollo vocale del prodotto
 
-L'ingresso vocale del backend usa Micdrop e WebSocket per trasportare l'audio della famiglia e la risposta parlata in streaming. La WebSocket vocale condivide la porta di ascolto del server HTTP ed è raggiungibile sul percorso `/api/voice`. Ogni nuova connessione WebSocket rappresenta un avvio esplicito di una nuova interazione vocale: il server crea una nuova conversazione, comunica `Ready` seguito da un oggetto JSON con `conversationId` e solo allora il client comincia a trasmettere il turno. Un avvio rifiutato comunica `TurnRejected` con `kind` e chiude la connessione. Le interazioni vocali di client diversi restano indipendenti: l'avvio di una nuova WebSocket non chiude le connessioni già attive. Ogni interazione mantiene la propria conversazione e il proprio timer di inattività. Le repliche immediate usano la stessa connessione e la conversazione attiva. Quando scade l'inattività configurata, il server chiude l'interazione e la sua WebSocket. Il client invia i comandi Micdrop `StartSpeaking` e `StopSpeaking` con campioni audio PCM16 mono a 16 kHz in frame binari mentre la persona parla; il server li consegna progressivamente a Vosk, che trascrive durante il parlato senza attendere la clip completa. Dopo la transizione di `isAssistantSpeaking` da vero a falso, il client invia il comando testuale `Played` sulla stessa connessione; il comando ha effetto una sola volta per ciascuna risposta parlata. Il server segnala il rifiuto previsto di un turno con `TurnRejected` seguito da un oggetto JSON contenente `kind`. Il prodotto definisce il proprio contratto di integrazione del canale vocale: il protocollo e il satellite dello spike non sono vincoli di compatibilità e il satellite potrà richiedere un aggiornamento separato.
+L'ingresso vocale usa il protocollo WebSocket documentato da Micdrop sul percorso `/api/voice`, condividendo la porta del server HTTP. L'ammissione e la creazione della nuova conversazione avvengono prima dell'upgrade WebSocket: dopo l'apertura il client Micdrop può trasmettere il primo turno senza attendere un messaggio aggiuntivo. Un avvio rifiutato non produce una sessione vocale operativa. Ogni connessione ammessa appartiene a una nuova conversazione; connessioni di client diversi restano indipendenti. Le repliche usano la stessa connessione e conversazione finché il satellite la mantiene aperta.
 
-Un Agent Micdrop personalizzato, contenuto negli adapter tecnici del package «Conversazioni», traduce la trascrizione in input del caso d'uso conversazionale esistente e consegna progressivamente il testo della risposta a Micdrop per la sintesi vocale. Il caso d'uso e l'archivio comuni ai turni HTTP restano autorità per ammissione atomica, stato ed esito del turno. Domain e Application non importano Micdrop e non ricevono oggetti del suo protocollo. Micdrop non mantiene un secondo archivio persistente della conversazione.
+Il client Micdrop invia `StartSpeaking`, frame audio PCM16 mono a 16 kHz e `StopSpeaking`; MicdropServer consegna progressivamente l'audio a Vosk e trasporta le risposte parlate. Per i risultati ordinari della chiamata si usano i messaggi standard Micdrop, fra cui `Message`, `SkipAnswer` ed `EndCall`. `Ready`, `TurnRejected` e `Played` non fanno parte del protocollo adottato. I metadati `Message.metadata.expectsReply` sono l'estensione di contenuto già ammessa dal tipo di messaggio Micdrop. Il satellite decide localmente quando chiudere dopo la riproduzione o l'inattività; alla chiusura della WebSocket il backend rilascia la sessione.
+
+Un Agent Micdrop personalizzato negli adapter tecnici del package «Conversazioni» traduce la trascrizione in input del caso d'uso `exchangeTurn` condiviso con HTTP/chat e consegna progressivamente il testo della risposta alla sintesi vocale. Il caso d'uso e l'archivio comuni restano autorità per ammissione atomica, stato, rifiuto ed esito del turno: Micdrop delimita e trasporta il parlato, senza mantenere un secondo archivio persistente o decidere i turni di business. Se il caso d'uso rifiuta un turno vocale, l'adapter presenta il rifiuto con una risposta parlata tramite il normale `Message` e audio Micdrop, con `metadata.expectsReply: false`; il turno rifiutato non viene conservato. Il testo sicuro e localizzato corrisponde alla causa applicativa (`occupied`, `conversation_not_found`, `temporarily_unavailable`) e usa lo stesso significato dei messaggi pubblici della chat testuale. La chiusura avviene dopo la riproduzione sul satellite. Domain e Application non importano Micdrop. Fonti del protocollo e dei messaggi: https://micdrop.dev/docs/server/protocol e https://micdrop.dev/docs/server/auth-and-parameters .
 
 #### Metadata
   * type: specification
@@ -532,13 +532,13 @@ Per ogni mutazione dell'archivio, la porta di scrittura definisce la postcondizi
 
 ### Stati dell'interazione vocale
 
-L'interazione vocale ha gli stati `chiusa` e `attiva`. Nello stato `attiva` è associata a una sola conversazione. Un avvio esplicito ammesso crea una nuova conversazione per l'interazione vocale interessata. Interazioni appartenenti a client diversi restano indipendenti: l'avvio, la risposta o la chiusura di una non sostituisce lo stato delle altre. L'ammissione rispetta il singolo turno attivo per conversazione, senza bloccare conversazioni diverse. Una replica arrivata prima della scadenza dell'intervallo di inattività appartiene alla conversazione attiva. L'intervallo decorre dalla fine della risposta vocale e ricomincia dopo ogni risposta vocale. Alla scadenza, l'interazione passa a `chiusa`; un successivo turno vocale richiede un nuovo avvio e una nuova conversazione. Il valore iniziale dell'intervallo è 15 secondi ed è configurabile con un valore positivo.
+L'interazione vocale backend ha gli stati `chiusa` e `attiva`. Un avvio esplicito ammesso crea una nuova conversazione prima dell'upgrade della WebSocket. Una connessione attiva è associata a una sola conversazione; connessioni diverse restano indipendenti. L'ammissione di ogni turno resta nel caso d'uso condiviso fra voce e chat, con al massimo un turno attivo per conversazione. Le repliche sulla stessa connessione appartengono alla conversazione attiva. Il satellite, dopo la risposta riprodotta, mantiene aperta la connessione soltanto se il backend ha indicato una replica attesa, e la chiude alla scadenza del proprio intervallo di inattività. Il backend passa a `chiusa` quando la WebSocket si chiude; un turno successivo richiede un nuovo avvio e una nuova conversazione.
 
 #### Metadata
   * type: state
 
 #### Relations
-  * define: [Chiusura per inattività vocale](../Requirements/FamilyConversation.md#chiusura-per-inattività-vocale)
+  * define: [Chiusura dell'interazione vocale](../Requirements/FamilyConversation.md#chiusura-dellinterazione-vocale)
 ---
 
 ### Stati persistenti dei turni conversazionali

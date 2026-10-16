@@ -2,12 +2,19 @@ import { MicdropServer, type STT, type TTS } from '@micdrop/server';
 import { PiperTTS } from '@micdrop/piper';
 import type { WebSocket } from 'ws';
 import type { ExchangeTurn } from '../../../application/exchange-turn.use-case.js';
+import type { BeginTurnRejection } from '../../../application/begin-turn.use-case.js';
 import type { VoiceConfig } from '../../out/voice-config.js';
 import { ConversationVoiceAgent } from './conversation-agent.js';
 import { VoskStreamingSTT } from './vosk-streaming-stt.js';
 
 export const voiceRoute = '/api/voice';
-export const playbackFinishedCommand = 'Played';
+
+type Language = 'en' | 'it';
+const rejectionMessages: Record<BeginTurnRejection['kind'], Record<Language, string>> = {
+  occupied: { en: 'Another turn is in progress.', it: 'Un altro turno è in corso.' },
+  conversation_not_found: { en: 'Conversation not found.', it: 'Conversazione non trovata.' },
+  temporarily_unavailable: { en: 'Service temporarily unavailable.', it: 'Servizio temporaneamente non disponibile.' },
+};
 
 export function createVoiceComponents(config: VoiceConfig): Readonly<{ stt: STT; tts: TTS }> {
   return { stt: new VoskStreamingSTT(config.voskModelPath),
@@ -20,72 +27,19 @@ export function attachVoiceSession(socket: WebSocket, dependencies: Readonly<{
   exchange: ExchangeTurn;
   stt: STT;
   tts: TTS;
-  inactivityMs: number;
+  language: Language;
 }>): Readonly<{ close(): void }> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  let playbackPending = false;
-  let playbackFinished = false;
-  let expectsReply: boolean | undefined;
   let closed = false;
   let stopping = false;
-  let deadline: number | undefined;
-  let pausedRemaining: number | undefined;
-  const clearTimer = () => {
-    if (timer) clearTimeout(timer);
-    timer = undefined;
-  };
-  const armTimer = (milliseconds: number) => {
-    clearTimer();
-    deadline = Date.now() + milliseconds;
-    timer = setTimeout(() => socket.close(1000, 'Voice interaction inactive'), milliseconds);
-    timer.unref?.();
-  };
-  const resumeTimer = () => {
-    if (pausedRemaining === undefined || closed) return;
-    armTimer(pausedRemaining);
-    pausedRemaining = undefined;
-  };
-  const finishPlayback = () => {
-    if (!playbackPending || !playbackFinished || closed) return;
-    playbackPending = false;
-    playbackFinished = false;
-    if (expectsReply === true) armTimer(dependencies.inactivityMs);
-    else socket.close(1000, 'Voice interaction complete');
-  };
   const agent = new ConversationVoiceAgent({
     conversationId: dependencies.conversationId,
     exchange: dependencies.exchange,
     rejected(error) {
-      if (!closed) socket.send(`TurnRejected ${JSON.stringify(error)}`);
-      resumeTimer();
-    },
-    responseReady(value) {
-      pausedRemaining = undefined;
-      expectsReply = value;
-      playbackPending = true;
-      finishPlayback();
+      return rejectionMessages[error.kind][dependencies.language];
     },
     shouldInterrupt() { return stopping; },
   });
-  dependencies.stt.on('Transcript', transcript => {
-    if (!transcript.trim()) resumeTimer();
-  });
-  socket.on('message', (data, isBinary) => {
-    if (isBinary || closed) return;
-    const command = data.toString();
-    if (command === 'StartSpeaking') {
-      if (deadline !== undefined) pausedRemaining = Math.max(0, deadline - Date.now());
-      clearTimer();
-      deadline = undefined;
-      playbackPending = false;
-      playbackFinished = false;
-      expectsReply = undefined;
-    } else if (command === playbackFinishedCommand) {
-      playbackFinished = true;
-      finishPlayback();
-    }
-  });
-  socket.once('close', () => { closed = true; clearTimer(); });
+  socket.once('close', () => { closed = true; });
   new MicdropServer(socket, { agent, stt: dependencies.stt, tts: dependencies.tts,
     partialMessages: true });
   return { close() { stopping = true; if (!closed) socket.close(1001, 'Server stopping'); } };

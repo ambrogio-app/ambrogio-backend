@@ -10,8 +10,7 @@ export class ConversationVoiceAgent extends Agent {
   constructor(private readonly optionsForVoice: Readonly<{
     conversationId: string;
     exchange: ExchangeTurn;
-    rejected(error: BeginTurnRejection): void;
-    responseReady(expectsReply: boolean | undefined): void;
+    rejected(error: BeginTurnRejection): string;
     shouldInterrupt(): boolean;
   }>) {
     super({ systemPrompt: '' });
@@ -40,7 +39,10 @@ export class ConversationVoiceAgent extends Agent {
       }
     } }, this.optionsForVoice.shouldInterrupt, true);
     if (!result.ok) {
-      this.optionsForVoice.rejected(result.error);
+      if (generation !== this.generation) return;
+      const spoken = this.optionsForVoice.rejected(result.error);
+      stream.write(spoken);
+      this.addAssistantMessage(spoken, { expectsReply: false });
       return;
     }
     if (generation !== this.generation) return;
@@ -52,7 +54,6 @@ export class ConversationVoiceAgent extends Agent {
       const expectsReply = result.value.outcome === 'answered'
         ? result.value.expectsReply : false;
       this.addAssistantMessage(spoken, { expectsReply });
-      this.optionsForVoice.responseReady(expectsReply);
     }
   }
 }

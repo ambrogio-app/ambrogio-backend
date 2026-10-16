@@ -109,6 +109,18 @@ Il package del modulo business «Conversazioni» deve collocare il codice Domain
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
+### Chiusura dell'interazione vocale
+
+Quando il client vocale chiude la WebSocket dopo una risposta conclusiva o per inattività, Ambrogio deve terminare la corrispondente interazione vocale e rilasciarne le risorse. La chiusura di un'interazione non deve interrompere quelle degli altri client.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [voice-session.ts](../../packages/conversations/src/adapters/in/voice/voice-session.ts)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
 ### Chiusura della risorsa SQLite conversazionale
 
 Quando il server termina normalmente o fallisce durante l'avvio dopo aver creato la risorsa SQLite/Kysely dell'archivio, il proprietario deve chiudere la risorsa dopo le operazioni che ne dipendono.
@@ -120,19 +132,6 @@ Quando il server termina normalmente o fallisce durante l'avvio dopo aver creato
   * [Ciclo di vita della risorsa SQLite conversazionale](../Contracts/FamilyConversation.md#ciclo-di-vita-della-risorsa-sqlite-conversazionale)
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
-### Chiusura per inattività vocale
-
-Quando trascorre l'intervallo di inattività configurato senza repliche vocali, Ambrogio deve terminare l'interazione vocale attiva.
-
-#### Metadata
-  * type: requirement
-
-#### Relations
-  * satisfiedBy: [voice-session.ts](../../packages/conversations/src/adapters/in/voice/voice-session.ts)
-  * satisfiedBy: [voice-config.ts](../../packages/conversations/src/adapters/out/voice-config.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -766,13 +765,10 @@ Quando Application del modulo «Conversazioni» dichiara una porta verso una cap
 
 ### Nuovo avvio dell'interazione vocale
 
-Quando la famiglia avvia esplicitamente una nuova interazione vocale, Ambrogio deve creare una nuova conversazione.
+Quando la famiglia richiede l'apertura di una nuova interazione vocale, Ambrogio deve ammettere e creare una nuova conversazione prima che la WebSocket possa consegnare audio alla sessione. Se l'avvio è rifiutato, la connessione vocale non deve essere resa operativa.
 
 #### Metadata
   * type: requirement
-
-#### Contract References
-  * [Stati dell'interazione vocale](../Contracts/FamilyConversation.md#stati-dellinterazione-vocale)
 
 #### Relations
   * satisfiedBy: [voice.ts](../../apps/server/src/composition/voice.ts)

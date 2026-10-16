@@ -8,7 +8,7 @@ const directories: string[] = [];
 afterEach(async () => { await Promise.all(directories.splice(0).map(path =>
   rm(path, { recursive: true, force: true }))); });
 
-it('validates local voice resources and defaults to fifteen seconds', async () => {
+it('validates local voice resources', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'ambrogio-voice-config-'));
   directories.push(directory);
   const model = join(directory, 'vosk');
@@ -22,10 +22,8 @@ it('validates local voice resources and defaults to fifteen seconds', async () =
   await chmod(binary, 0o755);
   await writeFile(config, JSON.stringify({ voskModelPath: model, piperModelPath: voice,
     piperBinaryPath: binary }));
-  expect((await loadVoiceConfig(config)).inactivityMs).toBe(15_000);
-  await writeFile(config, JSON.stringify({ voskModelPath: model, piperModelPath: voice,
-    piperBinaryPath: binary, inactivityMs: 2500 }));
-  expect((await loadVoiceConfig(config)).inactivityMs).toBe(2500);
+  expect(await loadVoiceConfig(config)).toEqual({ voskModelPath: model,
+    piperModelPath: voice, piperBinaryPath: binary });
   await rm(`${voice}.json`);
   await expect(loadVoiceConfig(config)).rejects.toThrow('Voice resources are unavailable');
 });

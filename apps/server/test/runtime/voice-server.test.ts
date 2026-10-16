@@ -3,6 +3,7 @@ import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Readable } from 'node:stream';
+import type { FastifyInstance } from 'fastify';
 import { expect, test } from 'vitest';
 import type { createVoiceComponents } from '@ambrogio/conversations/adapters/in/voice/voice-session';
 import { prepareConfiguredConversations } from '../../src/composition/conversations.js';
@@ -22,7 +23,9 @@ async function until(predicate: () => boolean) {
   throw new Error('Expected voice state did not arrive');
 }
 
-async function connect(url: string) {
+async function connect(url: string, server: FastifyInstance) {
+  const before = new Set(((await server.inject({ method: 'GET', url: '/api/conversations' }))
+    .json().items as Array<{ id: string }>).map(item => item.id));
   const ws = new WebSocket(url);
   ws.binaryType = 'arraybuffer';
   const messages: Array<string | ArrayBuffer> = [];
@@ -31,9 +34,12 @@ async function connect(url: string) {
     ws.addEventListener('open', () => resolve(), { once: true });
     ws.addEventListener('error', () => reject(new Error('WebSocket failed')), { once: true });
   });
-  await until(() => messages.some(message => typeof message === 'string' && message.startsWith('Ready ')));
-  const ready = messages.find(message => typeof message === 'string' && message.startsWith('Ready ')) as string;
-  return { ws, messages, conversationId: (JSON.parse(ready.slice(6)) as { conversationId: string }).conversationId };
+  const after = (await server.inject({ method: 'GET', url: '/api/conversations' }))
+    .json().items as Array<{ id: string }>;
+  const created = after.filter(item => !before.has(item.id));
+  expect(created).toHaveLength(1);
+  expect(messages.some(message => typeof message === 'string' && message.startsWith('Ready '))).toBe(false);
+  return { ws, messages, conversationId: created[0]!.id };
 }
 
 function speak(ws: WebSocket) {
@@ -75,7 +81,7 @@ test('WebSocket voice and HTTP share the archive, admission, and HTTP listener',
     async *produceVoice() { replies += 1; if (replies === 1) await pending.waiting;
       yield `risposta ${replies}`;
       yield { kind: 'reply_expectation' as const, expectsReply: replies === 1 }; } },
-  { voskModelPath: '/unused', piperModelPath: '/unused', piperBinaryPath: '/unused', inactivityMs: 60 },
+  { voskModelPath: '/unused', piperModelPath: '/unused', piperBinaryPath: '/unused' },
   components);
   const { server } = built;
   let first: Awaited<ReturnType<typeof connect>> | undefined;
@@ -83,13 +89,13 @@ test('WebSocket voice and HTTP share the archive, admission, and HTTP listener',
   let stopped = false;
   try {
     const origin = await server.listen({ host: '127.0.0.1', port: 0 });
-    first = await connect(origin.replace('http:', 'ws:') + '/api/voice');
+    first = await connect(origin.replace('http:', 'ws:') + '/api/voice', server);
     speak(first.ws);
     await until(() => replies === 1);
     const busy = await server.inject({ method: 'POST', url: '/api/conversations/turns',
       payload: { text: 'turno HTTP simultaneo', conversationId: first.conversationId } });
     expect(busy.statusCode).toBe(409);
-    const otherVoice = await connect(origin.replace('http:', 'ws:') + '/api/voice');
+    const otherVoice = await connect(origin.replace('http:', 'ws:') + '/api/voice', server);
     expect(otherVoice.conversationId).not.toBe(first.conversationId);
     expect(first.ws.readyState).toBe(WebSocket.OPEN);
     otherVoice.ws.close();
@@ -100,7 +106,6 @@ test('WebSocket voice and HTTP share the archive, admission, and HTTP listener',
     await until(() => first!.messages.some(message => message instanceof ArrayBuffer));
     await until(() => first!.messages.some(message => typeof message === 'string'
       && message.includes('"expectsReply":true')));
-    first.ws.send('Played');
     speak(first.ws);
     await until(() => (first!.messages.filter(message => message instanceof ArrayBuffer)).length === 2);
     await until(() => first!.messages.some(message => typeof message === 'string'
@@ -109,9 +114,10 @@ test('WebSocket voice and HTTP share the archive, admission, and HTTP listener',
       url: `/api/conversations/${first.conversationId}` });
     expect(history.json().turns.map((turn: { text: string }) => turn.text))
       .toEqual(['prima domanda', '  seconda  domanda  ']);
-    first.ws.send('Played');
+    expect(first.ws.readyState).toBe(WebSocket.OPEN);
+    first.ws.close();
     await until(() => first!.ws.readyState === WebSocket.CLOSED);
-    second = await connect(origin.replace('http:', 'ws:') + '/api/voice');
+    second = await connect(origin.replace('http:', 'ws:') + '/api/voice', server);
     expect(second.conversationId).not.toBe(first.conversationId);
     speak(second.ws);
     await until(() => second!.messages.some(message => message instanceof ArrayBuffer));
@@ -122,7 +128,7 @@ test('WebSocket voice and HTTP share the archive, admission, and HTTP listener',
     const httpTurn = server.inject({ method: 'POST', url: '/api/conversations/turns',
       payload: { text: 'turno HTTP in corso' } });
     await until(() => replies === 4);
-    const parallelVoice = await connect(origin.replace('http:', 'ws:') + '/api/voice');
+    const parallelVoice = await connect(origin.replace('http:', 'ws:') + '/api/voice', server);
     expect(parallelVoice.conversationId).not.toBe(first.conversationId);
     parallelVoice.ws.close();
     httpPending.release();

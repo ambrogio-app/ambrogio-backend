@@ -6,7 +6,6 @@ export type VoiceConfig = Readonly<{
   voskModelPath: string;
   piperModelPath: string;
   piperBinaryPath: string;
-  inactivityMs: number;
 }>;
 
 export async function loadVoiceConfig(filename: string): Promise<VoiceConfig> {
@@ -22,15 +21,10 @@ export async function loadVoiceConfig(filename: string): Promise<VoiceConfig> {
       throw new ProjectError('Invalid voice configuration file');
     }
   }
-  const inactivityMs = fields.inactivityMs ?? 15_000;
-  if (typeof inactivityMs !== 'number' || !Number.isSafeInteger(inactivityMs) || inactivityMs <= 0) {
-    throw new ProjectError('Invalid voice inactivity interval');
-  }
   const config: VoiceConfig = {
     voskModelPath: fields.voskModelPath as string,
     piperModelPath: fields.piperModelPath as string,
     piperBinaryPath: fields.piperBinaryPath as string,
-    inactivityMs,
   };
   try {
     if (!(await stat(config.voskModelPath)).isDirectory()) throw new Error('not a directory');

@@ -125,10 +125,10 @@ Raggruppa le verifiche della trascrizione, della risposta parlata, della conserv
 
 ### Dimostrazione della segnalazione di replica attesa
 
-Verifica pianificata dell'estensione; nessuna esecuzione o evidenza positiva è ancora disponibile.
+Verifica pianificata dell'integrazione; nessuna esecuzione o evidenza positiva è ancora disponibile.
 
 #### Details
-Usare casi controllati in cui la risposta chiede una replica e casi in cui conclude lo scambio. Accertare che l'agente produca il booleano strutturato `expectsReply` durante la generazione della stessa risposta, senza una seconda chiamata al modello dedicata alla classificazione. Per entrambe le risposte il backend deve inviare un `Message` Micdrop dell'assistente con `metadata.expectsReply` booleano riferito a quella risposta, preservando l'audio e il testo. Riprodurre fino alla fine e verificare che la replica senza wake word sia accettata nella stessa interazione soltanto per `true`; per `false` la connessione termina dopo `Played`. Provare messaggio arrivato prima e dopo la fine dell'audio, campo assente e tipo invalido: il satellite non deve inferire dal testo e deve chiudere entro l'intervallo configurato quando non compare un valore valido. La prova deve usare il backend reale della revisione compatibile e un client conforme; un mock da solo non dimostra la compatibilità tra repository.
+Usare casi controllati in cui la risposta chiede una replica e casi in cui conclude lo scambio. Accertare che l'agente produca il booleano strutturato `expectsReply` durante la stessa generazione della risposta, senza una seconda chiamata al modello dedicata alla classificazione. Il backend deve inviare un `Message` Micdrop dell'assistente con `metadata.expectsReply` booleano per entrambe le risposte, preservando audio e testo. Provare messaggio ricevuto prima e dopo la fine dell'audio, campo assente e tipo invalido: il satellite non inferisce dal testo, ammette la replica solo con `true` e chiude dopo la riproduzione con `false` o entro l'intervallo locale per metadati mancanti o invalidi. La prova richiede backend reale e client conforme; un mock da solo non dimostra la compatibilità.
 
 #### Metadata
   * type: demonstration-verification
@@ -157,10 +157,10 @@ La prova passa se entrambi gli ingressi testuali si avviano e completano un turn
 
 ### Prova del ciclo dell'interazione vocale
 
-Avviare esplicitamente due interazioni vocali su due connessioni WebSocket distinte; mentre la prima è ancora attiva verificare che rimanga aperta; nella seconda inviare una replica prima della scadenza e tentare un turno dopo la scadenza dell'intervallo configurato. Simulare la conferma del client dopo la fine della riproduzione della risposta parlata, un evento duplicato e una disconnessione anticipata.
+Aprire due connessioni vocali distinte dopo ammissione backend; tenere attiva la prima mentre la seconda avvia e completa un turno. Simulare la chiusura della WebSocket da parte del satellite dopo una risposta conclusiva, dopo il suo intervallo locale di inattività e durante una disconnessione anticipata.
 
 #### Details
-La prova passa se ogni nuova WebSocket ammessa usa una nuova conversazione senza chiudere le altre interazioni attive, la replica tempestiva usa la connessione e la conversazione attive, il timer parte dalla conferma di fine riproduzione, gli eventi duplicati non lo riavviano, allo scadere dell'intervallo la WebSocket viene chiusa e il turno successivo richiede una nuova connessione con una nuova conversazione. La disconnessione anticipata chiude l'interazione. Verificare il valore iniziale di 15 secondi e ripetere con un valore positivo configurato diverso. Fallisce se una replica attraversa il confine di scadenza, se un avvio esplicito riusa una conversazione precedente o se la sola conclusione della sintesi avvia il timer.
+La prova passa se l'ammissione e la creazione della conversazione precedono l'upgrade WebSocket, ogni connessione ammessa usa una nuova conversazione senza chiudere le altre, la replica tempestiva sulla stessa connessione resta nella stessa conversazione e la chiusura di una connessione rilascia soltanto la sua sessione. Un avvio rifiutato non espone una WebSocket vocale operativa e non produce una conversazione attiva. Nessun turno può perdersi tra upgrade e costruzione di MicdropServer. Non sono inviati né richiesti `Ready`, `TurnRejected` o `Played`. Il backend non avvia un timer sulla sola conclusione della sintesi; l'intervallo locale di 15 secondi e la sua configurazione sono verificati nel satellite.
 
 #### Metadata
   * type: test-verification
@@ -169,8 +169,7 @@ La prova passa se ogni nuova WebSocket ammessa usa una nuova conversazione senza
   * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
   * satisfiedBy: [voice-server.test.ts](../../apps/server/test/runtime/voice-server.test.ts)
   * satisfiedBy: [voice-session.test.ts](../../packages/conversations/test/adapters/in/voice-session.test.ts)
-  * satisfiedBy: [voice-config.test.ts](../../packages/conversations/test/adapters/out/voice-config.test.ts)
-  * verify: [Chiusura per inattività vocale](../Requirements/FamilyConversation.md#chiusura-per-inattività-vocale)
+  * verify: [Chiusura dell'interazione vocale](../Requirements/FamilyConversation.md#chiusura-dellinterazione-vocale)
   * verify: [Nuovo avvio dell'interazione vocale](../Requirements/FamilyConversation.md#nuovo-avvio-dellinterazione-vocale)
   * verify: [Replica vocale nella conversazione attiva](../Requirements/FamilyConversation.md#replica-vocale-nella-conversazione-attiva)
 ---
@@ -458,7 +457,7 @@ La prova passa se l'ingresso della stessa interazione impedisce un nuovo turno f
 Preparare una conversazione esistente A e inviare contemporaneamente due turni verso A tramite client diversi e, quando abilitati, ingressi HTTP e voce. Ritardare la produzione del turno ammesso. Inviare nel frattempo turni verso B e richieste che creano conversazioni nuove.
 
 #### Details
-Nella stessa conversazione viene ammesso al massimo un turno; gli altri sono rifiutati senza persistenza né coda. Il rifiuto HTTP usa 409, Content-Type application/json e un campo error sicuro, senza SSE. B e le conversazioni nuove possono progredire e concludersi mentre A è ancora in elaborazione. Storici, identificativi, frammenti e risultati restano separati. Dopo la conclusione di A si può ammettere un nuovo turno in A. Ripetere dopo errore e dopo interruzione con riavvio; un completamento tardivo non modifica un turno interrotto e non libera l'occupazione di un altro turno. Verifica aggiornata da eseguire; i file collegati devono essere adeguati e rieseguiti.
+Nella stessa conversazione viene ammesso al massimo un turno; gli altri sono rifiutati senza persistenza né coda. Il rifiuto HTTP usa 409, Content-Type application/json e un campo error sicuro, senza SSE. Il rifiuto vocale viene pronunciato come risposta Micdrop ordinaria con `Message.metadata.expectsReply: false`, senza `TurnRejected`; il satellite chiude dopo averla riprodotta. La mappatura del rifiuto applicativo conserva la causa e produce un testo pubblico sicuro nella lingua configurata. B e le conversazioni nuove possono progredire e concludersi mentre A è ancora in elaborazione. Storici, identificativi, frammenti e risultati restano separati. Dopo la conclusione di A si può ammettere un nuovo turno in A. Ripetere dopo errore e dopo interruzione con riavvio; un completamento tardivo non modifica un turno interrotto e non libera l'occupazione di un altro turno. Verifica aggiornata da eseguire; i file collegati devono essere adeguati e rieseguiti.
 
 #### Metadata
   * type: test-verification

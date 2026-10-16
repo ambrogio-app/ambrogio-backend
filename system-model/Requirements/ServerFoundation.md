@@ -718,6 +718,7 @@ Quando viene creato un tag di release `v*` del backend, il progetto deve pubblic
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [publish-image.yml](../../.github/workflows/publish-image.yml)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
   * verifiedBy: [Dimostrazione della pubblicazione dell'immagine Docker del server](../Verifications/ServerFoundation.md#dimostrazione-della-pubblicazione-dellimmagine-docker-del-server)
 ---

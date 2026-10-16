@@ -402,6 +402,8 @@ Quando produce una risposta vocale, il backend deve determinare se essa richiede
   * [Indicazione di attesa della replica vocale](../Contracts/FamilyConversation.md#indicazione-di-attesa-della-replica-vocale)
 
 #### Relations
+  * satisfiedBy: [ai-sdk-reply.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.ts)
+  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -900,7 +902,9 @@ Mentre un'interazione vocale è attiva, quando la famiglia formula una replica i
   * [Stati dell'interazione vocale](../Contracts/FamilyConversation.md#stati-dellinterazione-vocale)
 
 #### Relations
+  * satisfiedBy: [voice-server.test.ts](../../apps/server/test/runtime/voice-server.test.ts)
   * satisfiedBy: [conversation-agent.ts](../../packages/conversations/src/adapters/in/voice/conversation-agent.ts)
+  * satisfiedBy: [voice-session.ts](../../packages/conversations/src/adapters/in/voice/voice-session.ts)
   * satisfiedBy: [sqlite-conversation-write.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
@@ -1097,6 +1101,9 @@ Quando comunica una risposta vocale, il backend deve fornire al satellite un’i
   * [Protocollo vocale del prodotto](../Contracts/FamilyConversation.md#protocollo-vocale-del-prodotto)
 
 #### Relations
+  * satisfiedBy: [conversation-agent.ts](../../packages/conversations/src/adapters/in/voice/conversation-agent.ts)
+  * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
+  * satisfiedBy: [voice-session.test.ts](../../packages/conversations/test/adapters/in/voice-session.test.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 

@@ -86,6 +86,10 @@ test('WebSocket voice and HTTP share the archive, admission, and HTTP listener',
     const busy = await server.inject({ method: 'POST', url: '/api/conversations/turns',
       payload: { text: 'turno HTTP simultaneo', conversationId: first.conversationId } });
     expect(busy.statusCode).toBe(409);
+    const otherVoice = await connect(origin.replace('http:', 'ws:') + '/api/voice');
+    expect(otherVoice.conversationId).not.toBe(first.conversationId);
+    expect(first.ws.readyState).toBe(WebSocket.OPEN);
+    otherVoice.ws.close();
     const pendingHistory = await server.inject({ method: 'GET',
       url: `/api/conversations/${first.conversationId}` });
     expect(pendingHistory.json().turns[0].text).toBe('prima domanda');

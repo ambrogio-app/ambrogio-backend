@@ -710,6 +710,18 @@ Quando un componente del server decide definitivamente l'esito esterno di un gua
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
+### Pubblicazione dell'immagine Docker del server
+
+Quando viene creato un tag di release `v*` del backend, il progetto deve pubblicare l'immagine Docker eseguibile del server in un registro accessibile all'installazione homelab.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+  * verifiedBy: [Dimostrazione della pubblicazione dell'immagine Docker del server](../Verifications/ServerFoundation.md#dimostrazione-della-pubblicazione-dellimmagine-docker-del-server)
+---
+
 ### Rappresentazione di err nel log JSON
 
 Quando il logger del server emette la riga JSON di un log diagnostico definitivo HTTP, la riga deve contenere una rappresentazione serializzata del campo `err` conforme al profilo controllato di serializzazione.

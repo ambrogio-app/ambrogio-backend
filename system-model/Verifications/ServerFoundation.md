@@ -521,6 +521,29 @@ La prova passa se il messaggio pubblico non contiene nessuno dei marcatori tecni
   * verify: [Separazione del messaggio pubblico dalla diagnosi tecnica](../Requirements/ServerFoundation.md#separazione-del-messaggio-pubblico-dalla-diagnosi-tecnica)
 ---
 
+### Verifica della pubblicazione dell'immagine Docker del server
+
+Verificare che una release del backend renda disponibile nel registro l'immagine utilizzabile nell'homelab e collegata al tag Git che l'ha prodotta.
+
+#### Metadata
+  * type: verification-objective
+---
+
+### Dimostrazione della pubblicazione dell'immagine Docker del server
+
+Su una release del backend, osservare l'esecuzione del workflow GitHub Actions e recuperare da GHCR il tag immagine corrispondente al tag Git.
+
+#### Details
+La verifica passa se il workflow avviato dal tag `v*` completa la build e la pubblicazione, `ghcr.io/adrianofoschi/ambrogio-backend:<tag Git>` è scaricabile con le credenziali previste dal deployment e il digest scaricato avvia il server con configurazione e archivio SQLite esterni. Fallisce se il tag manca, indica un'immagine non eseguibile o richiede Compose. La prova finale richiede una release effettivamente pubblicata.
+
+#### Metadata
+  * type: demonstration-verification
+
+#### Relations
+  * derivedFrom: [Verifica della pubblicazione dell'immagine Docker del server](#verifica-della-pubblicazione-dellimmagine-docker-del-server)
+  * verify: [Pubblicazione dell'immagine Docker del server](../Requirements/ServerFoundation.md#pubblicazione-dellimmagine-docker-del-server)
+---
+
 ### Verifica delle integrazioni senza eventi differiti
 
 Raggruppa i controlli sulla scelta di non usare eventi di dominio persistenti per consegne successive nella prima versione.

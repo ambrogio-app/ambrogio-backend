@@ -1,5 +1,5 @@
 {
-  "name": "ambrogio-app",
+  "name": "ambrogio-backend",
   "private": true,
   "packageManager": "pnpm@12.11.2",
   "scripts": {

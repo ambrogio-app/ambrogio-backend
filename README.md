@@ -1,4 +1,4 @@
-# ambrogio-app
+# ambrogio-backend
 
 Repository del backend Ambrogio con modello ingegneristico Reqvire dedicato. Ambrogio è pensato come assistente domestico open source con [licenza MIT](LICENSE), installabile nel proprio homelab. Le ulteriori scelte sull'organizzazione del codice applicativo saranno definite in base alle capability del prodotto.
 

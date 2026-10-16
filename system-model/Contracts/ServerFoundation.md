@@ -147,6 +147,17 @@ Il percorso del file JSON di un componente attivo può essere indicato da una va
   * define: [Caricamento iniziale dei JSON di configurazione](../Requirements/ServerFoundation.md#caricamento-iniziale-dei-json-di-configurazione)
 ---
 
+### Profilo di pubblicazione dell'immagine Docker del server
+
+Decisione concordata il 16 ottobre 2026: il backend pubblica l'immagine su GitHub Container Registry (`ghcr.io`) tramite GitHub Actions quando viene creato un tag Git di release che inizia con `v`. Il pacchetto OCI usa il nome `ghcr.io/adrianofoschi/ambrogio-backend` e riceve un tag immagine uguale al tag Git di release. Il workflow costruisce l'immagine dal Dockerfile del repository e usa il `GITHUB_TOKEN` del workflow per pubblicarla. Un commit ordinario su `main` non è un evento di pubblicazione.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Pubblicazione dell'immagine Docker del server](../Requirements/ServerFoundation.md#pubblicazione-dellimmagine-docker-del-server)
+---
+
 ### Profilo di uscita dei log tecnici
 
 Ogni evento diagnostico tecnico emesso da Pino è una singola riga JSON strutturata. Il processo server scrive per impostazione predefinita le righe su `stdout`. La configurazione del deployment determina la destinazione finale dei flussi, senza fissarla nel formato degli eventi.

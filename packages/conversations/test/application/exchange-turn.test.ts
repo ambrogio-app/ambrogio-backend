@@ -101,6 +101,34 @@ describe('conversation exchange use case', () => {
     expect(deps.outcomes).toEqual([{ kind: 'answer', text: 'Buongiorno' }]);
   });
 
+  it('returns the structured reply expectation with the saved voice answer', async () => {
+    const deps = setup();
+    const exchange = createExchangeTurn({ ...deps, reply: {
+      async *produce() { throw new Error('text producer must not run'); },
+      async *produceVoice() {
+        yield 'Vuoi ';
+        yield 'altro?';
+        yield { kind: 'reply_expectation', expectsReply: true };
+      },
+    } });
+    expect(await exchange({ text: '  domanda  ' }, undefined, undefined, true)).toEqual({
+      ok: true, value: { conversationId, turnId, outcome: 'answered', expectsReply: true },
+    });
+    expect(deps.outcomes).toEqual([{ kind: 'answer', text: 'Vuoi altro?' }]);
+  });
+
+  it('concludes a voice turn as failed when the structured flag is absent', async () => {
+    const deps = setup();
+    const exchange = createExchangeTurn({ ...deps, reply: {
+      async *produce() { throw new Error('text producer must not run'); },
+      async *produceVoice() { yield 'Risposta?'; },
+    } });
+    expect(await exchange({ text: '  domanda  ' }, undefined, undefined, true)).toEqual({
+      ok: true, value: { conversationId, turnId, outcome: 'failed', error: englishFailure },
+    });
+    expect(deps.outcomes).toEqual([{ kind: 'error', message: englishFailure }]);
+  });
+
   it('continues after the observer disconnects and records a safe error after a partial reply', async () => {
     const deps = setup();
     const reply: ProduceConversationReply = {

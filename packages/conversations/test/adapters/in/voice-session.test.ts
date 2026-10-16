@@ -58,7 +58,7 @@ describe('Micdrop voice interaction adapter', () => {
       inputs.push(input);
       await observer?.delta?.('risposta');
       return { ok: true, value: { conversationId: input.conversationId!, turnId: String(inputs.length),
-        outcome: 'answered' } };
+        outcome: 'answered', expectsReply: inputs.length === 1 } };
     };
     attachVoiceSession(socket as unknown as WebSocket, { conversationId: 'voice-1', exchange, stt, tts,
       inactivityMs: 30 });
@@ -66,6 +66,7 @@ describe('Micdrop voice interaction adapter', () => {
     await until(() => tts.spoken.length === 1);
     expect(inputs).toEqual([{ text: 'prima domanda', conversationId: 'voice-1' }]);
     expect(tts.spoken).toEqual(['risposta']);
+    expect(socket.sent).toContain('Message {"role":"assistant","content":"risposta","metadata":{"expectsReply":true}}');
     expect(stt.chunks).toHaveLength(1);
     socket.receive('Played');
     socket.receive('Played');
@@ -77,8 +78,49 @@ describe('Micdrop voice interaction adapter', () => {
     ]);
     expect(socket.closed).toBe(false);
     socket.receive('Played');
-    speak(socket); // an unusable follow-up cannot keep an inactive session open forever
     await until(() => socket.closed);
+  });
+
+  it('closes after playback when the reply flag is missing', async () => {
+    const socket = new Socket();
+    const exchange: ExchangeTurn = async (input, observer) => {
+      await observer?.delta?.('Risposta?');
+      return { ok: true, value: { conversationId: input.conversationId!, turnId: 'one',
+        outcome: 'answered' } };
+    };
+    attachVoiceSession(socket as unknown as WebSocket, { conversationId: 'voice-3', exchange,
+      stt: new Transcriber(['domanda']), tts: new Synthesizer(), inactivityMs: 30 });
+    speak(socket);
+    await until(() => socket.sent.some(message => typeof message === 'string'
+      && message.startsWith('Message {"role":"assistant"')));
+    expect(socket.sent).toContain('Message {"role":"assistant","content":"Risposta?","metadata":{}}');
+    socket.receive('Played');
+    await until(() => socket.closed);
+  });
+
+  it('applies the reply flag when playback finishes before the assistant message arrives', async () => {
+    const socket = new Socket();
+    let release!: () => void;
+    const pending = new Promise<void>(resolve => { release = resolve; });
+    let markStarted!: () => void;
+    const started = new Promise<void>(resolve => { markStarted = resolve; });
+    const exchange: ExchangeTurn = async (input, observer) => {
+      await observer?.delta?.('Finito.');
+      markStarted();
+      await pending;
+      return { ok: true, value: { conversationId: input.conversationId!, turnId: 'one',
+        outcome: 'answered', expectsReply: false } };
+    };
+    const tts = new Synthesizer();
+    attachVoiceSession(socket as unknown as WebSocket, { conversationId: 'voice-4', exchange,
+      stt: new Transcriber(['domanda']), tts, inactivityMs: 30 });
+    speak(socket);
+    await started;
+    socket.receive('Played');
+    expect(socket.closed).toBe(false);
+    release();
+    await until(() => socket.closed);
+    expect(socket.sent).toContain('Message {"role":"assistant","content":"Finito.","metadata":{"expectsReply":false}}');
   });
 
   it('creates no exchange for unusable transcription and reports a turn admission rejection', async () => {

@@ -71,7 +71,10 @@ test('WebSocket voice and HTTP share the archive, admission, and HTTP listener',
   const built = await buildConversationServer({ host: '127.0.0.1', port: 0,
     allowedOrigins: [], publicHttps: false }, prepared,
   { async *produce() { replies += 1; if (replies === 1) await pending.waiting;
-    if (replies === 4) await httpPending.waiting; yield `risposta ${replies}`; } },
+    if (replies === 4) await httpPending.waiting; yield `risposta ${replies}`; },
+    async *produceVoice() { replies += 1; if (replies === 1) await pending.waiting;
+      yield `risposta ${replies}`;
+      yield { kind: 'reply_expectation' as const, expectsReply: replies === 1 }; } },
   { voskModelPath: '/unused', piperModelPath: '/unused', piperBinaryPath: '/unused', inactivityMs: 60 },
   components);
   const { server } = built;
@@ -95,9 +98,13 @@ test('WebSocket voice and HTTP share the archive, admission, and HTTP listener',
     expect(pendingHistory.json().turns[0].text).toBe('prima domanda');
     pending.release();
     await until(() => first!.messages.some(message => message instanceof ArrayBuffer));
+    await until(() => first!.messages.some(message => typeof message === 'string'
+      && message.includes('"expectsReply":true')));
     first.ws.send('Played');
     speak(first.ws);
     await until(() => (first!.messages.filter(message => message instanceof ArrayBuffer)).length === 2);
+    await until(() => first!.messages.some(message => typeof message === 'string'
+      && message.includes('"expectsReply":false')));
     const history = await server.inject({ method: 'GET',
       url: `/api/conversations/${first.conversationId}` });
     expect(history.json().turns.map((turn: { text: string }) => turn.text))

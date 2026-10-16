@@ -36,6 +36,73 @@ async function collect(stream: AsyncIterable<string>): Promise<string[]> {
   return result;
 }
 
+async function collectParts<T>(stream: AsyncIterable<T>): Promise<T[]> {
+  const result: T[] = [];
+  for await (const part of stream) result.push(part);
+  return result;
+}
+
+test('voice response streams an answer and a validated English reply flag in one model call', async () => {
+  const model = scripted({ parts: textParts('{"answer":"Do you need anything else?","expectsReply":true}'),
+    reason: 'stop' });
+  const reply = new AiSdkOrchestratorReply(settings, [], model);
+  expect(await collectParts(reply.produceVoice(history))).toEqual([
+    'Do you need anything else?', { kind: 'reply_expectation', expectsReply: true },
+  ]);
+  expect(model.doStreamCalls).toHaveLength(1);
+  expect(model.doStreamCalls[0]?.prompt[0]).toMatchObject({ role: 'system',
+    content: expect.stringContaining('Set expectsReply to true') });
+});
+
+test('voice answer is delivered incrementally while structured output is still arriving', async () => {
+  const model = scripted({ parts: [{ type: 'text-start', id: 'text-1' },
+    { type: 'text-delta', id: 'text-1', delta: '{"answer":"Hello' },
+    { type: 'text-delta', id: 'text-1', delta: ' world","expectsReply":false}' },
+    { type: 'text-end', id: 'text-1' }], reason: 'stop' });
+  const reply = new AiSdkOrchestratorReply(settings, [], model);
+  expect(await collectParts(reply.produceVoice(history))).toEqual([
+    'Hello', ' world', { kind: 'reply_expectation', expectsReply: false },
+  ]);
+});
+
+test('specialist keeps tool use and voice answer in the same reply workflow', async () => {
+  const model = scripted(
+    { parts: [callPart('mcp_0', { key: 'answer' })], reason: 'tool-calls' },
+    { parts: textParts('{"answer":"Here it is.","expectsReply":false}'), reason: 'stop' },
+  );
+  const reply = new AiSdkToolAgentReply(settings, [{ name: 'lookup',
+    inputSchema: { type: 'object', properties: { key: { type: 'string' } },
+      required: ['key'] } }], { async callTool() {
+    return { isError: false, content: [{ type: 'text', text: 'found' }] };
+  } }, 1, model);
+  expect(await collectParts(reply.produceVoice(history))).toEqual([
+    'Here it is.', { kind: 'reply_expectation', expectsReply: false },
+  ]);
+  expect(model.doStreamCalls).toHaveLength(2);
+});
+
+test('voice delegation takes the specialist answer and reply flag', async () => {
+  const model = scripted({ parts: [callPart('delegate_0', { task: 'Ask a question' })],
+    reason: 'tool-calls' });
+  const reply = new AiSdkOrchestratorReply(settings, [{ id: 'helper', description: 'Help',
+    reply: { async *produce() { yield 'unused'; }, async *produceVoice(_history, task) {
+      expect(task).toBe('Ask a question');
+      yield 'Question?';
+      yield { kind: 'reply_expectation' as const, expectsReply: true };
+    } } }], model);
+  expect(await collectParts(reply.produceVoice(history))).toEqual([
+    'Question?', { kind: 'reply_expectation', expectsReply: true },
+  ]);
+  expect(model.doStreamCalls).toHaveLength(1);
+});
+
+test('voice producer rejects a response without a boolean reply flag', async () => {
+  const model = scripted({ parts: textParts('{"answer":"Question?"}'), reason: 'stop' });
+  const reply = new AiSdkOrchestratorReply(settings, [], model);
+  await expect(collectParts(reply.produceVoice(history))).rejects.toThrow();
+  expect(model.doStreamCalls).toHaveLength(1);
+});
+
 test('orchestrator streams a direct reply with instructions and persisted history', async () => {
   const model = scripted({ parts: textParts('Direct reply'), reason: 'stop' });
   const reply = new AiSdkOrchestratorReply(settings, [], model);
@@ -125,5 +192,28 @@ test('AI SDK Mistral provider sends the selected model and key to its default en
     expect(seen[0]?.authorization).toBe('Bearer fake-key');
     expect(seen[0]?.body).toMatchObject({ model: 'mistral-small-latest', stream: true,
       temperature: 0.2, max_tokens: 128 });
+  } finally { vi.unstubAllGlobals(); }
+});
+
+test('Mistral voice request carries the structured answer and reply flag schema', async () => {
+  const requests: unknown[] = [];
+  vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+    const request = new Request(input, init);
+    requests.push(JSON.parse(await request.text()) as unknown);
+    const event = { id: 'controlled-voice', object: 'chat.completion.chunk', created: 0,
+      model: 'mistral-small-latest', choices: [{ index: 0,
+        delta: { content: '{"answer":"Hello.","expectsReply":false}' }, finish_reason: 'stop' }] };
+    return new Response(`data: ${JSON.stringify(event)}\n\ndata: [DONE]\n\n`, {
+      status: 200, headers: { 'content-type': 'text/event-stream' },
+    });
+  });
+  try {
+    const reply = new AiSdkOrchestratorReply(settings, []);
+    expect(await collectParts(reply.produceVoice(history))).toEqual([
+      'Hello.', { kind: 'reply_expectation', expectsReply: false },
+    ]);
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({ model: 'mistral-small-latest', stream: true,
+      response_format: { type: 'json_schema' } });
   } finally { vi.unstubAllGlobals(); }
 });

@@ -6,13 +6,14 @@ import type { ConversationHistory, ConversationHistoryRead } from './conversatio
 import type { ProduceConversationReply } from './produce-conversation-reply.js';
 
 export type ExchangeTurnSuccess =
-  | Readonly<{ conversationId: string; turnId: string; outcome: 'answered' }>
+  | Readonly<{ conversationId: string; turnId: string; outcome: 'answered'; expectsReply?: boolean }>
   | Readonly<{ conversationId: string; turnId: string; outcome: 'failed'; error: string }>
   | Readonly<{ conversationId: string; turnId: string; outcome: 'interrupted' }>;
 export type ExchangeTurn = (input: BeginTurnInput, observer?: Readonly<{
   admitted?(conversationId: string, turnId: string): void | Promise<void>;
   delta?(text: string): void | Promise<void>;
-}>, shouldInterrupt?: () => boolean) => Promise<Result<ExchangeTurnSuccess, BeginTurnRejection>>;
+}>, shouldInterrupt?: () => boolean,
+  requireReplyExpectation?: boolean) => Promise<Result<ExchangeTurnSuccess, BeginTurnRejection>>;
 
 async function notify(call: (() => void | Promise<void>) | undefined): Promise<void> {
   try {
@@ -28,7 +29,7 @@ export function createExchangeTurn(dependencies: Readonly<{
   failureMessage: string;
 }>): ExchangeTurn {
   const failureMessage = dependencies.failureMessage;
-  return async (input, observer, shouldInterrupt = () => false) => {
+  return async (input, observer, shouldInterrupt = () => false, requireReplyExpectation = false) => {
     const admitted = await dependencies.begin(input);
     if (!admitted.ok) return admitted;
     const { conversationId, turnId } = admitted.value;
@@ -59,11 +60,23 @@ export function createExchangeTurn(dependencies: Readonly<{
     if (shouldInterrupt()) return interrupted();
 
     let answer = '';
+    let expectsReply: boolean | undefined;
     try {
-      for await (const text of dependencies.reply.produce(history)) {
+      const parts = requireReplyExpectation
+        ? dependencies.reply.produceVoice?.(history) : dependencies.reply.produce(history);
+      if (!parts) throw new ProjectError('Voice reply expectation unavailable');
+      for await (const part of parts) {
         if (shouldInterrupt()) return interrupted();
-        answer += text;
-        await notify(observer?.delta && (() => observer.delta!(text)));
+        if (typeof part === 'string') {
+          answer += part;
+          await notify(observer?.delta && (() => observer.delta!(part)));
+        } else if (part.kind === 'reply_expectation' && expectsReply === undefined
+          && typeof part.expectsReply === 'boolean') {
+          expectsReply = part.expectsReply;
+        } else throw new ProjectError('Invalid voice reply expectation');
+      }
+      if (requireReplyExpectation && expectsReply === undefined) {
+        throw new ProjectError('Missing voice reply expectation');
       }
     } catch {
       if (shouldInterrupt()) return interrupted();
@@ -74,6 +87,7 @@ export function createExchangeTurn(dependencies: Readonly<{
     const completed = await dependencies.complete({ turnId, outcome: { kind: 'answer', text: answer } });
     if (!completed.ok && shouldInterrupt()) return interrupted();
     if (!completed.ok || completed.value.status !== 'answered') throw new ProjectError('Admitted turn could not be completed');
-    return { ok: true, value: { conversationId, turnId, outcome: 'answered' } };
+    return { ok: true, value: { conversationId, turnId, outcome: 'answered',
+      ...(expectsReply === undefined ? {} : { expectsReply }) } };
   };
 }

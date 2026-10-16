@@ -24,6 +24,8 @@ export function attachVoiceSession(socket: WebSocket, dependencies: Readonly<{
 }>): Readonly<{ close(): void }> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let playbackPending = false;
+  let playbackFinished = false;
+  let expectsReply: boolean | undefined;
   let closed = false;
   let stopping = false;
   let deadline: number | undefined;
@@ -43,6 +45,13 @@ export function attachVoiceSession(socket: WebSocket, dependencies: Readonly<{
     armTimer(pausedRemaining);
     pausedRemaining = undefined;
   };
+  const finishPlayback = () => {
+    if (!playbackPending || !playbackFinished || closed) return;
+    playbackPending = false;
+    playbackFinished = false;
+    if (expectsReply === true) armTimer(dependencies.inactivityMs);
+    else socket.close(1000, 'Voice interaction complete');
+  };
   const agent = new ConversationVoiceAgent({
     conversationId: dependencies.conversationId,
     exchange: dependencies.exchange,
@@ -50,7 +59,12 @@ export function attachVoiceSession(socket: WebSocket, dependencies: Readonly<{
       if (!closed) socket.send(`TurnRejected ${JSON.stringify(error)}`);
       resumeTimer();
     },
-    responseReady() { pausedRemaining = undefined; playbackPending = true; },
+    responseReady(value) {
+      pausedRemaining = undefined;
+      expectsReply = value;
+      playbackPending = true;
+      finishPlayback();
+    },
     shouldInterrupt() { return stopping; },
   });
   dependencies.stt.on('Transcript', transcript => {
@@ -64,9 +78,11 @@ export function attachVoiceSession(socket: WebSocket, dependencies: Readonly<{
       clearTimer();
       deadline = undefined;
       playbackPending = false;
-    } else if (command === playbackFinishedCommand && playbackPending) {
-      playbackPending = false;
-      armTimer(dependencies.inactivityMs);
+      playbackFinished = false;
+      expectsReply = undefined;
+    } else if (command === playbackFinishedCommand) {
+      playbackFinished = true;
+      finishPlayback();
     }
   });
   socket.once('close', () => { closed = true; clearTimer(); });

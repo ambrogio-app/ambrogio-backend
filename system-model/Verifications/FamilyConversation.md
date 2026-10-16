@@ -157,10 +157,10 @@ La prova passa se entrambi gli ingressi testuali si avviano e completano un turn
 
 ### Prova del ciclo dell'interazione vocale
 
-Avviare esplicitamente due interazioni vocali su due connessioni WebSocket distinte; nella seconda inviare una replica prima della scadenza e tentare un turno dopo la scadenza dell'intervallo configurato. Simulare la conferma del client dopo la fine della riproduzione della risposta parlata, un evento duplicato e una disconnessione anticipata.
+Avviare esplicitamente due interazioni vocali su due connessioni WebSocket distinte; mentre la prima è ancora attiva verificare che rimanga aperta; nella seconda inviare una replica prima della scadenza e tentare un turno dopo la scadenza dell'intervallo configurato. Simulare la conferma del client dopo la fine della riproduzione della risposta parlata, un evento duplicato e una disconnessione anticipata.
 
 #### Details
-La prova passa se ogni nuova WebSocket ammessa usa una nuova conversazione, la replica tempestiva usa la connessione e la conversazione attive, il timer parte dalla conferma di fine riproduzione, gli eventi duplicati non lo riavviano, allo scadere dell'intervallo la WebSocket viene chiusa e il turno successivo richiede una nuova connessione con una nuova conversazione. La disconnessione anticipata chiude l'interazione. Verificare il valore iniziale di 15 secondi e ripetere con un valore positivo configurato diverso. Fallisce se una replica attraversa il confine di scadenza, se un avvio esplicito riusa una conversazione precedente o se la sola conclusione della sintesi avvia il timer.
+La prova passa se ogni nuova WebSocket ammessa usa una nuova conversazione senza chiudere le altre interazioni attive, la replica tempestiva usa la connessione e la conversazione attive, il timer parte dalla conferma di fine riproduzione, gli eventi duplicati non lo riavviano, allo scadere dell'intervallo la WebSocket viene chiusa e il turno successivo richiede una nuova connessione con una nuova conversazione. La disconnessione anticipata chiude l'interazione. Verificare il valore iniziale di 15 secondi e ripetere con un valore positivo configurato diverso. Fallisce se una replica attraversa il confine di scadenza, se un avvio esplicito riusa una conversazione precedente o se la sola conclusione della sintesi avvia il timer.
 
 #### Metadata
   * type: test-verification

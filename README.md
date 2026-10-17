@@ -74,6 +74,8 @@ node apps/server/dist/main.js
 
 Il [Dockerfile](Dockerfile) costruisce il server con Debian e Node.js 24 in due fasi. I file JSON effettivi e l'archivio SQLite sono forniti tramite mount esterni; non entrano nel contesto copiato nell'immagine. Docker Compose non è richiesto.
 
+L'immagine include le voci Piper italiane **Riccardo x_low** e **Paola medium** in `/opt/ambrogio/voices`; provenienza, licenza e hash sono documentati in [voices/README.md](voices/README.md). Nel JSON vocale, `piperModelPath` seleziona rispettivamente `/opt/ambrogio/voices/it_IT-riccardo-x_low.onnx` oppure `/opt/ambrogio/voices/it_IT-paola-medium.onnx`. La scelta è comune a tutti i satelliti e diventa attiva al riavvio del backend. Per sostituire il catalogo, montare una directory di voci in sola lettura su `/opt/ambrogio/voices` e indicare nel JSON il modello presente nel mount con il relativo `.onnx.json`. Vosk, che trascrive l'audio ricevuto, usa ancora una directory esterna distinta.
+
 La prova ripetibile è `node scripts/verify-docker-image.mjs`. Esegue `docker build` e `docker run` senza Compose, monta JSON di prova e una directory SQLite esterna, verifica che tali file non siano presenti nell'immagine, richiede `GET /api/conversations` con Node e controlla la creazione dell'archivio nel mount. Il 16 ottobre 2026 la prova è passata: HTTP `200`, archivio esterno creato; l'immagine locale risultante è `sha256:9a79d8e48cfe5b14a3b03f157d05716be9616ce779bd9e64dd22d0cd9f41d941`.
 
 ### Pubblicazione versionata

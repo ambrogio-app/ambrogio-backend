@@ -9,6 +9,7 @@ const port = 34123;
 const temp = mkdtempSync(join(tmpdir(), 'ambrogio-docker-'));
 const config = join(temp, 'config');
 const data = join(temp, 'data');
+const customVoices = join(temp, 'custom-voices');
 let container;
 
 function docker(...args) {
@@ -18,6 +19,8 @@ function docker(...args) {
 try {
   mkdirSync(join(config, 'agents'), { recursive: true });
   mkdirSync(data);
+  mkdirSync(customVoices);
+  writeFileSync(join(customVoices, 'custom-voice.marker'), 'mounted voice directory');
   writeFileSync(join(config, 'http.json'), JSON.stringify({
     host: '0.0.0.0', port, allowedOrigins: [], publicHttps: false,
   }));
@@ -32,6 +35,18 @@ try {
   if (!existingImage) docker('build', '--tag', image, '.');
   docker('run', '--rm', '--entrypoint', '/bin/sh', image, '-c',
     'test ! -e /etc/ambrogio/http.json && test ! -e /etc/ambrogio/conversations.json && test ! -e /var/lib/ambrogio/conversations.sqlite && /opt/piper/bin/piper --help >/dev/null && cd /workspace/packages/conversations && node -e "require(\'vosk-koffi\')"');
+  docker('run', '--rm', '--entrypoint', '/bin/sh', image, '-c',
+    'set -eu; test -f /opt/ambrogio/voices/README.md; ' +
+    'test -s /opt/ambrogio/voices/riccardo-x_low-MODEL_CARD; ' +
+    'test -s /opt/ambrogio/voices/paola-medium-MODEL_CARD; ' +
+    'for voice in it_IT-riccardo-x_low it_IT-paola-medium; do ' +
+    'model="/opt/ambrogio/voices/$voice.onnx"; ' +
+    'test -s "$model"; test -s "$model.json"; ' +
+    'printf "Ciao, sono Ambrogio.\\n" | /opt/piper/bin/piper --model "$model" --output_file /tmp/voice.wav; ' +
+    'test -s /tmp/voice.wav; done');
+  docker('run', '--rm', '--entrypoint', '/bin/sh',
+    '--mount', `type=bind,src=${customVoices},dst=/opt/ambrogio/voices,readonly`,
+    image, '-c', 'test -f /opt/ambrogio/voices/custom-voice.marker && test ! -e /opt/ambrogio/voices/it_IT-riccardo-x_low.onnx');
   container = docker('run', '--detach', '--rm',
     '--publish', `127.0.0.1::${port}`,
     '--mount', `type=bind,src=${config},dst=/etc/ambrogio,readonly`,
@@ -56,7 +71,7 @@ try {
   if (!existsSync(join(data, 'conversations.sqlite'))) {
     throw new Error('SQLite archive was not created in the external mount');
   }
-  console.log('Docker image verification passed: external JSON and SQLite, HTTP 200, no Compose.');
+  console.log('Docker image verification passed: external JSON and SQLite, bundled and replaceable Piper voices, HTTP 200, no Compose.');
 } finally {
   if (container) {
     try { docker('stop', container); } catch { /* preserve the verification failure */ }

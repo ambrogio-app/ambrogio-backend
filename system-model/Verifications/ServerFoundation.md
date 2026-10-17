@@ -981,3 +981,23 @@ La prova passa se, senza elenco, nessuna risposta autorizza CORS; con l'elenco, 
   * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
   * verify: [Origini CORS esplicite dell'API HTTP](../Requirements/ServerFoundation.md#origini-cors-esplicite-dellapi-http)
 ---
+
+### Prova delle voci Piper incluse e sostituibili
+
+Costruire l'immagine backend, ispezionare i modelli Riccardo x_low e Paola medium e i rispettivi JSON e sintetizzare una breve frase italiana con ciascuno usando il Piper dell'immagine. Avviare inoltre un container con una directory di prova montata in sola lettura su `/opt/ambrogio/voices` e osservare che il mount sostituisce il contenuto incluso.
+
+#### Details
+La prova passa se entrambi i modelli e i metadati sono presenti nell'immagine, Piper produce file WAV non vuoti per entrambi e il mount presenta i file esterni al posto delle voci incluse senza una nuova build. Fallisce se manca una voce, la sintesi fallisce o il mount non sostituisce la directory. La prova non sostituisce l'ascolto umano della qualità delle voci.
+
+Eseguita il 17 ottobre 2026 con `node scripts/verify-docker-image.mjs`: immagine costruita, sintesi Piper riuscita con entrambi i modelli, file WAV non vuoti, mount sostitutivo e HTTP `200`. La qualità percepita di Paola non è stata ancora valutata all'ascolto.
+
+Il 17 ottobre 2026 l'immagine verificata è stata distribuita sul server dell'installazione di riferimento come `ambrogio-server:paola-20261017`, con `/opt/ambrogio/voices/it_IT-paola-medium.onnx` selezionato in `voice.json`. Il container era attivo senza riavvii e l'endpoint HTTP ha risposto `200`; la persona ha confermato che la successiva prova vocale con il satellite ha funzionato. Questa conferma attesta la riproduzione operativa della voce selezionata, non una valutazione sistematica della sua qualità.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * satisfiedBy: [verify-docker-image.mjs](../../scripts/verify-docker-image.mjs)
+  * verify: [Voci Piper italiane incluse nell'immagine](../Requirements/ServerFoundation.md#voci-piper-italiane-incluse-nellimmagine)
+---

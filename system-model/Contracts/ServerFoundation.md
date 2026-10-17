@@ -11,15 +11,15 @@ Alla richiesta di arresto ordinato, il server impedisce subito nuove ammissioni 
   * define: [Interruzione dei turni durante l'arresto](../Requirements/ServerFoundation.md#interruzione-dei-turni-durante-larresto)
 ---
 
-### Collocazione esterna dei modelli vocali
+### Catalogo Piper italiano nell'immagine backend
 
-Quando la voce è abilitata, Vosk e Piper sono eseguiti nel medesimo container Docker del backend. Le librerie necessarie a Vosk e il binario necessario a Piper appartengono all'immagine runtime del server. I modelli di trascrizione Vosk e di sintesi Piper sono invece forniti tramite directory esterne montate in sola lettura; i file dei modelli non sono incorporati nell'immagine. Il componente vocale riceve i percorsi dalla configurazione validata e ne verifica la disponibilità prima di attivare l'ingresso vocale; un modello necessario assente o illeggibile impedisce l'attivazione della voce. Quando la voce è disabilitata, tali directory e percorsi non sono richiesti.
+L'immagine backend contiene in `/opt/ambrogio/voices` i file `it_IT-riccardo-x_low.onnx`, `it_IT-riccardo-x_low.onnx.json`, `it_IT-paola-medium.onnx`, `it_IT-paola-medium.onnx.json`, le schede dei modelli e una nota di provenienza e licenza. Il JSON vocale sceglie una sola voce tramite `piperModelPath`; per l'installazione di riferimento Riccardo x_low resta la scelta attiva finché l'amministratore non indica Paola medium. Un mount in sola lettura su `/opt/ambrogio/voices` sostituisce la directory inclusa e permette di usare modelli propri; deve contenere il file ONNX selezionato e il suo JSON adiacente. Il modello Vosk rimane esterno e usa un percorso distinto. Non è prevista la scelta della voce durante una conversazione.
 
 #### Metadata
   * type: specification
 
 #### Relations
-  * define: [Distribuzione del server come immagine Docker](../Requirements/ServerFoundation.md#distribuzione-del-server-come-immagine-docker)
+  * define: [Voci Piper italiane incluse nell'immagine](../Requirements/ServerFoundation.md#voci-piper-italiane-incluse-nellimmagine)
 ---
 
 ### Contratto di normalizzazione diagnostica
@@ -52,6 +52,17 @@ Motivazione: Martin Fowler sostiene una politica coerente dei nomi dei ruoli e l
 
 #### Relations
   * define: [Nomi dei file secondo il ruolo architetturale](../Requirements/ServerFoundation.md#nomi-dei-file-secondo-il-ruolo-architetturale)
+---
+
+### Distribuzione dei modelli vocali
+
+Quando la voce è abilitata, Vosk e Piper sono eseguiti nel medesimo container Docker del backend. Le librerie necessarie a Vosk, il binario Piper e i modelli Piper italiani Riccardo x_low e Paola medium appartengono all'immagine runtime. Il modello di trascrizione Vosk è fornito tramite una directory esterna montata in sola lettura. Una directory di voci Piper montata in sola lettura al posto di quella inclusa nell'immagine può sostituire il catalogo predefinito senza ricostruire l'immagine. Il componente vocale riceve i percorsi dalla configurazione validata e ne verifica la disponibilità prima di attivare l'ingresso vocale; un modello necessario assente o illeggibile impedisce l'attivazione della voce. Quando la voce è disabilitata, i percorsi dei modelli non sono richiesti.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Distribuzione del server come immagine Docker](../Requirements/ServerFoundation.md#distribuzione-del-server-come-immagine-docker)
 ---
 
 ### Forma del tipo Result

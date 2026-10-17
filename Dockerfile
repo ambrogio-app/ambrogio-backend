@@ -13,6 +13,8 @@ RUN pnpm install --frozen-lockfile
 COPY apps/server/src/ apps/server/src/
 COPY packages/conversations/src/ packages/conversations/src/
 RUN pnpm build
+COPY scripts/fetch-piper-voices.py /tmp/fetch-piper-voices.py
+RUN python3 /tmp/fetch-piper-voices.py /opt/ambrogio/voices
 
 FROM node:24-bookworm-slim
 
@@ -21,6 +23,8 @@ LABEL org.opencontainers.image.source="https://github.com/adrianofoschi/ambrogio
       org.opencontainers.image.licenses="MIT"
 RUN apt-get update && apt-get install -y --no-install-recommends python3 libgomp1 && rm -rf /var/lib/apt/lists/*
 COPY --from=build /opt/piper/ /opt/piper/
+COPY --from=build /opt/ambrogio/voices/ /opt/ambrogio/voices/
+COPY voices/README.md /opt/ambrogio/voices/README.md
 COPY --from=build /workspace/package.json ./
 COPY --from=build /workspace/node_modules/ node_modules/
 COPY --from=build /workspace/apps/server/package.json apps/server/

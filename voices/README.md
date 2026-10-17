@@ -1,0 +1,5 @@
+# Voci Piper italiane
+
+L'immagine Docker contiene i modelli Piper **Riccardo x_low** e **Paola medium**, i rispettivi file `.onnx.json` e le schede `MODEL_CARD`. Il build li scarica dalla revisione `c10ece1aade47bb51c153c893d14e5bf8e5b7117` del [catalogo Piper Voices](https://huggingface.co/rhasspy/piper-voices) e verifica gli hash SHA-256 in `scripts/fetch-piper-voices.py`. Il catalogo dichiara la licenza MIT per i modelli; le schede identificano i dataset di addestramento (M-AILABS per Riccardo e Voice-Dataset-Italian per Paola). Questi modelli sono distinti dal codice Ambrogio.
+
+Nell'immagine le voci sono in `/opt/ambrogio/voices`. Il file vocale del backend sceglie una voce tramite `piperModelPath`, ad esempio `/opt/ambrogio/voices/it_IT-riccardo-x_low.onnx` oppure `/opt/ambrogio/voices/it_IT-paola-medium.onnx`. La scelta vale per tutti i satelliti collegati e richiede un riavvio del backend. Per usare altri modelli, montare una directory in sola lettura su `/opt/ambrogio/voices`; il mount sostituisce i file inclusi e deve contenere il modello selezionato con il file `.onnx.json` adiacente. Il modello Vosk per la trascrizione resta su un volume separato.

@@ -889,3 +889,15 @@ Quando la suite automatica del backend esegue le verifiche implementate nei pack
 #### Relations
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
+
+### Voci Piper italiane incluse nell'immagine
+
+Quando il progetto distribuisce l'immagine Docker del backend, deve includere i modelli Piper italiani Riccardo x_low e Paola medium con i rispettivi file di configurazione e le informazioni di provenienza, permettendo all'installazione di sostituire la directory dei modelli senza ricostruire l'immagine.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [Dockerfile](../../Dockerfile)
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---

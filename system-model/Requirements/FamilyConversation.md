@@ -1022,7 +1022,6 @@ Quando un client chiede la risposta in audio e l'interazione vocale è abilitata
 
 #### Relations
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
-  * satisfiedBy: [piper-synthesizer.ts](../../packages/conversations/src/adapters/in/session/piper-synthesizer.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 

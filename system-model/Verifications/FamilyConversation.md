@@ -252,7 +252,6 @@ La prova passa se la voce è caricata una sola volta per tutte le trasmissioni, 
 
 #### Relations
   * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
-  * satisfiedBy: [piper-synthesizer.test.ts](../../packages/conversations/test/adapters/in/piper-synthesizer.test.ts)
   * verify: [Risposta parlata su richiesta del client](../Requirements/FamilyConversation.md#risposta-parlata-su-richiesta-del-client)
 ---
 
@@ -269,7 +268,6 @@ La prova passa se il turno conservato contiene la trascrizione testuale attesa, 
 #### Relations
   * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
   * satisfiedBy: [session-lifecycle.test.ts](../../apps/server/test/runtime/session-lifecycle.test.ts)
-  * satisfiedBy: [piper-synthesizer.test.ts](../../packages/conversations/test/adapters/in/piper-synthesizer.test.ts)
   * verify: [Risposta parlata su richiesta del client](../Requirements/FamilyConversation.md#risposta-parlata-su-richiesta-del-client)
   * verify: [Trascrizione del turno vocale](../Requirements/FamilyConversation.md#trascrizione-del-turno-vocale)
 ---

@@ -1191,8 +1191,10 @@ Quando la produzione della risposta di un turno ammesso non termina entro il tem
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
   * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
   * satisfiedBy: [mcp-tool-client.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.ts)
+  * satisfiedBy: [system-deadlines.adapter.ts](../../packages/conversations/src/adapters/out/system-deadlines.adapter.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---

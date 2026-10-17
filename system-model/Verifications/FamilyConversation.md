@@ -757,6 +757,7 @@ La prova passa se il caso d'uso chiede alla porta una scadenza di 30 secondi; se
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
   * satisfiedBy: [mcp-tool-client.test.ts](../../packages/conversations/test/adapters/out/mcp-tool-client.test.ts)
+  * satisfiedBy: [turn-capabilities.test.ts](../../packages/conversations/test/adapters/out/turn-capabilities.test.ts)
   * satisfiedBy: [exchange-turn.test.ts](../../packages/conversations/test/application/exchange-turn.test.ts)
   * verify: [Tempo massimo della produzione della risposta](../Requirements/FamilyConversation.md#tempo-massimo-della-produzione-della-risposta)
 ---

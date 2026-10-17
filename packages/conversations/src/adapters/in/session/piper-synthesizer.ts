@@ -31,25 +31,55 @@ export function takeSentences(buffer: string): Readonly<{ sentences: string[]; r
     rest: buffer.slice(start) };
 }
 
+type PiperProcess = Readonly<{ child: ChildProcess; exited: Promise<number | null> }> & { alive: boolean };
+
 /**
  * One Piper process per transmission: sentences are written to stdin as they are completed,
- * and the end of stdout after stdin closes marks the end of the spoken reply.
+ * and the end of stdout after stdin closes marks the end of the spoken reply. Starting Piper
+ * takes seconds, so one process is kept started for the next transmission.
  */
 export class PiperSynthesizer implements Synthesizer {
-  constructor(private readonly binaryPath: string, private readonly modelPath: string,
-    readonly sampleRate: number) {}
+  private spare?: PiperProcess;
+  private closed = false;
 
-  async *synthesize(text: AsyncIterable<string>, signal: AbortSignal): AsyncIterable<Uint8Array> {
-    if (signal.aborted) return;
+  constructor(private readonly binaryPath: string, private readonly modelPath: string,
+    readonly sampleRate: number) {
+    this.spare = this.start();
+  }
+
+  private start(): PiperProcess {
     const child: ChildProcess = spawn(this.binaryPath, ['--model', this.modelPath, '--output_raw'],
       { stdio: ['pipe', 'pipe', 'ignore'] });
+    // `events.once` settles on the first `close`, or rejects on a spawn `error`.
+    const started: PiperProcess = { child, alive: true,
+      exited: once(child as unknown as EventEmitter, 'close').then(([code]) => code as number | null, () => -1) };
+    void started.exited.then(() => { started.alive = false; });
+    return started;
+  }
+
+  /** The waiting process if it is still running, otherwise a new one; the next one starts now. */
+  private take(): PiperProcess {
+    const spare = this.spare;
+    const chosen = spare?.alive ? spare : this.start();
+    this.spare = this.closed ? undefined : this.start();
+    return chosen;
+  }
+
+  /** Terminate the waiting process; transmissions in progress end with their own signal. */
+  close(): void {
+    this.closed = true;
+    const spare = this.spare;
+    this.spare = undefined;
+    if (spare?.alive) spare.child.kill('SIGKILL');
+  }
+
+  async *synthesize(text: AsyncIterable<string>, signal: AbortSignal): AsyncIterable<Uint8Array> {
+    if (signal.aborted || this.closed) return;
+    const { child, exited } = this.take();
     const stdin = child.stdin as Writable;
     const stdout = child.stdout as Readable;
     const stop = () => { child.kill('SIGKILL'); };
     signal.addEventListener('abort', stop, { once: true });
-    // `events.once` settles on the first `close`, or rejects on a spawn `error`.
-    const exited = once(child as unknown as EventEmitter, 'close')
-      .then(([code]) => code as number | null, () => -1);
     stdin.on('error', () => { /* the exit status reports a failed process */ });
     const feeding = (async () => {
       let buffer = '';

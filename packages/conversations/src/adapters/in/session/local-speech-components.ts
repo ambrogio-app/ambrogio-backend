@@ -7,9 +7,13 @@ import { VoskTranscriber } from './vosk-transcriber.js';
 export async function createLocalSpeechComponents(config: VoiceConfig): Promise<SpeechComponents> {
   const sampleRate = await piperSampleRate(config.piperModelPath);
   const transcriber = new VoskTranscriber(config.voskModelPath);
+  const synthesizer = new PiperSynthesizer(config.piperBinaryPath, config.piperModelPath, sampleRate);
   return {
     transcriber,
-    synthesizer: new PiperSynthesizer(config.piperBinaryPath, config.piperModelPath, sampleRate),
-    async close() { transcriber.close(); },
+    synthesizer,
+    async close() {
+      synthesizer.close();
+      transcriber.close();
+    },
   };
 }

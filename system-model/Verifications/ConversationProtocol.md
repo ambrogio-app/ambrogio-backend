@@ -103,6 +103,21 @@ La prova passa se l'upgrade è accettato soltanto quando il client offre `ambrog
   * verify: [Apertura della sessione conversazionale](../Requirements/ConversationProtocol.md#apertura-della-sessione-conversazionale)
 ---
 
+### Prova della correlazione diagnostica della sessione
+
+Aprire due sessioni conversazionali, anche con lo stesso `clientId`, e provocare in ciascuna almeno due guasti diagnosticati, per esempio guasti di ammissione; acquisire le righe JSON dei log tecnici.
+
+#### Details
+La prova passa se ogni riga diagnostica della sessione contiene `correlationId` UUID v4, tutte le righe di una stessa sessione riportano lo stesso valore e le due sessioni hanno valori diversi, senza campi non selezionati né dati delle conversazioni. Fallisce se un evento della sessione non ha `correlationId`, se il valore cambia all'interno della sessione o se due sessioni condividono lo stesso valore.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica del protocollo conversazionale](#verifica-del-protocollo-conversazionale)
+  * verify: [Correlazione diagnostica della sessione conversazionale](../Requirements/ConversationProtocol.md#correlazione-diagnostica-della-sessione-conversazionale)
+---
+
 ### Prova della trasmissione della richiesta del turno
 
 In una sessione pronta inviare un turno testuale in un solo `input.chunk` e uno diviso in più frammenti con Unicode e ritorni a capo; inviare un turno audio con frame binari intestati dal proprio `stream` e chiuso da `input.end`, usando un trascrittore controllato. Ritardare `input.end` dopo l'ultimo frammento. Aprire in parallelo due richieste testuali su conversazioni diverse e tentare una seconda trasmissione audio mentre la prima è aperta.

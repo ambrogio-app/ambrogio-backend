@@ -51,6 +51,17 @@ L'upgrade WebSocket del canale conversazionale applica l'elenco di origini autor
   * define: [Origini consentite per il canale conversazionale](../Requirements/ConversationProtocol.md#origini-consentite-per-il-canale-conversazionale)
 ---
 
+### Correlazione diagnostica della sessione Ambrogio v1
+
+Decisione concordata il 17 ottobre 2026: ogni sessione conversazionale ha un identificativo di correlazione per la diagnostica. Il `correlationId` della sessione è quello UUID v4 generato dal confine HTTP per la richiesta di upgrade; tutti gli eventi diagnostici emessi dall'adapter del canale per la sessione e per i suoi turni, inclusi guasti di ammissione, di conclusione, di consegna e di sintesi, lo riportano nel campo `correlationId`, accanto ai soli campi selezionati esplicitamente. Sessioni diverse, anche dello stesso `clientId`, hanno identificativi diversi. L'identificativo serve soltanto a collegare gli eventi diagnostici: non viene trasmesso nei messaggi del protocollo, non identifica il client e non è una traccia distribuita. La risposta `101` di upgrade, scritta dalla libreria WebSocket, non è tenuta a riportare `X-Request-Id` né gli header di sicurezza delle risposte HTTP gestite.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Correlazione diagnostica della sessione conversazionale](../Requirements/ConversationProtocol.md#correlazione-diagnostica-della-sessione-conversazionale)
+---
+
 ### Errori ed estensioni del protocollo Ambrogio v1
 
 Un messaggio del client non conforme allo schema JSON, di tipo sconosciuto, riferito a una richiesta o trasmissione inesistente o già chiusa, inviato prima di `session.ready`, oppure un frame binario non attribuibile a una trasmissione aperta, riceve `session.error` con `code` (`invalid_message`, `unknown_type`, `unknown_stream`, `session_not_ready`, `audio_busy`), un `message` sicuro e, quando ricavabile, il `requestId`. La sessione resta aperta e i turni già ammessi proseguono. Una seconda trasmissione audio in ingresso mentre una è aperta riceve `audio_busy` e non apre la richiesta.
@@ -114,7 +125,7 @@ La forma dei messaggi JSON di `ambrogio.v1`, in entrambe le direzioni, è defini
 
 Il canale conversazionale è una WebSocket sul percorso `/api/session`, sulla stessa porta del server HTTP. Il client richiede il sottoprotocollo `ambrogio.v1`; il server accetta l'upgrade soltanto se il client lo offre e lo seleziona nella risposta. Una richiesta che non offre `ambrogio.v1` viene rifiutata prima dell'upgrade.
 
-I frame di testo contengono un solo messaggio JSON con il campo stringa `type`. I frame binari contengono contenuto audio: i primi 4 byte sono il numero della trasmissione `stream`, intero senza segno a 32 bit big-endian, e i byte successivi sono campioni PCM a 16 bit little-endian mono.
+I frame di testo contengono un solo messaggio JSON con il campo stringa `type`. I frame binari contengono contenuto audio: i primi 4 byte sono il numero della trasmissione `stream`, intero senza segno a 32 bit big-endian, e i byte successivi sono campioni PCM a 16 bit little-endian mono. Il protocollo non fissa un limite per il singolo frame oltre ai limiti del turno: vale il limite predefinito della libreria WebSocket del server, come concordato il 17 ottobre 2026.
 
 Il primo messaggio del client è `session.hello` con `clientId`, stringa non vuota e stabile fornita dalla configurazione del client, e `name`, stringa non vuota leggibile dalla famiglia. Il server risponde `session.ready` con `protocol: "ambrogio.v1"`. Prima di `session.ready` il server non accetta trasmissioni; un secondo `session.hello` è un errore di protocollo. Il protocollo non prevede dichiarazioni delle capacità del client.
 

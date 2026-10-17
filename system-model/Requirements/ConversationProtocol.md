@@ -26,6 +26,20 @@ Ambrogio deve offrire ai client testuali e vocali un unico canale conversazional
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
+### Correlazione diagnostica della sessione conversazionale
+
+Quando il server accetta l'apertura di una sessione conversazionale, deve associare alla sessione un `correlationId` UUID v4 distinto e includerlo in ogni evento diagnostico emesso per quella sessione e per i turni trasmessi in essa.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Profilo iniziale di osservabilità](../Contracts/ServerFoundation.md#profilo-iniziale-di-osservabilità)
+
+#### Relations
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
 ### Errore di protocollo senza perdita della sessione
 
 Se il backend riceve dal client un messaggio non conforme al protocollo o di un tipo non previsto, deve comunicare al client un errore di protocollo senza chiudere la sessione e senza alterare i turni già in corso.

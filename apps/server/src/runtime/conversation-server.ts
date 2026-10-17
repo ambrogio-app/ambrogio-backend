@@ -45,6 +45,7 @@ export async function startConversationServer(environment: NodeJS.ProcessEnv = p
       try {
         await turnIngress.stopAccepting();
         await recoverPendingTurns(archive.db, new Date());
+        await turnIngress.closeSessions();
       } finally {
         try { await server.close(); }
         finally { await Promise.allSettled([agents.close(), archive.close()]); }

@@ -26,6 +26,7 @@ COPY --from=build /opt/piper/ /opt/piper/
 COPY --from=build /opt/ambrogio/voices/ /opt/ambrogio/voices/
 COPY voices/README.md /opt/ambrogio/voices/README.md
 COPY --from=build /workspace/package.json ./
+COPY protocol/ protocol/
 COPY --from=build /workspace/node_modules/ node_modules/
 COPY --from=build /workspace/apps/server/package.json apps/server/
 COPY --from=build /workspace/apps/server/node_modules/ apps/server/node_modules/

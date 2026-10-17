@@ -26,10 +26,6 @@
       "types": "./dist/application/exchange-turn.use-case.d.ts",
       "import": "./dist/application/exchange-turn.use-case.js"
     },
-    "./application/start-voice-conversation": {
-      "types": "./dist/application/start-voice-conversation.use-case.d.ts",
-      "import": "./dist/application/start-voice-conversation.use-case.js"
-    },
     "./application/produce-conversation-reply": {
       "types": "./dist/application/produce-conversation-reply.d.ts",
       "import": "./dist/application/produce-conversation-reply.js"
@@ -94,18 +90,6 @@
       "types": "./dist/adapters/out/mcp-tool-client.d.ts",
       "import": "./dist/adapters/out/mcp-tool-client.js"
     },
-    "./adapters/in/voice/voice-session": {
-      "types": "./dist/adapters/in/voice/voice-session.adapter.d.ts",
-      "import": "./dist/adapters/in/voice/voice-session.adapter.js"
-    },
-    "./adapters/in/voice/vosk-streaming-stt": {
-      "types": "./dist/adapters/in/voice/vosk-streaming-stt.d.ts",
-      "import": "./dist/adapters/in/voice/vosk-streaming-stt.js"
-    },
-    "./adapters/in/http/turn-route": {
-      "types": "./dist/adapters/in/http/turn-route.adapter.d.ts",
-      "import": "./dist/adapters/in/http/turn-route.adapter.js"
-    },
     "./adapters/in/http/history-route": {
       "types": "./dist/adapters/in/http/history-route.adapter.d.ts",
       "import": "./dist/adapters/in/http/history-route.adapter.js"
@@ -133,15 +117,30 @@
     "./adapters/out/system-current-time": {
       "types": "./dist/adapters/out/system-current-time.adapter.d.ts",
       "import": "./dist/adapters/out/system-current-time.adapter.js"
+    },
+    "./adapters/in/session/conversation-session": {
+      "types": "./dist/adapters/in/session/conversation-session.adapter.d.ts",
+      "import": "./dist/adapters/in/session/conversation-session.adapter.js"
+    },
+    "./adapters/in/session/protocol-decoder": {
+      "types": "./dist/adapters/in/session/protocol-decoder.d.ts",
+      "import": "./dist/adapters/in/session/protocol-decoder.js"
+    },
+    "./adapters/in/session/speech-components": {
+      "types": "./dist/adapters/in/session/speech-components.d.ts",
+      "import": "./dist/adapters/in/session/speech-components.js"
+    },
+    "./adapters/in/session/local-speech-components": {
+      "types": "./dist/adapters/in/session/local-speech-components.d.ts",
+      "import": "./dist/adapters/in/session/local-speech-components.js"
     }
   },
   "dependencies": {
     "@ai-sdk/mistral": "4.0.65",
-    "@micdrop/piper": "1.0.0",
-    "@micdrop/server": "2.9.0",
     "@modelcontextprotocol/client": "2.3.1",
     "@sinclair/typebox": "0.34.52",
     "ai": "7.0.142",
+    "ajv": "8.20.0",
     "better-sqlite3": "13.0.3",
     "fastify": "5.12.7",
     "kysely": "0.29.6",

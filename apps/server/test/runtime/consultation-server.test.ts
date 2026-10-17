@@ -9,6 +9,8 @@ import { prepareConfiguredConversations } from '../../src/composition/conversati
 import { buildConsultationServer, buildConversationServer,
   startConsultationServer } from '../../src/runtime/consultation-server.js';
 import { loadHttpConfig, type HttpConfig } from '../../src/runtime/http-config.js';
+import { closeAllClients, ProtocolClient, takeSchemaViolations } from './protocol-client.js';
+import type { AddressInfo } from 'node:net';
 
 const directories: string[] = [];
 const base: HttpConfig = { host: '127.0.0.1', port: 3000, allowedOrigins: [], publicHttps: false };
@@ -42,6 +44,8 @@ async function expectPortAvailable(port: number): Promise<void> {
 }
 
 afterEach(async () => {
+  await closeAllClients();
+  expect(takeSchemaViolations()).toEqual([]);
   await Promise.all(directories.splice(0).map(directory => rm(directory, { recursive: true, force: true })));
 });
 
@@ -351,10 +355,11 @@ describe('consultation HTTP runtime', () => {
       output.push(String(chunk));
       return true;
     });
-    const { server } = await buildConversationServer(base, prepared, {
+    const { server, turnIngress } = await buildConversationServer(base, prepared, {
       async *produce(history) {
         expect(history.turns.at(-1)?.text).toBe('PRIVATE_CONVERSATION_TEXT');
-        yield 'PRIVATE_USE_CASE_OUTPUT';
+        yield { kind: 'text', text: 'PRIVATE_USE_CASE_OUTPUT' };
+        yield { kind: 'reply_expectation', expectsReply: false };
       },
     });
     server.post('/test-diagnostic-input', async request => {
@@ -365,14 +370,13 @@ describe('consultation HTTP runtime', () => {
       });
     });
     try {
-      const turn = await server.inject({ method: 'POST', url: '/api/conversations/turns',
-        headers: { 'content-type': 'application/json', authorization: 'PRIVATE_CREDENTIAL',
-          'x-context': 'PRIVATE_CONTEXT' },
-        payload: { text: 'PRIVATE_CONVERSATION_TEXT' } });
-      expect(turn.statusCode).toBe(200);
-      const startPart: { messageMetadata: { conversationId: string } } =
-        JSON.parse(turn.body.match(/^data: (\{"type":"start"[^\n]+)/m)![1]!);
-      const conversationId = startPart.messageMetadata.conversationId;
+      await server.listen({ host: '127.0.0.1', port: 0 });
+      const { port } = server.server.address() as AddressInfo;
+      const client = await ProtocolClient.ready(`ws://127.0.0.1:${port}/api/session`,
+        { clientId: 'PRIVATE_CLIENT_ID', name: 'PRIVATE_CLIENT_NAME' });
+      const turn = await client.textTurn('PRIVATE_CONVERSATION_TEXT');
+      expect(turn.final.type).toBe('turn.completed');
+      const conversationId = turn.accepted!.conversationId as string;
       const history = await server.inject({ method: 'GET',
         url: `/api/conversations/${conversationId}` });
       expect(history.statusCode).toBe(200);
@@ -384,11 +388,9 @@ describe('consultation HTTP runtime', () => {
       expect(output).toEqual([]);
 
       await prepared.archive.close();
-      const admissionFault = await server.inject({ method: 'POST', url: '/api/conversations/turns',
-        headers: { 'content-type': 'application/json', authorization: 'PRIVATE_CREDENTIAL',
-          'x-context': 'PRIVATE_CONTEXT' },
-        payload: { text: 'PRIVATE_CONVERSATION_TEXT' } });
-      expect(admissionFault.statusCode).toBe(500);
+      const admissionFault = await client.textTurn('PRIVATE_CONVERSATION_TEXT');
+      expect(admissionFault.final).toMatchObject({ type: 'turn.rejected', reason: 'failure',
+        message: "I can't complete the response." });
       const fault = await server.inject({ method: 'POST', url: '/test-diagnostic-input',
         headers: { 'content-type': 'application/json', authorization: 'PRIVATE_CREDENTIAL',
           'x-context': 'PRIVATE_CONTEXT' },
@@ -397,17 +399,21 @@ describe('consultation HTTP runtime', () => {
       const rows = output.flatMap(chunk => chunk.split('\n')).filter(Boolean)
         .map(line => JSON.parse(line) as Record<string, unknown>);
       expect(rows).toHaveLength(2);
-      for (const row of rows) {
-        expect(Object.keys(row).sort()).toEqual([
-          'correlationId', 'err', 'event', 'hostname', 'level', 'msg', 'pid', 'time',
-        ]);
-      }
+      // Session events are not HTTP requests: only the HTTP fallback carries a correlationId.
+      expect(Object.keys(rows[0]!).sort()).toEqual([
+        'err', 'event', 'hostname', 'level', 'msg', 'pid', 'time',
+      ]);
+      expect(Object.keys(rows[1]!).sort()).toEqual([
+        'correlationId', 'err', 'event', 'hostname', 'level', 'msg', 'pid', 'time',
+      ]);
       expect(rows.map(row => row.event)).toEqual([
         'conversation_turn_admission_failed', 'http.unexpected_failure',
       ]);
-      expect(output.join('')).not.toMatch(/PRIVATE_(?:CONVERSATION_TEXT|USE_CASE_OUTPUT|CREDENTIAL|CONTEXT|HTTP_BODY|USE_CASE_INPUT)/);
+      expect(output.join('')).not.toMatch(/PRIVATE_(?:CONVERSATION_TEXT|USE_CASE_OUTPUT|CREDENTIAL|CONTEXT|HTTP_BODY|USE_CASE_INPUT|CLIENT_ID|CLIENT_NAME)/);
     } finally {
       write.mockRestore();
+      await turnIngress.stopAccepting();
+      await turnIngress.closeSessions();
       await server.close();
       await prepared.archive.close();
     }

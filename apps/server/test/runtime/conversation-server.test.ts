@@ -1,12 +1,14 @@
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createServer as createHttpServer } from 'node:http';
-import { createServer } from 'node:net';
+import { createServer, type AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { afterEach, expect, test, vi } from 'vitest';
+import WebSocket from 'ws';
 import { simulateReadableStream } from 'ai';
 import { MockLanguageModelV4 } from 'ai/test';
+import type { ReplyPart } from '@ambrogio/conversations/application/produce-conversation-reply';
 import { openConversationArchive } from '@ambrogio/conversations/adapters/out/sqlite/archive';
 import { conversationMigrations } from '@ambrogio/conversations/adapters/out/sqlite/migrations';
 import { SqliteConversationHistoryRead } from '@ambrogio/conversations/adapters/out/sqlite/history-read';
@@ -17,10 +19,20 @@ import { prepareConfiguredConversations } from '../../src/composition/conversati
 import { loadAgentConfigs } from '../../src/runtime/agent-config.js';
 import { buildConversationServer } from '../../src/runtime/consultation-server.js';
 import { startConversationServer } from '../../src/runtime/conversation-server.js';
+import { closeAllClients, ProtocolClient, takeSchemaViolations } from './protocol-client.js';
 
 const directories: string[] = [];
-afterEach(async () => { await Promise.all(directories.splice(0).map((path) =>
-  rm(path, { recursive: true, force: true }))); });
+afterEach(async () => {
+  await closeAllClients();
+  await Promise.all(directories.splice(0).map((path) => rm(path, { recursive: true, force: true })));
+  expect(takeSchemaViolations()).toEqual([]);
+});
+
+const failure = "I can't complete the response.";
+const uuidV4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+function text(value: string): ReplyPart { return { kind: 'text', text: value }; }
+function expectation(expectsReply = false): ReplyPart { return { kind: 'reply_expectation', expectsReply }; }
 
 async function fixture() {
   const directory = await mkdtemp(join(tmpdir(), 'ambrogio-conversation-server-'));
@@ -39,6 +51,14 @@ async function freePort(): Promise<number> {
   if (!address || typeof address === 'string') throw new Error('No test port');
   await new Promise<void>((resolve) => server.close(() => resolve()));
   return address.port;
+}
+
+function sessionUrl(port: number): string { return `ws://127.0.0.1:${port}/api/session`; }
+
+/** Listen a built (not started) conversation server on an ephemeral port. */
+async function listen(built: Awaited<ReturnType<typeof buildConversationServer>>): Promise<number> {
+  await built.server.listen({ host: '127.0.0.1', port: 0 });
+  return (built.server.server.address() as AddressInfo).port;
 }
 
 async function downgradeArchiveToInitial(filename: string) {
@@ -80,67 +100,71 @@ async function waitForTurn(origin: string, id: string, status: string) {
   throw new Error(`Turn did not reach ${status}`);
 }
 
-function streamConversationId(body: string): string {
-  const start = body.split('\n').find(line => line.startsWith('data: {"type":"start"'));
-  expect(start).toBeDefined();
-  const part = JSON.parse(start!.slice(6)) as { messageMetadata: { conversationId: string } };
-  return part.messageMetadata.conversationId;
+/** Open a WebSocket upgrade and capture the response status and headers. */
+async function upgradeResponse(url: string, origin?: string): Promise<Readonly<{
+  status: number; headers: Record<string, string | string[] | undefined> }>> {
+  const ws = new WebSocket(url, ['ambrogio.v1'], origin ? { origin } : {});
+  return new Promise((resolve, reject) => {
+    ws.once('upgrade', response => {
+      resolve({ status: response.statusCode ?? 0, headers: response.headers });
+      ws.once('open', () => ws.close());
+    });
+    ws.once('unexpected-response', (_request, response) => {
+      resolve({ status: response.statusCode ?? 0, headers: response.headers });
+      ws.terminate();
+    });
+    ws.once('error', reject);
+  });
 }
 
-test('POST/SSE uses the orchestrator and retains security, CORS and correlation headers', async () => {
+test('the session ingress uses the orchestrator and GET routes retain security, CORS and correlation headers', async () => {
   const files = await fixture();
   const prepared = await prepareConfiguredConversations({ archivePath: files.archive,
     listPageSize: 20, maxListPageSize: 100, language: 'en' }, new Date());
-  const { server, turnIngress } = await buildConversationServer({ host: '127.0.0.1', port: 3000,
+  const built = await buildConversationServer({ host: '127.0.0.1', port: 3000,
     allowedOrigins: ['https://client.test'], publicHttps: true, hstsMaxAgeSeconds: 600 },
-  prepared, { async *produce() { yield 'Hello'; yield ' world'; } });
+  prepared, { async *produce() { yield text('Hello'); yield text(' world'); yield expectation(); } });
+  const { server, turnIngress } = built;
   try {
-    const preflight = await server.inject({ method: 'OPTIONS', url: '/api/conversations/turns',
-      headers: { origin: 'https://client.test', 'access-control-request-method': 'POST' } });
-    expect(preflight.headers['access-control-allow-methods']).toContain('POST');
+    const port = await listen(built);
+    const preflight = await server.inject({ method: 'OPTIONS', url: '/api/conversations',
+      headers: { origin: 'https://client.test', 'access-control-request-method': 'GET' } });
+    expect(preflight.headers['access-control-allow-methods']).toContain('GET');
+    expect(preflight.headers['access-control-allow-methods']).not.toContain('POST');
     expect(preflight.headers['access-control-allow-origin']).toBe('https://client.test');
-    const rejected = await server.inject({ method: 'OPTIONS', url: '/api/conversations/turns',
-      headers: { origin: 'https://other.test', 'access-control-request-method': 'POST' } });
+    const rejected = await server.inject({ method: 'OPTIONS', url: '/api/conversations',
+      headers: { origin: 'https://other.test', 'access-control-request-method': 'GET' } });
     expect(rejected.headers['access-control-allow-origin']).toBeUndefined();
-    const turn = await server.inject({ method: 'POST', url: '/api/conversations/turns',
-      headers: { origin: 'https://client.test', 'content-type': 'application/json' },
-      payload: { text: 'Hi' } });
-    expect(turn.statusCode).toBe(200);
-    expect(turn.body).toContain('\"type\":\"start\"');
-    expect(turn.body).toContain('\"type\":\"text-delta\"');
-    expect(turn.body).toContain('\"type\":\"finish\"');
-    expect(turn.headers['content-type']).toContain('text/event-stream');
-    expect(turn.headers['cache-control']).toBe('no-store');
-    expect(turn.headers['strict-transport-security']).toBe('max-age=600');
-    expect(turn.headers['x-content-type-options']).toBe('nosniff');
-    expect(turn.headers['x-request-id'])
-      .toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
-    const invalid = await server.inject({ method: 'POST', url: '/api/conversations/turns',
-      headers: { origin: 'https://client.test', 'content-type': 'application/json' },
-      payload: { text: '' } });
-    expect(invalid.statusCode).toBe(400);
-    expect(invalid.headers['cache-control']).toBe('no-store');
-    expect(invalid.headers['strict-transport-security']).toBe('max-age=600');
-    expect(invalid.headers['x-content-type-options']).toBe('nosniff');
-    expect(invalid.headers['x-request-id'])
-      .toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
-    expect(invalid.headers['x-request-id']).not.toBe(turn.headers['x-request-id']);
-    for (const payload of [{ text: 7 }, { text: 'ignored', extra: 'unexpected' }]) {
-      const rejectedShape = await server.inject({ method: 'POST', url: '/api/conversations/turns',
-        headers: { 'content-type': 'application/json' }, payload });
-      expect(rejectedShape.statusCode).toBe(400);
-      expect(rejectedShape.json()).toEqual({ error: 'Invalid message.' });
-    }
-    const list = await server.inject({ method: 'GET', url: '/api/conversations' });
+
+    const client = await ProtocolClient.ready(sessionUrl(port), { origin: 'https://client.test' });
+    const turn = await client.textTurn('Hi');
+    expect(turn.outputs.map(output => output.text)).toEqual(['Hello world']);
+    expect(turn.final).toEqual({ type: 'turn.completed', turnId: turn.accepted!.turnId, expectsReply: false });
+    expect((await upgradeResponse(sessionUrl(port), 'https://other.test')).status).toBe(403);
+
+    const list = await server.inject({ method: 'GET', url: '/api/conversations',
+      headers: { origin: 'https://client.test' } });
     expect(list.statusCode).toBe(200);
     expect(list.json().items).toHaveLength(1);
+    expect(list.headers['access-control-allow-origin']).toBe('https://client.test');
+    expect(list.headers['cache-control']).toBe('no-store');
+    expect(list.headers['strict-transport-security']).toBe('max-age=600');
+    expect(list.headers['x-content-type-options']).toBe('nosniff');
+    expect(list.headers['x-request-id']).toMatch(uuidV4);
+    const history = await server.inject({ method: 'GET',
+      url: `/api/conversations/${turn.accepted!.conversationId}` });
+    expect(history.headers['x-request-id']).toMatch(uuidV4);
+    expect(history.headers['x-request-id']).not.toBe(list.headers['x-request-id']);
+
     await turnIngress.stopAccepting();
-    const afterStop = await server.inject({ method: 'POST', url: '/api/conversations/turns',
-      headers: { 'content-type': 'application/json' }, payload: { text: 'too late' } });
-    expect(afterStop.statusCode).toBe(503);
+    const afterStop = await client.textTurn('too late');
+    expect(afterStop.final).toMatchObject({ type: 'turn.rejected', reason: 'unavailable',
+      message: 'Service temporarily unavailable.' });
     expect((await server.inject({ method: 'GET', url: '/api/conversations' })).json().items)
       .toHaveLength(1);
   } finally {
+    await closeAllClients();
+    await turnIngress.closeSessions();
     await server.close();
     await prepared.archive.close();
   }
@@ -159,35 +183,41 @@ test('shutdown interrupts a pending turn without waiting for the remote reply', 
   let persistedBeforeAgentClose = false;
   const runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
     AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory,
-  async () => ({ orchestrator: { async *produce() { started(); await wait; yield 'too late'; } },
-    async close() {
-      const archive = await openConversationArchive(files.archive, new Date());
-      try {
-        const rows = await archive.db.selectFrom('turns').select(['status', 'answer']).execute();
-        persistedBeforeAgentClose = rows.length === 1 && rows[0]?.status === 'interrupted'
-          && rows[0].answer === null;
-      } finally { await archive.close(); }
-      closed = true;
-    } }));
-  const origin = `http://127.0.0.1:${port}`;
+  async () => ({ orchestrator: { async *produce() {
+    started(); await wait; yield text('too late'); yield expectation();
+  } },
+  async close() {
+    const archive = await openConversationArchive(files.archive, new Date());
+    try {
+      const rows = await archive.db.selectFrom('turns').select(['status', 'answer']).execute();
+      persistedBeforeAgentClose = rows.length === 1 && rows[0]?.status === 'interrupted'
+        && rows[0].answer === null;
+    } finally { await archive.close(); }
+    closed = true;
+  } }));
   try {
-    const response = await fetch(`${origin}/api/conversations/turns`, { method: 'POST',
-      headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: 'Hi' }) });
-    expect(response.status).toBe(200);
+    const client = await ProtocolClient.ready(sessionUrl(port));
+    const requestId = client.requestId();
+    client.startText(requestId);
+    client.chunk(requestId, 'Hi');
+    client.end(requestId);
+    const accepted = await client.waitFor(message => message.type === 'turn.accepted');
     await producing;
     const closing = runtime.close();
-    const rejectedDuringShutdown = runtime.server.inject({ method: 'POST',
-      url: '/api/conversations/turns', headers: { 'content-type': 'application/json' },
-      payload: { text: 'too late to start' } });
+    const late = await ProtocolClient.ready(sessionUrl(port)).catch(() => undefined);
+    const lateTurn = late?.textTurn('too late to start').catch(() => undefined);
     await expect(Promise.race([closing, new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Shutdown waited for remote reply')), 1000))])).resolves.toBeUndefined();
     expect(closed).toBe(true);
     expect(persistedBeforeAgentClose).toBe(true);
-    const lateAdmission = await rejectedDuringShutdown.catch(() => undefined);
-    if (lateAdmission) expect(lateAdmission.statusCode).not.toBe(200);
+    const lateResult = await lateTurn;
+    if (lateResult) expect(lateResult.final.type).not.toBe('turn.completed');
+    const result = await client.result(requestId);
+    expect(result.final).toEqual({ type: 'turn.interrupted', turnId: accepted.turnId });
+    await client.closed;
     release();
-    expect(await response.text().catch(() => '')).not.toContain('\"type\":\"finish\"');
     await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(client.json().some(message => message.type === 'turn.completed')).toBe(false);
     const archive = await openConversationArchive(files.archive, new Date());
     try {
       expect(archive.recoveredTurns).toBe(0);
@@ -196,14 +226,16 @@ test('shutdown interrupts a pending turn without waiting for the remote reply', 
     } finally { await archive.close(); }
     const restarted = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
       AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory,
-    async () => ({ orchestrator: { async *produce() { yield 'after restart'; } },
+    async () => ({ orchestrator: { async *produce() { yield text('after restart'); yield expectation(); } },
       async close() {} }));
     try {
-      const next = await fetch(`${origin}/api/conversations/turns`, { method: 'POST',
-        headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: 'Again' }) });
-      expect(next.status).toBe(200);
-      expect(await next.text()).toContain('after restart');
-    } finally { await restarted.close(); }
+      const next = await (await ProtocolClient.ready(sessionUrl(port))).textTurn('Again');
+      expect(next.final.type).toBe('turn.completed');
+      expect(next.outputs[0]!.text).toBe('after restart');
+    } finally {
+      await closeAllClients();
+      await restarted.close();
+    }
   } finally {
     release();
     await runtime.close();
@@ -217,15 +249,14 @@ test('shutdown preserves a turn already completed before interruption', async ()
   await writeFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
   const runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
     AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory,
-  async () => ({ orchestrator: { async *produce() { yield 'completed answer'; } },
+  async () => ({ orchestrator: { async *produce() { yield text('completed answer'); yield expectation(); } },
     async close() {} }));
   try {
-    const response = await fetch(`http://127.0.0.1:${port}/api/conversations/turns`, {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ text: 'Finish first' }),
-    });
-    expect(await response.text()).toContain('\"type\":\"finish\"');
+    const client = await ProtocolClient.ready(sessionUrl(port));
+    expect((await client.textTurn('Finish first')).final.type).toBe('turn.completed');
     await runtime.close();
+    await client.closed;
+    expect(client.json().some(message => message.type === 'turn.interrupted')).toBe(false);
     const archive = await openConversationArchive(files.archive, new Date());
     try {
       expect(archive.recoveredTurns).toBe(0);
@@ -235,7 +266,7 @@ test('shutdown preserves a turn already completed before interruption', async ()
   } finally { await runtime.close(); }
 });
 
-test('keeps SQLite writable while waiting for an agent and while streaming SSE', async () => {
+test('keeps SQLite writable while waiting for an agent and while streaming the reply', async () => {
   const files = await fixture();
   const port = await freePort();
   await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
@@ -251,46 +282,37 @@ test('keeps SQLite writable while waiting for an agent and while streaming SSE',
   async () => ({ orchestrator: { async *produce() {
     agentStarted();
     await agentGate.waiting;
-    yield 'first';
+    yield text('first');
     streamStarted();
     await streamGate.waiting;
-    yield ' second';
+    yield text(' second');
+    yield expectation();
   } }, async close() {} }));
   const independent = new DatabaseSync(files.archive);
   independent.exec('pragma busy_timeout = 0; create table independent_writes (phase text not null)');
   try {
-    const request = fetch(`http://127.0.0.1:${port}/api/conversations/turns`, {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ text: 'question' }),
-    });
+    const client = await ProtocolClient.ready(sessionUrl(port));
+    const requestId = client.requestId();
+    client.startText(requestId);
+    client.chunk(requestId, 'question');
+    client.end(requestId);
     await waitingForAgent;
     independent.prepare('insert into independent_writes (phase) values (?)').run('agent');
     agentGate.release();
-    const response = await request;
-    expect(response.status).toBe(200);
-    const reader = response.body!.getReader();
-    const decoder = new TextDecoder();
-    let body = '';
-    while (!body.includes('\"type\":\"text-delta\"')) {
-      const next = await reader.read();
-      expect(next.done).toBe(false);
-      body += decoder.decode(next.value, { stream: true });
-    }
+    await client.waitFor(message => message.type === 'output.chunk');
     await waitingDuringStream;
     independent.prepare('insert into independent_writes (phase) values (?)').run('stream');
     streamGate.release();
-    while (true) {
-      const next = await reader.read();
-      if (next.done) break;
-      body += decoder.decode(next.value, { stream: true });
-    }
-    expect(body).toContain('\"type\":\"finish\"');
+    const result = await client.result(requestId);
+    expect(result.final.type).toBe('turn.completed');
+    expect(result.outputs[0]!.text).toBe('first second');
     expect(independent.prepare('select phase from independent_writes order by rowid').all())
       .toEqual([{ phase: 'agent' }, { phase: 'stream' }]);
   } finally {
     agentGate.release();
     streamGate.release();
     independent.close();
+    await closeAllClients();
     await runtime.close();
   }
 });
@@ -308,36 +330,29 @@ test('restores completed history after restart and uses it for textual continuat
       seen.push(history.turns.map(turn => ({ text: turn.text, status: turn.status,
         ...(turn.status === 'answered' ? { answer: turn.answer } : {}),
         ...(turn.status === 'failed' ? { error: turn.error } : {}) })));
-      if (seen.length === 1) yield 'first answer';
-      else { yield 'partial'; throw new Error('private provider failure'); }
+      if (seen.length === 1) { yield text('first answer'); yield expectation(); }
+      else { yield text('partial'); throw new Error('private provider failure'); }
     } }, async close() {} }));
   let id = '';
   let beforeRestart: { id: string; turns: Array<{ id: string; text: string;
     status: string; answer?: string; error?: string }> } | undefined;
   try {
-    const unknown = await firstRuntime.server.inject({ method: 'POST', url: '/api/conversations/turns',
-      headers: { 'content-type': 'application/json' }, payload: {
-        text: 'unknown', conversationId: '00000000-0000-4000-8000-000000000000',
-      } });
-    expect(unknown.statusCode).toBe(404);
-    expect(unknown.headers['content-type']).toMatch(/^application\/json/);
-    expect(unknown.json()).toEqual({ error: 'Conversation not found.' });
+    const client = await ProtocolClient.ready(sessionUrl(port));
+    const unknown = await client.textTurn('unknown', { conversationId: '00000000-0000-4000-8000-000000000000' });
+    expect(unknown.final).toMatchObject({ type: 'turn.rejected', reason: 'conversation_not_found',
+      message: 'Conversation not found.' });
     expect((await firstRuntime.server.inject({ method: 'GET', url: '/api/conversations' }))
       .json().items).toEqual([]);
 
-    const first = await firstRuntime.server.inject({ method: 'POST', url: '/api/conversations/turns',
-      headers: { 'content-type': 'application/json' }, payload: { text: 'first question' } });
-    expect(first.statusCode).toBe(200);
-    id = streamConversationId(first.body);
-    expect(first.body).toContain('first answer');
-    const second = await firstRuntime.server.inject({ method: 'POST', url: '/api/conversations/turns',
-      headers: { 'content-type': 'application/json' }, payload: {
-        text: 'second question', conversationId: id,
-      } });
-    expect(second.statusCode).toBe(200);
-    expect(second.body).toContain('\"type\":\"error\"');
-    expect(streamConversationId(second.body)).toBe(id);
-    expect(second.body).not.toContain('private provider failure');
+    const first = await client.textTurn('first question');
+    expect(first.final.type).toBe('turn.completed');
+    id = first.accepted!.conversationId as string;
+    expect(first.outputs[0]!.text).toBe('first answer');
+    const second = await client.textTurn('second question', { conversationId: id });
+    expect(second.accepted!.conversationId).toBe(id);
+    expect(second.final).toEqual({ type: 'turn.failed', turnId: second.accepted!.turnId, message: failure });
+    expect(second.outputs.map(output => output.text)).toEqual(['partial', failure]);
+    expect(JSON.stringify(client.json())).not.toContain('private provider failure');
     expect(seen).toEqual([
       [{ text: 'first question', status: 'pending' }],
       [{ text: 'first question', status: 'answered', answer: 'first answer' },
@@ -347,7 +362,6 @@ test('restores completed history after restart and uses it for textual continuat
       url: `/api/conversations/${id}` });
     expect(history.statusCode).toBe(200);
     beforeRestart = history.json() as typeof beforeRestart;
-    const uuidV4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
     expect(id).toMatch(uuidV4);
     expect(beforeRestart?.id).toBe(id);
     expect(beforeRestart?.turns.map(turn => turn.id)).toHaveLength(2);
@@ -356,8 +370,11 @@ test('restores completed history after restart and uses it for textual continuat
     expect(beforeRestart?.turns.map(turn => [turn.text, turn.status])).toEqual([
       ['first question', 'answered'], ['second question', 'failed'],
     ]);
-    expect(beforeRestart?.turns[1]?.error).toBe("I can't complete the response.");
-  } finally { await firstRuntime.close(); }
+    expect(beforeRestart?.turns[1]?.error).toBe(failure);
+  } finally {
+    await closeAllClients();
+    await firstRuntime.close();
+  }
 
   const persistedArchive = await openConversationArchive(files.archive, new Date());
   try {
@@ -371,20 +388,19 @@ test('restores completed history after restart and uses it for textual continuat
   const restarted = await startConversationServer(environment, files.directory,
     async () => ({ orchestrator: { async *produce(history) {
       afterRestartSeen.push(history.turns.map(turn => turn.text));
-      yield 'third answer';
+      yield text('third answer');
+      yield expectation();
     } }, async close() {} }));
   try {
     const history = await restarted.server.inject({ method: 'GET',
       url: `/api/conversations/${id}` });
     expect(history.statusCode).toBe(200);
     expect(history.json()).toEqual(beforeRestart);
-    const third = await restarted.server.inject({ method: 'POST', url: '/api/conversations/turns',
-      headers: { 'content-type': 'application/json' }, payload: {
-        text: 'third question', conversationId: id,
-      } });
-    expect(third.statusCode).toBe(200);
-    expect(third.body).toContain('third answer');
-    expect(streamConversationId(third.body)).toBe(id);
+    const client = await ProtocolClient.ready(sessionUrl(port));
+    const third = await client.textTurn('third question', { conversationId: id });
+    expect(third.final.type).toBe('turn.completed');
+    expect(third.outputs[0]!.text).toBe('third answer');
+    expect(third.accepted!.conversationId).toBe(id);
     expect(afterRestartSeen).toEqual([['first question', 'second question', 'third question']]);
     const finalHistory = await restarted.server.inject({ method: 'GET',
       url: `/api/conversations/${id}` });
@@ -395,7 +411,10 @@ test('restores completed history after restart and uses it for textual continuat
     ]);
     expect((await restarted.server.inject({ method: 'GET', url: '/api/conversations' }))
       .json().items).toHaveLength(1);
-  } finally { await restarted.close(); }
+  } finally {
+    await closeAllClients();
+    await restarted.close();
+  }
 });
 
 test('processes separate conversations in parallel and rejects a second turn in the same conversation', async () => {
@@ -417,39 +436,36 @@ test('processes separate conversations in parallel and rejects a second turn in 
     productions++;
     if (productions === 1) { producingFirst(); await firstGate.waiting; }
     if (productions === 2) { producingSecond(); await secondGate.waiting; }
-    yield 'complete';
+    yield text('complete');
+    yield expectation();
   } }, async close() {} }));
-  const submit = (text: string, conversationId?: string) => fetch(`${origin}/api/conversations/turns`, {
-    method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ text, ...(conversationId ? { conversationId } : {}) }),
-  });
   try {
-    const active = await submit('first');
-    expect(active.status).toBe(200);
+    const client = await ProtocolClient.ready(sessionUrl(port));
+    const other = await ProtocolClient.ready(sessionUrl(port));
+    const active = client.requestId();
+    client.startText(active);
+    client.chunk(active, 'first');
+    client.end(active);
+    const accepted = await client.waitFor(message => message.type === 'turn.accepted');
     await firstStarted;
-    const list = await fetch(`${origin}/api/conversations`);
-    const items = (await list.json() as { items: Array<{ id: string }> }).items;
-    expect(items).toHaveLength(1);
-    const id = items[0]!.id;
-    const rejected = await submit('same conversation', id);
-    expect(rejected.status).toBe(409);
-    expect(rejected.headers.get('content-type')).toMatch(/^application\/json/);
-    expect(await rejected.json()).toEqual({ error: 'Another turn is in progress.' });
-    const other = await submit('new conversation');
-    expect(other.status).toBe(200);
+    const id = accepted.conversationId as string;
+    const rejected = await other.textTurn('same conversation', { conversationId: id });
+    expect(rejected.final).toMatchObject({ type: 'turn.rejected', reason: 'occupied',
+      message: 'Another turn is in progress.' });
+    const parallel = other.requestId();
+    other.startText(parallel);
+    other.chunk(parallel, 'new conversation');
+    other.end(parallel);
     await secondStarted;
     secondGate.release();
-    expect(await other.text()).toContain('\"type\":\"finish\"');
+    expect((await other.result(parallel)).final.type).toBe('turn.completed');
     expect(await conversationTurns(origin, id)).toMatchObject([{ text: 'first', status: 'pending' }]);
     firstGate.release();
-    expect(await active.text()).toContain('\"type\":\"finish\"');
+    expect((await client.result(active)).final.type).toBe('turn.completed');
     expect(await waitForTurn(origin, id, 'answered')).toHaveLength(1);
 
-    const simultaneous = await Promise.all([submit('one of two'), submit('other of two')]);
-    expect(simultaneous.map(response => response.status)).toEqual([200, 200]);
-    for (const response of simultaneous) {
-      expect(await response.text()).toContain('\"type\":\"finish\"');
-    }
+    const simultaneous = await Promise.all([client.textTurn('one of two'), other.textTurn('other of two')]);
+    expect(simultaneous.map(result => result.final.type)).toEqual(['turn.completed', 'turn.completed']);
     expect(productions).toBe(4);
     const after = await fetch(`${origin}/api/conversations`);
     expect((await after.json() as { items: unknown[] }).items).toHaveLength(4);
@@ -463,12 +479,13 @@ test('processes separate conversations in parallel and rejects a second turn in 
   } finally {
     firstGate.release();
     secondGate.release();
+    await closeAllClients();
     await runtime.close();
   }
 });
 
 test.each(['answered', 'failed'] as const)(
-  'persists a %s turn after its SSE client disconnects', async (outcome) => {
+  'persists a %s turn after its session client disconnects', async (outcome) => {
     const files = await fixture();
     const port = await freePort();
     await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
@@ -478,30 +495,31 @@ test.each(['answered', 'failed'] as const)(
     const runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
       AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory,
     async () => ({ orchestrator: { async *produce() {
-      yield 'partial';
+      yield text('partial');
       await continuation.waiting;
       if (outcome === 'failed') throw new Error('private provider failure');
-      yield ' complete';
+      yield text(' complete');
+      yield expectation();
     } }, async close() {} }));
     try {
-      const response = await fetch(`${origin}/api/conversations/turns`, { method: 'POST',
-        headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: 'hello' }),
-      });
-      expect(response.status).toBe(200);
-      const reader = response.body!.getReader();
-      const first = new TextDecoder().decode((await reader.read()).value);
-      expect(first).toContain('"type":"start"');
-      expect(first).toContain('"type":"text-delta"');
-      expect(first).toContain('"delta":"partial"');
-      const id = streamConversationId(first);
-      await reader.cancel();
+      const client = await ProtocolClient.ready(sessionUrl(port));
+      const requestId = client.requestId();
+      client.startText(requestId);
+      client.chunk(requestId, 'hello');
+      client.end(requestId);
+      const accepted = await client.waitFor(message => message.type === 'turn.accepted');
+      const chunk = await client.waitFor(message => message.type === 'output.chunk');
+      expect(chunk.text).toBe('partial');
+      const id = accepted.conversationId as string;
+      client.terminate();
+      await client.closed;
       continuation.release();
       const turns = await waitForTurn(origin, id, outcome);
       expect(turns).toHaveLength(1);
       expect(turns[0]?.text).toBe('hello');
       if (outcome === 'answered') expect(turns[0]?.answer).toBe('partial complete');
       else {
-        expect(turns[0]?.error).toBe("I can't complete the response.");
+        expect(turns[0]?.error).toBe(failure);
         expect(JSON.stringify(turns)).not.toContain('private provider failure');
       }
     } finally {
@@ -523,7 +541,7 @@ test.each([
   let productions = 0;
   const built = await buildConversationServer({ host: '127.0.0.1', port: 3000,
     allowedOrigins: [], publicHttps: false }, prepared,
-  { async *produce() { productions++; yield 'must not be produced for the faulty turn'; } });
+  { async *produce() { productions++; yield text('must not be produced for the faulty turn'); yield expectation(); } });
   const historyFault = vi.spyOn(SqliteConversationHistoryRead.prototype, 'find')
     .mockImplementationOnce(async () => {
       if (missing) return undefined;
@@ -534,38 +552,37 @@ test.each([
       .mockImplementationOnce(async () => { throw new Error('private completion failure'); })
     : undefined;
   try {
-    const first = await built.server.inject({ method: 'POST', url: '/api/conversations/turns',
-      headers: { 'content-type': 'application/json' }, payload: { text: 'first' } });
-    expect(first.statusCode).toBe(200);
-    expect(first.body).toContain('"type":"error","errorText":"I can\'t complete the response."');
-    expect(first.body).not.toContain('\"type\":\"finish\"');
-    expect(first.body).not.toContain('private');
+    const port = await listen(built);
+    const client = await ProtocolClient.ready(sessionUrl(port));
+    const first = await client.textTurn('first');
+    expect(first.final).toEqual({ type: 'turn.failed', turnId: first.accepted!.turnId, message: failure });
+    expect(first.outputs.map(output => output.text)).toEqual([failure]);
+    expect(first.sequence).not.toContain('turn.completed');
+    expect(JSON.stringify(client.json())).not.toContain('private');
     expect(productions).toBe(0);
     historyFault.mockRestore();
     completionFault?.mockRestore();
-    const list = await built.server.inject({ method: 'GET', url: '/api/conversations' });
-    const id = (list.json() as { items: Array<{ id: string }> }).items[0]!.id;
+    const id = first.accepted!.conversationId as string;
     const history = await built.server.inject({ method: 'GET',
       url: `/api/conversations/${id}` });
     const turns = (history.json() as { turns: Array<{ status: string; error?: string }> }).turns;
     expect(turns).toHaveLength(1);
     expect(turns[0]?.status).toBe(completionFails ? 'pending' : 'failed');
-    if (!completionFails) expect(turns[0]?.error).toBe("I can't complete the response.");
-    const next = await built.server.inject({ method: 'POST', url: '/api/conversations/turns',
-      headers: { 'content-type': 'application/json' }, payload: { text: 'second' } });
+    if (!completionFails) expect(turns[0]?.error).toBe(failure);
+    const next = await client.textTurn('second');
     if (completionFails) {
-      expect(next.statusCode).toBe(503);
-      expect(next.headers['content-type']).toMatch(/^application\/json/);
-      expect(next.json()).toEqual({ error: 'Service temporarily unavailable.' });
+      expect(next.final).toMatchObject({ type: 'turn.rejected', reason: 'unavailable',
+        message: 'Service temporarily unavailable.' });
       expect(productions).toBe(0);
     } else {
-      expect(next.statusCode).toBe(200);
-      expect(next.body).toContain('\"type\":\"finish\"');
+      expect(next.final.type).toBe('turn.completed');
       expect(productions).toBe(1);
     }
   } finally {
     historyFault.mockRestore();
     completionFault?.mockRestore();
+    await closeAllClients();
+    await built.turnIngress.closeSessions();
     await built.server.close();
     await prepared.archive.close();
   }
@@ -574,17 +591,18 @@ test.each([
       listPageSize: 20, maxListPageSize: 100, language: 'en' }, new Date());
     const restarted = await buildConversationServer({ host: '127.0.0.1', port: 3000,
       allowedOrigins: [], publicHttps: false }, recovered,
-    { async *produce() { yield 'after restart'; } });
+    { async *produce() { yield text('after restart'); yield expectation(); } });
     try {
       expect(recovered.archive.recoveredTurns).toBe(1);
       expect(await recovered.archive.db.selectFrom('turns').select('status').execute())
         .toEqual([{ status: 'interrupted' }]);
-      const next = await restarted.server.inject({ method: 'POST', url: '/api/conversations/turns',
-        headers: { 'content-type': 'application/json' }, payload: { text: 'after restart' } });
-      expect(next.statusCode).toBe(200);
-      expect(next.body).toContain('after restart');
-      expect(next.body).toContain('\"type\":\"finish\"');
+      const port = await listen(restarted);
+      const next = await (await ProtocolClient.ready(sessionUrl(port))).textTurn('after restart');
+      expect(next.final.type).toBe('turn.completed');
+      expect(next.outputs[0]!.text).toBe('after restart');
     } finally {
+      await closeAllClients();
+      await restarted.turnIngress.closeSessions();
       await restarted.server.close();
       await recovered.archive.close();
     }
@@ -601,13 +619,14 @@ test('does not confirm success when the answer transaction cannot commit', async
   } finally { sqlite.close(); }
   const built = await buildConversationServer({ host: '127.0.0.1', port: 3000,
     allowedOrigins: [], publicHttps: false }, prepared,
-  { async *produce() { yield 'partial answer'; } });
+  { async *produce() { yield text('partial answer'); yield expectation(); } });
   try {
-    const response = await built.server.inject({ method: 'POST', url: '/api/conversations/turns',
-      headers: { 'content-type': 'application/json' }, payload: { text: 'question' } });
-    expect(response.statusCode).toBe(200);
-    expect(response.body).toContain('\"type\":\"text-delta\"');
-    expect(response.body).not.toContain('\"type\":\"finish\"');
+    const port = await listen(built);
+    const client = await ProtocolClient.ready(sessionUrl(port));
+    const result = await client.textTurn('question');
+    expect(result.outputs.map(output => output.text)).toEqual(['partial answer', failure]);
+    expect(result.final).toEqual({ type: 'turn.failed', turnId: result.accepted!.turnId, message: failure });
+    expect(client.json().some(message => message.type === 'turn.completed')).toBe(false);
     expect(await prepared.archive.db.selectFrom('turns')
       .select(['status', 'answer', 'finished_at']).executeTakeFirst())
       .toEqual({ status: 'pending', answer: null, finished_at: null });
@@ -616,6 +635,8 @@ test('does not confirm success when the answer transaction cannot commit', async
       .select('active_turn_id').where('id', '=', pending.conversation_id).executeTakeFirst())
       .toEqual({ active_turn_id: pending.id });
   } finally {
+    await closeAllClients();
+    await built.turnIngress.closeSessions();
     await built.server.close();
     await prepared.archive.close();
   }
@@ -659,23 +680,24 @@ test('migrates an existing archive before listening and preserves its history', 
 
   const runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
     AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory,
-  async () => ({ orchestrator: { async *produce() { yield 'new answer'; } }, async close() {} }));
+  async () => ({ orchestrator: { async *produce() { yield text('new answer'); yield expectation(); } },
+    async close() {} }));
   try {
     const origin = `http://127.0.0.1:${port}`;
     const history = await fetch(`${origin}/api/conversations/${priorConversationId}`);
     expect(history.status).toBe(200);
     expect((await history.json() as { turns: Array<{ id: string; text: string; answer: string }> }).turns)
       .toMatchObject([{ id: priorTurnId, text: 'old question', answer: 'old answer' }]);
-    const next = await fetch(`${origin}/api/conversations/turns`, { method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ conversationId: priorConversationId, text: 'new question' }),
-    });
-    expect(next.status).toBe(200);
-    expect(await next.text()).toContain('\"type\":\"finish\"');
+    const client = await ProtocolClient.ready(sessionUrl(port));
+    const next = await client.textTurn('new question', { conversationId: priorConversationId });
+    expect(next.final.type).toBe('turn.completed');
     const updated = await fetch(`${origin}/api/conversations/${priorConversationId}`);
     expect((await updated.json() as { turns: Array<{ text: string }> }).turns.map(turn => turn.text))
       .toEqual(['old question', 'new question']);
-  } finally { await runtime.close(); }
+  } finally {
+    await closeAllClients();
+    await runtime.close();
+  }
 });
 
 test('a failed archive migration prevents the conversation listener', async () => {
@@ -690,7 +712,7 @@ test('a failed archive migration prevents the conversation listener', async () =
   let agentClosed = false;
   await expect(startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
     AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory,
-  async () => ({ orchestrator: { async *produce() { yield 'unused'; } },
+  async () => ({ orchestrator: { async *produce() { yield text('unused'); yield expectation(); } },
     async close() { agentClosed = true; } }))).rejects.toThrow();
   expect(agentClosed).toBe(true);
   const probe = createServer();
@@ -701,7 +723,7 @@ test('a failed archive migration prevents the conversation listener', async () =
   await new Promise<void>((resolve) => probe.close(() => resolve()));
 });
 
-test('POST/SSE delegates to a configured MCP tool and persists the answer', async () => {
+test('a session turn delegates to a configured MCP tool and persists the answer', async () => {
   const files = await fixture();
   const agentDirectory = join(files.directory, 'agents');
   await mkdir(agentDirectory);
@@ -742,6 +764,8 @@ test('POST/SSE delegates to a configured MCP tool and persists the answer', asyn
   const modelRequests: Array<{ model: string; instructions: string }> = [];
   let orchestratorStep = 0;
   let runtime: Awaited<ReturnType<typeof startConversationServer>> | undefined;
+  // The adapter appends the reply-format guidance to the configured instructions.
+  const configuredInstructions = (prompt: unknown) => String(prompt ?? '').split('\n')[0]!;
   const prepareAgents = async (directory: string) => {
     const configs = await loadAgentConfigs(directory);
     const config = configs.specialists[0]!;
@@ -753,17 +777,18 @@ test('POST/SSE delegates to a configured MCP tool and persists the answer', asyn
         cacheWrite: undefined }, outputTokens: { total: 1, text: 1, reasoning: undefined } };
       const finish = (reason: 'stop' | 'tool-calls') => ({ type: 'finish',
         finishReason: { unified: reason, raw: undefined }, usage });
-      const text = (value: string) => [{ type: 'text-start', id: 'text-1' },
-        { type: 'text-delta', id: 'text-1', delta: value }, { type: 'text-end', id: 'text-1' }];
+      const answer = (value: string) => [{ type: 'text-start', id: 'text-1' },
+        { type: 'text-delta', id: 'text-1', delta: JSON.stringify({ answer: value, expectsReply: false }) },
+        { type: 'text-end', id: 'text-1' }];
       const specialistModel = new MockLanguageModelV4({ modelId: 'controlled-model',
         doStream: async (request) => {
           modelRequests.push({ model: 'controlled-model',
-            instructions: String(request.prompt[0]?.content ?? '') });
+            instructions: configuredInstructions(request.prompt[0]?.content) });
           const first = specialistStep++ === 0;
           return { stream: simulateReadableStream({ chunks: first ? [
             { type: 'tool-call', toolCallId: 'tool-1', toolName: 'mcp_0',
               input: '{"key":"answer"}' }, finish('tool-calls'),
-          ] as any[] : [...text('Answer from tool.'), finish('stop')] as any[] }) };
+          ] as any[] : [...answer('Answer from tool.'), finish('stop')] as any[] }) };
         } });
       const specialist = new AiSdkToolAgentReply({ instructions: config.instructions,
         model: config.llm.model, apiKey: config.llm.apiKey },
@@ -771,13 +796,13 @@ test('POST/SSE delegates to a configured MCP tool and persists the answer', asyn
       const orchestratorModel = new MockLanguageModelV4({ modelId: 'controlled-model',
         doStream: async (request) => {
           modelRequests.push({ model: 'controlled-model',
-            instructions: String(request.prompt[0]?.content ?? '') });
+            instructions: configuredInstructions(request.prompt[0]?.content) });
           expect(request.tools?.[0]?.description).toBe('Find facts.');
           const first = orchestratorStep++ === 0;
           return { stream: simulateReadableStream({ chunks: first ? [
             { type: 'tool-call', toolCallId: 'delegate-1', toolName: 'delegate_0',
               input: '{"task":"Find answer"}' }, finish('tool-calls'),
-          ] as any[] : [...text('Direct answer.'), finish('stop')] as any[] }) };
+          ] as any[] : [...answer('Direct answer.'), finish('stop')] as any[] }) };
         } });
       const orchestrator = new AiSdkOrchestratorReply({
         instructions: configs.orchestrator.instructions, model: configs.orchestrator.llm.model,
@@ -790,26 +815,17 @@ test('POST/SSE delegates to a configured MCP tool and persists the answer', asyn
   try {
     runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
       AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, agentDirectory, prepareAgents);
-    const response = await fetch(`http://127.0.0.1:${port}/api/conversations/turns`, {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ text: 'What is the answer?' }),
-    });
-    expect(response.status).toBe(200);
-    const events = await response.text();
-    expect(events).toContain('\"type\":\"start\"');
-    expect(events).toContain('\"type\":\"text-delta\"');
-    expect(events).toContain('Answer from tool.');
-    expect(events).toContain('\"type\":\"finish\"');
+    const client = await ProtocolClient.ready(sessionUrl(port));
+    const delegated = await client.textTurn('What is the answer?');
+    expect(delegated.final).toMatchObject({ type: 'turn.completed', expectsReply: false });
+    expect(delegated.outputs.map(output => output.text)).toEqual(['Answer from tool.']);
     expect(calls).toEqual(['lookup']);
+    const id = delegated.accepted!.conversationId as string;
     const list = await fetch(`http://127.0.0.1:${port}/api/conversations`);
-    const items = (await list.json() as { items: Array<{ id: string }> }).items;
-    expect(items).toHaveLength(1);
-    const direct = await fetch(`http://127.0.0.1:${port}/api/conversations/turns`, {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ conversationId: items[0]!.id, text: 'Answer directly.' }),
-    });
-    expect(direct.status).toBe(200);
-    expect(await direct.text()).toContain('Direct answer.');
+    expect((await list.json() as { items: Array<{ id: string }> }).items.map(item => item.id)).toEqual([id]);
+    const direct = await client.textTurn('Answer directly.', { conversationId: id });
+    expect(direct.final.type).toBe('turn.completed');
+    expect(direct.outputs[0]!.text).toBe('Direct answer.');
     expect(calls).toEqual(['lookup']);
     expect(modelRequests).toEqual([
       { model: 'controlled-model', instructions: 'Delegate fact lookups.' },
@@ -817,9 +833,10 @@ test('POST/SSE delegates to a configured MCP tool and persists the answer', asyn
       { model: 'controlled-model', instructions: 'Use lookup.' },
       { model: 'controlled-model', instructions: 'Delegate fact lookups.' },
     ]);
-    const history = await fetch(`http://127.0.0.1:${port}/api/conversations/${items[0]!.id}`);
+    const history = await fetch(`http://127.0.0.1:${port}/api/conversations/${id}`);
     const turns = (await history.json() as { turns: Array<{ answer: string }> }).turns;
     expect(turns.map((turn) => turn.answer)).toEqual(['Answer from tool.', 'Direct answer.']);
+    await client.close();
     await runtime.close();
     runtime = undefined;
     await writeFile(join(agentDirectory, 'facts.json'), JSON.stringify({
@@ -830,12 +847,9 @@ test('POST/SSE delegates to a configured MCP tool and persists the answer', asyn
     modelRequests.length = 0;
     runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
       AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, agentDirectory, prepareAgents);
-    const changed = await fetch(`http://127.0.0.1:${port}/api/conversations/turns`, {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ text: 'Look up the updated fact.' }),
-    });
-    expect(changed.status).toBe(200);
-    expect(await changed.text()).toContain('Answer from tool.');
+    const changed = await (await ProtocolClient.ready(sessionUrl(port))).textTurn('Look up the updated fact.');
+    expect(changed.final.type).toBe('turn.completed');
+    expect(changed.outputs[0]!.text).toBe('Answer from tool.');
     expect(modelRequests).toEqual([
       { model: 'controlled-model', instructions: 'Delegate fact lookups.' },
       { model: 'controlled-model', instructions: 'Use the updated lookup.' },
@@ -843,6 +857,7 @@ test('POST/SSE delegates to a configured MCP tool and persists the answer', asyn
     ]);
     expect(calls).toEqual(['lookup', 'lookup']);
   } finally {
+    await closeAllClients();
     await runtime?.close();
     await new Promise<void>((resolve) => mcpServer.close(() => resolve()));
   }

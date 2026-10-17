@@ -6,14 +6,20 @@ import type { ConversationHistory, ConversationHistoryRead } from './conversatio
 import type { ProduceConversationReply } from './produce-conversation-reply.js';
 
 export type ExchangeTurnSuccess =
-  | Readonly<{ conversationId: string; turnId: string; outcome: 'answered'; expectsReply?: boolean }>
+  | Readonly<{ conversationId: string; turnId: string; outcome: 'answered'; expectsReply: boolean }>
   | Readonly<{ conversationId: string; turnId: string; outcome: 'failed'; error: string }>
   | Readonly<{ conversationId: string; turnId: string; outcome: 'interrupted' }>;
-export type ExchangeTurn = (input: BeginTurnInput, observer?: Readonly<{
+
+/** Application notifications of one admitted turn, delivered one at a time in this order. */
+export type ExchangeTurnObserver = Readonly<{
   admitted?(conversationId: string, turnId: string): void | Promise<void>;
   delta?(text: string): void | Promise<void>;
-}>, shouldInterrupt?: () => boolean,
-  requireReplyExpectation?: boolean) => Promise<Result<ExchangeTurnSuccess, BeginTurnRejection>>;
+  /** The reply was fully produced; its outcome has not been stored yet. */
+  produced?(): void | Promise<void>;
+}>;
+
+export type ExchangeTurn = (input: BeginTurnInput, observer?: ExchangeTurnObserver,
+  shouldInterrupt?: () => boolean) => Promise<Result<ExchangeTurnSuccess, BeginTurnRejection>>;
 
 async function notify(call: (() => void | Promise<void>) | undefined): Promise<void> {
   try {
@@ -29,7 +35,7 @@ export function createExchangeTurn(dependencies: Readonly<{
   failureMessage: string;
 }>): ExchangeTurn {
   const failureMessage = dependencies.failureMessage;
-  return async (input, observer, shouldInterrupt = () => false, requireReplyExpectation = false) => {
+  return async (input, observer, shouldInterrupt = () => false) => {
     const admitted = await dependencies.begin(input);
     if (!admitted.ok) return admitted;
     const { conversationId, turnId } = admitted.value;
@@ -62,32 +68,28 @@ export function createExchangeTurn(dependencies: Readonly<{
     let answer = '';
     let expectsReply: boolean | undefined;
     try {
-      const parts = requireReplyExpectation
-        ? dependencies.reply.produceVoice?.(history) : dependencies.reply.produce(history);
-      if (!parts) throw new ProjectError('Voice reply expectation unavailable');
-      for await (const part of parts) {
+      for await (const part of dependencies.reply.produce(history)) {
         if (shouldInterrupt()) return interrupted();
-        if (typeof part === 'string') {
-          answer += part;
-          await notify(observer?.delta && (() => observer.delta!(part)));
+        if (part.kind === 'text' && typeof part.text === 'string' && expectsReply === undefined) {
+          if (!part.text) continue;
+          answer += part.text;
+          await notify(observer?.delta && (() => observer.delta!(part.text)));
         } else if (part.kind === 'reply_expectation' && expectsReply === undefined
           && typeof part.expectsReply === 'boolean') {
           expectsReply = part.expectsReply;
-        } else throw new ProjectError('Invalid voice reply expectation');
+        } else throw new ProjectError('Invalid reply part');
       }
-      if (requireReplyExpectation && expectsReply === undefined) {
-        throw new ProjectError('Missing voice reply expectation');
-      }
+      if (expectsReply === undefined) throw new ProjectError('Missing reply expectation');
     } catch {
       if (shouldInterrupt()) return interrupted();
       return failAdmittedTurn();
     }
     if (shouldInterrupt()) return interrupted();
+    await notify(observer?.produced && (() => observer.produced!()));
 
     const completed = await dependencies.complete({ turnId, outcome: { kind: 'answer', text: answer } });
     if (!completed.ok && shouldInterrupt()) return interrupted();
     if (!completed.ok || completed.value.status !== 'answered') throw new ProjectError('Admitted turn could not be completed');
-    return { ok: true, value: { conversationId, turnId, outcome: 'answered',
-      ...(expectsReply === undefined ? {} : { expectsReply }) } };
+    return { ok: true, value: { conversationId, turnId, outcome: 'answered', expectsReply } };
   };
 }

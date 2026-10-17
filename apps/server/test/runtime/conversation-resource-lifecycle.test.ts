@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, test, vi } from 'vitest';
 import { startConversationServer } from '../../src/runtime/conversation-server.js';
+import { closeAllClients, ProtocolClient, takeSchemaViolations } from './protocol-client.js';
 
 const resource = vi.hoisted(() => ({ opened: 0, closed: 0 }));
 vi.mock('@ambrogio/conversations/adapters/out/sqlite/archive', async (importOriginal) => {
@@ -22,6 +23,8 @@ vi.mock('@ambrogio/conversations/adapters/out/sqlite/archive', async (importOrig
 
 const directories: string[] = [];
 afterEach(async () => {
+  await closeAllClients();
+  expect(takeSchemaViolations()).toEqual([]);
   resource.opened = 0;
   resource.closed = 0;
   await Promise.all(directories.splice(0).map(directory =>
@@ -60,17 +63,14 @@ test.each(['answer', 'agent failure'] as const)(
     const runtime = await startConversationServer(files.environment, files.directory,
       async () => ({ orchestrator: { async *produce() {
         if (scenario === 'agent failure') throw new Error('controlled agent failure');
-        yield 'answer';
+        yield { kind: 'text' as const, text: 'answer' };
+        yield { kind: 'reply_expectation' as const, expectsReply: false };
       } }, async close() { agentClosed++; } }));
     try {
       expect(resource).toEqual({ opened: 1, closed: 0 });
-      const response = await fetch(`http://127.0.0.1:${port}/api/conversations/turns`, {
-        method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ text: 'question' }),
-      });
-      const body = await response.text();
-      expect(response.status).toBe(200);
-      expect(body).toContain(scenario === 'answer' ? '"type":"finish"' : '"type":"error"');
+      const client = await ProtocolClient.ready(`ws://127.0.0.1:${port}/api/session`);
+      const result = await client.textTurn('question');
+      expect(result.final.type).toBe(scenario === 'answer' ? 'turn.completed' : 'turn.failed');
       expect(resource.closed).toBe(0);
     } finally { await runtime.close(); }
     await runtime.close();
@@ -85,7 +85,7 @@ test('closes the prepared archive once when the listener cannot start', async ()
   let agentClosed = 0;
   try {
     await expect(startConversationServer(files.environment, files.directory,
-      async () => ({ orchestrator: { async *produce() { yield 'unused'; } },
+      async () => ({ orchestrator: { async *produce() { yield { kind: 'text' as const, text: 'unused' }; } },
         async close() { agentClosed++; } }))).rejects.toThrow();
     expect(resource).toEqual({ opened: 1, closed: 1 });
     expect(agentClosed).toBe(1);

@@ -194,21 +194,24 @@ importers:
       '@types/node':
         specifier: 24.19.2
         version: 24.19.2
+      '@types/ws':
+        specifier: 8.18.2
+        version: 8.18.2
       ai:
         specifier: 7.0.142
         version: 7.0.142(zod@4.6.7)
+      ajv:
+        specifier: 8.20.0
+        version: 8.20.0
+      ws:
+        specifier: 8.22.0
+        version: 8.22.0
 
   packages/conversations:
     dependencies:
       '@ai-sdk/mistral':
         specifier: 4.0.65
         version: 4.0.65(zod@4.6.7)
-      '@micdrop/piper':
-        specifier: 1.0.0
-        version: 1.0.0(@micdrop/server@2.9.0)
-      '@micdrop/server':
-        specifier: 2.9.0
-        version: 2.9.0
       '@modelcontextprotocol/client':
         specifier: 2.3.1
         version: 2.3.1
@@ -218,6 +221,9 @@ importers:
       ai:
         specifier: 7.0.142
         version: 7.0.142(zod@4.6.7)
+      ajv:
+        specifier: 8.20.0
+        version: 8.20.0
       better-sqlite3:
         specifier: 13.0.3
         version: 13.0.3
@@ -307,14 +313,6 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
-
-  '@micdrop/piper@1.0.0':
-    resolution: {integrity: sha512-TSs7TgFC3IIym+aWoArIE8CTowxhp9V+8bj/nRFZh1aE54UrMIjHe0OQoRcSePWxtXT1OpbpV/1uErYv/yNjlQ==}
-    peerDependencies:
-      '@micdrop/server': '>=2.3.0'
-
-  '@micdrop/server@2.9.0':
-    resolution: {integrity: sha512-v1GAE8mKUm8jf/hOS/2vlMB4cLhiEZ1bxct7zUJc7Wd1RYGkq1gaFP/0zPIEAdLbKpfFCcMCrCmTo2YmX1d+Pg==}
 
   '@modelcontextprotocol/client@2.3.1':
     resolution: {integrity: sha512-mIGZXpHsjnZ6lD+gD/WCMpR5k8yVQQ8nNFH1N0Srf7AvnwTUMYD6pvTY8ng2+He5FfV7YMZLmrjL7cLa/cc3dQ==}
@@ -671,9 +669,6 @@ packages:
 
   estree-walker@3.0.3:
     resolution: {integrity: sha512-7RUKfXgSMMkzt6ZuXmqapOurLGPPfgj6l9uRZ7lRGolvk0y2yocc35LdcxKC5PQZdn2DMqioAQ2NoWcrTKmm6g==}
-
-  eventemitter3@5.0.4:
-    resolution: {integrity: sha512-mlsTRyGaPBjPedk6Bvw+aqbsXDtoAyAzm5MO7JgU+yVRyMQ5O8bD4Kcci7BS85f93veegeCPkL8R4GLClnjLFw==}
 
   eventsource-parser@3.1.1:
     resolution: {integrity: sha512-EKN1vKAMcZ8MlYMpaNuxN6R9yakzH6uajHcHVTqWJzvu5pWw9DyhbP35HH8MVBQ+dZjAfDxk+A8NiR9KWaXiyQ==}
@@ -1257,18 +1252,6 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.6.0
 
-  '@micdrop/piper@1.0.0(@micdrop/server@2.9.0)':
-    dependencies:
-      '@micdrop/server': 2.9.0
-
-  '@micdrop/server@2.9.0':
-    dependencies:
-      eventemitter3: 5.0.4
-      ws: 8.22.0
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
-
   '@modelcontextprotocol/client@2.3.1':
     dependencies:
       '@modelcontextprotocol/core': 2.3.1
@@ -1511,8 +1494,6 @@ snapshots:
   estree-walker@3.0.3:
     dependencies:
       '@types/estree': 1.0.9
-
-  eventemitter3@5.0.4: {}
 
   eventsource-parser@3.1.1: {}
 

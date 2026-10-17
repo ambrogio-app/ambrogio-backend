@@ -2,10 +2,57 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { AddressInfo } from 'node:net';
 import Fastify from 'fastify';
-import { assembleExchangeTurn, prepareConversations, registerConversationHistoryRoute, registerConversationListRoute, registerConversationTurnRoute } from '../../src/composition/conversations.js';
+import websocket from '@fastify/websocket';
+import type { ProduceConversationReply, ReplyPart } from '@ambrogio/conversations/application/produce-conversation-reply';
+import type { SpeechComponents } from '@ambrogio/conversations/adapters/in/session/speech-components';
+import { assembleExchangeTurn, loadProtocolSchema, prepareConversations, registerConversationHistoryRoute,
+  registerConversationListRoute, registerConversationSessionRoute } from '../../src/composition/conversations.js';
+import { closeAllClients, pcm, ProtocolClient, takeSchemaViolations } from '../runtime/protocol-client.js';
 
 const directories: string[] = [];
+
+const text = (value: string): ReplyPart => ({ kind: 'text', text: value });
+const expectation = (expectsReply: boolean): ReplyPart => ({ kind: 'reply_expectation', expectsReply });
+
+/** Speech whose transcript is exactly the UTF-8 content of the received audio, without trimming. */
+const verbatimSpeech: SpeechComponents = {
+  transcriber: {
+    async transcribe(audio) {
+      const parts: Buffer[] = [];
+      for await (const chunk of audio) parts.push(Buffer.from(chunk));
+      return Buffer.concat(parts).toString('utf8');
+    },
+  },
+  synthesizer: {
+    sampleRate: 22_050,
+    async *synthesize(input) { for await (const piece of input) yield Buffer.from(piece, 'utf8'); },
+  },
+  async close() {},
+};
+
+/** Fastify with the conversation session channel and the history route on an ephemeral port. */
+async function sessionServer(prepared: Awaited<ReturnType<typeof prepareConversations>>,
+  reply: ProduceConversationReply, speech?: SpeechComponents) {
+  const server = Fastify();
+  await server.register(websocket);
+  const sessions = registerConversationSessionRoute(server, prepared, reply, {
+    schema: await loadProtocolSchema(), allowedOrigins: [], pingIntervalMs: 30_000,
+    ...(speech ? { speech } : {}),
+  });
+  registerConversationHistoryRoute(server, prepared);
+  await server.listen({ host: '127.0.0.1', port: 0 });
+  const { port } = server.server.address() as AddressInfo;
+  let closed = false;
+  return { server, url: `ws://127.0.0.1:${port}/api/session`, async close() {
+    if (closed) return;
+    closed = true;
+    await sessions.stopAccepting();
+    await sessions.closeSessions();
+    await server.close();
+  } };
+}
 
 async function fixture() {
   const directory = await mkdtemp(join(tmpdir(), 'ambrogio-server-list-'));
@@ -18,6 +65,8 @@ function environment(configFilename: string): NodeJS.ProcessEnv {
 }
 
 afterEach(async () => {
+  await closeAllClients();
+  expect(takeSchemaViolations()).toEqual([]);
   await Promise.all(directories.splice(0).map(directory => rm(directory, { recursive: true, force: true })));
 });
 
@@ -129,7 +178,7 @@ describe('server conversation composition', () => {
     const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
     try {
       const exchange = assembleExchangeTurn(prepared, {
-        async *produce() { throw new Error('private provider failure'); },
+        async *produce(): AsyncGenerator<ReplyPart> { throw new Error('private provider failure'); },
       });
       const result = await exchange({ text: 'domanda' });
       expect(result).toMatchObject({ ok: true, value: {
@@ -142,34 +191,30 @@ describe('server conversation composition', () => {
     }
   });
 
-  it('serves a text turn through Fastify and conserves its completed answer', async () => {
+  it('serves a text turn through the session channel and conserves its completed answer', async () => {
     const files = await fixture();
     await writeFile(files.configFilename, '{"language":"it"}');
     const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
-    const server = Fastify();
+    const running = await sessionServer(prepared, {
+      async *produce(history) {
+        expect(history.turns.at(-1)?.text).toBe('ciao');
+        yield text('Buon');
+        yield text('giorno');
+        yield expectation(false);
+      },
+    });
     try {
-      registerConversationTurnRoute(server, prepared, {
-        async *produce(history) {
-          expect(history.turns.at(-1)?.text).toBe('ciao');
-          yield 'Buon';
-          yield 'giorno';
-        },
-      });
-      const response = await server.inject({
-        method: 'POST', url: '/api/conversations/turns',
-        headers: { 'content-type': 'application/json' },
-        payload: JSON.stringify({ text: 'ciao' }),
-      });
-      expect(response.statusCode).toBe(200);
-      expect(response.body).toMatch(/^data: \{"type":"start","messageId":"[^"]+","messageMetadata":\{"conversationId":"[^"]+","turnId":"[^"]+"\}\}\n\n/);
-      expect(response.body).toContain('"delta":"Buon"');
-      expect(response.body).toContain('"delta":"giorno"');
-      expect(response.body).toContain('"type":"finish","finishReason":"stop"');
+      const client = await ProtocolClient.ready(running.url);
+      const result = await client.textTurn('ciao');
+      expect(result.sequence).toEqual(['turn.accepted', 'output.start', 'output.chunk', 'output.chunk',
+        'output.end', 'turn.completed']);
+      expect(result.outputs[0]!.text).toBe('Buongiorno');
+      expect(result.final).toEqual({ type: 'turn.completed', turnId: result.accepted!.turnId, expectsReply: false });
       const stored = await prepared.archive.db.selectFrom('turns')
         .select(['text', 'status', 'answer']).executeTakeFirst();
       expect(stored).toEqual({ text: 'ciao', status: 'answered', answer: 'Buongiorno' });
     } finally {
-      await server.close();
+      await running.close();
       await prepared.archive.close();
     }
   });
@@ -178,26 +223,28 @@ describe('server conversation composition', () => {
     const files = await fixture();
     await writeFile(files.configFilename, '{"language":"it"}');
     const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
-    const server = Fastify();
     let signalStarted!: () => void;
     const started = new Promise<void>(resolve => { signalStarted = resolve; });
     let release!: () => void;
     const released = new Promise<void>(resolve => { release = resolve; });
+    const running = await sessionServer(prepared, {
+      async *produce() {
+        signalStarted();
+        await released;
+        yield text('risposta completa');
+        yield expectation(false);
+      },
+    });
     try {
-      registerConversationTurnRoute(server, prepared, {
-        async *produce() {
-          signalStarted();
-          await released;
-          yield 'risposta completa';
-        },
-      });
-      registerConversationHistoryRoute(server, prepared);
-      const post = server.inject({ method: 'POST', url: '/api/conversations/turns',
-        headers: { 'content-type': 'application/json' }, payload: JSON.stringify({ text: '  domanda  interna  ' }) });
+      const client = await ProtocolClient.ready(running.url);
+      const requestId = client.requestId();
+      client.startText(requestId);
+      client.chunk(requestId, '  domanda  interna  ');
+      client.end(requestId);
       await started;
       const conversation = await prepared.archive.db.selectFrom('conversations').select('id').executeTakeFirstOrThrow();
       const url = `/api/conversations/${conversation.id}`;
-      const pending = await server.inject({ method: 'GET', url });
+      const pending = await running.server.inject({ method: 'GET', url });
       expect(pending.statusCode).toBe(200);
       expect(pending.headers['content-type']).toMatch(/^application\/json/);
       expect(pending.headers['cache-control']).toBe('no-store');
@@ -207,18 +254,56 @@ describe('server conversation composition', () => {
       expect(pending.json().turns[0]).not.toHaveProperty('finishedAt');
 
       release();
-      expect((await post).body).toContain('"type":"finish"');
-      const completed = await server.inject({ method: 'GET', url });
+      expect((await client.result(requestId)).final.type).toBe('turn.completed');
+      const completed = await running.server.inject({ method: 'GET', url });
       expect(completed.json()).toMatchObject({ id: conversation.id,
         turns: [{ text: '  domanda  interna  ', status: 'answered', answer: 'risposta completa' }] });
       expect(completed.json().turns).toHaveLength(1);
       expect(completed.json().turns[0].finishedAt).toMatch(/Z$/);
-      const missing = await server.inject({ method: 'GET', url: '/api/conversations/missing' });
+      const missing = await running.server.inject({ method: 'GET', url: '/api/conversations/missing' });
       expect(missing.statusCode).toBe(404);
       expect(missing.json()).toEqual({ error: 'Conversazione non trovata.' });
     } finally {
       release();
-      await server.close();
+      await running.close();
+      await prepared.archive.close();
+    }
+  });
+
+  // Verification: Prova della conservazione del testo originale
+  it('conserves typed and transcribed turn text exactly as received', async () => {
+    const files = await fixture();
+    await writeFile(files.configFilename, '{}');
+    const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
+    const histories: string[] = [];
+    const running = await sessionServer(prepared, {
+      async *produce(history) {
+        histories.push(history.turns.at(-1)!.text);
+        yield text('ok');
+        yield expectation(false);
+      },
+    }, verbatimSpeech);
+    try {
+      const client = await ProtocolClient.ready(running.url);
+      const original = '  accendi   la luce\t ';
+      const typed = await client.textTurn(original);
+      const spoken = await client.audioTurn(pcm(original, Buffer.byteLength(original)));
+      for (const result of [typed, spoken]) {
+        expect(result.accepted!.text).toBe(original);
+        const history = await running.server.inject({ method: 'GET',
+          url: `/api/conversations/${result.accepted!.conversationId as string}` });
+        expect(history.json().turns).toMatchObject([{ text: original, status: 'answered' }]);
+      }
+      expect(histories).toEqual([original, original]);
+      for (const blank of ['', '  \t  ']) {
+        expect((await client.textTurn(blank)).final).toMatchObject({ type: 'turn.rejected', reason: 'invalid' });
+      }
+      expect((await client.audioTurn(pcm('   ', 4))).final)
+        .toMatchObject({ type: 'turn.rejected', reason: 'transcription_failed' });
+      expect(await prepared.archive.db.selectFrom('turns').select('text').execute())
+        .toEqual([{ text: original }, { text: original }]);
+    } finally {
+      await running.close();
       await prepared.archive.close();
     }
   });
@@ -227,27 +312,23 @@ describe('server conversation composition', () => {
     const files = await fixture();
     await writeFile(files.configFilename, '{}');
     const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
-    const server = Fastify();
+    const running = await sessionServer(prepared, {
+      async *produce() { yield text('answer'); yield expectation(false); },
+    });
     try {
-      registerConversationTurnRoute(server, prepared, { async *produce() { yield 'answer'; } });
-      const submit = (text: string, conversationId?: string) => server.inject({
-        method: 'POST', url: '/api/conversations/turns',
-        headers: { 'content-type': 'application/json' },
-        payload: JSON.stringify({ text, ...(conversationId ? { conversationId } : {}) }),
-      });
-      const accepted = await submit('valid');
-      expect(accepted.statusCode).toBe(200);
+      const client = await ProtocolClient.ready(running.url);
+      const accepted = await client.textTurn('valid');
+      expect(accepted.final.type).toBe('turn.completed');
       const conversation = await prepared.archive.db.selectFrom('conversations').select('id').executeTakeFirstOrThrow();
       const beforeConversations = await prepared.archive.db.selectFrom('conversations').select('id').execute();
       const beforeTurns = await prepared.archive.db.selectFrom('turns').select('id').execute();
       for (const conversationId of [undefined, conversation.id, 'missing']) {
-        for (const text of ['', '  \t  ']) {
-          const response = await submit(text, conversationId);
-          expect(response.statusCode).toBe(400);
-          expect(response.headers['content-type']).toMatch(/^application\/json/);
-          expect(response.headers['cache-control']).toBe('no-store');
-          expect(response.json()).toEqual({ error: 'Invalid message.' });
-          expect(response.body).not.toContain('data: ');
+        for (const value of ['', '  \t  ']) {
+          const result = await client.textTurn(value, conversationId ? { conversationId } : {});
+          expect(result.accepted).toBeUndefined();
+          expect(result.outputs.map(output => output.text)).toEqual(['Invalid message.']);
+          expect(result.final).toEqual({ type: 'turn.rejected', requestId: result.final.requestId,
+            reason: 'invalid', message: 'Invalid message.' });
           expect(await prepared.archive.db.selectFrom('conversations').select('id').execute())
             .toEqual(beforeConversations);
           expect(await prepared.archive.db.selectFrom('turns').select('id').execute())
@@ -255,7 +336,7 @@ describe('server conversation composition', () => {
         }
       }
     } finally {
-      await server.close();
+      await running.close();
       await prepared.archive.close();
     }
   });
@@ -264,79 +345,80 @@ describe('server conversation composition', () => {
     const files = await fixture();
     await writeFile(files.configFilename, '{}');
     const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
-    const server = Fastify();
     let signalStarted!: () => void;
     const started = new Promise<void>(resolve => { signalStarted = resolve; });
     let releaseFirst!: () => void;
     const released = new Promise<void>(resolve => { releaseFirst = resolve; });
+    const running = await sessionServer(prepared, {
+      async *produce() {
+        signalStarted();
+        await released;
+        yield text('answer');
+        yield expectation(false);
+      },
+    });
     try {
-      registerConversationTurnRoute(server, prepared, {
-        async *produce() {
-          signalStarted();
-          await released;
-          yield 'answer';
-        },
-      });
-      const request = (text: string, conversationId?: string) => ({ method: 'POST' as const,
-        url: '/api/conversations/turns', headers: { 'content-type': 'application/json' },
-        payload: JSON.stringify({ text, ...(conversationId ? { conversationId } : {}) }) });
-      const first = server.inject(request('first'));
+      const client = await ProtocolClient.ready(running.url);
+      const first = client.requestId();
+      client.startText(first);
+      client.chunk(first, 'first');
+      client.end(first);
       await started;
       const conversation = await prepared.archive.db.selectFrom('conversations').select('id').executeTakeFirstOrThrow();
-      const second = await server.inject(request('second', conversation.id));
-      expect(second.statusCode).toBe(409);
-      expect(second.json()).toEqual({ error: 'Another turn is in progress.' });
+      const second = await client.textTurn('second', { conversationId: conversation.id });
+      expect(second.final).toMatchObject({ type: 'turn.rejected', reason: 'occupied',
+        message: 'Another turn is in progress.' });
       expect(await prepared.archive.db.selectFrom('turns').select('text').execute())
         .toEqual([{ text: 'first' }]);
       releaseFirst();
-      expect((await first).body).toContain('"type":"finish"');
+      expect((await client.result(first)).final.type).toBe('turn.completed');
+      expect(await prepared.archive.db.selectFrom('turns').select('text').execute())
+        .toEqual([{ text: 'first' }]);
     } finally {
       releaseFirst();
-      await server.close();
+      await running.close();
       await prepared.archive.close();
     }
   });
 
-  it('blocks new HTTP turns after a completion write failure and recovers on restart', async () => {
+  it('blocks new turns after a completion write failure and recovers on restart', async () => {
     const files = await fixture();
     await writeFile(files.configFilename, '{"language":"it"}');
     const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
-    const server = Fastify();
     let archiveClosed = false;
+    const running = await sessionServer(prepared, {
+      async *produce() {
+        await prepared.archive.close();
+        archiveClosed = true;
+        yield text('parziale');
+        yield expectation(false);
+      },
+    });
     try {
-      registerConversationTurnRoute(server, prepared, {
-        async *produce() {
-          await prepared.archive.close();
-          archiveClosed = true;
-          yield 'parziale';
-        },
-      });
-      const request = (text: string) => ({ method: 'POST' as const,
-        url: '/api/conversations/turns', headers: { 'content-type': 'application/json' },
-        payload: JSON.stringify({ text }) });
-      const first = await server.inject(request('prima domanda'));
-      expect(first.statusCode).toBe(200);
-      expect(first.body).toContain('"type":"error","errorText":"Non riesco a completare la risposta."');
-      expect(first.body).not.toContain('"type":"finish"');
-      const blocked = await server.inject(request('seconda domanda'));
-      expect(blocked.statusCode).toBe(503);
-      expect(blocked.json()).toEqual({ error: 'Servizio temporaneamente non disponibile.' });
+      const client = await ProtocolClient.ready(running.url);
+      const first = await client.textTurn('prima domanda');
+      expect(first.final).toEqual({ type: 'turn.failed', turnId: first.accepted!.turnId,
+        message: 'Non riesco a completare la risposta.' });
+      expect(first.outputs.map(output => output.text)).toEqual(['parziale', 'Non riesco a completare la risposta.']);
+      expect(first.sequence).not.toContain('turn.completed');
+      const blocked = await client.textTurn('seconda domanda');
+      expect(blocked.final).toMatchObject({ type: 'turn.rejected', reason: 'unavailable',
+        message: 'Servizio temporaneamente non disponibile.' });
     } finally {
-      await server.close();
+      await running.close();
       if (!archiveClosed) await prepared.archive.close();
     }
 
     const restarted = await prepareConversations(files.archiveFilename, new Date(2000), environment(files.configFilename));
-    const restartedServer = Fastify();
+    const restartedServer = await sessionServer(restarted, {
+      async *produce() { yield text('pronta'); yield expectation(false); },
+    });
     try {
       expect(restarted.archive.recoveredTurns).toBe(1);
       expect(await restarted.archive.db.selectFrom('turns').select('status').executeTakeFirst())
         .toEqual({ status: 'interrupted' });
-      registerConversationTurnRoute(restartedServer, restarted, { async *produce() { yield 'pronta'; } });
-      const response = await restartedServer.inject({ method: 'POST', url: '/api/conversations/turns',
-        headers: { 'content-type': 'application/json' }, payload: JSON.stringify({ text: 'nuova domanda' }) });
-      expect(response.statusCode).toBe(200);
-      expect(response.body).toContain('"type":"finish"');
+      const client = await ProtocolClient.ready(restartedServer.url);
+      expect((await client.textTurn('nuova domanda')).final.type).toBe('turn.completed');
     } finally {
       await restartedServer.close();
       await restarted.archive.close();

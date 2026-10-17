@@ -6,15 +6,18 @@ import websocket from '@fastify/websocket';
 import { loadConversationConfig } from '@ambrogio/conversations/adapters/out/conversation-config';
 import { httpAjvOptions } from '@ambrogio/conversations/adapters/in/http/http-validation';
 import type { VoiceConfig } from '@ambrogio/conversations/adapters/out/voice-config';
-import type { createVoiceComponents } from '@ambrogio/conversations/adapters/in/voice/voice-session';
+import type { SpeechComponents, SpeechComponentsFactory } from '@ambrogio/conversations/adapters/in/session/speech-components';
 import type { ProduceConversationReply } from '@ambrogio/conversations/application/produce-conversation-reply';
 import Fastify, { LogController, type FastifyInstance } from 'fastify';
-import { prepareConfiguredConversations, registerConversationHistoryRoute,
-  registerConversationListRoute, registerConversationTurnRoute } from '../composition/conversations.js';
+import { loadProtocolSchema, prepareConfiguredConversations, registerConversationHistoryRoute,
+  registerConversationListRoute, registerConversationSessionRoute } from '../composition/conversations.js';
 import { conversationConfigPath } from './conversation-config-path.js';
 import { httpConfigPath, loadHttpConfig, type HttpConfig } from './http-config.js';
 
 type Prepared = Awaited<ReturnType<typeof prepareConfiguredConversations>>;
+export type ConversationIngress = Readonly<{ stopAccepting(): Promise<void>; closeSessions(): Promise<void> }>;
+export type ConversationServerOptions = Readonly<{ sessionPingIntervalMs?: number }>;
+const defaultSessionPingIntervalMs = 30_000;
 
 function normalizeError(value: unknown): Error {
   return value instanceof Error ? value : new Error('Unknown HTTP failure', { cause: value });
@@ -28,8 +31,8 @@ function serializeDiagnosticError(value: unknown): Readonly<{ type: string; mess
 
 async function buildHttpServer(config: HttpConfig, prepared: Prepared,
   replyProducer?: ProduceConversationReply, voice?: VoiceConfig,
-  voiceComponents?: typeof createVoiceComponents): Promise<Readonly<{
-    server: FastifyInstance; turnIngress?: Readonly<{ stopAccepting(): Promise<void> }>;
+  speechFactory?: SpeechComponentsFactory, options: ConversationServerOptions = {}): Promise<Readonly<{
+    server: FastifyInstance; turnIngress?: ConversationIngress;
   }>> {
   const server = Fastify({
     ajv: { customOptions: httpAjvOptions },
@@ -57,24 +60,30 @@ async function buildHttpServer(config: HttpConfig, prepared: Prepared,
       ? 'Internal server error.' : 'Invalid HTTP request.' });
   });
   try {
-    if (voice) await server.register(websocket);
+    if (replyProducer) await server.register(websocket);
     await server.register(helmet, { global: true, hsts: config.publicHttps
       ? { maxAge: config.hstsMaxAgeSeconds!, includeSubDomains: false, preload: false } : false });
     await server.register(cors, { origin: config.allowedOrigins.length ? [...config.allowedOrigins] : false,
-      methods: replyProducer ? ['GET', 'POST'] : ['GET'], exposedHeaders: ['X-Request-Id'] });
+      methods: ['GET'], exposedHeaders: ['X-Request-Id'] });
     registerConversationListRoute(server, prepared);
     registerConversationHistoryRoute(server, prepared);
-    const turnIngress = replyProducer
-      ? registerConversationTurnRoute(server, prepared, replyProducer) : undefined;
-    const voiceIngress = voice && replyProducer
-      ? (await import('../composition/voice.js')).registerVoiceRoute(server, prepared, replyProducer,
-        voice, voiceComponents)
-      : undefined;
-    const combined = turnIngress && voiceIngress
-      ? { async stopAccepting() { await Promise.all([
-        turnIngress.stopAccepting(), voiceIngress.stopAccepting(),
-      ]); } } : turnIngress;
-    return { server, ...(combined ? { turnIngress: combined } : {}) };
+    if (!replyProducer) return { server };
+    const schema = await loadProtocolSchema();
+    let speech: SpeechComponents | undefined;
+    if (voice) {
+      const factory = speechFactory
+        ?? (await import('@ambrogio/conversations/adapters/in/session/local-speech-components'))
+          .createLocalSpeechComponents;
+      const built = await factory(voice);
+      speech = built;
+      server.addHook('onClose', async () => { await built.close(); });
+    }
+    const turnIngress = registerConversationSessionRoute(server, prepared, replyProducer, {
+      schema, allowedOrigins: config.allowedOrigins,
+      pingIntervalMs: options.sessionPingIntervalMs ?? defaultSessionPingIntervalMs,
+      ...(speech ? { speech } : {}),
+    });
+    return { server, turnIngress };
   } catch (error) {
     await server.close();
     throw error;
@@ -87,8 +96,8 @@ export async function buildConsultationServer(config: HttpConfig, prepared: Prep
 
 export async function buildConversationServer(config: HttpConfig, prepared: Prepared,
   replyProducer: ProduceConversationReply, voice?: VoiceConfig,
-  voiceComponents?: typeof createVoiceComponents) {
-  const built = await buildHttpServer(config, prepared, replyProducer, voice, voiceComponents);
+  speechFactory?: SpeechComponentsFactory, options: ConversationServerOptions = {}) {
+  const built = await buildHttpServer(config, prepared, replyProducer, voice, speechFactory, options);
   return { server: built.server, turnIngress: built.turnIngress! };
 }
 

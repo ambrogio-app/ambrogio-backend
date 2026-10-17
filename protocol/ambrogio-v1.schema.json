@@ -1,0 +1,246 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ambrogio:protocol:ambrogio.v1",
+  "title": "Ambrogio conversation protocol v1",
+  "description": "JSON text frames of the ambrogio.v1 WebSocket subprotocol. Binary frames carry PCM16 mono audio prefixed by a 4-byte big-endian stream number and are not described here.",
+  "oneOf": [
+    { "$ref": "#/$defs/clientMessage" },
+    { "$ref": "#/$defs/serverMessage" }
+  ],
+  "$defs": {
+    "identifier": { "type": "string", "minLength": 1 },
+    "stream": { "type": "integer", "minimum": 1, "maximum": 4294967295 },
+    "textContent": {
+      "type": "object",
+      "properties": { "type": { "const": "text" } },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+    "inputAudioContent": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "audio" },
+        "sampleRate": { "const": 16000 }
+      },
+      "required": ["type", "sampleRate"],
+      "additionalProperties": false
+    },
+    "outputAudioContent": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "audio" },
+        "sampleRate": { "type": "integer", "minimum": 8000, "maximum": 48000 }
+      },
+      "required": ["type", "sampleRate"],
+      "additionalProperties": false
+    },
+
+    "clientMessage": {
+      "oneOf": [
+        { "$ref": "#/$defs/sessionHello" },
+        { "$ref": "#/$defs/inputStart" },
+        { "$ref": "#/$defs/inputChunk" },
+        { "$ref": "#/$defs/inputEnd" },
+        { "$ref": "#/$defs/clientResult" }
+      ]
+    },
+    "sessionHello": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "session.hello" },
+        "clientId": { "$ref": "#/$defs/identifier" },
+        "name": { "$ref": "#/$defs/identifier" }
+      },
+      "required": ["type", "clientId", "name"],
+      "additionalProperties": false
+    },
+    "inputStart": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "input.start" },
+        "requestId": { "$ref": "#/$defs/identifier" },
+        "conversationId": { "$ref": "#/$defs/identifier" },
+        "stream": { "$ref": "#/$defs/stream" },
+        "content": {
+          "oneOf": [
+            { "$ref": "#/$defs/textContent" },
+            { "$ref": "#/$defs/inputAudioContent" }
+          ]
+        },
+        "reply": { "enum": ["text", "audio"] }
+      },
+      "required": ["type", "requestId", "stream", "content", "reply"],
+      "additionalProperties": false
+    },
+    "inputChunk": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "input.chunk" },
+        "requestId": { "$ref": "#/$defs/identifier" },
+        "text": { "type": "string" }
+      },
+      "required": ["type", "requestId", "text"],
+      "additionalProperties": false
+    },
+    "inputEnd": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "input.end" },
+        "requestId": { "$ref": "#/$defs/identifier" }
+      },
+      "required": ["type", "requestId"],
+      "additionalProperties": false
+    },
+    "clientResult": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "client.result" },
+            "id": { "$ref": "#/$defs/identifier" },
+            "ok": { "const": true }
+          },
+          "required": ["type", "id", "ok"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "client.result" },
+            "id": { "$ref": "#/$defs/identifier" },
+            "ok": { "const": false },
+            "reason": { "const": "unsupported" }
+          },
+          "required": ["type", "id", "ok", "reason"],
+          "additionalProperties": false
+        }
+      ]
+    },
+
+    "serverMessage": {
+      "oneOf": [
+        { "$ref": "#/$defs/sessionReady" },
+        { "$ref": "#/$defs/sessionError" },
+        { "$ref": "#/$defs/turnAccepted" },
+        { "$ref": "#/$defs/outputStart" },
+        { "$ref": "#/$defs/outputChunk" },
+        { "$ref": "#/$defs/outputEnd" },
+        { "$ref": "#/$defs/turnCompleted" },
+        { "$ref": "#/$defs/turnFailed" },
+        { "$ref": "#/$defs/turnInterrupted" },
+        { "$ref": "#/$defs/turnRejected" }
+      ]
+    },
+    "sessionReady": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "session.ready" },
+        "protocol": { "const": "ambrogio.v1" }
+      },
+      "required": ["type", "protocol"],
+      "additionalProperties": false
+    },
+    "sessionError": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "session.error" },
+        "code": { "enum": ["invalid_message", "unknown_type", "unknown_stream", "session_not_ready", "audio_busy"] },
+        "message": { "type": "string", "minLength": 1 },
+        "requestId": { "$ref": "#/$defs/identifier" }
+      },
+      "required": ["type", "code", "message"],
+      "additionalProperties": false
+    },
+    "turnAccepted": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "turn.accepted" },
+        "requestId": { "$ref": "#/$defs/identifier" },
+        "conversationId": { "$ref": "#/$defs/identifier" },
+        "turnId": { "$ref": "#/$defs/identifier" },
+        "text": { "type": "string", "minLength": 1 }
+      },
+      "required": ["type", "requestId", "conversationId", "turnId", "text"],
+      "additionalProperties": false
+    },
+    "outputStart": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "output.start" },
+        "requestId": { "$ref": "#/$defs/identifier" },
+        "turnId": { "$ref": "#/$defs/identifier" },
+        "stream": { "$ref": "#/$defs/stream" },
+        "content": {
+          "oneOf": [
+            { "$ref": "#/$defs/textContent" },
+            { "$ref": "#/$defs/outputAudioContent" }
+          ]
+        }
+      },
+      "required": ["type", "requestId", "stream", "content"],
+      "additionalProperties": false
+    },
+    "outputChunk": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "output.chunk" },
+        "stream": { "$ref": "#/$defs/stream" },
+        "text": { "type": "string", "minLength": 1 }
+      },
+      "required": ["type", "stream", "text"],
+      "additionalProperties": false
+    },
+    "outputEnd": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "output.end" },
+        "stream": { "$ref": "#/$defs/stream" }
+      },
+      "required": ["type", "stream"],
+      "additionalProperties": false
+    },
+    "turnCompleted": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "turn.completed" },
+        "turnId": { "$ref": "#/$defs/identifier" },
+        "expectsReply": { "type": "boolean" }
+      },
+      "required": ["type", "turnId", "expectsReply"],
+      "additionalProperties": false
+    },
+    "turnFailed": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "turn.failed" },
+        "turnId": { "$ref": "#/$defs/identifier" },
+        "message": { "type": "string", "minLength": 1 }
+      },
+      "required": ["type", "turnId", "message"],
+      "additionalProperties": false
+    },
+    "turnInterrupted": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "turn.interrupted" },
+        "turnId": { "$ref": "#/$defs/identifier" }
+      },
+      "required": ["type", "turnId"],
+      "additionalProperties": false
+    },
+    "turnRejected": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "turn.rejected" },
+        "requestId": { "$ref": "#/$defs/identifier" },
+        "reason": {
+          "enum": ["invalid", "conversation_not_found", "occupied", "unavailable", "too_large",
+            "transcription_failed", "audio_unavailable", "failure"]
+        },
+        "message": { "type": "string", "minLength": 1 }
+      },
+      "required": ["type", "requestId", "reason", "message"],
+      "additionalProperties": false
+    }
+  }
+}

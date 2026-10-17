@@ -17,7 +17,7 @@ test('passes each agent JSON credential to its own controlled Mistral client', a
     seen.push({ authorization: request.headers.get('authorization'),
       body: JSON.parse(await request.text()) as unknown });
     const event = { id: 'controlled-1', object: 'chat.completion.chunk', created: 0,
-      model: 'mistral-small-latest', choices: [{ index: 0, delta: { content: 'answer' },
+      model: 'mistral-small-latest', choices: [{ index: 0, delta: { content: '{"answer":"answer","expectsReply":false}' },
         finish_reason: null }] };
     return new Response(`data: ${JSON.stringify(event)}\n\ndata: [DONE]\n\n`, {
       status: 200, headers: { 'content-type': 'text/event-stream' },

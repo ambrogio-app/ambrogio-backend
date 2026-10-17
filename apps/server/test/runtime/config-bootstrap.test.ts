@@ -5,10 +5,13 @@ import { join } from 'node:path';
 import { afterEach, expect, test, vi } from 'vitest';
 import { startConsultationServer } from '../../src/runtime/consultation-server.js';
 import { startConversationServer } from '../../src/runtime/conversation-server.js';
+import { closeAllClients, ProtocolClient, rejectedUpgradeStatus, takeSchemaViolations } from './protocol-client.js';
 
 const directories: string[] = [];
 
 afterEach(async () => {
+  await closeAllClients();
+  expect(takeSchemaViolations()).toEqual([]);
   await Promise.all(directories.splice(0).map(directory =>
     rm(directory, { recursive: true, force: true })));
 });
@@ -117,7 +120,7 @@ test('uses the validated agent, HTTP and conversation JSON throughout the active
     seen.push({ authorization: request.headers.get('authorization'),
       body: JSON.parse(await request.text()) as unknown });
     const event = { id: 'controlled-1', object: 'chat.completion.chunk', created: 0,
-      model: 'mistral-small-latest', choices: [{ index: 0, delta: { content: 'Risposta' },
+      model: 'mistral-small-latest', choices: [{ index: 0, delta: { content: '{"answer":"Risposta","expectsReply":false}' },
         finish_reason: null }] };
     return new Response(`data: ${JSON.stringify(event)}\n\ndata: [DONE]\n\n`, {
       status: 200, headers: { 'content-type': 'text/event-stream' },
@@ -128,32 +131,31 @@ test('uses the validated agent, HTTP and conversation JSON throughout the active
       AMBROGIO_CONVERSATIONS_CONFIG_PATH: conversations, HOST: '0.0.0.0',
       PORT: String(port + 1), AMBROGIO_LANGUAGE: 'en' }, agents);
     try {
-      const turn = () => runtime.server.inject({ method: 'POST', url: '/api/conversations/turns',
-        headers: { origin: 'https://allowed.example', 'content-type': 'application/json' },
-        payload: { text: 'Domanda' } });
-      const before = await turn();
-      expect(before.statusCode).toBe(200);
-      expect(before.body).toContain('Risposta');
-      expect(before.headers['access-control-allow-origin']).toBe('https://allowed.example');
-      const invalidBefore = await runtime.server.inject({ method: 'POST',
-        url: '/api/conversations/turns', payload: { text: '' } });
-      expect(invalidBefore.json()).toEqual({ error: 'Messaggio non valido.' });
+      const url = `ws://127.0.0.1:${port}/api/session`;
+      const exercise = async () => {
+        const client = await ProtocolClient.ready(url, { origin: 'https://allowed.example' });
+        const answered = await client.textTurn('Domanda');
+        expect(answered.final.type).toBe('turn.completed');
+        expect(answered.outputs[0]!.text).toBe('Risposta');
+        const invalid = await client.textTurn('');
+        expect(invalid.final).toMatchObject({ type: 'turn.rejected', message: 'Messaggio non valido.' });
+        expect(await rejectedUpgradeStatus(url, { origin: 'https://other.example' })).toBe(403);
+        const list = await runtime.server.inject({ method: 'GET', url: '/api/conversations',
+          headers: { origin: 'https://allowed.example' } });
+        expect(list.headers['access-control-allow-origin']).toBe('https://allowed.example');
+        await client.close();
+      };
+      await exercise();
 
       await writeFile(http, '{');
       await writeFile(conversations, '{');
       await writeFile(join(agents, 'orchestrator.json'), '{');
-      const after = await turn();
-      expect(after.statusCode).toBe(200);
-      expect(after.body).toContain('Risposta');
-      expect(after.headers['access-control-allow-origin']).toBe('https://allowed.example');
-      const invalidAfter = await runtime.server.inject({ method: 'POST',
-        url: '/api/conversations/turns', payload: { text: '' } });
-      expect(invalidAfter.json()).toEqual({ error: 'Messaggio non valido.' });
+      await exercise();
       expect(seen.map(request => request.authorization)).toEqual([
         'Bearer json-agent-key', 'Bearer json-agent-key',
       ]);
       expect(seen.every(request => (request.body as { messages?: Array<{ content: string }> })
-        .messages?.[0]?.content === 'Rispondi brevemente.')).toBe(true);
+        .messages?.[0]?.content.startsWith('Rispondi brevemente.'))).toBe(true);
     } finally { await runtime.close(); }
   } finally { vi.unstubAllGlobals(); }
 });

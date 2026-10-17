@@ -7,7 +7,9 @@ import { openConversationArchive } from '@ambrogio/conversations/adapters/out/sq
 import { SqliteConversationHistoryRead } from '@ambrogio/conversations/adapters/out/sqlite/history-read';
 import { SqliteConversationListRead } from '@ambrogio/conversations/adapters/out/sqlite/list-read';
 import { SqliteConversationWrite } from '@ambrogio/conversations/adapters/out/sqlite/write';
-import { registerTurnRoute } from '@ambrogio/conversations/adapters/in/http/turn-route';
+import { createConversationSessions } from '@ambrogio/conversations/adapters/in/session/conversation-session';
+import { createProtocolDecoder } from '@ambrogio/conversations/adapters/in/session/protocol-decoder';
+import type { SpeechComponents } from '@ambrogio/conversations/adapters/in/session/speech-components';
 import { registerHistoryRoute } from '@ambrogio/conversations/adapters/in/http/history-route';
 import { registerListRoute } from '@ambrogio/conversations/adapters/in/http/list-route';
 import { createBeginTurn } from '@ambrogio/conversations/application/begin-turn';
@@ -17,6 +19,8 @@ import { createListConversations } from '@ambrogio/conversations/application/lis
 import { createGetConversation } from '@ambrogio/conversations/application/get-conversation';
 import type { ProduceConversationReply } from '@ambrogio/conversations/application/produce-conversation-reply';
 import type { FastifyInstance } from 'fastify';
+import { readFile } from 'node:fs/promises';
+import { registerSessionRoute } from '../adapters/in/session-route.adapter.js';
 import { conversationConfigPath } from '../runtime/conversation-config-path.js';
 
 export type PreparedConversations = Awaited<ReturnType<typeof prepareConfiguredConversations>>;
@@ -71,14 +75,41 @@ export function assembleExchangeTurn(
   });
 }
 
-/** Attach the HTTP turn ingress to a server after archive recovery. */
-export function registerConversationTurnRoute(
+export const protocolSchemaPath = new URL('../../../../protocol/ambrogio-v1.schema.json', import.meta.url);
+
+/** Read the published ambrogio.v1 schema once at startup. */
+export async function loadProtocolSchema(path: URL | string = protocolSchemaPath): Promise<Record<string, unknown>> {
+  let value: unknown;
+  try { value = JSON.parse(await readFile(path, 'utf8')); }
+  catch { throw new ProjectError('Invalid conversation protocol schema'); }
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    throw new ProjectError('Invalid conversation protocol schema');
+  }
+  return value as Record<string, unknown>;
+}
+
+/** Attach the conversation session ingress to a server after archive recovery. */
+export function registerConversationSessionRoute(
   server: FastifyInstance,
   prepared: Awaited<ReturnType<typeof prepareConversations>>,
   reply: ProduceConversationReply,
-): Readonly<{ stopAccepting(): Promise<void> }> {
-  return registerTurnRoute(server, { exchange: assembleExchangeTurn(prepared, reply),
-    language: prepared.language });
+  options: Readonly<{
+    schema: Readonly<Record<string, unknown>>;
+    allowedOrigins: readonly string[];
+    pingIntervalMs: number;
+    speech?: SpeechComponents;
+  }>,
+) {
+  const sessions = createConversationSessions({
+    exchange: assembleExchangeTurn(prepared, reply),
+    decode: createProtocolDecoder(options.schema),
+    language: prepared.language,
+    pingIntervalMs: options.pingIntervalMs,
+    log: server.log,
+    ...(options.speech ? { speech: options.speech } : {}),
+  });
+  registerSessionRoute(server, sessions, options.allowedOrigins);
+  return sessions;
 }
 
 /** Attach the HTTP history ingress after archive recovery. */

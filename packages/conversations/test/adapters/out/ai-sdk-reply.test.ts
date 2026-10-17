@@ -79,7 +79,7 @@ test('producer rejects a response without a boolean reply flag', async () => {
 
 test('orchestrator delegates once to the selected specialist and takes its reply flag', async () => {
   const tasks: string[] = [];
-  const model = scripted({ parts: [callPart('delegate_1', { task: 'Switch the light' })],
+  const model = scripted({ parts: [callPart('home', { task: 'Switch the light' })],
     reason: 'tool-calls' });
   const reply = new AiSdkOrchestratorReply(settings, [
     { id: 'memory', description: 'Search memory', reply: { async *produce() {
@@ -97,11 +97,20 @@ test('orchestrator delegates once to the selected specialist and takes its reply
 });
 
 test('orchestrator rejects more than one delegation in a turn', async () => {
-  const model = scripted({ parts: [callPart('delegate_0', { task: 'one' }),
-    callPart('delegate_0', { task: 'two' }, 'call-2')], reason: 'tool-calls' });
+  const model = scripted({ parts: [callPart('helper', { task: 'one' }),
+    callPart('helper', { task: 'two' }, 'call-2')], reason: 'tool-calls' });
   const reply = new AiSdkOrchestratorReply(settings, [{ id: 'helper', description: 'Help',
     reply: { async *produce() { yield text('unused'); yield expectation(false); } } }], model);
   await expect(collect(reply.produce(history))).rejects.toThrow('Invalid agent delegation');
+});
+
+test('delegation functions are named after the agent identifiers and must match exactly', async () => {
+  const model = scripted({ parts: [callPart('home_assistant', { task: 'Spegni la luce' })], reason: 'tool-calls' });
+  const reply = new AiSdkOrchestratorReply(settings, [{ id: 'home-assistant', description: 'Control home',
+    reply: { async *produce() { yield text('unused'); yield expectation(false); } } }], model);
+  await expect(collect(reply.produce(history))).rejects.toThrow('Invalid agent delegation');
+  const offered = (model.doStreamCalls[0]?.tools ?? []).map(tool => (tool as { name: string }).name);
+  expect(offered).toEqual(['home-assistant']);
 });
 
 test('specialist executes discovered MCP tools and allows a final answer at its call limit', async () => {

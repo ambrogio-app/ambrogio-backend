@@ -800,7 +800,7 @@ test('a session turn delegates to a configured MCP tool and persists the answer'
           expect(request.tools?.[0]?.description).toBe('Find facts.');
           const first = orchestratorStep++ === 0;
           return { stream: simulateReadableStream({ chunks: first ? [
-            { type: 'tool-call', toolCallId: 'delegate-1', toolName: 'delegate_0',
+            { type: 'tool-call', toolCallId: 'delegate-1', toolName: 'facts',
               input: '{"task":"Find answer"}' }, finish('tool-calls'),
           ] as any[] : [...answer('Direct answer.'), finish('stop')] as any[] }) };
         } });

@@ -156,7 +156,8 @@ export class AiSdkOrchestratorReply implements ProduceConversationReply {
   }
 
   async *produce(history: ConversationHistory): AsyncIterable<ReplyPart> {
-    const agents = new Map(this.specialists.map((agent, index) => [`delegate_${index}`, agent]));
+    // The function name is the agent identifier, already a valid provider function name.
+    const agents = new Map(this.specialists.map(agent => [agent.id, agent]));
     const tools = Object.fromEntries([...agents].map(([name, agent]) => [name, tool({
       description: agent.description,
       inputSchema: jsonSchema<{ task: string }>({ type: 'object',

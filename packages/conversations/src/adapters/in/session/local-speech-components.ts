@@ -1,13 +1,14 @@
-import type { VoiceConfig } from '../../out/voice-config.js';
-import { PiperSynthesizer, piperSampleRate } from './piper-synthesizer.js';
+import { voiceModelFiles, type VoiceConfig } from '../../out/voice-config.js';
+import { SherpaSynthesizer } from './sherpa-synthesizer.js';
 import type { SpeechComponents } from './speech-components.js';
 import { VoskTranscriber } from './vosk-transcriber.js';
 
-/** Build Vosk recognition and Piper synthesis from the validated voice configuration. */
+/** Build Vosk recognition and sherpa-onnx synthesis from the validated voice configuration. */
 export async function createLocalSpeechComponents(config: VoiceConfig): Promise<SpeechComponents> {
-  const sampleRate = await piperSampleRate(config.piperModelPath);
-  const transcriber = new VoskTranscriber(config.voskModelPath);
-  const synthesizer = new PiperSynthesizer(config.piperBinaryPath, config.piperModelPath, sampleRate);
+  const synthesizer = await SherpaSynthesizer.load(await voiceModelFiles(config.voiceModelDir));
+  let transcriber: VoskTranscriber;
+  try { transcriber = new VoskTranscriber(config.voskModelPath); }
+  catch (error) { synthesizer.close(); throw error; }
   return {
     transcriber,
     synthesizer,

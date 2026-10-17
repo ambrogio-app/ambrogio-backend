@@ -122,7 +122,7 @@ export async function startSessionServer(options: Readonly<{
   const built = await buildConversationServer({ host: '127.0.0.1', port: 0,
     allowedOrigins: [...(options.allowedOrigins ?? [])], publicHttps: false }, prepared,
   options.reply ?? echoReply().reply,
-  options.voice ? { voskModelPath: '/fake/vosk', piperModelPath: '/fake/voice.onnx', piperBinaryPath: '/fake/piper' }
+  options.voice ? { voskModelPath: '/fake/vosk', voiceModelDir: '/fake/voice' }
     : undefined,
   options.voice ? speech.factory : undefined,
   { sessionPingIntervalMs: options.pingIntervalMs ?? 30_000 });

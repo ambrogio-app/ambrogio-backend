@@ -34,19 +34,32 @@ try {
 
   if (!existingImage) docker('build', '--tag', image, '.');
   docker('run', '--rm', '--entrypoint', '/bin/sh', image, '-c',
-    'test ! -e /etc/ambrogio/http.json && test ! -e /etc/ambrogio/conversations.json && test ! -e /var/lib/ambrogio/conversations.sqlite && /opt/piper/bin/piper --help >/dev/null && cd /workspace/packages/conversations && node -e "require(\'vosk-koffi\')"');
+    'test ! -e /etc/ambrogio/http.json && test ! -e /etc/ambrogio/conversations.json && test ! -e /var/lib/ambrogio/conversations.sqlite && ' +
+    'test ! -e /opt/piper && ! command -v python3 >/dev/null && cd /workspace/packages/conversations && node -e "require(\'vosk-koffi\')"');
+  // Each bundled voice is loaded and spoken with the image's own synthesizer code.
+  const synthesis = [
+    "import { SherpaSynthesizer } from '/workspace/packages/conversations/dist/adapters/in/session/sherpa-synthesizer.js';",
+    "import { voiceModelFiles } from '/workspace/packages/conversations/dist/adapters/out/voice-config.js';",
+    "for (const [voice, rate] of [['vits-piper-it_IT-riccardo-x_low', 16000], ['vits-piper-it_IT-paola-medium', 22050]]) {",
+    "  const synthesizer = await SherpaSynthesizer.load(await voiceModelFiles('/opt/ambrogio/voices/' + voice));",
+    "  async function* text() { yield 'Ciao, sono Ambrogio.'; }",
+    "  let bytes = 0;",
+    "  for await (const chunk of synthesizer.synthesize(text(), new AbortController().signal)) bytes += chunk.length;",
+    "  synthesizer.close();",
+    "  if (synthesizer.sampleRate !== rate || bytes < rate) throw new Error('Unexpected synthesis for ' + voice + ': ' + synthesizer.sampleRate + ' Hz, ' + bytes + ' bytes');",
+    "  console.log(voice + ': ' + synthesizer.sampleRate + ' Hz, ' + bytes + ' bytes');",
+    "}",
+  ].join('\n');
   docker('run', '--rm', '--entrypoint', '/bin/sh', image, '-c',
     'set -eu; test -f /opt/ambrogio/voices/README.md; ' +
-    'test -s /opt/ambrogio/voices/riccardo-x_low-MODEL_CARD; ' +
-    'test -s /opt/ambrogio/voices/paola-medium-MODEL_CARD; ' +
-    'for voice in it_IT-riccardo-x_low it_IT-paola-medium; do ' +
-    'model="/opt/ambrogio/voices/$voice.onnx"; ' +
-    'test -s "$model"; test -s "$model.json"; ' +
-    'printf "Ciao, sono Ambrogio.\\n" | /opt/piper/bin/piper --model "$model" --output_file /tmp/voice.wav; ' +
-    'test -s /tmp/voice.wav; done');
+    'for voice in vits-piper-it_IT-riccardo-x_low vits-piper-it_IT-paola-medium; do ' +
+    'dir="/opt/ambrogio/voices/$voice"; ' +
+    'test -s "$dir/MODEL_CARD"; test -s "$dir/tokens.txt"; test -d "$dir/espeak-ng-data"; ' +
+    'test "$(ls "$dir"/*.onnx | wc -l)" = 1; test -s "$(ls "$dir"/*.onnx)"; done');
+  console.log(docker('run', '--rm', '--entrypoint', 'node', image, '--input-type=module', '-e', synthesis));
   docker('run', '--rm', '--entrypoint', '/bin/sh',
     '--mount', `type=bind,src=${customVoices},dst=/opt/ambrogio/voices,readonly`,
-    image, '-c', 'test -f /opt/ambrogio/voices/custom-voice.marker && test ! -e /opt/ambrogio/voices/it_IT-riccardo-x_low.onnx');
+    image, '-c', 'test -f /opt/ambrogio/voices/custom-voice.marker && test ! -e /opt/ambrogio/voices/vits-piper-it_IT-riccardo-x_low');
   container = docker('run', '--detach', '--rm',
     '--publish', `127.0.0.1::${port}`,
     '--mount', `type=bind,src=${config},dst=/etc/ambrogio,readonly`,
@@ -71,7 +84,7 @@ try {
   if (!existsSync(join(data, 'conversations.sqlite'))) {
     throw new Error('SQLite archive was not created in the external mount');
   }
-  console.log('Docker image verification passed: external JSON and SQLite, bundled and replaceable Piper voices, HTTP 200, no Compose.');
+  console.log('Docker image verification passed: external JSON and SQLite, bundled sherpa-onnx voices synthesized in the image and replaceable by a mount, HTTP 200, no Compose.');
 } finally {
   if (container) {
     try { docker('stop', container); } catch { /* preserve the verification failure */ }

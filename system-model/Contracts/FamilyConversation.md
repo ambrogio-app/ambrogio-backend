@@ -138,6 +138,8 @@ Per ogni agente specializzato attivo, l'adapter presenta all'orchestratore una f
 
 Decisione concordata il 17 ottobre 2026: nella richiesta dell'orchestratore l'adapter disattiva le chiamate di funzione parallele del provider (`parallelToolCalls: false` per Mistral). La prova con il backend installato ha mostrato che `mistral-small-latest` emetteva spesso due deleghe nello stesso passo, identiche o riformulate, facendo fallire il turno; con l'opzione disattivata, nove richieste su nove hanno prodotto una sola delega. La regola della delega singola resta invariata e una richiesta con più deleghe resta un guasto. L'opzione non si applica agli agenti specializzati, che eseguono gli strumenti MCP uno alla volta entro il proprio limite.
 
+Decisione concordata il 17 ottobre 2026: il nome della funzione di delega è l'identificativo dell'agente, cioè il nome del suo file JSON senza estensione, per esempio `home-assistant`. L'identificativo è già vincolato a lettere minuscole, cifre e trattini e unico per costruzione, quindi è un nome di funzione valido per il provider e non richiede trasformazioni. Sostituisce i nomi posizionali `delegate_<indice>`, che il modello ha talvolta riprodotto in modo errato, per esempio `delegate__0`, con trascrizioni rumorose. Un nome che non corrisponde esattamente a un agente attivo resta una funzione sconosciuta.
+
 #### Metadata
   * type: behavior
 

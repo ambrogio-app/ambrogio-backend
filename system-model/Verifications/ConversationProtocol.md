@@ -115,6 +115,7 @@ La prova passa se ogni riga diagnostica della sessione contiene `correlationId` 
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](#verifica-del-protocollo-conversazionale)
+  * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
   * verify: [Correlazione diagnostica della sessione conversazionale](../Requirements/ConversationProtocol.md#correlazione-diagnostica-della-sessione-conversazionale)
 ---
 

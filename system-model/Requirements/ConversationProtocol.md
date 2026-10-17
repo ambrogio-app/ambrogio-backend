@@ -37,6 +37,8 @@ Quando il server accetta l'apertura di una sessione conversazionale, deve associ
   * [Profilo iniziale di osservabilità](../Contracts/ServerFoundation.md#profilo-iniziale-di-osservabilità)
 
 #### Relations
+  * satisfiedBy: [session-route.adapter.ts](../../apps/server/src/adapters/in/session-route.adapter.ts)
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 

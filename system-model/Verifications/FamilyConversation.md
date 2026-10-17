@@ -236,6 +236,7 @@ La prova passa se la seconda trasmissione distanziata riceve il primo audio senz
 
 #### Relations
   * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
+  * satisfiedBy: [piper-synthesizer.test.ts](../../packages/conversations/test/adapters/in/piper-synthesizer.test.ts)
   * verify: [Risposta parlata su richiesta del client](../Requirements/FamilyConversation.md#risposta-parlata-su-richiesta-del-client)
 ---
 

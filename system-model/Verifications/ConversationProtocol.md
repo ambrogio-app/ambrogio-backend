@@ -76,7 +76,7 @@ La prova passa se i primi due turni ricevono una trasmissione testuale con il me
 Inviare turni testuali di 65 536 e 65 537 byte UTF-8, anche suddivisi in più frammenti, e turni audio di 60 secondi e di poco oltre 60 secondi, con `language` impostato separatamente a `en` e `it`. Strumentare trascrittore, caso d'uso e archivio.
 
 #### Details
-La prova passa se i turni entro il limite proseguono normalmente, mentre quelli oltre il limite ricevono, senza attendere `input.end`, la trasmissione del messaggio pubblico esatto e `turn.rejected` con `reason: "too_large"`; il trascrittore non viene invocato per l'audio oltre il limite, nessun turno o conversazione viene creato e il resto della trasmissione è ignorato. Fallisce se un turno oltre il limite viene trascritto, ammesso o conservato.
+La prova passa se i turni entro il limite proseguono normalmente, mentre quelli oltre il limite ricevono, senza attendere `input.end`, la trasmissione del messaggio pubblico esatto e `turn.rejected` con `reason: "too_large"`; la trascrizione avviata durante la trasmissione audio oltre il limite viene interrotta e il suo risultato non produce effetti, nessun turno o conversazione viene creato e il resto della trasmissione è ignorato. Fallisce se il trascrittore riceve audio dopo il superamento del limite o se un turno oltre il limite viene ammesso o conservato.
 
 #### Metadata
   * type: test-verification
@@ -121,10 +121,10 @@ La prova passa se ogni riga diagnostica della sessione contiene `correlationId` 
 
 ### Prova della trasmissione della richiesta del turno
 
-In una sessione pronta inviare un turno testuale in un solo `input.chunk` e uno diviso in più frammenti con Unicode e ritorni a capo; inviare un turno audio con frame binari intestati dal proprio `stream` e chiuso da `input.end`, usando un trascrittore controllato. Ritardare `input.end` dopo l'ultimo frammento. Aprire in parallelo due richieste testuali su conversazioni diverse e tentare una seconda trasmissione audio mentre la prima è aperta.
+In una sessione pronta inviare un turno testuale in un solo `input.chunk` e uno diviso in più frammenti con Unicode e ritorni a capo; inviare un turno audio con frame binari intestati dal proprio `stream` e chiuso da `input.end`, usando un trascrittore controllato che registra quando riceve ciascun frame. Ritardare `input.end` dopo l'ultimo frammento. Aprire in parallelo due richieste testuali su conversazioni diverse e tentare una seconda trasmissione audio mentre la prima è aperta.
 
 #### Details
-La prova passa se il server non avvia l'ammissione prima di `input.end`, il testo ammesso è la concatenazione esatta dei frammenti conservata com'è stata ricevuta e il testo di un turno audio è la trascrizione dei frame della sua trasmissione. Le due richieste testuali procedono indipendentemente. La seconda trasmissione audio riceve `session.error` con `audio_busy` senza aprire la richiesta né disturbare la prima. La richiesta non porta lo storico. Fallisce se il server ammette un turno incompleto, mescola frame di trasmissioni diverse, modifica il testo ricevuto o richiede al client gli scambi precedenti.
+La prova passa se il server non avvia l'ammissione prima di `input.end`, il testo ammesso è la concatenazione esatta dei frammenti conservata com'è stata ricevuta e il testo di un turno audio è la trascrizione dei frame della sua trasmissione. Il trascrittore riceve i frame mentre la richiesta audio è ancora aperta, prima di `input.end`, ma la trascrizione è usata soltanto dopo la chiusura. Le due richieste testuali procedono indipendentemente. La seconda trasmissione audio riceve `session.error` con `audio_busy` senza aprire la richiesta né disturbare la prima. La richiesta non porta lo storico. Fallisce se il server ammette un turno incompleto, mescola frame di trasmissioni diverse, modifica il testo ricevuto, consegna i frame al trascrittore soltanto dopo `input.end` o richiede al client gli scambi precedenti.
 
 #### Metadata
   * type: test-verification

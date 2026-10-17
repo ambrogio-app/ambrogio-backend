@@ -85,7 +85,7 @@ Quando l'interazione vocale non è abilitata nell'installazione e un turno trasm
 
 ### Rifiuto del turno oltre i limiti di trasmissione
 
-Quando la trasmissione di un turno supera il limite di dimensione del testo o di durata dell'audio stabilito dal protocollo, il backend deve rifiutare il turno con il motivo `too_large`, senza trascriverlo, ammetterlo o conservarlo.
+Quando la trasmissione di un turno supera il limite di dimensione del testo o di durata dell'audio stabilito dal protocollo, il backend deve rifiutare il turno con il motivo `too_large`, interrompendo l'eventuale trascrizione in corso e scartandone il risultato, senza ammetterlo o conservarlo.
 
 #### Metadata
   * type: requirement

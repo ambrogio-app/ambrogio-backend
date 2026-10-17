@@ -358,6 +358,10 @@ class ConversationSession {
         this.send({ type: 'turn.completed', turnId: result.value.turnId, expectsReply: result.value.expectsReply });
         return;
       case 'failed':
+        if (result.value.cause !== undefined) {
+          this.log.error({ event: 'conversation_reply_failed', err: normalizeError(result.value.cause) },
+            'Conversation reply failed');
+        }
         await this.fail(turn, result.value.error);
         return;
       case 'interrupted':

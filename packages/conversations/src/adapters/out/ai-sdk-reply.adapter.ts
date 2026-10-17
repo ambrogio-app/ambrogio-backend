@@ -162,8 +162,10 @@ export class AiSdkOrchestratorReply implements ProduceConversationReply {
       inputSchema: jsonSchema<{ task: string }>({ type: 'object',
         properties: { task: { type: 'string' } }, required: ['task'], additionalProperties: false }),
     })]));
+    // One delegation per turn: the provider must not emit parallel delegations.
     const response = streamText({ model: this.model, system: replyInstructions(this.settings.instructions),
       messages: messagesFor(history), tools, output: replyOutput,
+      providerOptions: { mistral: { parallelToolCalls: false } },
       maxRetries: 0, ...this.options });
     try {
       const emitted = yield* answerParts(response);

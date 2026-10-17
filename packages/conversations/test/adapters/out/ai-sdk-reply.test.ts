@@ -170,3 +170,25 @@ test('AI SDK Mistral provider sends the selected model and key to its default en
       temperature: 0.2, max_tokens: 128, response_format: { type: 'json_schema' } });
   } finally { vi.unstubAllGlobals(); }
 });
+
+test('orchestrator requests a single delegation per step from Mistral', async () => {
+  const requests: Array<Record<string, unknown>> = [];
+  vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+    const request = new Request(input, init);
+    requests.push(JSON.parse(await request.text()) as Record<string, unknown>);
+    const event = { id: 'controlled-2', object: 'chat.completion.chunk', created: 0,
+      model: 'mistral-small-latest', choices: [{ index: 0,
+        delta: { content: '{"answer":"Ciao","expectsReply":false}' }, finish_reason: 'stop' }] };
+    return new Response(`data: ${JSON.stringify(event)}\n\ndata: [DONE]\n\n`, {
+      status: 200, headers: { 'content-type': 'text/event-stream' },
+    });
+  });
+  try {
+    const reply = new AiSdkOrchestratorReply(settings, [{ id: 'home', description: 'Control home',
+      reply: { async *produce() { yield text('unused'); yield expectation(false); } } }]);
+    expect(await collect(reply.produce(history))).toEqual([text('Ciao'), expectation(false)]);
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({ parallel_tool_calls: false });
+    expect(requests[0]!.tools).toHaveLength(1);
+  } finally { vi.unstubAllGlobals(); }
+});

@@ -226,6 +226,66 @@ describe('conversation session diagnostics', () => {
     expect(JSON.stringify(socket.sent)).not.toContain('TECH_COMMIT_MARKER');
   });
 
+  // Verification: Prova della diagnostica del guasto nella risposta
+  it.each<[string, ReplyPart[]]>([
+    ['a thrown provider error', []],
+    ['a missing reply expectation', [{ kind: 'text', text: 'parziale' }]],
+  ])('logs %s once as conversation_reply_failed without exposing it', async (label, parts) => {
+    const marker = new Error('TECH_REPLY_MARKER');
+    const failingParts = label === 'a thrown provider error'
+      ? { async *[Symbol.asyncIterator]() { yield { kind: 'text', text: 'parziale' } as ReplyPart; throw marker; } }
+      : parts;
+    const outcomes: unknown[] = [];
+    let pending: ReturnType<Turn['snapshot']> | undefined;
+    const exchange = createExchangeTurn({
+      begin: async ({ text }) => {
+        pending = Turn.accept({ id: 'turn-1', text, acceptedAt: new Date(0) }).snapshot();
+        return { ok: true, value: { conversationId: 'conversation-1', turnId: 'turn-1', acceptedAt: new Date(0) } };
+      },
+      history: { async find(id) {
+        return { id, createdAt: new Date(0), lastActivityAt: new Date(0), turns: [pending!] };
+      } },
+      complete: async ({ turnId, outcome }) => {
+        outcomes.push(outcome);
+        return { ok: true, value: { turnId, status: outcome.kind === 'answer' ? 'answered' : 'failed' } };
+      },
+      reply: { produce: () => failingParts as AsyncIterable<ReplyPart> },
+      failureMessage: failure,
+    });
+    const { logs, open } = harness(exchange);
+    const socket = open();
+    expect(await socket.final(textTurn(socket, 'domanda')))
+      .toEqual({ type: 'turn.failed', turnId: 'turn-1', message: failure });
+    await tick();
+    expect(logs).toHaveLength(1);
+    const [details, message] = logs[0]!;
+    expect(Object.keys(details as object).sort()).toEqual(['err', 'event']);
+    expect(details).toMatchObject({ event: 'conversation_reply_failed' });
+    expect(message).toBe('Conversation reply failed');
+    const err = (details as { err: Error }).err;
+    if (label === 'a thrown provider error') expect(err).toBe(marker);
+    else expect(err.message).toBe('Missing reply expectation');
+    expect(outcomes).toEqual([{ kind: 'error', message: failure }]);
+    expect(JSON.stringify(socket.sent)).not.toContain('TECH_REPLY_MARKER');
+  });
+
+  it('logs a history read failure of an admitted turn as conversation_reply_failed', async () => {
+    const marker = new Error('TECH_HISTORY_MARKER');
+    const exchange = createExchangeTurn({
+      begin: async () => ({ ok: true, value: { conversationId: 'conversation-1', turnId: 'turn-1', acceptedAt: new Date(0) } }),
+      history: { async find() { throw marker; } },
+      complete: async ({ turnId }) => ({ ok: true, value: { turnId, status: 'failed' } }),
+      reply: { async *produce() { throw new Error('must not run'); } },
+      failureMessage: failure,
+    });
+    const { logs, open } = harness(exchange);
+    const socket = open();
+    expect(await socket.final(textTurn(socket, 'domanda'))).toMatchObject({ type: 'turn.failed' });
+    await tick();
+    expect(logs).toEqual([[{ event: 'conversation_reply_failed', err: marker }, 'Conversation reply failed']]);
+    expect(JSON.stringify(socket.sent)).not.toContain('TECH_HISTORY_MARKER');
+  });
+
   // Verification: Prova dell'assenza di log automatici per esiti previsti
   it('does not log expected rejections, protocol errors, transcription failures or failed turns', async () => {
     const rejections = ['occupied', 'conversation_not_found', 'temporarily_unavailable'] as const;

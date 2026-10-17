@@ -7,7 +7,9 @@ import type { ProduceConversationReply } from './produce-conversation-reply.js';
 
 export type ExchangeTurnSuccess =
   | Readonly<{ conversationId: string; turnId: string; outcome: 'answered'; expectsReply: boolean }>
-  | Readonly<{ conversationId: string; turnId: string; outcome: 'failed'; error: string }>
+  | Readonly<{ conversationId: string; turnId: string; outcome: 'failed'; error: string;
+    /** The technical failure behind the public error, for the adapter's diagnostics; never stored. */
+    cause?: unknown }>
   | Readonly<{ conversationId: string; turnId: string; outcome: 'interrupted' }>;
 
 /** Application notifications of one admitted turn, delivered one at a time in this order. */
@@ -45,11 +47,11 @@ export function createExchangeTurn(dependencies: Readonly<{
     });
     if (shouldInterrupt()) return interrupted();
 
-    const failAdmittedTurn = async (): Promise<Result<ExchangeTurnSuccess, BeginTurnRejection>> => {
+    const failAdmittedTurn = async (cause: unknown): Promise<Result<ExchangeTurnSuccess, BeginTurnRejection>> => {
       const completed = await dependencies.complete({ turnId, outcome: { kind: 'error', message: failureMessage } });
       if (!completed.ok && shouldInterrupt()) return interrupted();
       if (!completed.ok || completed.value.status !== 'failed') throw new ProjectError('Admitted turn could not be completed');
-      return { ok: true, value: { conversationId, turnId, outcome: 'failed', error: failureMessage } };
+      return { ok: true, value: { conversationId, turnId, outcome: 'failed', error: failureMessage, cause } };
     };
 
     let history: ConversationHistory;
@@ -59,9 +61,9 @@ export function createExchangeTurn(dependencies: Readonly<{
         throw new ProjectError('Admitted turn missing from conversation history');
       }
       history = found;
-    } catch {
+    } catch (error) {
       if (shouldInterrupt()) return interrupted();
-      return failAdmittedTurn();
+      return failAdmittedTurn(error);
     }
     if (shouldInterrupt()) return interrupted();
 
@@ -80,9 +82,9 @@ export function createExchangeTurn(dependencies: Readonly<{
         } else throw new ProjectError('Invalid reply part');
       }
       if (expectsReply === undefined) throw new ProjectError('Missing reply expectation');
-    } catch {
+    } catch (error) {
       if (shouldInterrupt()) return interrupted();
-      return failAdmittedTurn();
+      return failAdmittedTurn(error);
     }
     if (shouldInterrupt()) return interrupted();
     await notify(observer?.produced && (() => observer.produced!()));

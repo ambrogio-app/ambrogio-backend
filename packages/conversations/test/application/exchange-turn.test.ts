@@ -131,7 +131,8 @@ describe('conversation exchange use case', () => {
       async *produce() { yield* parts; },
     } });
     expect(await exchange({ text: '  domanda  ' })).toEqual({
-      ok: true, value: { conversationId, turnId, outcome: 'failed', error: englishFailure },
+      ok: true, value: { conversationId, turnId, outcome: 'failed', error: englishFailure,
+        cause: expect.any(Error) },
     });
     expect(deps.outcomes).toEqual([{ kind: 'error', message: englishFailure }]);
   });
@@ -147,10 +148,11 @@ describe('conversation exchange use case', () => {
 
   it('continues after the observer disconnects and records a safe error after a partial reply', async () => {
     const deps = setup();
+    const failure = new Error('private agent detail');
     const reply: ProduceConversationReply = {
       async *produce() {
         yield text('parziale');
-        throw new Error('private agent detail');
+        throw failure;
       },
     };
     const exchange = createExchangeTurn({ ...deps, reply });
@@ -158,8 +160,9 @@ describe('conversation exchange use case', () => {
       async admitted() { throw new Error('client disconnected'); },
       async delta() { throw new Error('client disconnected'); },
     })).toEqual({ ok: true, value: {
-      conversationId, turnId, outcome: 'failed', error: englishFailure,
+      conversationId, turnId, outcome: 'failed', error: englishFailure, cause: failure,
     } });
+    // The cause reaches the adapter for diagnostics, never the stored outcome.
     expect(deps.outcomes).toEqual([{ kind: 'error', message: englishFailure }]);
   });
 
@@ -187,13 +190,14 @@ describe('conversation exchange use case', () => {
 
   it('requests error completion when history cannot be read', async () => {
     const deps = setup();
+    const failure = new Error('private archive detail');
     const exchange = createExchangeTurn({
       ...deps,
-      history: { async find() { throw new Error('private archive detail'); } },
+      history: { async find() { throw failure; } },
       reply: { async *produce() { throw new Error('must not run'); } },
     });
     expect(await exchange({ text: '  domanda  ' })).toEqual({ ok: true, value: {
-      conversationId, turnId, outcome: 'failed', error: englishFailure,
+      conversationId, turnId, outcome: 'failed', error: englishFailure, cause: failure,
     } });
     expect(deps.outcomes).toEqual([{ kind: 'error', message: englishFailure }]);
     expect(deps.calls).toEqual(['admit', 'complete']);
@@ -208,7 +212,7 @@ describe('conversation exchange use case', () => {
       reply: { async *produce() { throw new Error('must not run'); } },
     });
     expect(await exchange({ text: '  domanda  ' })).toEqual({ ok: true, value: {
-      conversationId, turnId, outcome: 'failed', error: italianFailure,
+      conversationId, turnId, outcome: 'failed', error: italianFailure, cause: expect.any(Error),
     } });
     expect(deps.outcomes).toEqual([{ kind: 'error', message: italianFailure }]);
   });

@@ -9,7 +9,11 @@ permissions:
   contents: read
 
 jobs:
+  secret-scan:
+    uses: ./.github/workflows/secret-scan.yml
+
   publish:
+    needs: secret-scan
     runs-on: ubuntu-24.04
     permissions:
       contents: read

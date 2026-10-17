@@ -13,6 +13,7 @@ import { loadProtocolSchema, prepareConfiguredConversations, registerConversatio
   registerConversationListRoute, registerConversationSessionRoute } from '../composition/conversations.js';
 import { conversationConfigPath } from './conversation-config-path.js';
 import { httpConfigPath, loadHttpConfig, type HttpConfig } from './http-config.js';
+import { startupPhase } from './startup-failure.js';
 
 type Prepared = Awaited<ReturnType<typeof prepareConfiguredConversations>>;
 export type ConversationIngress = Readonly<{ stopAccepting(): Promise<void>; closeSessions(): Promise<void> }>;
@@ -74,7 +75,7 @@ async function buildHttpServer(config: HttpConfig, prepared: Prepared,
       const factory = speechFactory
         ?? (await import('@ambrogio/conversations/adapters/in/session/local-speech-components'))
           .createLocalSpeechComponents;
-      const built = await factory(voice);
+      const built = await startupPhase('Voice components could not be loaded', async () => factory(voice));
       speech = built;
       server.addHook('onClose', async () => { await built.close(); });
     }

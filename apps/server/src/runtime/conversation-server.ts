@@ -8,6 +8,7 @@ import { prepareConfiguredConversations } from '../composition/conversations.js'
 import { buildConversationServer } from './consultation-server.js';
 import { conversationConfigPath } from './conversation-config-path.js';
 import { httpConfigPath, loadHttpConfig } from './http-config.js';
+import { startupPhase } from './startup-failure.js';
 
 /** Start the executable conversation ingress with the configured orchestrator. */
 export async function startConversationServer(environment: NodeJS.ProcessEnv = process.env,
@@ -27,9 +28,12 @@ export async function startConversationServer(environment: NodeJS.ProcessEnv = p
   let prepared: Awaited<ReturnType<typeof prepareConfiguredConversations>> | undefined;
   let built: Awaited<ReturnType<typeof buildConversationServer>> | undefined;
   try {
-    prepared = await prepareConfiguredConversations(conversations, new Date());
+    prepared = await startupPhase('Conversation archive could not be prepared',
+      () => prepareConfiguredConversations(conversations, new Date()));
     built = await buildConversationServer(http, prepared, agents.orchestrator, voice);
-    await built.server.listen({ host: http.host, port: http.port });
+    const server = built.server;
+    await startupPhase('HTTP listener could not start',
+      () => server.listen({ host: http.host, port: http.port }));
   } catch (error) {
     try { if (built) await built.server.close(); }
     finally {

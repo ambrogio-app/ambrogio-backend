@@ -99,12 +99,12 @@ export async function loadAgentConfigs(directory = '/etc/ambrogio/agents'): Prom
   // The orchestrator only chooses: at least one agent must be able to answer.
   if (specialistNames.length === 0) throw new ProjectError('No specialist agent configured');
   for (const filename of specialistNames) {
-    if (!agentId.test(filename.slice(0, -5))) throw new ProjectError('Invalid agent configuration filename');
+    if (!agentId.test(filename.slice(0, -5))) throw new ProjectError(`Invalid agent configuration filename: ${filename}`);
   }
   const load = async (filename: string): Promise<AgentConfig> => {
     const id = filename.slice(0, -5);
     try { return parseAgent(id, JSON.parse(await readFile(join(directory, filename), 'utf8'))); }
-    catch { throw new ProjectError(`Invalid agent configuration: ${id}`); }
+    catch (error) { throw new ProjectError(`Invalid agent configuration: ${id}`, { cause: error }); }
   };
   const orchestrator = await load('orchestrator.json');
   const specialists = await Promise.all(specialistNames.sort().map(load));

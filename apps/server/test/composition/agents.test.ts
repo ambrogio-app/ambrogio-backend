@@ -51,7 +51,8 @@ test('invalid provider options prevent any MCP connection', async () => {
     await expect(prepareAgents(fixture.directory, async () => {
       connected = true;
       throw new Error('Should not connect');
-    })).rejects.toThrow('Unsupported Mistral option');
+    })).rejects.toMatchObject({ message: 'Invalid agent options: home',
+      cause: expect.objectContaining({ message: 'Unsupported Mistral option' }) });
     expect(connected).toBe(false);
   } finally { await fixture.close(); }
 });
@@ -70,7 +71,8 @@ test('closes an earlier MCP connection when a later agent cannot start', async (
       if (connection.url.includes('memory')) throw new Error('MCP unavailable');
       return { listTools: async () => [], callTool: async () => ({ isError: false, content: [] }),
         close: async () => { closed.push(connection.url); } };
-    })).rejects.toThrow('MCP unavailable');
+    })).rejects.toMatchObject({ message: 'Agent MCP connection failed: memory',
+      cause: expect.objectContaining({ message: 'MCP unavailable' }) });
     expect(closed).toEqual(['https://home.example/mcp']);
   } finally { await fixture.close(); }
 });

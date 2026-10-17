@@ -4,6 +4,7 @@ import { aiSdkOptions, AiSdkKnowledgeAgentReply, AiSdkOrchestratorReply, AiSdkTo
   from '@ambrogio/conversations/adapters/out/ai-sdk-reply';
 import { loadAgentConfigs } from '../runtime/agent-config.js';
 import type { AgentConfig } from '../runtime/agent-config.js';
+import { ProjectError } from '@ambrogio/conversations/application/project-error';
 
 type ToolConnection = Pick<McpToolClient, 'listTools' | 'callTool' | 'close'>;
 
@@ -25,7 +26,8 @@ export async function prepareAgents(
 }>> {
   const configs = await loadAgentConfigs(directory);
   for (const config of [configs.orchestrator, ...configs.specialists]) {
-    aiSdkOptions(config.llm.options);
+    try { aiSdkOptions(config.llm.options); }
+    catch (error) { throw new ProjectError(`Invalid agent options: ${config.id}`, { cause: error }); }
   }
   const opened: ToolConnection[] = [];
   try {
@@ -37,9 +39,16 @@ export async function prepareAgents(
           reply: new AiSdkKnowledgeAgentReply(settingsFor(config)), tools: [] });
         continue;
       }
-      const mcp = await connect(config.mcp);
-      opened.push(mcp);
-      const tools = await mcp.listTools();
+      let mcp: ToolConnection;
+      let tools: readonly AvailableMcpTool[];
+      try {
+        mcp = await connect(config.mcp);
+        opened.push(mcp);
+        tools = await mcp.listTools();
+      } catch (error) {
+        // Name the agent only: URL and credentials stay out of the diagnostic message.
+        throw new ProjectError(`Agent MCP connection failed: ${config.id}`, { cause: error });
+      }
       const reply = new AiSdkToolAgentReply(settingsFor(config), tools, mcp,
         config.maxToolCalls!);
       specialists.push({ id: config.id, description: config.description!,

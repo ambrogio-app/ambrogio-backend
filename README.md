@@ -158,6 +158,10 @@ node apps/server/dist/main.js
 
 To enable voice, set `AMBROGIO_VOICE_CONFIG_PATH` to a JSON file that contains `voskModelPath` and `voiceModelDir`.
 
+If the server cannot start, it writes one JSON line with `"event":"server_startup_failed"` to stdout, whose `err.message` names the cause (for example `Invalid agent configuration: general` or `Agent MCP connection failed: home-assistant`), then prints `Unable to start HTTP server.` to stderr and exits with code 1.
+
+**Home Assistant.** [`examples/agents/home-assistant.json`](examples/agents/home-assistant.json) is a ready agent for Home Assistant's [Model Context Protocol Server](https://www.home-assistant.io/integrations/mcp_server/) integration. Copy it to `/etc/ambrogio/agents/`, then replace the address, `<MISTRAL_API_KEY>` and `<HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN>` (a long-lived access token created in your Home Assistant profile). Only the entities exposed to Assist are available to Ambrogio.
+
 > Ambrogio has no user accounts or authentication. Run it on a trusted network, or behind a reverse proxy that allows only your own clients.
 
 ## Repository layout
@@ -166,6 +170,7 @@ To enable voice, set `AMBROGIO_VOICE_CONFIG_PATH` to a JSON file that contains `
 apps/server/              runnable server: runtime, composition, entry point
 packages/conversations/   "Conversations" business module (domain, application, adapters)
 protocol/                 JSON schema of the ambrogio.v1 protocol
+examples/                 ready configuration files, with placeholder credentials
 voices/                   provenance of the bundled Piper voices
 system-model/             engineering model (requirements, contracts, verifications)
 ```
@@ -178,6 +183,12 @@ The code follows a ports-and-adapters design. Domain and application logic do no
 pnpm test        # Vitest suite, including real SQLite adapters
 pnpm typecheck
 pnpm build
+```
+
+Secrets must never enter the history. CI scans the whole history with [gitleaks](https://github.com/gitleaks/gitleaks) 8.30.1 on every push and pull request, and no image is published if the scan fails. Locally, a versioned pre-commit hook runs gitleaks on staged changes. Install gitleaks 8.30.1 on your `PATH` and enable the hook once per clone:
+
+```bash
+git config core.hooksPath .githooks
 ```
 
 Ambrogio is developed model first with [Reqvire](https://reqvire.org/). Capabilities, requirements, contracts and verifications live in [`system-model/`](system-model/) and are recorded before the code changes. [`AGENTS.md`](AGENTS.md) describes the workflow.

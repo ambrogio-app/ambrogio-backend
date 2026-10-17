@@ -1,4 +1,5 @@
 import { startConversationServer } from './runtime/conversation-server.js';
+import { reportStartupFailure } from './runtime/startup-failure.js';
 
 try {
   const runtime = await startConversationServer();
@@ -10,7 +11,7 @@ try {
   };
   process.once('SIGINT', shutdown);
   process.once('SIGTERM', shutdown);
-} catch {
-  process.stderr.write('Unable to start HTTP server.\n');
+} catch (error) {
+  reportStartupFailure(error);
   process.exitCode = 1;
 }

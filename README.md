@@ -1,126 +1,187 @@
-# ambrogio-backend
+# Ambrogio — backend
 
-Repository del backend Ambrogio con modello ingegneristico Reqvire dedicato. Ambrogio è pensato come assistente domestico open source con [licenza MIT](LICENSE), installabile nel proprio homelab. Le ulteriori scelte sull'organizzazione del codice applicativo saranno definite in base alle capability del prodotto.
+**Ambrogio** is an open source home assistant that you host yourself, for example in your homelab. Members of the family talk to it by typing or by voice. Ambrogio keeps the conversation history and can hand each request to a specialised AI agent.
 
-## Struttura
+This repository holds the **backend**: the server that receives turns from clients, picks an agent and produces the answer. It also stores conversations and turns speech into text and text into speech. It owns the public protocol that every client uses.
 
-- `system-model/`: modello Reqvire del backend. Le cartelle `Capabilities/`, `Requirements/`, `Contracts/`, `Verifications/` e `Thesaurus/` facilitano la consultazione; il tipo degli elementi e le relazioni Reqvire ne definiscono il significato. Le ontologie e i contratti semantici, quando necessari, appartengono a `Ontologies/`.
-- `AGENTS.md`: istruzioni per gli agenti, metodo e strumenti di lavoro.
+| Repository | Role |
+|---|---|
+| **ambrogio-backend** (this one) | Conversation server, agents, speech, storage, public protocol |
+| [ambrogio-cli](https://github.com/adrianofoschi/ambrogio-cli) | Terminal chat client |
+| [ambrogio-satellite](https://github.com/adrianofoschi/ambrogio-satellite) | Voice satellite with wake word, microphone and speaker |
 
-Il sito e la documentazione utente appartengono a repository separati.
+> Ambrogio is in early development. It currently speaks Italian, and the configuration format may still change between versions.
 
-## Stato del progetto
+## How it works
 
-Questo repository contiene il backend della conversazione familiare e il suo modello Reqvire. Il client terminale è sviluppato nel repository separato `ambrogio-cli`, che possiede il proprio modello; integra il backend tramite il contratto HTTP pubblico. SQLite e Kysely sono scelti per l'archivio delle conversazioni; il server usa TypeScript ESM, compilato con `tsc`, Node.js 24 o successivo e Fastify per l'API HTTP; pnpm gestisce il workspace del backend. Le applicazioni eseguibili risiedono in `apps/` e i moduli business in `packages/`. I flussi testuali e vocali del server appartengono al modulo business «Conversazioni», con codice Domain e Application rispettivamente in `src/domain/` e `src/application/` del package. Gli adapter per componenti tecnici esterni integrati in «Conversazioni» risiederanno nel package, in `src/adapters/in/` o `src/adapters/out/` secondo il loro ruolo; quelli che collegano due moduli business risiederanno nell'app che li assembla, in `src/adapters/out/<consumer>-to-<provider>/`. I package business non importano altri package business, app o package tecnici condivisi del workspace, neppure tramite `import type`; i collegamenti tra moduli avvengono nelle app. I test di ciascun modulo business risiedono nel suo package; le prove della collaborazione tra moduli risiedono nell'app che li assembla. I test Domain importano codice di produzione solo dal Domain del proprio modulo; i test Application solo dall'Application e dal Domain dello stesso modulo, anche per gli `import type`. I test degli adapter inbound importano codice di produzione solo dal proprio adapter e dall'Application, senza Domain; quelli degli adapter outbound solo dal proprio adapter, dall'Application e dal Domain, senza adapter inbound. Il confine vale anche per gli `import type`. Ogni package business espone tramite `package.json` solo subpath espliciti di Application e degli adapter necessari alle app, senza export della radice, wildcard o Domain; le app importano solo tramite tali subpath, senza accedere ai file interni. I package generici di condivisione, come `shared`, `common`, `utils` o `domain-kit`, richiedono una nuova decisione architetturale esplicita nel modello Reqvire. Domain e Application restano indipendenti da Node.js e dalle dipendenze npm runtime; le integrazioni tecniche passano attraverso porte Application e adapter. La composition root dell'applicazione server sceglie e fornisce le implementazioni delle porte. Nelle app, `src/runtime/` contiene i meccanismi tecnici del processo, `src/composition/` le scelte di assemblaggio dei componenti e gli entrypoint coordinano l'esecuzione. Chat testuale e voce usano lo stesso protocollo conversazionale `ambrogio.v1`, posseduto da questo repository: una WebSocket su `/api/session` con il sottoprotocollo `ambrogio.v1`, una sessione per client che trasporta turni di più conversazioni. La definizione macchina dei messaggi è lo schema JSON [protocol/ambrogio-v1.schema.json](protocol/ambrogio-v1.schema.json); il comportamento è definito nei contratti di `system-model/Contracts/ConversationProtocol.md`. Il client apre la sessione con `session.hello` e attende `session.ready`. Ogni richiesta è una trasmissione `input.start`, contenuto e `input.end`: testo in `input.chunk` oppure audio PCM16 mono a 16 kHz in frame binari preceduti dal numero `stream` a 32 bit big-endian; `reply` sceglie se ricevere testo o audio. Ogni conversazione conservata può essere continuata da qualunque client indicando `conversationId`, con testo o voce; il server recupera lo storico dall'archivio. Dopo `input.end` il server risponde `turn.accepted` con `conversationId`, `turnId` e il testo conservato, oppure rifiuta il turno. Risposte, rifiuti ed errori viaggiano come trasmissioni del server (`output.start`, `output.chunk` o frame audio, `output.end`) nel formato richiesto, e ogni turno si conclude con un solo esito: `turn.completed` con `expectsReply`, inviato soltanto dopo la conservazione dell'esito; `turn.failed` con il messaggio pubblico; `turn.interrupted` all'arresto; `turn.rejected` con `reason` e messaggio per un turno non ammesso. Dopo l'ammissione il backend completa il turno e ne conserva l'esito anche se il client si disconnette; lo storico segnala il turno «In elaborazione» finché l'esito non è disponibile. Un testo vuoto o composto solo da spazi è rifiutato con `invalid` senza modificare l'archivio, anche con `conversationId` inesistente; con testo valido, un `conversationId` inesistente è rifiutato con `conversation_not_found` senza creare una conversazione. I turni testuali sono limitati a 64 KiB, quelli audio a 60 secondi. Trascrizione con Vosk e sintesi con sherpa-onnx, con voci Piper, avvengono nel processo backend quando la voce è configurata; altrimenti i turni che trasmettono o chiedono audio sono rifiutati con `audio_unavailable`. Le connessioni con header `Origin` sono accettate solo per le origini configurate. Gli import di Domain restano nel proprio Domain e quelli di Application nel proprio Application o Domain, inclusi gli `import type`. Nel server, i rifiuti previsti di Domain, Application e porte sono valori di esito distinguibili dal successo; guasti tecnici inattesi e bug si propagano come eccezioni fino al confine che li gestisce. Le nuove eccezioni costruite dal server per guasti tecnici non tradotti o bug sono oggetti `Error`. Un layer che non aggiunge contesto propaga il guasto originale; un `catch` con contesto operativo crea un nuovo `Error` con messaggio del componente e `cause` identica al valore catturato, senza modificarlo. Il messaggio di guasto per la famiglia è costruito separatamente dalla diagnosi tecnica e non espone cause, stack, messaggi tecnici del provider o il valore originale dell'eccezione. Il componente che decide l'esito esterno possiede l'eventuale log diagnostico definitivo e ne emette al massimo uno per guasto; i componenti intermedi che propagano il guasto non lo registrano di nuovo come errore definitivo. Domain e casi d'uso Application non dipendono da un logger; la diagnostica dei guasti inattesi spetta ai componenti tecnici che li gestiscono. Rifiuti previsti, errori di protocollo previsti e guasti tecnici tradotti in esiti previsti non generano automaticamente log dedicati `warn` o `error`. Quando un guasto inatteso, un bug o un valore lanciato sconosciuto raggiunge il fallback pubblico HTTP e il canale diagnostico è disponibile, il confine emette un solo log definitivo di livello `error`. Nel log definitivo, il campo strutturato `err` contiene l'oggetto `Error` con la catena `cause` in memoria; la riga JSON include una rappresentazione serializzata di `err`. La vista JSON usa soli campi ammessi esplicitamente: include lo stack degli `Error` del progetto e usa una descrizione costante sicura per errori esterni o valori sconosciuti, senza copiarne messaggio, stack o proprietà aggiuntive. La serializzazione non modifica gli oggetti Error originali né la loro catena cause mantenuta in memoria. Il confine HTTP che gestisce definitivamente un guasto normalizza una sola volta il valore catturato: conserva la stessa istanza se è un Error, altrimenti crea un Error con messaggio diagnostico fisso e cause identica al valore originale, senza convertirlo in stringa. Il runtime HTTP usa Pino per eventi tecnici JSON, uno per riga, e scrive per impostazione predefinita su stdout; raccolta e inoltro verso un eventuale backend di log sono responsabilità del deployment, senza integrazione diretta nel codice applicativo. Il runtime HTTP non emette i log automatici di ricezione e risposta di Fastify; gli eventi diagnostici HTTP contengono soltanto campi scelti esplicitamente, senza acquisire automaticamente oggetti di ingresso, uscita o contesto. Ogni evento diagnostico include un campo event con un nome stabile dichiarato nel punto di emissione. Il confine HTTP genera un correlationId UUID v4 distinto per richiesta, lo include nei relativi log e lo restituisce come X-Request-Id in ogni risposta gestita, anche di errore;  Il logger e le integrazioni HTTP non acquisiscono automaticamente testi delle conversazioni, corpi o header HTTP, input o output dei casi d'uso e credenziali. Ogni caso d'uso con rifiuti previsti dichiara nel proprio contratto Application un insieme chiuso dei soli rifiuti osservabili dal chiamante, senza un catalogo globale condiviso. Casi d'uso e porte con rifiuti previsti restituiscono `Result<T, E>` nelle firme TypeScript, eventualmente in `Promise`, con `E` pari alle varianti dichiarate nel rispettivo contratto. Ogni modulo business che usa `Result<T, E>` lo definisce localmente come `Readonly<{ ok: true; value: T }> | Readonly<{ ok: false; error: E }>`. I casi d'uso gestiscono ogni rifiuto previsto delle porte e traducono quelli bloccanti, tramite mapping espliciti, in varianti proprie con tipi nominati distinti da quelli delle porte. Ogni variante di rifiuto previsto è un tipo nominato `Readonly` con `kind` letterale distinto nella propria unione; le varianti non sono classi e non si distinguono con `instanceof`. Oltre a `kind`, le varianti contengono solo eventuali campi specifici tipizzati, stabili e necessari al chiamante, senza campi generici comuni obbligatori. I mapping esaustivi usano uno `switch` su `kind`, un ramo per variante e un `default` che chiama `assertNever` sul valore completo; il server compila con TypeScript `strict`. Per un caso d'uso con rifiuti previsti, firma callable, factory e unione dei rifiuti osservabili sono nello stesso file `<use-case>.use-case.ts`. Gli adapter inbound rappresentano gli esiti usando solo le varianti pubbliche Application del caso d'uso, ne gestiscono tutta l'unione e non dipendono dai tipi di rifiuto interni delle porte o del Domain. Ogni componente configurabile del server usa un file JSON locale dedicato, separato da quelli degli altri componenti. I file effettivi restano fuori da Git e dalle immagini container; eventuali esempi nel repository sono privi di credenziali effettive. Le credenziali delle API esterne sono lette dal file JSON locale effettivo del rispettivo componente. Nell'MVP Ambrogio non implementa account o autenticazione applicativa: il deployment limita l'accesso ai client ammessi dall'installatore tramite rete e, se presente, reverse proxy. Il server sarà distribuito come immagine Docker eseguibile senza Docker Compose; un eventuale file Compose sarà solo un esempio di avvio. La suite automatica del backend userà Vitest. Il resto dell'organizzazione del codice e le altre scelte tecnologiche devono ancora essere definiti; il modulo «Conversazioni» è in implementazione incrementale.
+```mermaid
+flowchart LR
+    subgraph Clients
+        CLI[ambrogio-cli<br/>terminal chat]
+        SAT[ambrogio-satellite<br/>voice]
+    end
 
-Seguire [AGENTS.md](AGENTS.md) per la sequenza di lavoro e usare la [documentazione ufficiale Reqvire](https://reqvire.org/) come riferimento autorevole.
+    subgraph Backend[ambrogio-backend]
+        API[HTTP API<br/>+ WebSocket session]
+        CONV[Conversations module]
+        STT[Speech-to-text<br/>Vosk]
+        TTS[Text-to-speech<br/>sherpa-onnx + Piper voices]
+        ORCH[Orchestrator agent]
+        AG[Specialised agents]
+        DB[(SQLite archive)]
+    end
 
-## Decisioni successive
+    LLM[LLM provider]
+    MCP[MCP servers<br/>your tools and services]
 
-L'interazione vocale è facoltativa: la chat testuale funziona senza la sua configurazione. L'arresto ordinato ferma l'accettazione di nuovi turni, interrompe quelli attivi senza attenderne la risposta e ne conserva lo stato «Interrotto» prima di chiudere l'archivio. Dopo una terminazione improvvisa, i turni accettati rimasti senza esito sono riconosciuti come «Interrotto» al riavvio e non vengono ripetuti automaticamente. Le migrazioni SQLite sono applicate prima dell'attivazione degli ingressi. L'elenco delle conversazioni è paginato e ordinato per ultima attività, dalla più recente.
-
-Il server legge all'avvio i JSON locali dei soli componenti attivi, senza sovrascriverne i valori tramite variabili d'ambiente. La configurazione richiesta viene validata prima di attivare le risorse; i componenti ricevono solo i valori pertinenti già convertiti. Un JSON mancante o invalido blocca l'ingresso interessato con un errore sicuro.
-
-L'osservabilità iniziale usa log tecnici JSON strutturati e identificativi di correlazione per richiesta HTTP. Metriche, tracing distribuito e audit separati non sono introdotti nella prima versione; richiederanno una decisione e verifiche proprie se emergerà un'esigenza concreta.
-
-L'API HTTP autorizza CORS solo per origini esplicitamente configurate nel JSON del componente HTTP; senza elenco non autorizza origini. Le rotte che ricevono un corpo applicano un limite positivo esplicito e rispondono con `413` a un corpo troppo grande prima di avviare il caso d'uso; le rotte HTTP attuali non ricevono corpi e i limiti dei turni appartengono al protocollo conversazionale. Le risposte HTTP che trasportano dati conversazionali, cioè elenco e storico, inviano `Cache-Control: no-store`.
-
-Gli header di sicurezza dell'API HTTP sono applicati globalmente con `@fastify/helmet`, comprese le risposte di errore, con eventuali deroghe motivate per rotta. HSTS è attivo solo quando la configurazione validata dichiara che l'origine pubblica usa HTTPS; non si attivano implicitamente `includeSubDomains` o `preload`.
-
-Il server dispone di prove Vitest, comprese prove degli adapter di persistenza su SQLite reale. Dalla radice del repository si eseguono `npm test`, `npm run build` e `npm run typecheck`; il modello si controlla con Reqvire `validate` e `lint`. I test che aprono listener HTTP locali richiedono un ambiente che consenta l’ascolto su `127.0.0.1`.
-
-Ogni conversazione elabora al massimo un turno alla volta; turni di conversazioni diverse, anche nuove, sono ammessi ed elaborati in parallelo. Durante l'elaborazione o la risposta a un turno, il client impedisce nuovi turni nella stessa interazione senza bloccare le altre conversazioni. Il server rifiuta senza conservarli i turni destinati a una conversazione che ne sta già elaborando un altro, da qualsiasi client, con il rifiuto `occupied` del protocollo conversazionale. Eventuali limiti globali di capacità richiedono una decisione separata. Nessun turno viene accettato per essere elaborato più tardi: se non può partire subito, viene rifiutato senza finire in coda.
-
-Gli ingressi verificano forma e decodifica dei propri dati prima del caso d'uso: le rotte HTTP con schemi TypeBox e Fastify/Ajv, il canale conversazionale con Ajv sullo schema JSON del protocollo, senza coercizione dei tipi, valori predefiniti impliciti o rimozione dei campi aggiuntivi. Application coordina le precondizioni che dipendono dal contesto della conversazione; Domain garantisce stati e transizioni del singolo turno, mentre SQLite garantisce atomicamente l'unico turno attivo per conversazione. Un controllo preliminare non sostituisce la garanzia atomica dell'archivio.
-
-Nella prima versione non si conservano eventi di dominio per consegne successive e non si usano outbox o code per pubblicarli. Gli eventi di dominio locali non sono introdotti ora; restano un'opzione se un caso d'uso concreto ne avrà bisogno.
-
-Nel modulo «Conversazioni», i casi d'uso ricevono input e producono dati di successo definiti in Application, indipendenti da HTTP e voce; gli adapter traducono i dati nei rispettivi formati. Le porte Application prendono il nome dalla capacità richiesta dal caso d'uso, senza nomi di prodotti, protocolli o librerie delle implementazioni. Operazioni e dati delle porte esprimono il bisogno del modulo; gli adapter traducono verso le API e i tipi dei fornitori esterni. Le porte a oggetto con metodi nominati usano `interface` TypeScript; dati, unioni e contratti callable usano `type`.
-
-L'archivio delle conversazioni espone ad Application un contratto di scrittura dedicato alle transizioni del turno e contratti di lettura separati per storico ed elenco. Il contratto di scrittura può usare il salvataggio coerente della conversazione come aggregato oppure operazioni di transizione esplicite; non impone un'interfaccia CRUD universale. Le transizioni di ammissione e chiusura di un turno aggiornano atomicamente stato del turno e occupazione della conversazione interessata con transazioni SQLite brevi; chiamate esterne e streaming avvengono fuori dalle transazioni. L'adapter classifica gli esiti SQLite secondo la postcondizione della singola operazione: zero righe non indica da solo successo o rifiuto, e guasti o risultati ambigui non vengono presentati come rifiuti previsti. Il server possiede e chiude la risorsa SQLite/Kysely tramite la composition root; gli adapter ne ricevono solo l'accesso necessario. Gli adapter convertono esplicitamente i dati tra righe SQLite e valori Domain o proiezioni Application, preservandone il significato senza imporre una forma unica ai mapper. Domain garantisce le transizioni valide del singolo turno; l'archivio garantisce l'unico turno attivo per conversazione. Il testo di un turno accettato viene conservato com'è stato ricevuto: gli spazi iniziali e finali sono ignorati solo per verificarne la vuotezza.
-
-Conversazioni e turni ricevono UUID v4 generati tramite una capacità fornita ad Application dalla composition root, prima della creazione dello stato Domain. L'archivio conserva gli identificativi e ne garantisce l'unicità persistente; l'ordinamento dello storico non dipende dagli UUID. I casi d'uso ottengono l'ora corrente da un orologio fornito dalla composition root e passano gli istanti al Domain; gli istanti storici restano invariati dopo il caricamento. Nel codice Application e Domain gli istanti sono `Date` validi; gli oggetti Domain ne fanno copie difensive in ingresso e in uscita. SQLite conserva gli istanti come interi di millisecondi Unix, convertiti esplicitamente dall'adapter di persistenza senza perdita di precisione.
-
-Ogni richiesta di una pagina dell'elenco legge lo stato corrente dell'archivio; i client possono ripartire dalla prima pagina per aggiornare la consultazione.
-
-La dimensione massima delle pagine e la rappresentazione della continuazione sono definite nel contratto HTTP dell'elenco.
-
-## Ingresso conversazionale
-
-Il processo eseguibile espone `GET /api/conversations`, `GET /api/conversations/:conversationId` e il canale conversazionale WebSocket `/api/session`, che usa l'agente orchestratore configurato come produttore delle risposte. La voce si abilita indicando in `AMBROGIO_VOICE_CONFIG_PATH` il JSON vocale con `voskModelPath` e `voiceModelDir` (directory di una voce sherpa-onnx); la voce è caricata prima dell'ascolto.
-
-Il processo richiede i file JSON locali HTTP, Conversazioni e degli agenti, esterni al repository. Un esempio di configurazione HTTP è:
-
-```json
-{"host":"127.0.0.1","port":3000,"allowedOrigins":[],"publicHttps":false}
+    CLI -- text --> API
+    SAT -- audio --> API
+    API --> CONV
+    CONV --> STT
+    CONV --> TTS
+    CONV --> ORCH
+    ORCH -- chooses --> AG
+    ORCH --> LLM
+    AG --> LLM
+    AG -. optional tools .-> MCP
+    CONV --> DB
 ```
 
-`host` e `port` sono obbligatori. `allowedOrigins` è facoltativo e, se assente, non autorizza origini CORS né connessioni al canale conversazionale che dichiarano un'origine. Per un'origine pubblica esclusivamente HTTPS, impostare `publicHttps` a `true` e fornire `hstsMaxAgeSeconds` positivo. Un esempio del JSON Conversazioni è:
+- **One protocol for text and voice.** Clients open a WebSocket session on `/api/session` with the `ambrogio.v1` subprotocol. One session carries turns for many conversations. A request can be text or 16 kHz PCM audio, and the client chooses whether the answer comes back as text or as audio. The message schema is in [`protocol/ambrogio-v1.schema.json`](protocol/ambrogio-v1.schema.json).
+- **Shared conversations.** Every conversation is stored, so any client can continue it. A chat started in the terminal can go on by voice, and the other way round. Plain HTTP endpoints list conversations and return their history.
+- **Agents.** For each turn an *orchestrator* chooses which *specialised agent* should answer. It does not answer itself. Each agent has its own instructions and model. An agent can also connect to an [MCP](https://modelcontextprotocol.io/) server and call its tools, for example to reach your home automation or other services.
+- **Optional voice.** Speech recognition and synthesis run inside the backend process. No cloud speech service is needed. Text chat works without any voice setup.
+- **Reliable turns.** A conversation handles one turn at a time, and separate conversations run in parallel. Once the backend accepts a turn, it finishes and stores that turn even if the client disconnects. Each turn ends with exactly one outcome: completed, failed, rejected or interrupted.
 
-```json
-{"archivePath":"/percorso/locale/conversations.sqlite","listPageSize":20,"maxListPageSize":100,"language":"it"}
+Two base connectors are planned for the first version:
+
+- **Home Assistant**: read the state of your home devices and control them during a conversation.
+- **Memory**: answer questions about earlier conversations, both typed and spoken, by retrieving relevant passages from the shared history (RAG). Ambrogio will provide both the MCP client and the MCP server for this connector.
+
+### A turn, step by step
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant B as Backend
+    participant O as Orchestrator
+    participant A as Agent
+    C->>B: session.hello
+    B-->>C: session.ready
+    C->>B: input.start → text or audio → input.end
+    B->>B: transcribe (if audio), store turn
+    B-->>C: turn.accepted
+    B->>O: which agent should answer?
+    O-->>B: agent
+    B->>A: produce answer (may call MCP tools)
+    A-->>B: answer
+    B-->>C: output.start → text or audio → output.end
+    B->>B: store outcome
+    B-->>C: turn.completed (expectsReply)
 ```
 
-Per questo ingresso `archivePath` è obbligatorio; gli altri campi conservano i valori predefiniti già definiti nel modello.
+## Dependencies
 
-La directory degli agenti (`/etc/ambrogio/agents`) contiene `orchestrator.json` e almeno un agente specializzato. L'orchestratore non risponde: sceglie soltanto l'agente che risponde al turno, vedendo quale agente ha dato le risposte precedenti della conversazione; il modello consigliato per l'orchestratore è `mistral-medium-latest`. Ogni turno ha al massimo 30 secondi per la risposta, dopo i quali le richieste in corso sono annullate e il turno termina con l'errore pubblico. Esempio di orchestratore:
+**Runtime**
 
-```json
-{"instructions":"Sei Ambrogio, l'assistente della famiglia.","llm":{"provider":"mistral","model":"mistral-medium-latest","apiKey":"..."}}
+- Node.js 24 or later; pnpm to build from source
+- Linux, or Docker (the published image is `linux/amd64`)
+- An API key for the LLM provider. Agents currently use [Mistral](https://mistral.ai/) through the [Vercel AI SDK](https://ai-sdk.dev/)
+- For voice only: a [Vosk](https://alphacephei.com/vosk/models) speech model, such as `vosk-model-small-it-0.22`. The Docker image already contains two Italian Piper voices; see [`voices/README.md`](voices/README.md)
+
+**Main libraries**
+
+| Area | Library |
+|---|---|
+| HTTP and WebSocket | Fastify, `@fastify/websocket`, `@fastify/helmet`, `@fastify/cors` |
+| Storage | SQLite (`better-sqlite3`) with Kysely |
+| Validation | TypeBox, Ajv |
+| Agents | Vercel AI SDK (`ai`, `@ai-sdk/mistral`), MCP client |
+| Speech | `vosk-koffi` (speech-to-text), `sherpa-onnx-node` (text-to-speech) |
+| Logging | Pino, as JSON lines on stdout |
+
+## Quick start
+
+The server reads one small JSON file per component. Configuration files and the database stay outside the image and the repository.
+
+```
+/etc/ambrogio/
+├── http.json              # listen address, allowed origins, HTTPS flags
+├── conversations.json     # SQLite archive path, language, page sizes
+├── voice.json             # optional: Vosk model and Piper voice
+└── agents/
+    ├── orchestrator.json  # chooses the agent for each turn
+    └── generic.json       # at least one specialised agent
 ```
 
-Un agente con sole istruzioni, senza `mcp` e senza `maxToolCalls`, risponde con la conoscenza del proprio modello, per esempio `agents/generic.json`:
+Minimal examples:
 
-```json
-{"description":"Risponde alle domande generali e alla conversazione.","instructions":"Rispondi in italiano in modo breve.","llm":{"provider":"mistral","model":"mistral-medium-latest","apiKey":"..."}}
+```jsonc
+// http.json
+{ "host": "0.0.0.0", "port": 3000 }
+
+// conversations.json
+{ "archivePath": "/data/conversations.sqlite", "language": "it" }
+
+// agents/orchestrator.json
+{ "instructions": "You are Ambrogio, the family assistant.",
+  "llm": { "provider": "mistral", "model": "mistral-medium-latest", "apiKey": "..." } }
+
+// agents/generic.json
+{ "description": "Answers general questions.",
+  "instructions": "Answer briefly.",
+  "llm": { "provider": "mistral", "model": "mistral-medium-latest", "apiKey": "..." } }
 ```
 
-Un agente con connettore MCP contiene anche `mcp` (`url` e `auth` facoltativo) e `maxToolCalls`, intero positivo obbligatorio solo in questo caso.
-
-Dopo la build, avviare il processo indicando solo i percorsi dei file:
+**With Docker**
 
 ```bash
+docker run -d --name ambrogio -p 3000:3000 \
+  -v /srv/ambrogio/config:/etc/ambrogio:ro \
+  -v /srv/ambrogio/data:/data \
+  -e AMBROGIO_HTTP_CONFIG_PATH=/etc/ambrogio/http.json \
+  -e AMBROGIO_CONVERSATIONS_CONFIG_PATH=/etc/ambrogio/conversations.json \
+  ghcr.io/adrianofoschi/ambrogio-backend:<version>
+```
+
+Versioned images are published on GHCR for every `vX.Y.Z` tag. There is no `latest` tag.
+
+**From source**
+
+```bash
+pnpm install --frozen-lockfile
 pnpm build
-AMBROGIO_HTTP_CONFIG_PATH=/percorso/locale/http.json \
-AMBROGIO_CONVERSATIONS_CONFIG_PATH=/percorso/locale/conversations.json \
+AMBROGIO_HTTP_CONFIG_PATH=/etc/ambrogio/http.json \
+AMBROGIO_CONVERSATIONS_CONFIG_PATH=/etc/ambrogio/conversations.json \
 node apps/server/dist/main.js
 ```
 
-## Immagine Docker del backend
+To enable voice, set `AMBROGIO_VOICE_CONFIG_PATH` to a JSON file that contains `voskModelPath` and `voiceModelDir`.
 
-Il [Dockerfile](Dockerfile) costruisce il server con Debian e Node.js 24 in due fasi. I file JSON effettivi e l'archivio SQLite sono forniti tramite mount esterni; non entrano nel contesto copiato nell'immagine. Docker Compose non è richiesto.
+> Ambrogio has no user accounts or authentication. Run it on a trusted network, or behind a reverse proxy that allows only your own clients.
 
-L'immagine include le voci italiane **Riccardo x_low** e **Paola medium** per sherpa-onnx, che sintetizza la voce nel processo del backend, in `/opt/ambrogio/voices`; provenienza, licenza e hash sono documentati in [voices/README.md](voices/README.md). Il JSON vocale contiene esattamente `voskModelPath` e `voiceModelDir`; quest'ultimo seleziona `/opt/ambrogio/voices/vits-piper-it_IT-paola-medium`, la scelta dell'installazione di riferimento, oppure `/opt/ambrogio/voices/vits-piper-it_IT-riccardo-x_low`:
+## Repository layout
 
-```json
-{"voskModelPath":"/models/vosk-model-small-it-0.22","voiceModelDir":"/opt/ambrogio/voices/vits-piper-it_IT-paola-medium"}
+```
+apps/server/              runnable server: runtime, composition, entry point
+packages/conversations/   "Conversations" business module (domain, application, adapters)
+protocol/                 JSON schema of the ambrogio.v1 protocol
+voices/                   provenance of the bundled Piper voices
+system-model/             engineering model (requirements, contracts, verifications)
 ```
 
-La voce è caricata una volta all'avvio: la scelta è comune a tutti i satelliti e diventa attiva al riavvio del backend, e una directory non valida impedisce l'avvio. Per sostituire il catalogo, montare una directory di voci in sola lettura su `/opt/ambrogio/voices` e indicare nel JSON una directory del mount con un solo `.onnx`, `tokens.txt` ed `espeak-ng-data/`. Vosk, che trascrive l'audio ricevuto, usa ancora una directory esterna distinta.
+The code follows a ports-and-adapters design. Domain and application logic do not depend on Node.js or on external libraries; adapters connect them to HTTP, SQLite, the LLM provider and the speech engines.
 
-La prova ripetibile è `node scripts/verify-docker-image.mjs`. Esegue `docker build` e `docker run` senza Compose, monta JSON di prova e una directory SQLite esterna, verifica che tali file non siano presenti nell'immagine, richiede `GET /api/conversations` con Node e controlla la creazione dell'archivio nel mount. Il 16 ottobre 2026 la prova è passata: HTTP `200`, archivio esterno creato; l'immagine locale risultante è `sha256:9a79d8e48cfe5b14a3b03f157d05716be9616ce779bd9e64dd22d0cd9f41d941`.
-
-### Pubblicazione versionata
-
-Il server usa versioni `vMAJOR.MINOR.PATCH`, a partire da `v0.1.0`. La versione senza `v` è registrata in [apps/server/package.json](apps/server/package.json). Il workflow [publish-image.yml](.github/workflows/publish-image.yml) si avvia quando viene inviato un tag Git `v*`, verifica che il tag corrisponda alla versione del package, costruisce e prova l'immagine `linux/amd64`, poi pubblica esattamente quell'immagine come `ghcr.io/adrianofoschi/ambrogio-backend:<tag>`. Non pubblica `latest`.
-
-Per una nuova versione, aggiornare prima il package server e inviare il commit su `main`; poi creare e inviare il tag corrispondente, ad esempio `git tag -a v0.1.0 -m 'Ambrogio backend v0.1.0'` e `git push origin v0.1.0`. Il workflow pubblica solo dopo la prova Docker. Il package GHCR `ambrogio-backend` è pubblico: `v0.1.0` è scaricabile senza login con `docker pull ghcr.io/adrianofoschi/ambrogio-backend:v0.1.0`. Il manifest è stato verificato con una configurazione Docker vuota il 16 ottobre 2026. Per fissare un'installazione a un contenuto immutabile, usare il digest `sha256` restituito dal pull al posto del tag.
-
-## Reqvire locale
-
-La versione usata per il modello iniziale è Reqvire `1.3.2`. Dalla radice del repository:
+## Development
 
 ```bash
-npx -y @reqvire-org/reqvire@1.3.2 --workspace "$PWD" validate
-npx -y @reqvire-org/reqvire@1.3.2 --workspace "$PWD" mcp --port 8082 --enable-mutations
+pnpm test        # Vitest suite, including real SQLite adapters
+pnpm typecheck
+pnpm build
 ```
 
-Il secondo comando avvia in primo piano il server MCP. La [configurazione Codex del progetto](.codex/config.toml) punta a `http://127.0.0.1:8082/mcp`. Per le mutazioni Reqvire richiede un branch con almeno un commit e un worktree pulito. Dopo aver avviato il server, aprire una nuova sessione Codex per rendere disponibili i suoi strumenti; fermare il server prima di modificare il modello con editor o CLI.
+Ambrogio is developed model first with [Reqvire](https://reqvire.org/). Capabilities, requirements, contracts and verifications live in [`system-model/`](system-model/) and are recorded before the code changes. [`AGENTS.md`](AGENTS.md) describes the workflow.
 
-Per aprire l'Explorer web in un altro terminale:
+## License
 
-```bash
-npx -y @reqvire-org/reqvire@1.3.2 --workspace "$PWD" serve --port 8080
-```
-
-La UI è disponibile su `http://127.0.0.1:8080`. Il comando avvia solo l'Explorer; il server MCP configurato per Codex rimane sulla porta 8082.
+[MIT](LICENSE). The bundled voice models have their own licenses; see [`voices/README.md`](voices/README.md).

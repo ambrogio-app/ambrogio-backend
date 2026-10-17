@@ -21,6 +21,7 @@ La prova passa se il server rifiuta i nuovi turni con `unavailable`, richiede su
 #### Relations
   * derivedFrom: [Verifica del ciclo di vita del server](#verifica-del-ciclo-di-vita-del-server)
   * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
+  * satisfiedBy: [session-lifecycle.test.ts](../../apps/server/test/runtime/session-lifecycle.test.ts)
   * verify: [Arresto controllato dei nuovi turni](../Requirements/ServerFoundation.md#arresto-controllato-dei-nuovi-turni)
   * verify: [Chiusura delle risorse dopo l'interruzione dei turni](../Requirements/ServerFoundation.md#chiusura-delle-risorse-dopo-linterruzione-dei-turni)
   * verify: [Interruzione dei turni durante l'arresto](../Requirements/ServerFoundation.md#interruzione-dei-turni-durante-larresto)
@@ -250,6 +251,7 @@ La prova passa se tutti i campi della riga appartengono alla selezione esplicita
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
   * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
+  * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
   * verify: [Selezione esplicita dei campi diagnostici](../Requirements/ServerFoundation.md#selezione-esplicita-dei-campi-diagnostici)
 ---
 
@@ -282,6 +284,7 @@ La prova passa se ogni riga contiene `event`, il suo valore corrisponde al nome 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
   * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
+  * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
   * verify: [Nome stabile degli eventi diagnostici](../Requirements/ServerFoundation.md#nome-stabile-degli-eventi-diagnostici)
 ---
 
@@ -318,6 +321,7 @@ La prova passa se per l'`Error` del progetto il campo strutturato `err` conserva
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
   * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
+  * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
   * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
   * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
   * verify: [Conservazione dell'errore originale durante la serializzazione](../Requirements/ServerFoundation.md#conservazione-dellerrore-originale-durante-la-serializzazione)
@@ -369,6 +373,7 @@ La prova passa se nessuno dei quattro esiti causa automaticamente un log dedicat
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
+  * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
   * verify: [Nessun log automatico per esiti previsti](../Requirements/ServerFoundation.md#nessun-log-automatico-per-esiti-previsti)
 ---
 
@@ -401,6 +406,7 @@ La prova passa se per il guasto esiste al massimo un log diagnostico definitivo,
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
   * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
+  * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
   * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
   * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
   * verify: [Assenza di log definitivi nei componenti intermedi](../Requirements/ServerFoundation.md#assenza-di-log-definitivi-nei-componenti-intermedi)
@@ -455,6 +461,7 @@ La prova passa se la normalizzazione avviene una sola volta nel confine definiti
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
   * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
+  * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
   * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
   * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
   * verify: [Normalizzazione diagnostica nel confine definitivo](../Requirements/ServerFoundation.md#normalizzazione-diagnostica-nel-confine-definitivo)
@@ -508,6 +515,7 @@ La prova passa se il messaggio pubblico non contiene nessuno dei marcatori tecni
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
   * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
+  * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
   * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
   * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
   * verify: [Esclusione dei dettagli tecnici dal messaggio pubblico](../Requirements/ServerFoundation.md#esclusione-dei-dettagli-tecnici-dal-messaggio-pubblico)
@@ -682,22 +690,21 @@ L'ispezione passa se tutti i casi d'uso hanno il suffisso `.use-case.ts`, tutti 
 
 Per ogni rinomina controllare import, export pubblici, riferimenti nei test e collegamenti Reqvire. La compilazione e i test pertinenti devono continuare a passare. Registrare revisione Git esaminata, elenco dei file classificati, difetti ed esito; la presenza di una relazione `satisfiedBy` e il successo di `validate` o `lint` non sostituiscono questa ispezione.
 
-#### Esito dell'ispezione del 16 ottobre 2026
-Esito: PASS sul worktree successivo alla revisione base `512317c9e93b4e6ab7a1e32dd9c210436b7b5c06`. Esaminati tutti i 45 file TypeScript di produzione, comprese le implementazioni strutturali delle porte e i punti di ingresso. Nessuna non conformità residua di naming nel perimetro esaminato.
+#### Esito dell'ispezione del 17 ottobre 2026
+Esito: PASS sulla revisione `fe2d78fe6e5058ee40c59ddc082c46de099159fc`, che sostituisce SSE e Micdrop con il protocollo conversazionale `ambrogio.v1`. Esaminati tutti i 45 file TypeScript di produzione, comprese le implementazioni strutturali delle porte e i punti di ingresso. Nessuna non conformità residua di naming nel perimetro esaminato. Sostituisce l'esito del 16 ottobre 2026 sulla revisione base `512317c9e93b4e6ab7a1e32dd9c210436b7b5c06`, che riguardava gli adapter SSE e Micdrop ora rimossi.
 
-Identificazione riproducibile dei sorgenti esaminati: SHA-256 `5478c849663b10b54351af2d2d93398cb810d4da3b89f6a1fb0b88bff02ecf43`, calcolato concatenando, in ordine lessicografico, percorso relativo UTF-8, byte NUL, contenuto del file, byte NUL, per tutti i file dell'inventario. Il risultato riguarda questo stato del worktree, non attesta modifiche successive.
+Identificazione riproducibile dei sorgenti esaminati: SHA-256 `b524990a93841e1a3ab4d7fc8b549b9c92d698f837ae5ee184b481a8b69b8059`, calcolato concatenando, in ordine lessicografico, percorso relativo UTF-8, byte NUL, contenuto del file, byte NUL, per tutti i file dell'inventario. Il risultato riguarda questo stato del worktree, non attesta modifiche successive.
 
-Corretti 11 adapter senza suffisso; i sei casi d'uso avevano già il nome richiesto. Estratta la rotta WebSocket dalla composition root in `apps/server/src/adapters/in/voice-route.adapter.ts`: appartiene al server che possiede il plugin Fastify WebSocket. Restano nel package gli adapter della sessione Micdrop. Gli export pubblici esistenti conservano i rispettivi subpath, con target aggiornati.
+Classificazioni dei file introdotti: `conversation-session.adapter.ts` traduce i messaggi del protocollo in invocazioni del caso d'uso `exchange-turn` ed è un adapter di ingresso; `session-route.adapter.ts` accetta l'upgrade WebSocket con il controllo di sottoprotocollo e origine e consegna il socket all'adapter di sessione, nel server che possiede il plugin Fastify WebSocket. `vosk-transcriber.ts` e `piper-synthesizer.ts` realizzano le interfacce `Transcriber` e `Synthesizer` dichiarate da `speech-components.ts` per l'adapter di sessione: non sono porte Application, quindi sono driver tecnici senza suffisso; `local-speech-components.ts` li costruisce dalla configurazione validata. `protocol-decoder.ts` è un validatore dello schema del protocollo. Rimossi `start-voice-conversation.use-case.ts`, `turn-route.adapter.ts`, gli adapter Micdrop, `vosk-streaming-stt.ts`, `voice-route.adapter.ts` e `composition/voice.ts`.
 
 #### Inventario completo
 Il percorso in tabella è anche il nome atteso. Classificazione basata su responsabilità, porte e chiamate esaminate; la cartella non determina il ruolo.
 
 | File di produzione e nome atteso | Responsabilità e classificazione | Controllo |
 | --- | --- | --- |
-| `apps/server/src/adapters/in/voice-route.adapter.ts` | Adapter inbound: ammissione WebSocket → start-voice-conversation e sessione vocale. | Suffisso richiesto presente |
+| `apps/server/src/adapters/in/session-route.adapter.ts` | Adapter inbound: upgrade WebSocket `/api/session` con controllo di sottoprotocollo e origine → sessione conversazionale. | Suffisso richiesto presente |
 | `apps/server/src/composition/agents.ts` | Composition root: costruisce e collega risorse, casi d'uso e adapter. | Nome descrittivo, nessun suffisso richiesto |
 | `apps/server/src/composition/conversations.ts` | Composition root: costruisce e collega risorse, casi d'uso e adapter. | Nome descrittivo, nessun suffisso richiesto |
-| `apps/server/src/composition/voice.ts` | Composition root: costruisce e collega risorse, casi d'uso e adapter. | Nome descrittivo, nessun suffisso richiesto |
 | `apps/server/src/main.ts` | Bootstrap del processo e arresto delle risorse. | Nome descrittivo, nessun suffisso richiesto |
 | `apps/server/src/runtime/agent-config.ts` | Supporto bootstrap: caricamento e validazione configurazione. | Nome descrittivo, nessun suffisso richiesto |
 | `apps/server/src/runtime/consultation-server.ts` | Runtime: avvio, gestione listener e arresto risorse. | Nome descrittivo, nessun suffisso richiesto |
@@ -707,10 +714,12 @@ Il percorso in tabella è anche il nome atteso. Classificazione basata su respon
 | `packages/conversations/src/adapters/in/http/history-route.adapter.ts` | Adapter inbound: GET storico → get-conversation. | Suffisso richiesto presente |
 | `packages/conversations/src/adapters/in/http/http-validation.ts` | Supporto HTTP: validazione e mapping degli errori. | Nome descrittivo, nessun suffisso richiesto |
 | `packages/conversations/src/adapters/in/http/list-route.adapter.ts` | Adapter inbound: GET elenco → list-conversations. | Suffisso richiesto presente |
-| `packages/conversations/src/adapters/in/http/turn-route.adapter.ts` | Adapter inbound: POST/SSE → exchange-turn. | Suffisso richiesto presente |
-| `packages/conversations/src/adapters/in/voice/conversation-agent.adapter.ts` | Adapter inbound: Agent Micdrop → exchange-turn. | Suffisso richiesto presente |
-| `packages/conversations/src/adapters/in/voice/voice-session.adapter.ts` | Adapter inbound: sessione WebSocket Micdrop → ConversationVoiceAgent/ExchangeTurn. | Suffisso richiesto presente |
-| `packages/conversations/src/adapters/in/voice/vosk-streaming-stt.ts` | Driver STT di Micdrop; non implementa una porta Application. | Nome descrittivo, nessun suffisso richiesto |
+| `packages/conversations/src/adapters/in/session/conversation-session.adapter.ts` | Adapter inbound: messaggi `ambrogio.v1` → exchange-turn; trasmissioni, rifiuti ed esiti. | Suffisso richiesto presente |
+| `packages/conversations/src/adapters/in/session/local-speech-components.ts` | Supporto: costruzione di Vosk e Piper dalla configurazione vocale. | Nome descrittivo, nessun suffisso richiesto |
+| `packages/conversations/src/adapters/in/session/piper-synthesizer.ts` | Driver di sintesi Piper usato dall'adapter di sessione; non implementa una porta Application. | Nome descrittivo, nessun suffisso richiesto |
+| `packages/conversations/src/adapters/in/session/protocol-decoder.ts` | Supporto: validazione Ajv dei messaggi del protocollo. | Nome descrittivo, nessun suffisso richiesto |
+| `packages/conversations/src/adapters/in/session/speech-components.ts` | Tipi dei componenti vocali dell'adapter di sessione; non sono porte Application. | Nome descrittivo, nessun suffisso richiesto |
+| `packages/conversations/src/adapters/in/session/vosk-transcriber.ts` | Driver di trascrizione Vosk usato dall'adapter di sessione; non implementa una porta Application. | Nome descrittivo, nessun suffisso richiesto |
 | `packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts` | Adapter outbound: implementa ProduceConversationReply con AI SDK. | Suffisso richiesto presente |
 | `packages/conversations/src/adapters/out/conversation-config.ts` | Supporto bootstrap: caricamento e validazione configurazione. | Nome descrittivo, nessun suffisso richiesto |
 | `packages/conversations/src/adapters/out/mcp-tool-client.ts` | Client tecnico MCP usato dall'adapter AI; non implementa una porta Application. | Nome descrittivo, nessun suffisso richiesto |
@@ -720,7 +729,7 @@ Il percorso in tabella è anche il nome atteso. Classificazione basata su respon
 | `packages/conversations/src/adapters/out/sqlite/schema.ts` | Supporto: schema e tipi delle tabelle. | Nome descrittivo, nessun suffisso richiesto |
 | `packages/conversations/src/adapters/out/sqlite/sqlite-conversation-history-read.adapter.ts` | Adapter outbound: implementa ConversationHistoryRead. | Suffisso richiesto presente |
 | `packages/conversations/src/adapters/out/sqlite/sqlite-conversation-list-read.adapter.ts` | Adapter outbound: implementa ConversationListRead. | Suffisso richiesto presente |
-| `packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts` | Adapter outbound: implementa ConversationWrite e VoiceConversationStartWrite. | Suffisso richiesto presente |
+| `packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts` | Adapter outbound: implementa ConversationWrite. | Suffisso richiesto presente |
 | `packages/conversations/src/adapters/out/sqlite/sqlite-transaction.ts` | Supporto: transazioni SQLite. | Nome descrittivo, nessun suffisso richiesto |
 | `packages/conversations/src/adapters/out/sqlite/sqlite-turn-mapper.ts` | Supporto: mapping righe SQLite ed entità. | Nome descrittivo, nessun suffisso richiesto |
 | `packages/conversations/src/adapters/out/system-current-time.adapter.ts` | Adapter outbound: implementa CurrentTime. | Suffisso richiesto presente |
@@ -735,20 +744,14 @@ Il percorso in tabella è anche il nome atteso. Classificazione basata su respon
 | `packages/conversations/src/application/get-conversation.use-case.ts` | Caso d'uso: lettura storico; ConversationHistoryRead. | Suffisso richiesto presente |
 | `packages/conversations/src/application/list-conversations.use-case.ts` | Caso d'uso: elenco paginato; ConversationListRead. | Suffisso richiesto presente |
 | `packages/conversations/src/application/produce-conversation-reply.ts` | Porta Application per la produzione della risposta. | Nome descrittivo, nessun suffisso richiesto |
-| `packages/conversations/src/application/start-voice-conversation.use-case.ts` | Caso d'uso: apertura conversazione vocale; archivio, identificatori e orologio. | Suffisso richiesto presente |
 | `packages/conversations/src/application/turn-capabilities.ts` | Porte Application CurrentTime e NewIdentifier. | Nome descrittivo, nessun suffisso richiesto |
 | `packages/conversations/src/domain/turn.ts` | Domain: entità e invarianti del turno. | Nome descrittivo, nessun suffisso richiesto |
 | `packages/conversations/src/project-error.ts` | Tipo comune dei guasti e delle cause. | Nome descrittivo, nessun suffisso richiesto |
 
 #### Evidenze eseguite
-`npm run build` e `npm run typecheck`: PASS. `./node_modules/.bin/vitest run`, con apertura delle porte locali consentita: 28 file di test, 179 test PASS. Esercitati anche HTTP/SSE, WebSocket, ciclo di vita delle risorse e turni condivisi. Il tentativo in sandbox con networking limitato non è usato come esito di conformità.
+`pnpm build` e `pnpm typecheck`: PASS. `vitest run` con apertura delle porte locali consentita: 30 file di test, 252 test PASS, comprese le prove del protocollo `ambrogio.v1` su WebSocket reale, della sessione con componenti vocali controllati e del driver Piper con un eseguibile controllato. Non sono state eseguite prove con Vosk e Piper reali né su hardware.
 
-Riesaminati import relativi, export, riferimenti dei test e collegamenti del modello aggiornati dalle rinomine MCP. Questa ispezione attesta la convenzione dei nomi e la regressione software pertinente; non sostituisce le dimostrazioni audio su hardware o la validazione generale del prodotto.
-
-#### Revisione della tracciabilità
-Revisione successiva al commit di implementazione `659ef97`: aggiornati i collegamenti alle implementazioni estratte. Reqvire validate: PASS; lint: nessun rilievo. Coverage: tutti i 177 requisiti foglia hanno una verifica collegata; questo dato non attesta l'esecuzione di tutte le verifiche. Traces conferma il percorso requisito dei nomi → questa ispezione.
-
-Change-impact rispetto alla revisione base propaga la modifica della capability e dell'obiettivo a 141 verifiche. Riesaminato il perimetro della modifica: nomi, import/export e spostamento dei confini voce; non cambiano contratti pubblici, porte Application, regole Domain, configurazione o dipendenze. Eseguite l'ispezione e la regressione software sopra registrate. Le altre verifiche pianificate e le dimostrazioni hardware mantengono il loro stato; non sono dichiarate superate da questo refactoring. La copertura implementativa complessiva resta parziale (48.3%), con lacune ulteriori fuori dal requisito dei nomi.
+Riesaminati import relativi, export dei subpath del package, riferimenti dei test e collegamenti del modello aggiornati dopo la rimozione degli adapter SSE e Micdrop. Questa ispezione attesta la convenzione dei nomi e la regressione software pertinente; non sostituisce le dimostrazioni audio su hardware o la validazione generale del prodotto.
 
 #### Metadata
   * type: inspection-verification

@@ -39,6 +39,7 @@ Quando Ambrogio non può avviare l'elaborazione di un nuovo turno al momento del
   * [Occupazione della conversazione e ammissione dei turni](../Contracts/FamilyConversation.md#occupazione-della-conversazione-e-ammissione-dei-turni)
 
 #### Relations
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -129,6 +130,7 @@ Quando la sessione conversazionale di un client si chiude, Ambrogio deve rilasci
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -167,6 +169,7 @@ Quando il backend ha ammesso un turno e la sessione del client si chiude durante
   * [Struttura testuale dello scambio](../Contracts/FamilyConversation.md#struttura-testuale-dello-scambio)
 
 #### Relations
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
@@ -183,6 +186,7 @@ Quando ammette un turno, il backend deve comunicare al client l'identificativo d
   * [Identità di conversazioni e turni](../Contracts/FamilyConversation.md#identità-di-conversazioni-e-turni)
 
 #### Relations
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -197,6 +201,7 @@ Quando il backend completa correttamente un turno, deve inviare al client la con
   * [Confini atomici dell'archivio conversazioni](../Contracts/FamilyConversation.md#confini-atomici-dellarchivio-conversazioni)
 
 #### Relations
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
@@ -281,6 +286,7 @@ Quando il backend ha trasmesso parte della risposta a un turno e poi lo conclude
 
 #### Relations
   * derivedFrom: [Conservazione dello scambio testuale](#conservazione-dello-scambio-testuale)
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
@@ -293,6 +299,7 @@ Quando Ambrogio conserva una conversazione, deve conservarne la rappresentazione
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -307,6 +314,7 @@ Quando un client invia un turno con l'identificativo di una conversazione conser
   * [Struttura testuale dello scambio](../Contracts/FamilyConversation.md#struttura-testuale-dello-scambio)
 
 #### Relations
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -321,6 +329,7 @@ Quando la consegna di una notifica di un turno già ammesso all'ingresso fallisc
   * [Dati dei casi d'uso indipendenti dagli ingressi](../Contracts/FamilyConversation.md#dati-dei-casi-duso-indipendenti-dagli-ingressi)
 
 #### Relations
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
@@ -442,6 +451,7 @@ Quando la consegna di una notifica conversazionale fallisce per un guasto tecnic
 
 #### Relations
   * derivedFrom: [Diagnostica dei guasti nei componenti tecnici](ServerFoundation.md#diagnostica-dei-guasti-nei-componenti-tecnici)
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -502,6 +512,7 @@ Quando riceve turni validi destinati a conversazioni diverse mentre è operativo
   * [Occupazione della conversazione e ammissione dei turni](../Contracts/FamilyConversation.md#occupazione-della-conversazione-e-ammissione-dei-turni)
 
 #### Relations
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
@@ -565,6 +576,7 @@ Quando, dopo l'ammissione di un turno, il server non riesce a leggere uno storic
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
@@ -915,6 +927,7 @@ Quando un turno non può essere ammesso, il backend deve comunicare al client il
 
 #### Relations
   * derivedFrom: [Esclusione dei dettagli tecnici dal messaggio pubblico](ServerFoundation.md#esclusione-dei-dettagli-tecnici-dal-messaggio-pubblico)
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -930,6 +943,7 @@ Quando il backend riceve un turno valido destinato a una conversazione che sta g
 
 #### Relations
   * derivedFrom: [Rifiuto del turno prima dell'ammissione](#rifiuto-del-turno-prima-dellammissione)
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -946,6 +960,7 @@ Quando il testo di un turno testuale è vuoto o contiene soltanto spazi bianchi,
 
 #### Relations
   * derivedFrom: [Rifiuto del turno prima dell'ammissione](#rifiuto-del-turno-prima-dellammissione)
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -961,6 +976,7 @@ Quando un turno contiene un testo valido o un audio e un identificativo di conve
 
 #### Relations
   * derivedFrom: [Rifiuto del turno prima dell'ammissione](#rifiuto-del-turno-prima-dellammissione)
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -976,6 +992,7 @@ Se Ambrogio non ottiene una trascrizione utilizzabile di un turno vocale, non de
 
 #### Relations
   * derivedFrom: [Rifiuto del turno prima dell'ammissione](#rifiuto-del-turno-prima-dellammissione)
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -990,6 +1007,8 @@ Quando un client chiede la risposta in audio e l'interazione vocale è abilitata
   * [Esclusione dell'audio persistente](../Contracts/FamilyConversation.md#esclusione-dellaudio-persistente)
 
 #### Relations
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
+  * satisfiedBy: [piper-synthesizer.ts](../../packages/conversations/src/adapters/in/session/piper-synthesizer.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -1044,6 +1063,7 @@ Quando un errore impedisce di completare la risposta a un turno ammesso, il back
 
 #### Relations
   * derivedFrom: [Esclusione dei dettagli tecnici dal messaggio pubblico](ServerFoundation.md#esclusione-dei-dettagli-tecnici-dal-messaggio-pubblico)
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -1058,6 +1078,7 @@ Quando conferma il completamento di un turno, il backend deve indicare esplicita
   * [Esiti del turno nel protocollo Ambrogio v1](../Contracts/ConversationProtocol.md#esiti-del-turno-nel-protocollo-ambrogio-v1)
 
 #### Relations
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -1125,6 +1146,8 @@ Quando la famiglia pronuncia un turno vocale trascrivibile, Ambrogio deve rappre
   * [Esclusione dell'audio persistente](../Contracts/FamilyConversation.md#esclusione-dellaudio-persistente)
 
 #### Relations
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
+  * satisfiedBy: [vosk-transcriber.ts](../../packages/conversations/src/adapters/in/session/vosk-transcriber.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -1136,6 +1159,7 @@ Quando il backend produce la risposta a un turno ammesso, deve trasmetterla prog
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -1159,6 +1183,7 @@ Quando il canale conversazionale riceve un messaggio, il suo adapter deve verifi
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [protocol-decoder.ts](../../packages/conversations/src/adapters/in/session/protocol-decoder.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 

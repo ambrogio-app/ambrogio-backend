@@ -12,6 +12,7 @@ La prova passa se ogni caso riceve una trasmissione del messaggio pubblico nel t
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](ConversationProtocol.md#verifica-del-protocollo-conversazionale)
+  * satisfiedBy: [session-rejections.test.ts](../../apps/server/test/runtime/session-rejections.test.ts)
   * verify: [Rifiuto del turno prima dell'ammissione](../Requirements/FamilyConversation.md#rifiuto-del-turno-prima-dellammissione)
 ---
 
@@ -27,6 +28,7 @@ La prova passa se la chiusura di una sessione rilascia soltanto le sue risorse: 
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](ConversationProtocol.md#verifica-del-protocollo-conversazionale)
+  * satisfiedBy: [session-lifecycle.test.ts](../../apps/server/test/runtime/session-lifecycle.test.ts)
   * verify: [Chiusura della sessione conversazionale](../Requirements/FamilyConversation.md#chiusura-della-sessione-conversazionale)
   * verify: [Creazione della conversazione all'ammissione del turno](../Requirements/FamilyConversation.md#creazione-della-conversazione-allammissione-del-turno)
 ---
@@ -43,6 +45,7 @@ La prova passa se `turn.completed` arriva una sola volta come ultimo messaggio d
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](ConversationProtocol.md#verifica-del-protocollo-conversazionale)
+  * satisfiedBy: [session-turns.test.ts](../../apps/server/test/runtime/session-turns.test.ts)
   * verify: [Conferma del completamento del turno](../Requirements/FamilyConversation.md#conferma-del-completamento-del-turno)
 ---
 
@@ -58,6 +61,7 @@ La prova passa se l'agente produce il booleano strutturato `expectsReply` durant
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](ConversationProtocol.md#verifica-del-protocollo-conversazionale)
+  * satisfiedBy: [session-turns.test.ts](../../apps/server/test/runtime/session-turns.test.ts)
   * satisfiedBy: [exchange-turn.test.ts](../../packages/conversations/test/application/exchange-turn.test.ts)
   * verify: [Determinazione della replica attesa](../Requirements/FamilyConversation.md#determinazione-della-replica-attesa)
   * verify: [Segnalazione della replica attesa](../Requirements/FamilyConversation.md#segnalazione-della-replica-attesa)
@@ -75,6 +79,7 @@ La prova passa se, dopo `turn.accepted`, il server apre una trasmissione con `ou
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](ConversationProtocol.md#verifica-del-protocollo-conversazionale)
+  * satisfiedBy: [session-turns.test.ts](../../apps/server/test/runtime/session-turns.test.ts)
   * verify: [Trasmissione progressiva della risposta del turno](../Requirements/FamilyConversation.md#trasmissione-progressiva-della-risposta-del-turno)
 ---
 
@@ -231,6 +236,7 @@ La prova passa se lo storico conserva solo testo e dati non audio e se nessuna r
 
 #### Relations
   * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
+  * satisfiedBy: [session-lifecycle.test.ts](../../apps/server/test/runtime/session-lifecycle.test.ts)
   * verify: [Conservazione solo testuale della conversazione](../Requirements/FamilyConversation.md#conservazione-solo-testuale-della-conversazione)
 ---
 
@@ -246,6 +252,8 @@ La prova passa se il turno conservato contiene la trascrizione testuale attesa, 
 
 #### Relations
   * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
+  * satisfiedBy: [session-lifecycle.test.ts](../../apps/server/test/runtime/session-lifecycle.test.ts)
+  * satisfiedBy: [piper-synthesizer.test.ts](../../packages/conversations/test/adapters/in/piper-synthesizer.test.ts)
   * verify: [Risposta parlata su richiesta del client](../Requirements/FamilyConversation.md#risposta-parlata-su-richiesta-del-client)
   * verify: [Trascrizione del turno vocale](../Requirements/FamilyConversation.md#trascrizione-del-turno-vocale)
 ---
@@ -262,6 +270,7 @@ La prova passa se entrambi i tentativi ricevono la trasmissione del messaggio pu
 
 #### Relations
   * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
+  * satisfiedBy: [session-rejections.test.ts](../../apps/server/test/runtime/session-rejections.test.ts)
   * verify: [Trascrizione vocale non riuscita](../Requirements/FamilyConversation.md#trascrizione-vocale-non-riuscita)
 ---
 
@@ -506,6 +515,7 @@ Nella stessa conversazione viene ammesso al massimo un turno; gli altri ricevono
 
 #### Relations
   * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
+  * satisfiedBy: [session-rejections.test.ts](../../apps/server/test/runtime/session-rejections.test.ts)
   * verify: [Elaborazione parallela di conversazioni diverse](../Requirements/FamilyConversation.md#elaborazione-parallela-di-conversazioni-diverse)
   * verify: [Rifiuto dei turni concorrenti nella stessa conversazione](../Requirements/FamilyConversation.md#rifiuto-dei-turni-concorrenti-nella-stessa-conversazione)
   * verify: [Rifiuto del turno nella conversazione occupata](../Requirements/FamilyConversation.md#rifiuto-del-turno-nella-conversazione-occupata)
@@ -524,6 +534,7 @@ La prova passa se il secondo turno è rifiutato subito, non viene conservato e n
 #### Relations
   * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
   * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
+  * satisfiedBy: [session-rejections.test.ts](../../apps/server/test/runtime/session-rejections.test.ts)
   * verify: [Assenza di accodamento dei turni](../Requirements/FamilyConversation.md#assenza-di-accodamento-dei-turni)
 ---
 
@@ -627,6 +638,7 @@ La prova passa se `turn.accepted` arriva prima di qualsiasi trasmissione della r
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * satisfiedBy: [session-turns.test.ts](../../apps/server/test/runtime/session-turns.test.ts)
   * verify: [Comunicazione degli identificativi del turno ammesso](../Requirements/FamilyConversation.md#comunicazione-degli-identificativi-del-turno-ammesso)
 ---
 
@@ -660,6 +672,7 @@ La prova passa se, in tutti i casi, il backend prosegue l'elaborazione dopo la c
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * satisfiedBy: [session-lifecycle.test.ts](../../apps/server/test/runtime/session-lifecycle.test.ts)
   * verify: [Completamento del turno accettato dopo disconnessione](../Requirements/FamilyConversation.md#completamento-del-turno-accettato-dopo-disconnessione)
 ---
 
@@ -675,6 +688,7 @@ La prova passa se ogni turno riceve la trasmissione del messaggio pubblico e `tu
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * satisfiedBy: [session-rejections.test.ts](../../apps/server/test/runtime/session-rejections.test.ts)
   * verify: [Rifiuto del turno testuale vuoto](../Requirements/FamilyConversation.md#rifiuto-del-turno-testuale-vuoto)
 ---
 
@@ -690,6 +704,8 @@ La prova passa se l'adapter rifiuta ciascun messaggio al proprio confine con `se
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * satisfiedBy: [ambrogio-v1-schema.test.ts](../../apps/server/test/protocol/ambrogio-v1-schema.test.ts)
+  * satisfiedBy: [session-opening.test.ts](../../apps/server/test/runtime/session-opening.test.ts)
   * verify: [Validazione del formato negli ingressi conversazionali](../Requirements/FamilyConversation.md#validazione-del-formato-negli-ingressi-conversazionali)
 ---
 
@@ -705,6 +721,7 @@ La prova passa se il server chiude la trasmissione in corso con `output.end`, ap
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * satisfiedBy: [session-lifecycle.test.ts](../../apps/server/test/runtime/session-lifecycle.test.ts)
   * verify: [Conservazione dell'errore dopo risposta parziale](../Requirements/FamilyConversation.md#conservazione-dellerrore-dopo-risposta-parziale)
   * verify: [Segnalazione dell'errore dopo l'ammissione](../Requirements/FamilyConversation.md#segnalazione-dellerrore-dopo-lammissione)
 ---
@@ -772,6 +789,7 @@ La prova passa se entrambi i turni ricevono la trasmissione del messaggio pubbli
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * satisfiedBy: [session-rejections.test.ts](../../apps/server/test/runtime/session-rejections.test.ts)
   * verify: [Precondizioni contestuali nel caso d'uso conversazionale](../Requirements/FamilyConversation.md#precondizioni-contestuali-nel-caso-duso-conversazionale)
   * verify: [Rifiuto della continuazione con conversazione inesistente](../Requirements/FamilyConversation.md#rifiuto-della-continuazione-con-conversazione-inesistente)
 ---
@@ -788,6 +806,7 @@ La prova passa se, per ogni origine e per ogni tipo di contenuto, il backend rec
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * satisfiedBy: [session-turns.test.ts](../../apps/server/test/runtime/session-turns.test.ts)
   * verify: [Continuazione di ogni conversazione da qualunque client](../Requirements/FamilyConversation.md#continuazione-di-ogni-conversazione-da-qualunque-client)
   * verify: [Recupero dello storico per il turno](../Requirements/FamilyConversation.md#recupero-dello-storico-per-il-turno)
 ---
@@ -804,6 +823,7 @@ La prova passa se in entrambi i casi la produzione prosegue fino al proprio esit
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
   * satisfiedBy: [exchange-turn.test.ts](../../packages/conversations/test/application/exchange-turn.test.ts)
   * verify: [Continuità del turno dopo un guasto di consegna](../Requirements/FamilyConversation.md#continuità-del-turno-dopo-un-guasto-di-consegna)
 ---
@@ -854,6 +874,7 @@ La prova passa se il guasto tecnico inatteso è registrato dal componente tecnic
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
+  * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
   * verify: [Diagnostica del guasto tecnico di consegna](../Requirements/FamilyConversation.md#diagnostica-del-guasto-tecnico-di-consegna)
 ---
 

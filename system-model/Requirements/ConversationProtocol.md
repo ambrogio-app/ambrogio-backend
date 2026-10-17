@@ -8,6 +8,8 @@ Quando un client apre il canale conversazionale, il backend deve accettare la se
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [session-route.adapter.ts](../../apps/server/src/adapters/in/session-route.adapter.ts)
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -19,6 +21,8 @@ Ambrogio deve offrire ai client testuali e vocali un unico canale conversazional
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
+  * satisfiedBy: [ambrogio-v1.schema.json](../../protocol/ambrogio-v1.schema.json)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -30,6 +34,8 @@ Se il backend riceve dal client un messaggio non conforme al protocollo o di un 
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
+  * satisfiedBy: [protocol-decoder.ts](../../packages/conversations/src/adapters/in/session/protocol-decoder.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -44,6 +50,7 @@ Quando una richiesta di apertura del canale conversazionale dichiara un'origine,
   * [Politica CORS del componente HTTP](../Contracts/ServerFoundation.md#politica-cors-del-componente-http)
 
 #### Relations
+  * satisfiedBy: [session-route.adapter.ts](../../apps/server/src/adapters/in/session-route.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -56,6 +63,7 @@ Quando l'interazione vocale non è abilitata nell'installazione e un turno trasm
 
 #### Relations
   * derivedFrom: [Rifiuto del turno prima dell'ammissione](FamilyConversation.md#rifiuto-del-turno-prima-dellammissione)
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -68,6 +76,7 @@ Quando la trasmissione di un turno supera il limite di dimensione del testo o di
 
 #### Relations
   * derivedFrom: [Rifiuto del turno prima dell'ammissione](FamilyConversation.md#rifiuto-del-turno-prima-dellammissione)
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -79,6 +88,7 @@ Quando un client invia un turno, il backend deve riceverlo come una trasmissione
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 

@@ -37,7 +37,7 @@ Il confine tecnico usa il valore catturato come `err` senza crearne un altro qua
 
 Decisione di progetto concordata: usare suffissi di ruolo per i casi d'uso e gli adapter, mantenendo nel nome la funzione concreta del componente. Questa convenzione appartiene a questo repository; non richiede un modello multirepository.
 
-Un file che realizza un caso d'uso Application si chiama `<azione>.use-case.ts`, con un nome che descrive l'operazione offerta, per esempio `start-voice-conversation.use-case.ts`. Il criterio vale anche per casi d'uso che non espongono rifiuti previsti.
+Un file che realizza un caso d'uso Application si chiama `<azione>.use-case.ts`, con un nome che descrive l'operazione offerta, per esempio `exchange-turn.use-case.ts`. Il criterio vale anche per casi d'uso che non espongono rifiuti previsti.
 
 Un file che realizza un adapter si chiama `<funzione-o-integrazione>.adapter.ts`. Sono adapter di ingresso i componenti che traducono eventi o richieste esterne in invocazioni di Application; sono adapter di uscita i componenti che realizzano una porta Application tramite una tecnologia concreta. La realizzazione può essere una classe, una funzione o un oggetto fornito dalla composition root: non dipende dalla presenza della parola TypeScript `implements`. Per esempio, un'implementazione SQLite di una porta di lettura si chiama `sqlite-conversation-history-read.adapter.ts`.
 

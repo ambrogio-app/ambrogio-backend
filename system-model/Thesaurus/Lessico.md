@@ -12,7 +12,7 @@ Termini condivisi per descrivere la famiglia, le conversazioni e i connettori di
 
 ### Agente
 
-Componente conversazionale di Ambrogio che usa un modello linguistico e istruzioni per elaborare una richiesta. Può rispondere direttamente oppure avvalersi delle capacità a sua disposizione; l'orchestratore e gli agenti collegati ai server MCP sono ruoli di agente.
+Componente conversazionale di Ambrogio che usa un modello linguistico e istruzioni per elaborare una richiesta. L'orchestratore sceglie l'agente che risponde; gli agenti specializzati formulano le risposte, con o senza un collegamento a un server MCP.
 
 #### Metadata
   * type: concept
@@ -23,7 +23,7 @@ Componente conversazionale di Ambrogio che usa un modello linguistico e istruzio
 
 ### Agente orchestratore
 
-Agente che riceve la richiesta conversazionale della famiglia e sceglie se formulare direttamente una risposta o affidare il turno a un agente specializzato; nel secondo caso indica soltanto l'agente, e la risposta dell'agente scelto è la risposta alla famiglia.
+Agente che riceve la richiesta conversazionale della famiglia e sceglie, tra gli agenti specializzati, quello che deve rispondere, senza formulare esso stesso la risposta; la risposta dell'agente scelto è la risposta alla famiglia.
 
 #### Metadata
   * type: concept

@@ -14,6 +14,17 @@ Quando un componente tecnico esterno viene integrato come ingresso del modulo «
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
+### Agente specializzato senza connettore MCP
+
+Quando il file di un agente specializzato non contiene un connettore MCP, Ambrogio deve attivare l'agente e, quando l'orchestratore lo sceglie, fargli formulare la risposta con il proprio modello e le proprie istruzioni, senza strumenti.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
 ### Assemblaggio delle porte nella composition root
 
 Quando l'applicazione server assembla il modulo «Conversazioni», deve scegliere e fornire le implementazioni delle porte Application tramite la propria composition root.
@@ -483,9 +494,9 @@ Quando un client elabora un turno o ne riproduce la risposta, deve impedire nuov
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Disponibilità degli agenti MCP dai file JSON
+### Disponibilità degli agenti dai file JSON
 
-Quando il server avvia la conversazione con la directory degli agenti, deve rendere disponibile all'orchestratore ogni agente specializzato descritto da un file `<id>.json` valido presente nella directory, senza richiedere un elenco separato di agenti da abilitare.
+Quando il server avvia la conversazione con la directory degli agenti, deve rendere disponibile all'orchestratore ogni agente specializzato descritto da un file `<id>.json` valido presente nella directory, con o senza connettore MCP, senza richiedere un elenco separato di agenti da abilitare, e non deve avviare la conversazione se la directory non contiene almeno un agente specializzato.
 
 #### Metadata
   * type: requirement
@@ -817,13 +828,25 @@ Quando Application del modulo «Conversazioni» dichiara una porta verso una cap
 
 ### Orchestrazione della risposta conversazionale
 
-Quando Ambrogio elabora un turno della famiglia, l'agente orchestratore deve scegliere se formulare la risposta direttamente oppure affidare il compito a un agente con connettore MCP configurato, e l'esito deve appartenere alla stessa conversazione.
+Quando Ambrogio elabora un turno della famiglia, l'agente orchestratore deve scegliere un solo agente fra quelli configurati, senza formulare esso stesso la risposta; l'agente scelto deve formulare la risposta del turno e l'esito deve appartenere alla stessa conversazione.
 
 #### Metadata
   * type: requirement
 
 #### Relations
   * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Continuità dell'agente nella conversazione
+
+Quando l'orchestratore sceglie l'agente per un turno di una conversazione con turni precedenti conclusi da una risposta, Ambrogio deve fargli conoscere quale agente ha formulato ciascuna di quelle risposte, così che una replica a una domanda di un agente possa tornare allo stesso agente.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * derivedFrom: [Orchestrazione della risposta conversazionale](#orchestrazione-della-risposta-conversazionale)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -1142,6 +1165,17 @@ Nel package del modulo business «Conversazioni», gli adapter d'ingresso presen
 ### Separazione delle responsabilità nel modulo Conversazioni
 
 Il modulo business «Conversazioni» deve distinguere Domain, Application e adapter secondo le rispettive responsabilità definite per il modulo.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Tempo massimo della produzione della risposta
+
+Quando la produzione della risposta di un turno ammesso non termina entro il tempo massimo previsto, Ambrogio deve annullare le richieste ancora in corso verso modelli e connettori e concludere il turno con il messaggio pubblico di errore, liberando la conversazione per i turni successivi.
 
 #### Metadata
   * type: requirement

@@ -180,7 +180,23 @@ La prova passa se al primo avvio l'orchestratore può scegliere il primo agente,
 #### Relations
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
   * satisfiedBy: [agents.test.ts](../../apps/server/test/composition/agents.test.ts)
-  * verify: [Disponibilità degli agenti MCP dai file JSON](../Requirements/FamilyConversation.md#disponibilità-degli-agenti-mcp-dai-file-json)
+  * verify: [Disponibilità degli agenti dai file JSON](../Requirements/FamilyConversation.md#disponibilità-degli-agenti-dai-file-json)
+---
+
+### Prova delle configurazioni degli agenti con e senza MCP
+
+Caricare la directory degli agenti con un agente con `mcp` e `maxToolCalls` e un agente senza `mcp` e senza `maxToolCalls`. In tentativi separati usare un agente senza `mcp` ma con `maxToolCalls`, un agente con `mcp` senza `maxToolCalls` e una directory con il solo `orchestrator.json`; avviare inoltre il server con la directory priva di agenti specializzati.
+
+#### Details
+La prova passa se la prima directory viene caricata con entrambi gli agenti disponibili all'orchestratore, l'agente senza MCP privo di connettore e di limite; se ciascun tentativo invalido viene rifiutato prima dell'attivazione, senza aprire connessioni MCP; e se il server senza agenti specializzati non si mette in ascolto e chiude le risorse già preparate. Fallisce se un file invalido viene accettato, se l'agente senza MCP viene rifiutato o se il server si avvia senza agenti specializzati.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
+  * verify: [Agente specializzato senza connettore MCP](../Requirements/FamilyConversation.md#agente-specializzato-senza-connettore-mcp)
+  * verify: [Disponibilità degli agenti dai file JSON](../Requirements/FamilyConversation.md#disponibilità-degli-agenti-dai-file-json)
 ---
 
 ### Prova di OAuth tra servizi per i connettori MCP
@@ -724,6 +740,36 @@ La prova passa se ogni turno riceve la trasmissione del messaggio pubblico e `tu
   * verify: [Rifiuto del turno testuale vuoto](../Requirements/FamilyConversation.md#rifiuto-del-turno-testuale-vuoto)
 ---
 
+### Prova del tempo massimo della produzione della risposta
+
+Con il caso d'uso del turno, un tempo massimo di prova ridotto e un produttore controllato che consegna un frammento e poi resta in attesa senza mai concludersi né reagire all'annullamento, eseguire un turno; ripetere con un produttore che reagisce al segnale terminando con un errore, con uno che conclude prima della scadenza e con un turno interrotto prima della scadenza. Verificare inoltre che il caso d'uso usi 30 secondi quando non riceve un tempo di prova. Con l'adapter AI SDK e modelli e client MCP controllati, verificare che il segnale ricevuto raggiunga la richiesta dell'orchestratore, quella dell'agente e l'invocazione dello strumento MCP.
+
+#### Details
+La prova passa se, alla scadenza, il segnale consegnato al produttore risulta annullato, il caso d'uso conclude il turno senza attendere il produttore bloccato con l'esito di errore e il messaggio pubblico, porta una causa tecnica di superamento del tempo massimo e non conserva una risposta parziale; se dopo la conclusione la conversazione accetta un nuovo turno; se un produttore concluso prima della scadenza non vede il segnale annullato e il timer viene cancellato; se il turno interrotto resta `interrotto`; se il valore predefinito è 30 secondi; e se l'adapter inoltra lo stesso segnale alle richieste dei modelli e all'invocazione MCP. Fallisce se il turno resta in elaborazione, se la conversazione rimane occupata, se il segnale non viene propagato o se la risposta parziale viene conservata come risposta.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * verify: [Tempo massimo della produzione della risposta](../Requirements/FamilyConversation.md#tempo-massimo-della-produzione-della-risposta)
+---
+
+### Prova dell'agente specializzato senza connettore MCP
+
+Preparare la directory degli agenti con l'orchestratore, un agente con `mcp` e un agente `generic` con soli `description`, `instructions` e `llm`. Con un modello controllato, far scegliere all'orchestratore l'agente `generic` ed eseguire il turno; eseguire anche un turno sul canale conversazionale avviato con il solo agente senza MCP.
+
+#### Details
+La prova passa se l'agente senza MCP viene attivato senza aprire connessioni MCP, se la richiesta al suo modello usa le sue istruzioni con l'indicazione del formato della risposta e lo storico della conversazione senza offrire strumenti, e se il testo e `expectsReply` prodotti dall'agente sono la risposta del turno, comunicata e conservata. Fallisce se l'agente senza MCP non viene attivato, se vengono aperte connessioni o offerti strumenti, o se la risposta non proviene dal suo modello.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * verify: [Agente specializzato senza connettore MCP](../Requirements/FamilyConversation.md#agente-specializzato-senza-connettore-mcp)
+---
+
 ### Prova dell'arresto per input conversazionale non valido
 
 Inviare al canale conversazionale un JSON malformato, un `input.start` ben formato con tipi errati o campi aggiuntivi e un `input.chunk` con `text` non stringa. Strumentare il caso d'uso e l'archivio per osservare eventuali chiamate ed effetti. Verificare che lo schema `protocol/ambrogio-v1.schema.json` descriva i messaggi di entrambe le direzioni.
@@ -843,6 +889,21 @@ La prova passa se, per ogni origine e per ogni tipo di contenuto, il backend rec
   * verify: [Recupero dello storico per il turno](../Requirements/FamilyConversation.md#recupero-dello-storico-per-il-turno)
 ---
 
+### Prova della continuità dell'agente nella conversazione
+
+Con un orchestratore controllato, eseguire in una conversazione un turno risposto dall'agente `home`, poi un secondo turno, e osservare il contesto ricevuto dall'orchestratore e dagli agenti nel secondo turno. Con il caso d'uso del turno e produttori controllati, consegnare l'identificativo dell'agente prima del testo e, in tentativi separati, ripeterlo, consegnarlo vuoto o dopo un frammento testuale. Con un archivio SQLite di prova, conservare e rileggere un turno con agente e uno senza, e aprire un archivio creato con le migrazioni precedenti contenente turni conclusi. Leggere lo storico tramite il caso d'uso di consultazione e il GET HTTP e osservare i messaggi del protocollo `ambrogio.v1` del turno.
+
+#### Details
+La prova passa se nel secondo turno la risposta precedente compare nel contesto dell'orchestratore preceduta da `[agent: home]` mentre gli agenti specializzati ricevono la stessa risposta senza indicazione; se l'identificativo consegnato correttamente è incluso nell'esito con risposta e conservato e riletto nel turno, mentre le consegne invalide producono un guasto della produzione; se la migrazione `007_turn_agent` aggiunge la colonna lasciando leggibili i turni preesistenti con agente sconosciuto, presentati all'orchestratore senza indicazione; se un agente non nullo su un turno non concluso con risposta è rifiutato come dato invalido; e se l'agente non compare nello storico Application di consultazione, nel GET HTTP né nei messaggi del protocollo. Fallisce se l'agente si perde, viene attribuito a un altro turno, raggiunge gli agenti specializzati o i client, o se i turni preesistenti diventano illeggibili.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * verify: [Continuità dell'agente nella conversazione](../Requirements/FamilyConversation.md#continuità-dellagente-nella-conversazione)
+---
+
 ### Prova della continuità dopo un guasto di consegna
 
 Ammettere un turno con risposta controllata in più frammenti e far fallire con un guasto tecnico la consegna della notifica di ammissione oppure di un frammento. Osservare la produzione della risposta, l'esito restituito dal caso d'uso e lo scambio conservato.
@@ -860,28 +921,12 @@ La prova passa se in entrambi i casi la produzione prosegue fino al proprio esit
   * verify: [Continuità del turno dopo un guasto di consegna](../Requirements/FamilyConversation.md#continuità-del-turno-dopo-un-guasto-di-consegna)
 ---
 
-### Prova della decisione e della delega dell'orchestratore
-
-Eseguire due turni con un orchestratore controllato: nel primo fargli scegliere una risposta diretta, nel secondo fargli affidare il turno a un agente specializzato controllato. Consultare la conversazione dopo ciascun esito.
-
-#### Details
-La prova passa se la risposta diretta non attiva un agente specializzato, il turno delegato attiva soltanto l'agente scelto con una funzione senza argomenti, l'agente riceve lo storico con il testo originale del turno senza riformulazioni dell'orchestratore e in entrambi i casi l'esito viene comunicato e conservato nella conversazione del turno. Fallisce se il turno viene perso, attribuito a un'altra conversazione, delegato a un agente non scelto, se la delega con argomenti viene accettata o se l'agente riceve un compito riformulato al posto del testo originale.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
-  * verify: [Orchestrazione della risposta conversazionale](../Requirements/FamilyConversation.md#orchestrazione-della-risposta-conversazionale)
----
-
 ### Prova della descrizione degli agenti specializzati
 
 Preparare l'orchestratore e due agenti specializzati con identificativi e `description` differenti; ripetere con `description` assente, vuota o non testuale in un file specializzato.
 
 #### Details
-La prova passa se l'orchestratore riceve per ciascun agente attivo solo identificativo e descrizione come definizione della funzione di delega, senza istruzioni o credenziali dell'agente, e se un file specializzato senza descrizione valida impedisce l'attivazione. Fallisce se la scelta usa le istruzioni private, se manca un agente valido o se viene attivato un agente privo di descrizione valida.
+La prova passa se l'orchestratore riceve per ciascun agente attivo solo identificativo e descrizione nell'elenco aggiunto alle sue istruzioni e gli identificativi come valori ammessi della risposta strutturata, senza istruzioni o credenziali dell'agente, e se un file specializzato senza descrizione valida impedisce l'attivazione. Fallisce se la scelta usa le istruzioni private, se manca un agente valido o se viene attivato un agente privo di descrizione valida.
 
 #### Metadata
   * type: test-verification
@@ -992,6 +1037,22 @@ La prova passa se ogni turno riceve l'esito testuale nella conversazione corrett
   * satisfiedBy: [sqlite-history.test.ts](../../packages/conversations/test/adapters/out/sqlite-history.test.ts)
   * verify: [Conservazione dello scambio testuale](../Requirements/FamilyConversation.md#conservazione-dello-scambio-testuale)
   * verify: [Risposta testuale nella conversazione](../Requirements/FamilyConversation.md#risposta-testuale-nella-conversazione)
+---
+
+### Prova della scelta dell'agente da parte dell'orchestratore
+
+Con un orchestratore controllato e due agenti specializzati controllati, eseguire un turno in cui l'orchestratore sceglie uno dei due agenti tramite la risposta strutturata. Ripetere con un'uscita che contiene un identificativo sconosciuto, con un'uscita priva del campo `agent` e con un testo non JSON. Osservare la richiesta all'orchestratore, gli agenti attivati e le parti prodotte; con il canale conversazionale e un provider controllato, consultare anche lo storico del turno.
+
+#### Details
+La prova passa se la richiesta all'orchestratore non offre strumenti, dichiara come output strutturato un oggetto con il solo campo `agent` il cui `enum` contiene esattamente gli identificativi degli agenti attivi, contiene nelle istruzioni l'elenco di identificativi e descrizioni; se viene attivato soltanto l'agente scelto, che riceve lo storico con il testo originale del turno senza riformulazioni; se la risposta del turno, compresi `expectsReply` e l'identificativo dell'agente, proviene solo dall'agente scelto e viene comunicata e conservata nella conversazione del turno; e se ogni uscita invalida produce un guasto senza attivare alcun agente. Fallisce se l'orchestratore produce testo della risposta, se viene attivato un agente non scelto o più di un agente, se un'uscita invalida viene accettata o se l'agente riceve un compito riformulato al posto del testo originale.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
+  * verify: [Orchestrazione della risposta conversazionale](../Requirements/FamilyConversation.md#orchestrazione-della-risposta-conversazionale)
 ---
 
 ### Prova della selezione del modello per agente

@@ -1,5 +1,33 @@
 # Elements
 
+### Agente che ha risposto nello scambio conservato
+
+Decisione concordata con la persona il 17 ottobre 2026. La capacità Application di produzione della risposta consegna, oltre ai frammenti testuali e all'indicazione `expectsReply`, l'identificativo dell'agente che formula la risposta, come dato Application distinto, al massimo una volta e prima di qualunque frammento testuale. Il caso d'uso del turno lo include nell'esito con risposta passato al completamento; un identificativo ripetuto, vuoto o consegnato dopo un frammento testuale o dopo `expectsReply` viola il contratto della risposta ed è un guasto della produzione. Una risposta senza identificativo resta valida e viene conservata senza agente.
+
+Nel Domain un turno concluso con risposta può portare l'identificativo dell'agente che l'ha formulata, stringa non vuota; i turni `in elaborazione`, conclusi con errore o `interrotti` non hanno agente. L'archivio SQLite lo conserva nella colonna facoltativa `agent` della tabella `turns`, aggiunta dalla migrazione `007_turn_agent`; le righe già presenti restano con valore nullo, cioè agente sconosciuto, e restano leggibili. Un valore non nullo su un turno non concluso con risposta è un dato persistente invalido.
+
+Quando l'orchestratore sceglie l'agente, ogni risposta precedente con agente noto è presentata nel suo contesto preceduta dall'indicazione `[agent: <id>]`; le risposte con agente sconosciuto sono presentate senza indicazione. Gli agenti specializzati ricevono lo storico senza queste indicazioni. L'agente che ha risposto è un dato interno: non compare nei messaggi del protocollo `ambrogio.v1`, nello storico né nell'elenco HTTP, che restano invariati.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Continuità dell'agente nella conversazione](../Requirements/FamilyConversation.md#continuità-dellagente-nella-conversazione)
+---
+
+### Annullamento della produzione della risposta dopo 30 secondi
+
+Decisione concordata con la persona il 17 ottobre 2026, dopo una prova sul server installato in cui uno streaming Mistral si è fermato a metà turno senza mai concludersi e, senza alcun tempo massimo, il turno sarebbe rimasto `in elaborazione` occupando la conversazione. Il caso d'uso del turno concede alla produzione della risposta di un turno ammesso al massimo 30 secondi, costante fissa del caso d'uso non configurabile dall'utente, misurati dall'inizio della produzione dopo la lettura dello storico: il tempo comprende la scelta dell'orchestratore, la risposta dell'agente e le sue chiamate agli strumenti. Il caso d'uso consegna alla capacità di produzione della risposta un segnale di annullamento standard (`AbortSignal`), dato della piattaforma e non tipo di un SDK.
+
+Alla scadenza il caso d'uso attiva il segnale e smette subito di attendere la produzione, anche se questa non reagisce; non consegna altri frammenti e conclude il turno con l'esito di errore e il messaggio pubblico standard, portando come causa tecnica un guasto di superamento del tempo massimo per la diagnostica `conversation_reply_failed`. I frammenti già consegnati restano consegnati; lo scambio conservato contiene l'errore e non una risposta parziale. Se nel frattempo il turno è stato interrotto, prevale l'esito `interrotto`. L'adapter AI SDK passa il segnale alle richieste dei modelli, tramite `abortSignal`, e alle invocazioni degli strumenti MCP, tramite l'opzione `signal` della richiesta, così che le richieste ancora in corso vengano annullate. Il timer del caso d'uso è il timer standard della piattaforma e viene cancellato quando la produzione termina prima della scadenza.
+
+#### Metadata
+  * type: behavior
+
+#### Relations
+  * define: [Tempo massimo della produzione della risposta](../Requirements/FamilyConversation.md#tempo-massimo-della-produzione-della-risposta)
+---
+
 ### Archivio SQLite con Kysely
 
 Le conversazioni e i loro scambi testuali sono conservati in un database SQLite dell'installazione. Le operazioni applicative di lettura e scrittura dell'archivio usano Kysely. La scelta riguarda l'archivio delle conversazioni; non prescrive lo stack degli altri componenti del monorepo.
@@ -11,15 +39,17 @@ Le conversazioni e i loro scambi testuali sono conservati in un database SQLite 
   * define: [Disponibilità dello storico dopo riavvio](../Requirements/FamilyConversation.md#disponibilità-dello-storico-dopo-riavvio)
 ---
 
-### Attivazione degli agenti MCP dai file presenti
+### Attivazione degli agenti dai file presenti
 
 Ogni file `<id>.json` valido trovato in `/etc/ambrogio/agents` definisce un agente specializzato disponibile all'orchestratore dopo l'avvio. L'insieme degli agenti disponibili deriva dai file presenti nella directory: aggiungere un file rende disponibile l'agente corrispondente al successivo avvio; rimuoverlo lo rende indisponibile al successivo avvio. Non è previsto un elenco separato né un campo di abilitazione. La validazione dei file avviene prima dell'attivazione secondo il contratto comune di bootstrap.
+
+Decisione concordata con la persona il 17 ottobre 2026: poiché l'orchestratore sceglie sempre un agente e non risponde da solo, la directory deve contenere, oltre a `orchestrator.json`, almeno un file di agente specializzato valido; in caso contrario la preparazione degli agenti fallisce e il server non si mette in ascolto. Un agente specializzato può avere un connettore MCP oppure no, secondo il profilo della configurazione per agente.
 
 #### Metadata
   * type: specification
 
 #### Relations
-  * define: [Disponibilità degli agenti MCP dai file JSON](../Requirements/FamilyConversation.md#disponibilità-degli-agenti-mcp-dai-file-json)
+  * define: [Disponibilità degli agenti dai file JSON](../Requirements/FamilyConversation.md#disponibilità-degli-agenti-dai-file-json)
 ---
 
 ### Avvio con migrazioni dell'archivio conversazioni
@@ -90,7 +120,7 @@ Application richiede all'archivio la persistenza delle transizioni complete del 
 
 ### Conteggio delle chiamate agli strumenti MCP per turno
 
-Ogni file JSON di agente specializzato contiene al primo livello `maxToolCalls`, un intero positivo. Il valore è obbligatorio e vale solo per quell'agente. Per ogni turno delegato, Ambrogio conta ogni chiamata a uno strumento MCP effettivamente richiesta dal modello dell'agente, anche quando più chiamate sono richieste nella stessa risposta del modello. Prima di inoltrare una chiamata che eccederebbe `maxToolCalls`, interrompe la produzione del turno con un guasto; il caso d'uso comunica e conserva il messaggio pubblico standard senza dettagli tecnici. Il contatore riparte da zero al turno successivo. Il limite non impedisce al modello di formulare una risposta finale dopo l'ultima chiamata consentita.
+Ogni file JSON di agente specializzato con sezione `mcp` contiene al primo livello `maxToolCalls`, un intero positivo. Il valore è obbligatorio per tali agenti e vale solo per quell'agente; il file di un agente senza `mcp` non contiene `maxToolCalls`, e la sua presenza rende il file invalido. Per ogni turno delegato, Ambrogio conta ogni chiamata a uno strumento MCP effettivamente richiesta dal modello dell'agente, anche quando più chiamate sono richieste nella stessa risposta del modello. Prima di inoltrare una chiamata che eccederebbe `maxToolCalls`, interrompe la produzione del turno con un guasto; il caso d'uso comunica e conserva il messaggio pubblico standard senza dettagli tecnici. Il contatore riparte da zero al turno successivo. Il limite non impedisce al modello di formulare una risposta finale dopo l'ultima chiamata consentita.
 
 #### Metadata
   * type: specification
@@ -130,23 +160,6 @@ Il caso d'uso del turno conversazionale riceve un input Application costruito da
 
 #### Relations
   * define: [Dati Application dei casi d'uso conversazionali](../Requirements/FamilyConversation.md#dati-application-dei-casi-duso-conversazionali)
----
-
-### Decisione di delega mediante chiamata di funzione
-
-Per ogni agente specializzato attivo, l'adapter presenta all'orchestratore una funzione di delega identificata dall'agente e descritta mediante il suo campo `description`. L'orchestratore riceve lo storico del turno e può produrre direttamente testo oppure scegliere un agente chiamando la sua funzione. Ambrogio accetta una sola delega per turno, esegue soltanto la funzione corrispondente a un agente attivo e usa la risposta dell'agente come esito del turno nella conversazione corrente. Una funzione sconosciuta, argomenti invalidi o più deleghe nello stesso turno causano il guasto pubblico previsto per la produzione della risposta. Le istruzioni e le credenziali dell'agente specializzato restano nel suo adapter.
-
-Decisione concordata il 17 ottobre 2026: la delega comunica soltanto l'agente scelto. La funzione di delega non ha argomenti e accetta solo un oggetto vuoto; l'orchestratore non riformula la richiesta né rielabora la risposta. L'agente scelto riceve lo storico conservato della conversazione, il cui ultimo turno contiene il testo originale della famiglia, e la sua risposta, con la relativa indicazione `expectsReply`, è trasmessa come risposta del turno senza ulteriori chiamate all'orchestratore. Sostituisce il precedente argomento `task`, con cui l'orchestratore riformulava la richiesta e talvolta ne perdeva dettagli.
-
-Decisione concordata il 17 ottobre 2026: nella richiesta dell'orchestratore l'adapter disattiva le chiamate di funzione parallele del provider (`parallelToolCalls: false` per Mistral). La prova con il backend installato ha mostrato che `mistral-small-latest` emetteva spesso due deleghe nello stesso passo, identiche o riformulate, facendo fallire il turno; con l'opzione disattivata, nove richieste su nove hanno prodotto una sola delega. La regola della delega singola resta invariata e una richiesta con più deleghe resta un guasto. L'opzione non si applica agli agenti specializzati, che eseguono gli strumenti MCP uno alla volta entro il proprio limite.
-
-Decisione concordata il 17 ottobre 2026: il nome della funzione di delega è l'identificativo dell'agente, cioè il nome del suo file JSON senza estensione, per esempio `home-assistant`. L'identificativo è già vincolato a lettere minuscole, cifre e trattini e unico per costruzione, quindi è un nome di funzione valido per il provider e non richiede trasformazioni. Sostituisce i nomi posizionali `delegate_<indice>`, che il modello ha talvolta riprodotto in modo errato, per esempio `delegate__0`, con trascrizioni rumorose. Un nome che non corrisponde esattamente a un agente attivo resta una funzione sconosciuta.
-
-#### Metadata
-  * type: behavior
-
-#### Relations
-  * define: [Orchestrazione della risposta conversazionale](../Requirements/FamilyConversation.md#orchestrazione-della-risposta-conversazionale)
 ---
 
 ### Esclusione dell'audio persistente
@@ -310,7 +323,7 @@ Per l'ingresso HTTP di consultazione, il file JSON del componente «Conversazion
 
 ### Presentazione degli agenti specializzati all'orchestratore
 
-Ogni file JSON di agente specializzato contiene al primo livello `description`, una stringa non vuota che descrive la capacità dell'agente per la selezione della delega. L'orchestratore riceve l'identificativo e la descrizione degli agenti attivi come definizioni delle funzioni disponibili; non riceve le loro istruzioni o credenziali. Il file `orchestrator.json` non richiede `description`.
+Ogni file JSON di agente specializzato contiene al primo livello `description`, una stringa non vuota che descrive la capacità dell'agente per la scelta dell'agente. L'orchestratore riceve l'identificativo e la descrizione degli agenti attivi nell'elenco aggiunto alle sue istruzioni, e gli identificativi come valori ammessi dello schema della sua risposta strutturata; non riceve le loro istruzioni o credenziali. Il file `orchestrator.json` non richiede `description`.
 
 #### Metadata
   * type: specification
@@ -321,9 +334,9 @@ Ogni file JSON di agente specializzato contiene al primo livello `description`, 
 
 ### Produzione della risposta con Vercel AI SDK
 
-La produzione delle risposte dell'orchestratore e degli agenti specializzati usa un adapter del componente «Conversazioni» basato su Vercel AI SDK, con provider Mistral configurato per ciascun agente. L'adapter implementa la porta applicativa `ProduceConversationReply`: riceve a ogni turno lo storico dall'archivio comune, restituisce i frammenti testuali della risposta e l'indicazione strutturata `expectsReply`, con un unico percorso di generazione indipendente dal tipo di contenuto del turno, e mantiene i tipi dell'SDK fuori da Domain e Application. L'adapter del canale conversazionale presenta frammenti ed esito secondo il protocollo `ambrogio.v1`.
+La produzione delle risposte dell'orchestratore e degli agenti specializzati usa un adapter del componente «Conversazioni» basato su Vercel AI SDK, con provider Mistral configurato per ciascun agente. L'adapter implementa la porta applicativa `ProduceConversationReply`: riceve a ogni turno lo storico dall'archivio comune e il segnale di annullamento, restituisce l'identificativo dell'agente scelto, i frammenti testuali della risposta e l'indicazione strutturata `expectsReply`, con un unico percorso di generazione indipendente dal tipo di contenuto del turno, e mantiene i tipi dell'SDK fuori da Domain e Application. L'adapter del canale conversazionale presenta frammenti ed esito secondo il protocollo `ambrogio.v1`.
 
-La configurazione JSON mantiene `llm.provider: "mistral"`, `model`, `apiKey` e le sole `options` facoltative `temperature` e `max_tokens`. L'adapter valida le opzioni prima dell'attivazione e le traduce nei parametri equivalenti dell'AI SDK; omette quelle assenti. L'endpoint Mistral predefinito non richiede un URL nel JSON. Il client MCP comune esistente conserva connessione, autenticazione e ciclo di vita; i suoi tool sono adattati all'AI SDK senza esporre credenziali al modello. Orchestratore e agenti specializzati conservano la delega singola e il limite di chiamate MCP per turno previsti dagli altri contratti.
+La configurazione JSON mantiene `llm.provider: "mistral"`, `model`, `apiKey` e le sole `options` facoltative `temperature` e `max_tokens`. L'adapter valida le opzioni prima dell'attivazione e le traduce nei parametri equivalenti dell'AI SDK; omette quelle assenti. L'endpoint Mistral predefinito non richiede un URL nel JSON. Il client MCP comune esistente conserva connessione, autenticazione e ciclo di vita; i suoi tool sono adattati all'AI SDK senza esporre credenziali al modello. L'orchestratore sceglie un solo agente per turno secondo il contratto della scelta dell'agente; gli agenti con connettore MCP rispettano il limite di chiamate per turno previsto dagli altri contratti.
 
 #### Metadata
   * type: specification
@@ -356,7 +369,7 @@ L'ingresso eseguibile di questa tranche registra `GET /api/conversations` e `GET
 
 ### Profilo dell'ingresso conversazionale con agenti
 
-L'ingresso eseguibile valida prima dell'ascolto i JSON HTTP, Conversazioni, degli agenti attivi e, se configurato, quello della voce, apre l'archivio e recupera i turni pendenti, prepara gli adapter dei provider e i client MCP degli agenti specializzati, quindi registra il canale conversazionale `/api/session` insieme ai due GET già disponibili. Il canale usa l'agente orchestratore come produttore concreto della risposta tramite la porta Application `ProduceConversationReply`; quando la voce è configurata usa Vosk per trascrivere i turni audio e sherpa-onnx, con la voce caricata prima dell'ascolto, per le risposte richieste in audio. La politica CORS riguarda le rotte GET; l'apertura del canale segue il controllo dell'origine definito per la sessione. L'arresto dell'ingresso segue la politica generale del ciclo di vita del server; la richiesta al provider non viene annullata esplicitamente dall'adapter.
+L'ingresso eseguibile valida prima dell'ascolto i JSON HTTP, Conversazioni, degli agenti attivi e, se configurato, quello della voce, apre l'archivio e recupera i turni pendenti, prepara gli adapter dei provider e i client MCP degli agenti specializzati che hanno un connettore MCP, quindi registra il canale conversazionale `/api/session` insieme ai due GET già disponibili. Il canale usa l'agente orchestratore come produttore concreto della risposta tramite la porta Application `ProduceConversationReply`: l'orchestratore sceglie l'agente e l'agente scelto formula la risposta. Quando la voce è configurata usa Vosk per trascrivere i turni audio e sherpa-onnx, con la voce caricata prima dell'ascolto, per le risposte richieste in audio. La politica CORS riguarda le rotte GET; l'apertura del canale segue il controllo dell'origine definito per la sessione. L'arresto dell'ingresso segue la politica generale del ciclo di vita del server; le richieste ai provider e ai connettori vengono annullate esplicitamente solo alla scadenza del tempo massimo della produzione della risposta.
 
 #### Metadata
   * type: specification
@@ -367,7 +380,9 @@ L'ingresso eseguibile valida prima dell'ascolto i JSON HTTP, Conversazioni, degl
 
 ### Profilo della configurazione del modello per agente
 
-Ogni agente attivo ha un file JSON locale separato, gestito dall'utente e individuato in `/etc/ambrogio/agents`. Il file contiene al primo livello `instructions` e `llm`. `instructions` è il testo delle istruzioni dell'agente. `llm` è un oggetto con i campi `provider`, `model` e `apiKey`, che indicano rispettivamente l'adapter del fornitore, l'identificativo del modello e la chiave API; può contenere `options`, un oggetto di opzioni specifiche del provider. L'orchestratore e ciascun agente specializzato usano i valori del proprio file. La composition root valida i campi comuni e consegna le opzioni all'adapter selezionato, che valida i campi specifici prima di attivare l'agente. Il file di un agente specializzato contiene inoltre `mcp`, con `url` e l'eventuale `auth` definiti dai contratti del trasporto MCP e della credenziale Bearer. I file dell'utente non sono materiale versionato del repository.
+Ogni agente attivo ha un file JSON locale separato, gestito dall'utente e individuato in `/etc/ambrogio/agents`. Il file contiene al primo livello `instructions` e `llm`. `instructions` è il testo delle istruzioni dell'agente. `llm` è un oggetto con i campi `provider`, `model` e `apiKey`, che indicano rispettivamente l'adapter del fornitore, l'identificativo del modello e la chiave API; può contenere `options`, un oggetto di opzioni specifiche del provider. L'orchestratore e ciascun agente specializzato usano i valori del proprio file. La composition root valida i campi comuni e consegna le opzioni all'adapter selezionato, che valida i campi specifici prima di attivare l'agente. I file dell'utente non sono materiale versionato del repository.
+
+Decisione concordata con la persona il 17 ottobre 2026, che sostituisce l'obbligo della sezione `mcp` per ogni agente specializzato: nel file di un agente specializzato la sezione `mcp` è facoltativa. Quando è presente contiene `url` e l'eventuale `auth` definiti dai contratti del trasporto MCP e delle credenziali, e il file contiene anche `maxToolCalls`. Quando è assente l'agente ha soltanto `description`, `instructions` e `llm`: risponde con il proprio modello e le proprie istruzioni, senza strumenti, e il file non può contenere `maxToolCalls`. Così agenti con modelli diversi possono essere definiti dalle sole istruzioni.
 
 #### Metadata
   * type: specification
@@ -457,6 +472,32 @@ Se la conversazione non esiste, la risposta ha stato `404`; se la lettura fallis
   * define: [Lettura HTTP dello storico conversazionale](../Requirements/FamilyConversation.md#lettura-http-dello-storico-conversazionale)
 ---
 
+### Risposta dell'agente senza connettore MCP
+
+Decisione concordata con la persona il 17 ottobre 2026. Un agente specializzato il cui file non contiene `mcp` è preparato senza aprire connessioni MCP e senza scoprire strumenti. Quando l'orchestratore lo sceglie, l'adapter AI SDK gli consegna le sue istruzioni, con la stessa indicazione del formato della risposta degli altri agenti, e lo storico conservato della conversazione, senza offrire strumenti al modello; l'agente produce in streaming il testo della risposta e l'indicazione `expectsReply` con lo stesso output strutturato degli altri agenti. Per questo agente non si applica un limite di chiamate agli strumenti. Lo stesso agente può usare un modello diverso da quello degli altri agenti, indicato nel proprio `llm`; per esempio un agente generico che risponde con la conoscenza del modello.
+
+#### Metadata
+  * type: behavior
+
+#### Relations
+  * define: [Agente specializzato senza connettore MCP](../Requirements/FamilyConversation.md#agente-specializzato-senza-connettore-mcp)
+---
+
+### Scelta dell'agente con risposta strutturata dell'orchestratore
+
+Decisione concordata con la persona il 17 ottobre 2026, che sostituisce la precedente delega mediante chiamata di funzione, in cui l'orchestratore poteva rispondere direttamente oppure chiamare una funzione senza argomenti con il nome dell'agente, con le chiamate parallele disattivate. L'orchestratore è un selettore: non formula mai la risposta del turno. Riceve lo storico conservato della conversazione e restituisce, tramite l'output strutturato dell'AI SDK e non tramite chiamate di funzione, un oggetto JSON con il solo campo `agent`, il cui valore appartiene all'elenco chiuso degli identificativi degli agenti specializzati attivi, dichiarato come `enum` nello schema JSON. Alle istruzioni configurate dell'orchestratore l'adapter aggiunge l'elenco degli agenti attivi con identificativo e `description` e la richiesta di scegliere l'agente che deve rispondere all'ultimo messaggio della famiglia. La richiesta di scelta non è trasmessa in streaming alla famiglia e non produce testo della risposta.
+
+L'agente scelto riceve lo stesso storico conservato, il cui ultimo turno contiene il testo originale della famiglia, senza un compito riformulato, e formula l'intera risposta con la relativa indicazione `expectsReply`, trasmessa come risposta del turno senza ulteriori chiamate all'orchestratore. Un'uscita mancante, non conforme allo schema o con un identificativo che non corrisponde esattamente a un agente attivo è un guasto tecnico della produzione della risposta: il turno termina con il messaggio pubblico previsto e nessun agente viene attivato. Le istruzioni e le credenziali degli agenti specializzati restano nei loro adapter.
+
+Motivazione registrata con le misure del 17 ottobre 2026 sul server installato, con le istruzioni generali dell'orchestratore e tre ripetizioni per caso: `mistral-small-latest` come orchestratore che poteva rispondere ha passato all'agente Home Assistant richieste generali che seguivano un turno precedente, per esempio «fammi una domanda» 3 volte su 3 e «in section» dopo una domanda sul film preferito; `mistral-medium-latest` ha scelto correttamente in tutti questi casi con primo testo in 0,25–0,6 secondi, come `mistral-small-latest`, ma, potendo rispondere da solo, ha risposto «Ho spento la luce in camera» a «spegnila» senza delegare, 3 volte su 3, dichiarando un'azione mai eseguita; `mistral-large-latest` ha fallito ogni delega con `AI_NoOutputGeneratedError`. Un orchestratore che non può rispondere elimina strutturalmente le azioni dichiarate e non eseguite. Il modello consigliato per l'orchestratore nell'installazione è `mistral-medium-latest`; la scelta del modello resta nel file `orchestrator.json` dell'utente.
+
+#### Metadata
+  * type: behavior
+
+#### Relations
+  * define: [Orchestrazione della risposta conversazionale](../Requirements/FamilyConversation.md#orchestrazione-della-risposta-conversazionale)
+---
+
 ### Schema delle richieste HTTP conversazionali
 
 Le rotte HTTP JSON di elenco e storico dichiarano con TypeBox la forma delle parti di richiesta che usano: query e parametri di percorso. Fastify valida tali schemi con Ajv prima del gestore. Gli oggetti di richiesta dichiarati sono chiusi: campi non previsti producono un rifiuto, senza essere eliminati. La configurazione Ajv dell'ingresso usa `coerceTypes: false`, `useDefaults: false`, `removeAdditional: false` e `allErrors: false`; la validazione non converte tipi, inserisce valori predefiniti né altera i dati ricevuti.
@@ -474,7 +515,7 @@ Lo schema controlla la forma del protocollo. L'adapter converte esplicitamente l
 
 Ogni porta outbound di Application descrive una capacità coerente richiesta da uno o più casi d'uso del modulo «Conversazioni». Nomi delle operazioni, input, output e rifiuti descrivono il significato per il modulo, senza riprodurre automaticamente metodi, payload o tipi di SDK, protocollo o API del fornitore. L'adapter realizza la porta e converte richieste, risposte e rifiuti fra le due rappresentazioni. La granularità delle porte segue le capacità effettivamente richieste, senza imporre un numero di operazioni per porta.
 
-La capacità di produzione della risposta riceve il contesto applicativo dello storico conservato, consegna i nuovi frammenti testuali nell'ordine di produzione insieme all'indicazione strutturata della replica attesa e permette al coordinamento applicativo di distinguere conclusione e guasto della produzione. Le firme possono evolvere per usare i meccanismi SDK attraverso adapter, mantenendo dati ed esiti definiti in Application; non è prescritta una particolare firma TypeScript. Non attraversano la porta messaggi del protocollo conversazionale, eventi SSE, `UIMessage`, risultati `streamText`, writer e callback dell'SDK o altri tipi del fornitore. Eventuali callback definiti da Application scambiano soltanto dati applicativi. Eventuali nuovi dati applicativi richiedono un bisogno concreto del modulo e non la duplicazione generale del protocollo SDK.
+La capacità di produzione della risposta riceve il contesto applicativo dello storico conservato e un segnale di annullamento standard della piattaforma, consegna l'eventuale identificativo dell'agente che formula la risposta e i nuovi frammenti testuali nell'ordine di produzione insieme all'indicazione strutturata della replica attesa e permette al coordinamento applicativo di distinguere conclusione e guasto della produzione. Le firme possono evolvere per usare i meccanismi SDK attraverso adapter, mantenendo dati ed esiti definiti in Application; non è prescritta una particolare firma TypeScript. Non attraversano la porta messaggi del protocollo conversazionale, eventi SSE, `UIMessage`, risultati `streamText`, writer e callback dell'SDK o altri tipi del fornitore. Eventuali callback definiti da Application scambiano soltanto dati applicativi. Eventuali nuovi dati applicativi richiedono un bisogno concreto del modulo e non la duplicazione generale del protocollo SDK.
 
 #### Metadata
   * type: specification

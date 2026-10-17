@@ -21,5 +21,5 @@ export function registerSessionRoute(server: FastifyInstance, sessions: Conversa
       return;
     }
     done();
-  } }, socket => { sessions.attach(socket); });
+  } }, (socket, request) => { sessions.attach(socket, request.log); });
 }

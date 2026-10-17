@@ -399,17 +399,62 @@ describe('consultation HTTP runtime', () => {
       const rows = output.flatMap(chunk => chunk.split('\n')).filter(Boolean)
         .map(line => JSON.parse(line) as Record<string, unknown>);
       expect(rows).toHaveLength(2);
-      // Session events are not HTTP requests: only the HTTP fallback carries a correlationId.
-      expect(Object.keys(rows[0]!).sort()).toEqual([
-        'err', 'event', 'hostname', 'level', 'msg', 'pid', 'time',
-      ]);
-      expect(Object.keys(rows[1]!).sort()).toEqual([
-        'correlationId', 'err', 'event', 'hostname', 'level', 'msg', 'pid', 'time',
-      ]);
+      // Session events carry the correlationId of their upgrade request, like HTTP events.
+      for (const row of rows) {
+        expect(Object.keys(row).sort()).toEqual([
+          'correlationId', 'err', 'event', 'hostname', 'level', 'msg', 'pid', 'time',
+        ]);
+      }
       expect(rows.map(row => row.event)).toEqual([
         'conversation_turn_admission_failed', 'http.unexpected_failure',
       ]);
       expect(output.join('')).not.toMatch(/PRIVATE_(?:CONVERSATION_TEXT|USE_CASE_OUTPUT|CREDENTIAL|CONTEXT|HTTP_BODY|USE_CASE_INPUT|CLIENT_ID|CLIENT_NAME)/);
+    } finally {
+      write.mockRestore();
+      await turnIngress.stopAccepting();
+      await turnIngress.closeSessions();
+      await server.close();
+      await prepared.archive.close();
+    }
+  });
+
+  // Verification: Prova della correlazione diagnostica della sessione
+  it('correlates every diagnostic event of a session with one UUID v4 distinct per session', async () => {
+    const files = await fixture();
+    const prepared = await prepareConfiguredConversations({ archivePath: files.archive,
+      listPageSize: 20, maxListPageSize: 100, language: 'en' }, new Date());
+    const output: string[] = [];
+    const write = vi.spyOn(process.stdout, 'write').mockImplementation(chunk => {
+      output.push(String(chunk));
+      return true;
+    });
+    const { server, turnIngress } = await buildConversationServer(base, prepared, {
+      async *produce() {
+        yield { kind: 'text', text: 'ok' };
+        yield { kind: 'reply_expectation', expectsReply: false };
+      },
+    });
+    try {
+      await server.listen({ host: '127.0.0.1', port: 0 });
+      const { port } = server.server.address() as AddressInfo;
+      const url = `ws://127.0.0.1:${port}/api/session`;
+      const first = await ProtocolClient.ready(url, { clientId: 'same-client', name: 'Cucina' });
+      const second = await ProtocolClient.ready(url, { clientId: 'same-client', name: 'Cucina' });
+      await prepared.archive.close();
+      const turns = [first, first, second, second];
+      for (const client of turns) {
+        expect((await client.textTurn('PRIVATE_CONVERSATION_TEXT')).final)
+          .toMatchObject({ type: 'turn.rejected', reason: 'failure' });
+      }
+      const rows = output.flatMap(chunk => chunk.split('\n')).filter(Boolean)
+        .map(line => JSON.parse(line) as Record<string, unknown>);
+      expect(rows.map(row => row.event)).toEqual(Array(4).fill('conversation_turn_admission_failed'));
+      const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+      for (const row of rows) expect(row.correlationId).toMatch(uuid);
+      expect(rows[0]!.correlationId).toBe(rows[1]!.correlationId);
+      expect(rows[2]!.correlationId).toBe(rows[3]!.correlationId);
+      expect(rows[0]!.correlationId).not.toBe(rows[2]!.correlationId);
+      expect(output.join('')).not.toContain('PRIVATE_CONVERSATION_TEXT');
     } finally {
       write.mockRestore();
       await turnIngress.stopAccepting();

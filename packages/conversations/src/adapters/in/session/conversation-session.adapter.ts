@@ -55,8 +55,8 @@ export type ConversationSessionsDependencies = Readonly<{
 }>;
 
 export type ConversationSessions = Readonly<{
-  /** Serve one accepted `ambrogio.v1` WebSocket. */
-  attach(socket: WebSocket): void;
+  /** Serve one accepted `ambrogio.v1` WebSocket; `log` carries the session's diagnostic correlation. */
+  attach(socket: WebSocket, log?: DiagnosticLog): void;
   /** Refuse new admissions and wait for admissions already in progress to settle. */
   stopAccepting(): Promise<void>;
   /** Notify interrupted turns, then close every open session. */
@@ -134,7 +134,7 @@ class ConversationSession {
   private alive = true;
   private readonly ping: NodeJS.Timeout;
 
-  constructor(readonly socket: WebSocket, readonly owner: SessionRegistry) {
+  constructor(readonly socket: WebSocket, readonly owner: SessionRegistry, readonly log: DiagnosticLog) {
     socket.on('message', (data, isBinary) => {
       const frame = Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data as ArrayBuffer);
       if (isBinary) this.receiveFrame(frame);
@@ -170,7 +170,7 @@ class ConversationSession {
     // A write failing because the peer went away may be reported before the close event.
     setImmediate(() => {
       if (this.closed || this.socket.readyState !== this.socket.OPEN) return;
-      this.owner.dependencies.log.error({ event: 'conversation_session_delivery_failed', err: normalizeError(error) },
+      this.log.error({ event: 'conversation_session_delivery_failed', err: normalizeError(error) },
         'Conversation session delivery failed');
     });
   }
@@ -334,14 +334,14 @@ class ConversationSession {
       settle();
       if (turn.finished) return;
       if (turn.turnId === undefined) {
-        dependencies.log.error({ event: 'conversation_turn_admission_failed', err: normalizeError(error) },
+        this.log.error({ event: 'conversation_turn_admission_failed', err: normalizeError(error) },
           'Conversation turn admission failed');
         await this.reject(turn, 'failure');
         return;
       }
       if (this.owner.stopping) return;
       this.owner.accepting = false;
-      dependencies.log.error({ event: 'conversation_turn_completion_failed', err: normalizeError(error) },
+      this.log.error({ event: 'conversation_turn_completion_failed', err: normalizeError(error) },
         'Conversation turn completion failed');
       await this.fail(turn, this.owner.message('failure'));
       return;
@@ -483,7 +483,7 @@ class Transmission {
         }
       } catch (error) {
         if (!signal.aborted) {
-          this.session.owner.dependencies.log.error({ event: 'conversation_speech_synthesis_failed',
+          this.session.log.error({ event: 'conversation_speech_synthesis_failed',
             err: normalizeError(error) }, 'Speech synthesis failed');
         }
       } finally {
@@ -508,9 +508,9 @@ class SessionRegistry implements ConversationSessions {
     return rejectionMessages[reason][this.dependencies.language];
   }
 
-  attach(socket: WebSocket): void {
+  attach(socket: WebSocket, log: DiagnosticLog = this.dependencies.log): void {
     if (this.stopping) { socket.close(1001, 'Server stopping'); return; }
-    this.sessions.add(new ConversationSession(socket, this));
+    this.sessions.add(new ConversationSession(socket, this, log));
   }
 
   async stopAccepting(): Promise<void> {

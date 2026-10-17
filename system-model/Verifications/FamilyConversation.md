@@ -58,6 +58,7 @@ La prova passa se l'agente produce il booleano strutturato `expectsReply` durant
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](ConversationProtocol.md#verifica-del-protocollo-conversazionale)
+  * satisfiedBy: [exchange-turn.test.ts](../../packages/conversations/test/application/exchange-turn.test.ts)
   * verify: [Determinazione della replica attesa](../Requirements/FamilyConversation.md#determinazione-della-replica-attesa)
   * verify: [Segnalazione della replica attesa](../Requirements/FamilyConversation.md#segnalazione-della-replica-attesa)
 ---
@@ -230,7 +231,6 @@ La prova passa se lo storico conserva solo testo e dati non audio e se nessuna r
 
 #### Relations
   * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
-  * satisfiedBy: [voice-server.test.ts](../../apps/server/test/runtime/voice-server.test.ts)
   * verify: [Conservazione solo testuale della conversazione](../Requirements/FamilyConversation.md#conservazione-solo-testuale-della-conversazione)
 ---
 
@@ -524,7 +524,6 @@ La prova passa se il secondo turno è rifiutato subito, non viene conservato e n
 #### Relations
   * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
   * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [voice-server.test.ts](../../apps/server/test/runtime/voice-server.test.ts)
   * verify: [Assenza di accodamento dei turni](../Requirements/FamilyConversation.md#assenza-di-accodamento-dei-turni)
 ---
 
@@ -722,6 +721,8 @@ La prova passa se l'avvio valido espone il canale conversazionale e i GET, il tu
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * satisfiedBy: [config-bootstrap.test.ts](../../apps/server/test/runtime/config-bootstrap.test.ts)
+  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
   * verify: [Avvio dell'ingresso dei turni conversazionali](../Requirements/FamilyConversation.md#avvio-dellingresso-dei-turni-conversazionali)
 ---
 
@@ -737,6 +738,8 @@ La prova passa se l'adapter usa il provider Mistral dell'AI SDK senza URL nel JS
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * satisfiedBy: [api-credentials.test.ts](../../apps/server/test/composition/api-credentials.test.ts)
+  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
   * verify: [Risposta testuale nella conversazione](../Requirements/FamilyConversation.md#risposta-testuale-nella-conversazione)
   * verify: [Validazione preventiva della configurazione attiva](../Requirements/ServerFoundation.md#validazione-preventiva-della-configurazione-attiva)
 ---
@@ -754,7 +757,6 @@ La prova passa se ogni turno accettato compare nello storico con il testo identi
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
-  * satisfiedBy: [voice-server.test.ts](../../apps/server/test/runtime/voice-server.test.ts)
   * verify: [Conservazione del testo originale del turno](../Requirements/FamilyConversation.md#conservazione-del-testo-originale-del-turno)
 ---
 
@@ -802,7 +804,6 @@ La prova passa se in entrambi i casi la produzione prosegue fino al proprio esit
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
   * satisfiedBy: [exchange-turn.test.ts](../../packages/conversations/test/application/exchange-turn.test.ts)
   * verify: [Continuità del turno dopo un guasto di consegna](../Requirements/FamilyConversation.md#continuità-del-turno-dopo-un-guasto-di-consegna)
 ---
@@ -853,7 +854,6 @@ La prova passa se il guasto tecnico inatteso è registrato dal componente tecnic
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
   * verify: [Diagnostica del guasto tecnico di consegna](../Requirements/FamilyConversation.md#diagnostica-del-guasto-tecnico-di-consegna)
 ---
 

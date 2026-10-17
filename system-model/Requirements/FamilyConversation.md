@@ -88,6 +88,8 @@ Quando il server avvia la conversazione con agenti configurati, deve rendere dis
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
+  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -165,6 +167,7 @@ Quando il backend ha ammesso un turno e la sessione del client si chiude durante
   * [Struttura testuale dello scambio](../Contracts/FamilyConversation.md#struttura-testuale-dello-scambio)
 
 #### Relations
+  * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -194,6 +197,7 @@ Quando il backend completa correttamente un turno, deve inviare al client la con
   * [Confini atomici dell'archivio conversazioni](../Contracts/FamilyConversation.md#confini-atomici-dellarchivio-conversazioni)
 
 #### Relations
+  * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -277,6 +281,7 @@ Quando il backend ha trasmesso parte della risposta a un turno e poi lo conclude
 
 #### Relations
   * derivedFrom: [Conservazione dello scambio testuale](#conservazione-dello-scambio-testuale)
+  * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -288,7 +293,6 @@ Quando Ambrogio conserva una conversazione, deve conservarne la rappresentazione
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [conversation-agent.adapter.ts](../../packages/conversations/src/adapters/in/voice/conversation-agent.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -317,7 +321,6 @@ Quando la consegna di una notifica di un turno già ammesso all'ingresso fallisc
   * [Dati dei casi d'uso indipendenti dagli ingressi](../Contracts/FamilyConversation.md#dati-dei-casi-duso-indipendenti-dagli-ingressi)
 
 #### Relations
-  * satisfiedBy: [turn-route.adapter.ts](../../packages/conversations/src/adapters/in/http/turn-route.adapter.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
@@ -425,6 +428,8 @@ Quando produce la risposta a un turno, il backend deve determinare se essa richi
   * [Indicazione della replica attesa](../Contracts/FamilyConversation.md#indicazione-della-replica-attesa)
 
 #### Relations
+  * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
+  * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -437,7 +442,6 @@ Quando la consegna di una notifica conversazionale fallisce per un guasto tecnic
 
 #### Relations
   * derivedFrom: [Diagnostica dei guasti nei componenti tecnici](ServerFoundation.md#diagnostica-dei-guasti-nei-componenti-tecnici)
-  * satisfiedBy: [turn-route.adapter.ts](../../packages/conversations/src/adapters/in/http/turn-route.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -498,7 +502,6 @@ Quando riceve turni validi destinati a conversazioni diverse mentre è operativo
   * [Occupazione della conversazione e ammissione dei turni](../Contracts/FamilyConversation.md#occupazione-della-conversazione-e-ammissione-dei-turni)
 
 #### Relations
-  * satisfiedBy: [voice-route.adapter.ts](../../apps/server/src/adapters/in/voice-route.adapter.ts)
   * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
@@ -562,7 +565,7 @@ Quando, dopo l'ammissione di un turno, il server non riesce a leggere uno storic
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [turn-route.adapter.ts](../../packages/conversations/src/adapters/in/http/turn-route.adapter.ts)
+  * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -1122,7 +1125,6 @@ Quando la famiglia pronuncia un turno vocale trascrivibile, Ambrogio deve rappre
   * [Esclusione dell'audio persistente](../Contracts/FamilyConversation.md#esclusione-dellaudio-persistente)
 
 #### Relations
-  * satisfiedBy: [vosk-streaming-stt.ts](../../packages/conversations/src/adapters/in/voice/vosk-streaming-stt.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 

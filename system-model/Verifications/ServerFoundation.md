@@ -20,6 +20,7 @@ La prova passa se il server rifiuta i nuovi turni con `unavailable`, richiede su
 
 #### Relations
   * derivedFrom: [Verifica del ciclo di vita del server](#verifica-del-ciclo-di-vita-del-server)
+  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
   * verify: [Arresto controllato dei nuovi turni](../Requirements/ServerFoundation.md#arresto-controllato-dei-nuovi-turni)
   * verify: [Chiusura delle risorse dopo l'interruzione dei turni](../Requirements/ServerFoundation.md#chiusura-delle-risorse-dopo-linterruzione-dei-turni)
   * verify: [Interruzione dei turni durante l'arresto](../Requirements/ServerFoundation.md#interruzione-dei-turni-durante-larresto)
@@ -249,7 +250,6 @@ La prova passa se tutti i campi della riga appartengono alla selezione esplicita
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
   * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
-  * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
   * verify: [Selezione esplicita dei campi diagnostici](../Requirements/ServerFoundation.md#selezione-esplicita-dei-campi-diagnostici)
 ---
 
@@ -282,7 +282,6 @@ La prova passa se ogni riga contiene `event`, il suo valore corrisponde al nome 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
   * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
-  * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
   * verify: [Nome stabile degli eventi diagnostici](../Requirements/ServerFoundation.md#nome-stabile-degli-eventi-diagnostici)
 ---
 
@@ -321,7 +320,6 @@ La prova passa se per l'`Error` del progetto il campo strutturato `err` conserva
   * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
   * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
   * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
-  * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
   * verify: [Conservazione dell'errore originale durante la serializzazione](../Requirements/ServerFoundation.md#conservazione-dellerrore-originale-durante-la-serializzazione)
   * verify: [Oggetto Error nel campo err del log definitivo](../Requirements/ServerFoundation.md#oggetto-error-nel-campo-err-del-log-definitivo)
   * verify: [Rappresentazione di err nel log JSON](../Requirements/ServerFoundation.md#rappresentazione-di-err-nel-log-json)
@@ -371,7 +369,6 @@ La prova passa se nessuno dei quattro esiti causa automaticamente un log dedicat
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
   * verify: [Nessun log automatico per esiti previsti](../Requirements/ServerFoundation.md#nessun-log-automatico-per-esiti-previsti)
 ---
 
@@ -406,7 +403,6 @@ La prova passa se per il guasto esiste al massimo un log diagnostico definitivo,
   * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
   * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
   * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
-  * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
   * verify: [Assenza di log definitivi nei componenti intermedi](../Requirements/ServerFoundation.md#assenza-di-log-definitivi-nei-componenti-intermedi)
   * verify: [Proprietà e unicità del log diagnostico definitivo](../Requirements/ServerFoundation.md#proprietà-e-unicità-del-log-diagnostico-definitivo)
 ---
@@ -461,7 +457,6 @@ La prova passa se la normalizzazione avviene una sola volta nel confine definiti
   * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
   * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
   * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
-  * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
   * verify: [Normalizzazione diagnostica nel confine definitivo](../Requirements/ServerFoundation.md#normalizzazione-diagnostica-nel-confine-definitivo)
 ---
 
@@ -515,7 +510,6 @@ La prova passa se il messaggio pubblico non contiene nessuno dei marcatori tecni
   * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
   * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
   * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
-  * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
   * verify: [Esclusione dei dettagli tecnici dal messaggio pubblico](../Requirements/ServerFoundation.md#esclusione-dei-dettagli-tecnici-dal-messaggio-pubblico)
   * verify: [Separazione del messaggio pubblico dalla diagnosi tecnica](../Requirements/ServerFoundation.md#separazione-del-messaggio-pubblico-dalla-diagnosi-tecnica)
 ---

@@ -474,6 +474,17 @@ Per ogni mutazione dell'archivio, la porta di scrittura definisce la postcondizi
   * define: [Classificazione degli esiti delle scritture conversazionali](../Requirements/FamilyConversation.md#classificazione-degli-esiti-delle-scritture-conversazionali)
 ---
 
+### Sintesi Piper con processo pre-avviato
+
+Decisione concordata il 17 ottobre 2026, dopo la misura sul server installato: l'avvio di un processo Piper con la voce configurata richiede circa 3,2–3,5 secondi, mentre la sintesi di una frase breve richiede meno di 0,1 secondi; con un processo nuovo per ogni trasmissione la voce arrivava circa tre secondi dopo la risposta testuale. Il backend mantiene quindi un processo Piper già avviato con la voce configurata, in attesa della trasmissione successiva. All'apertura di una trasmissione audio usa il processo pronto e ne avvia subito un altro per la trasmissione seguente; se nessun processo è pronto, per esempio con due trasmissioni ravvicinate o dopo la terminazione di quello in attesa, ne avvia uno nuovo come in precedenza. Ogni trasmissione usa un solo processo: le frasi sono scritte sul suo ingresso man mano che sono complete e la fine del suo output dopo la chiusura dell'ingresso segna la fine dell'audio. Un processo in attesa che termina da solo viene scartato e sostituito al primo uso. All'arresto il backend termina anche il processo in attesa.
+
+#### Metadata
+  * type: behavior
+
+#### Relations
+  * define: [Risposta parlata su richiesta del client](../Requirements/FamilyConversation.md#risposta-parlata-su-richiesta-del-client)
+---
+
 ### Stati persistenti dei turni conversazionali
 
 Un turno della chat testuale o della voce trascritta è conservato come accettato con il suo testo e lo stato `in elaborazione` prima che Ambrogio ne avvii l'elaborazione. Quando l'esito è conservato, il turno diventa uno scambio concluso con risposta oppure errore. A ogni avvio del server, tutti i turni ancora nello stato `in elaborazione` senza esito conservato diventano `interrotti`: restano consultabili con il testo originario, non sono rappresentati come risposte o errori conclusi e non vengono rielaborati automaticamente. La sola disconnessione del client non cambia lo stato persistente in `interrotto`.

@@ -224,6 +224,21 @@ La prova passa se entrambi gli ingressi testuali si avviano e completano un turn
   * verify: [Ingressi testuali indipendenti dalla voce](../Requirements/FamilyConversation.md#ingressi-testuali-indipendenti-dalla-voce)
 ---
 
+### Prova del processo Piper pre-avviato
+
+Con un eseguibile Piper controllato che impiega un tempo di avvio misurabile prima di leggere l'ingresso, eseguire due trasmissioni distanziate più del tempo di avvio, poi due trasmissioni ravvicinate; far terminare da solo il processo in attesa e chiudere il sintetizzatore.
+
+#### Details
+La prova passa se la seconda trasmissione distanziata riceve il primo audio senza attendere il tempo di avvio, ogni trasmissione usa un processo distinto e termina con la fine del suo output, una trasmissione senza processo pronto ne avvia uno nuovo, il processo terminato da solo viene sostituito al primo uso e la chiusura non lascia processi in esecuzione. Fallisce se una trasmissione riusa il processo di un'altra, se l'audio di due trasmissioni si mescola o se restano processi attivi dopo la chiusura.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
+  * verify: [Risposta parlata su richiesta del client](../Requirements/FamilyConversation.md#risposta-parlata-su-richiesta-del-client)
+---
+
 ### Prova dell'assenza di audio persistente
 
 Eseguire un turno vocale con risposta parlata, riavviare Ambrogio e ispezionare lo stato persistente prodotto dalla prova.

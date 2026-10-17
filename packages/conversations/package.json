@@ -118,6 +118,10 @@
       "types": "./dist/adapters/out/system-current-time.adapter.d.ts",
       "import": "./dist/adapters/out/system-current-time.adapter.js"
     },
+    "./adapters/out/system-deadlines": {
+      "types": "./dist/adapters/out/system-deadlines.adapter.d.ts",
+      "import": "./dist/adapters/out/system-deadlines.adapter.js"
+    },
     "./adapters/in/session/conversation-session": {
       "types": "./dist/adapters/in/session/conversation-session.adapter.d.ts",
       "import": "./dist/adapters/in/session/conversation-session.adapter.js"

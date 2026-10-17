@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { UuidIdentifiers } from '../../../src/adapters/out/uuid-identifiers.adapter.js';
 import { SystemCurrentTime } from '../../../src/adapters/out/system-current-time.adapter.js';
+import { SystemDeadlines } from '../../../src/adapters/out/system-deadlines.adapter.js';
 
 describe('technical turn capabilities', () => {
   it('provides distinct UUID v4 identities for conversations and turns', () => {
@@ -14,5 +15,19 @@ describe('technical turn capabilities', () => {
 
   it('provides a valid Date through the clock port', () => {
     expect(Number.isFinite(new SystemCurrentTime().now().getTime())).toBe(true);
+  });
+
+  // Verification: Prova del tempo massimo della produzione della risposta
+  it('elapses a deadline after its duration with the platform timer, unless cancelled', async () => {
+    const deadlines = new SystemDeadlines();
+    const started = Date.now();
+    await deadlines.start(20).elapsed;
+    expect(Date.now() - started).toBeGreaterThanOrEqual(19);
+    let elapsed = false;
+    const cancelled = deadlines.start(10);
+    void cancelled.elapsed.then(() => { elapsed = true; });
+    cancelled.cancel();
+    await new Promise(resolve => setTimeout(resolve, 40));
+    expect(elapsed).toBe(false);
   });
 });

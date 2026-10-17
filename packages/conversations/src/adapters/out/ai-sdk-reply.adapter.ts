@@ -3,7 +3,8 @@ import { generateText, jsonSchema, Output, stepCountIs, streamText, tool, type L
   type ModelMessage } from 'ai';
 import { ProjectError } from '../../project-error.js';
 import type { ConversationHistory } from '../../application/conversation-history-read.js';
-import type { ProduceConversationReply, ReplyPart } from '../../application/produce-conversation-reply.js';
+import type { ProduceConversationReply, ReplyCancellation, ReplyPart }
+  from '../../application/produce-conversation-reply.js';
 import type { AvailableMcpTool } from './mcp-tool-client.js';
 
 export type AgentSettings = Readonly<{
@@ -55,6 +56,13 @@ function messagesFor(history: ConversationHistory, showAgents = false): ModelMes
     messages.push({ role: 'assistant', content: `${marker}${turn.answer}` });
   }
   return messages;
+}
+
+/** The SDK signal of a reply: aborted once Application requests the stop. */
+function abortSignalFor(cancellation: ReplyCancellation): AbortSignal {
+  const controller = new AbortController();
+  void cancellation.requested.then(() => controller.abort(new ProjectError('Reply production stopped')));
+  return controller.signal;
 }
 
 function throwStreamError(error: unknown): never {
@@ -116,7 +124,8 @@ export class AiSdkToolAgentReply implements ProduceConversationReply {
     this.model = modelFor(settings, model);
   }
 
-  async *produce(history: ConversationHistory, signal: AbortSignal): AsyncIterable<ReplyPart> {
+  async *produce(history: ConversationHistory, cancellation: ReplyCancellation): AsyncIterable<ReplyPart> {
+    const signal = abortSignalFor(cancellation);
     let used = 0;
     // Structured output reports a failed step only as a missing object; keep the limit failure.
     let limitExceeded: ProjectError | undefined;
@@ -155,7 +164,8 @@ export class AiSdkKnowledgeAgentReply implements ProduceConversationReply {
     this.model = modelFor(settings, model);
   }
 
-  async *produce(history: ConversationHistory, signal: AbortSignal): AsyncIterable<ReplyPart> {
+  async *produce(history: ConversationHistory, cancellation: ReplyCancellation): AsyncIterable<ReplyPart> {
+    const signal = abortSignalFor(cancellation);
     const response = streamText({ model: this.model, system: replyInstructions(this.settings.instructions),
       messages: messagesFor(history), output: replyOutput, maxRetries: 0, abortSignal: signal, ...this.options });
     try {
@@ -194,7 +204,8 @@ export class AiSdkOrchestratorReply implements ProduceConversationReply {
     }) });
   }
 
-  async *produce(history: ConversationHistory, signal: AbortSignal): AsyncIterable<ReplyPart> {
+  async *produce(history: ConversationHistory, cancellation: ReplyCancellation): AsyncIterable<ReplyPart> {
+    const signal = abortSignalFor(cancellation);
     let agent: DelegatedAgent | undefined;
     try {
       const result = await generateText({ model: this.model,
@@ -212,6 +223,6 @@ export class AiSdkOrchestratorReply implements ProduceConversationReply {
     if (!agent) throw new ProjectError('Invalid agent choice');
     yield { kind: 'agent', agent: agent.id };
     // The chosen agent answers the original turn from the stored history.
-    yield* agent.reply.produce(history, signal);
+    yield* agent.reply.produce(history, cancellation);
   }
 }

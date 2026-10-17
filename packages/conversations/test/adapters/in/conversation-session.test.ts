@@ -6,6 +6,9 @@ import type { WebSocket } from 'ws';
 import { ProjectError } from '../../../src/project-error.js';
 import { Turn } from '../../../src/domain/turn.js';
 import { createExchangeTurn, type ExchangeTurn } from '../../../src/application/exchange-turn.use-case.js';
+
+// A deadline that never elapses in these session tests.
+const deadlines = { start: () => ({ elapsed: new Promise<void>(() => { /* never */ }), cancel() {} }) };
 import type { ReplyPart } from '../../../src/application/produce-conversation-reply.js';
 import { createConversationSessions,
   type ConversationSessionsDependencies } from '../../../src/adapters/in/session/conversation-session.adapter.js';
@@ -88,7 +91,7 @@ function harness(exchange: ExchangeTurn, speech?: SpeechComponents) {
 function recordingExchange(parts: readonly ReplyPart[]) {
   const outcomes: unknown[] = [];
   let pending: ReturnType<Turn['snapshot']> | undefined;
-  const exchange = createExchangeTurn({
+  const exchange = createExchangeTurn({ deadlines,
     begin: async ({ text }) => {
       pending = Turn.accept({ id: 'turn-1', text, acceptedAt: new Date(0) }).snapshot();
       return { ok: true, value: { conversationId: 'conversation-1', turnId: 'turn-1', acceptedAt: new Date(0) } };
@@ -237,7 +240,7 @@ describe('conversation session diagnostics', () => {
       : (async function* () { yield* parts; })();
     const outcomes: unknown[] = [];
     let pending: ReturnType<Turn['snapshot']> | undefined;
-    const exchange = createExchangeTurn({
+    const exchange = createExchangeTurn({ deadlines,
       begin: async ({ text }) => {
         pending = Turn.accept({ id: 'turn-1', text, acceptedAt: new Date(0) }).snapshot();
         return { ok: true, value: { conversationId: 'conversation-1', turnId: 'turn-1', acceptedAt: new Date(0) } };
@@ -271,7 +274,7 @@ describe('conversation session diagnostics', () => {
 
   it('logs a history read failure of an admitted turn as conversation_reply_failed', async () => {
     const marker = new Error('TECH_HISTORY_MARKER');
-    const exchange = createExchangeTurn({
+    const exchange = createExchangeTurn({ deadlines,
       begin: async () => ({ ok: true, value: { conversationId: 'conversation-1', turnId: 'turn-1', acceptedAt: new Date(0) } }),
       history: { async find() { throw marker; } },
       complete: async ({ turnId }) => ({ ok: true, value: { turnId, status: 'failed' } }),

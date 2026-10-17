@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { Turn } from '../../src/domain/turn.js';
 import { REPLY_TIME_LIMIT_MS, createExchangeTurn } from '../../src/application/exchange-turn.use-case.js';
 import type { BeginTurn } from '../../src/application/begin-turn.use-case.js';
@@ -35,7 +35,27 @@ function setup() {
     outcomes.push(input.outcome);
     return { ok: true, value: { turnId, status: input.outcome.kind === 'answer' ? 'answered' : 'failed' } };
   };
-  return { calls, begin, history, complete, outcomes, failureMessage: englishFailure };
+  // A deadline that never elapses unless a test controls it.
+  const deadlines = { start: () => ({ elapsed: new Promise<void>(() => { /* never */ }), cancel() {} }) };
+  return { calls, begin, history, complete, outcomes, failureMessage: englishFailure, deadlines };
+}
+
+/** A deadline the test makes elapse, recording the requested durations and cancellations. */
+function controlledDeadlines() {
+  const state = { started: [] as number[], cancelled: 0, expire: () => {} };
+  return { state, start(milliseconds: number) {
+    state.started.push(milliseconds);
+    const elapsed = new Promise<void>(resolve => { state.expire = resolve; });
+    return { elapsed, cancel() { state.cancelled++; } };
+  } };
+}
+
+/** Whether a promise has settled, after pending callbacks ran. */
+async function settled(promise: Promise<unknown>): Promise<boolean> {
+  let done = false;
+  void promise.then(() => { done = true; }, () => { done = true; });
+  await new Promise(resolve => setImmediate(resolve));
+  return done;
 }
 
 describe('conversation exchange use case', () => {
@@ -323,83 +343,73 @@ describe('conversation exchange use case', () => {
   // Verification: Prova del tempo massimo della produzione della risposta
   it('fails a stalled reply at the time limit without waiting for the producer', async () => {
     const deps = setup();
-    let seen: AbortSignal | undefined;
-    const exchange = createExchangeTurn({ ...deps, replyTimeLimitMs: 20, reply: { async *produce(_history, signal) {
-      seen = signal;
+    const timer = controlledDeadlines();
+    let stop: Promise<void> | undefined;
+    const exchange = createExchangeTurn({ ...deps, deadlines: timer, reply: { async *produce(_history, cancellation) {
+      stop = cancellation.requested;
       yield text('parziale');
-      await new Promise(() => { /* stalled stream that ignores the signal */ });
+      await new Promise(() => { /* stalled stream that ignores the cancellation */ });
     } } });
     const deltas: string[] = [];
-    const result = await exchange({ text: '  domanda  ' }, { delta(value) { deltas.push(value); } });
-    expect(result).toEqual({ ok: true, value: { conversationId, turnId, outcome: 'failed',
+    const result = exchange({ text: '  domanda  ' }, { delta(value) { deltas.push(value); } });
+    await new Promise(resolve => setImmediate(resolve));
+    expect(timer.state.started).toEqual([REPLY_TIME_LIMIT_MS]);
+    expect(await settled(stop!)).toBe(false);
+    timer.state.expire();
+    expect(await result).toEqual({ ok: true, value: { conversationId, turnId, outcome: 'failed',
       error: englishFailure, cause: expect.objectContaining({ message: 'Reply production time limit exceeded' }) } });
-    expect(seen?.aborted).toBe(true);
+    expect(await settled(stop!)).toBe(true);
     expect(deltas).toEqual(['parziale']);
     // The occupancy is released by completing the turn with the error, never with the partial text.
     expect(deps.outcomes).toEqual([{ kind: 'error', message: englishFailure }]);
   });
 
   // Verification: Prova del tempo massimo della produzione della risposta
-  it('reports the time limit as the cause when the producer reacts to the signal', async () => {
+  it('reports the time limit as the cause when the producer reacts to the cancellation', async () => {
     const deps = setup();
-    const exchange = createExchangeTurn({ ...deps, replyTimeLimitMs: 20, reply: { async *produce(_history, signal) {
-      await new Promise((_resolve, reject) => {
-        signal.addEventListener('abort', () => reject(new Error('aborted by provider')), { once: true });
-      });
-      yield text('unreachable');
+    const timer = controlledDeadlines();
+    const exchange = createExchangeTurn({ ...deps, deadlines: timer, reply: { async *produce(_history, cancellation) {
+      await cancellation.requested;
+      throw new Error('aborted by provider');
     } } });
-    expect(await exchange({ text: '  domanda  ' })).toMatchObject({ ok: true, value: { outcome: 'failed',
+    const result = exchange({ text: '  domanda  ' });
+    await new Promise(resolve => setImmediate(resolve));
+    timer.state.expire();
+    expect(await result).toMatchObject({ ok: true, value: { outcome: 'failed',
       cause: { message: 'Reply production time limit exceeded' } } });
   });
 
   // Verification: Prova del tempo massimo della produzione della risposta
-  it('leaves the signal untouched when the reply finishes in time', async () => {
+  it('cancels the deadline and never requests a stop when the reply finishes in time', async () => {
     const deps = setup();
-    let seen: AbortSignal | undefined;
-    const exchange = createExchangeTurn({ ...deps, replyTimeLimitMs: 20, reply: { async *produce(_history, signal) {
-      seen = signal;
+    const timer = controlledDeadlines();
+    let stop: Promise<void> | undefined;
+    const exchange = createExchangeTurn({ ...deps, deadlines: timer, reply: { async *produce(_history, cancellation) {
+      stop = cancellation.requested;
       yield text('in tempo'); yield expectation(false);
     } } });
     expect(await exchange({ text: '  domanda  ' })).toMatchObject({ ok: true, value: { outcome: 'answered' } });
-    await new Promise(resolve => setTimeout(resolve, 40));
-    expect(seen?.aborted).toBe(false);
+    expect(timer.state.started).toEqual([30_000]);
+    expect(timer.state.cancelled).toBe(1);
+    expect(await settled(stop!)).toBe(false);
   });
 
   // Verification: Prova del tempo massimo della produzione della risposta
   it('keeps an interrupted turn interrupted when the time limit expires', async () => {
     const deps = setup();
+    const timer = controlledDeadlines();
     // The session closes while the producer is already stalled.
     let closed = false;
-    const exchange = createExchangeTurn({ ...deps, replyTimeLimitMs: 20, reply: { async *produce() {
+    const exchange = createExchangeTurn({ ...deps, deadlines: timer, reply: { async *produce() {
       closed = true;
       await new Promise(() => { /* stalled */ });
       yield text('unreachable');
     } } });
-    expect(await exchange({ text: '  domanda  ' }, undefined, () => closed)).toEqual({ ok: true, value: {
-      conversationId, turnId, outcome: 'interrupted' } });
+    const result = exchange({ text: '  domanda  ' }, undefined, () => closed);
+    await new Promise(resolve => setImmediate(resolve));
+    timer.state.expire();
+    expect(await result).toEqual({ ok: true, value: { conversationId, turnId, outcome: 'interrupted' } });
     expect(deps.outcomes).toEqual([]);
-  });
-
-  // Verification: Prova del tempo massimo della produzione della risposta
-  it('allows 30 seconds when no test limit is given', async () => {
-    expect(REPLY_TIME_LIMIT_MS).toBe(30_000);
-    vi.useFakeTimers();
-    try {
-      const deps = setup();
-      let seen: AbortSignal | undefined;
-      const exchange = createExchangeTurn({ ...deps, reply: { async *produce(_history, signal) {
-        seen = signal;
-        await new Promise(() => { /* stalled */ });
-        yield text('unreachable');
-      } } });
-      let settled = false;
-      const result = exchange({ text: '  domanda  ' }).finally(() => { settled = true; });
-      await vi.advanceTimersByTimeAsync(29_999);
-      expect([settled, seen?.aborted]).toEqual([false, false]);
-      await vi.advanceTimersByTimeAsync(1);
-      expect(await result).toMatchObject({ ok: true, value: { outcome: 'failed' } });
-      expect(seen?.aborted).toBe(true);
-    } finally { vi.useRealTimers(); }
   });
 });
 

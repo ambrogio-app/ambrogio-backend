@@ -36,6 +36,8 @@ function answer(text: string, expectsReply = false) {
 }
 
 const text = (value: string): ReplyPart => ({ kind: 'text', text: value });
+/** A cancellation that is never requested. */
+const never = () => ({ requested: new Promise<void>(() => { /* never */ }) });
 const expectation = (expectsReply: boolean): ReplyPart => ({ kind: 'reply_expectation', expectsReply });
 
 async function collect(stream: AsyncIterable<ReplyPart>): Promise<ReplyPart[]> {
@@ -65,15 +67,17 @@ function recordingAgent(id: string, description: string, parts: ReplyPart[], rec
 test('orchestrator only chooses the agent with structured output and the agent answers', async () => {
   const received: unknown[] = [];
   const model = chooser('{"agent":"home"}');
-  const signal = new AbortController().signal;
+  const stop = never();
   const reply = new AiSdkOrchestratorReply(settings, [
     recordingAgent('memory', 'Search memory', [text('wrong')]),
     recordingAgent('home', 'Control home', [text('Which room?'), expectation(true)], received),
   ], model);
-  expect(await collect(reply.produce(history, signal))).toEqual([
+  expect(await collect(reply.produce(history, stop))).toEqual([
     { kind: 'agent', agent: 'home' }, text('Which room?'), expectation(true)]);
-  // The chosen agent gets the stored history with the original text, no task, and the same signal.
-  expect(received).toEqual([[history, signal]]);
+  // The chosen agent gets the stored history with the original text, no task, and the same cancellation.
+  expect(received).toHaveLength(1);
+  expect((received[0] as unknown[])[0]).toBe(history);
+  expect((received[0] as unknown[])[1]).toBe(stop);
   expect(model.doGenerateCalls).toHaveLength(1);
   const call = model.doGenerateCalls[0]!;
   expect(call.tools ?? []).toEqual([]);
@@ -95,7 +99,7 @@ test.each(['{"agent":"home_assistant"}', '{}', 'home', '{"agent":"home","answer"
     const reply = new AiSdkOrchestratorReply(settings, [
       recordingAgent('home', 'Control home', [text('unused'), expectation(false)], received),
     ], chooser(output));
-    await expect(collect(reply.produce(history, new AbortController().signal))).rejects.toThrow();
+    await expect(collect(reply.produce(history, never()))).rejects.toThrow();
     expect(received).toEqual([]);
   });
 
@@ -114,7 +118,7 @@ test('the router sees which agent gave each previous answer; the agents do not',
     return { isError: false, content: [] };
   } }, 1, agentModel);
   const reply = new AiSdkOrchestratorReply(settings, [{ id: 'home', description: 'Control home', reply: home }], router);
-  expect(await collect(reply.produce(conversation, new AbortController().signal))).toEqual([
+  expect(await collect(reply.produce(conversation, never()))).toEqual([
     { kind: 'agent', agent: 'home' }, text('Fatto.'), expectation(false)]);
   expect(router.doGenerateCalls[0]?.prompt.slice(1)).toEqual([
     { role: 'user', content: [{ type: 'text', text: 'Accendi la luce' }] },
@@ -133,7 +137,7 @@ test('the router sees which agent gave each previous answer; the agents do not',
 test('an agent without MCP answers with its own instructions and no tools', async () => {
   const model = scripted({ parts: answer('Nel 1492.'), reason: 'stop' });
   const reply = new AiSdkKnowledgeAgentReply({ ...settings, instructions: 'Answer from knowledge.' }, model);
-  expect(await collect(reply.produce(history, new AbortController().signal)))
+  expect(await collect(reply.produce(history, never())))
     .toEqual([text('Nel 1492.'), expectation(false)]);
   expect(model.doStreamCalls).toHaveLength(1);
   expect(model.doStreamCalls[0]?.tools ?? []).toEqual([]);
@@ -146,8 +150,9 @@ test('an agent without MCP answers with its own instructions and no tools', asyn
 });
 
 // Verification: Prova del tempo massimo della produzione della risposta
-test('the abort signal reaches the router, the agent model and the MCP invocation', async () => {
-  const controller = new AbortController();
+test('the cancellation aborts the router, the agent model and the MCP invocation', async () => {
+  let request!: () => void;
+  const stop = { requested: new Promise<void>(resolve => { request = resolve; }) };
   const router = chooser('{"agent":"home"}');
   const agentModel = scripted(
     { parts: [callPart('mcp_0', { key: 'answer' })], reason: 'tool-calls' },
@@ -160,11 +165,12 @@ test('the abort signal reaches the router, the agent model and the MCP invocatio
     return { isError: false, content: [{ type: 'text', text: 'result' }] };
   } }, 1, agentModel);
   const reply = new AiSdkOrchestratorReply(settings, [{ id: 'home', description: 'Control home', reply: home }], router);
-  await collect(reply.produce(history, controller.signal));
+  await collect(reply.produce(history, stop));
   const routerSignal = router.doGenerateCalls[0]?.abortSignal;
   const agentSignal = agentModel.doStreamCalls[0]?.abortSignal;
   expect([routerSignal?.aborted, agentSignal?.aborted, toolSignals[0]?.aborted]).toEqual([false, false, false]);
-  controller.abort();
+  request();
+  await new Promise(resolve => setImmediate(resolve));
   expect([routerSignal?.aborted, agentSignal?.aborted, toolSignals[0]?.aborted]).toEqual([true, true, true]);
 });
 
@@ -180,7 +186,7 @@ test('specialist executes discovered MCP tools and allows a final answer at its 
     called.push({ name, args });
     return { isError: false, content: [{ type: 'text', text: 'result' }] };
   } }, 1, model);
-  expect(await collect(reply.produce(history, new AbortController().signal))).toEqual([text('Found it'), expectation(false)]);
+  expect(await collect(reply.produce(history, never()))).toEqual([text('Found it'), expectation(false)]);
   expect(called).toEqual([{ name: 'lookup', args: { key: 'answer' } }]);
   expect(model.doStreamCalls).toHaveLength(2);
   // The specialist answers the family's original text, the last turn of the history.
@@ -198,7 +204,7 @@ test('specialist refuses the first MCP call beyond its per-turn limit', async ()
     inputSchema: { type: 'object' } }], { async callTool(name) {
     called.push(name); return { isError: false, content: [] };
   } }, 1, model);
-  await expect(collect(reply.produce(history, new AbortController().signal))).rejects.toThrow('MCP tool call limit exceeded');
+  await expect(collect(reply.produce(history, never()))).rejects.toThrow('MCP tool call limit exceeded');
   expect(called).toEqual(['lookup']);
 });
 
@@ -227,7 +233,7 @@ test('AI SDK Mistral provider sends the selected model and key to its default en
   try {
     const reply = new AiSdkKnowledgeAgentReply({ ...settings,
       options: { temperature: 0.2, max_tokens: 128 } });
-    expect(await collect(reply.produce(history, new AbortController().signal)))
+    expect(await collect(reply.produce(history, never())))
       .toEqual([text('SDK answer'), expectation(false)]);
     expect(seen).toHaveLength(1);
     expect(seen[0]?.url).toBe('https://api.mistral.ai/v1/chat/completions');
@@ -251,7 +257,7 @@ test('the router asks Mistral for a closed agent choice without tools', async ()
   try {
     const reply = new AiSdkOrchestratorReply({ ...settings, model: 'mistral-medium-latest' }, [
       recordingAgent('home', 'Control home', [text('Fatto.'), expectation(false)])]);
-    expect(await collect(reply.produce(history, new AbortController().signal))).toEqual([
+    expect(await collect(reply.produce(history, never()))).toEqual([
       { kind: 'agent', agent: 'home' }, text('Fatto.'), expectation(false)]);
     expect(requests).toHaveLength(1);
     expect(requests[0]).toMatchObject({ model: 'mistral-medium-latest',

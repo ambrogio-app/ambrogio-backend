@@ -2,6 +2,7 @@ import { ProjectError } from '@ambrogio/conversations/application/project-error'
 import { loadConversationConfig } from '@ambrogio/conversations/adapters/out/conversation-config';
 import type { ConversationConfig } from '@ambrogio/conversations/adapters/out/conversation-config';
 import { SystemCurrentTime } from '@ambrogio/conversations/adapters/out/system-current-time';
+import { SystemDeadlines } from '@ambrogio/conversations/adapters/out/system-deadlines';
 import { UuidIdentifiers } from '@ambrogio/conversations/adapters/out/uuid-identifiers';
 import { openConversationArchive } from '@ambrogio/conversations/adapters/out/sqlite/archive';
 import { SqliteConversationHistoryRead } from '@ambrogio/conversations/adapters/out/sqlite/history-read';
@@ -72,6 +73,7 @@ export function assembleExchangeTurn(
     history: new SqliteConversationHistoryRead(prepared.archive.db),
     reply,
     failureMessage: prepared.failureMessage,
+    deadlines: new SystemDeadlines(),
   });
 }
 

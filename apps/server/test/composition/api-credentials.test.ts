@@ -58,9 +58,9 @@ test('passes each agent JSON credential to its own controlled Mistral client', a
       await writeFile(join(directory, 'orchestrator.json'), '{');
       await writeFile(join(directory, 'bearer.json'), '{');
       await writeFile(join(directory, 'oauth.json'), '{');
-      for await (const _chunk of agents.orchestrator.produce(history, new AbortController().signal)) { /* consume response */ }
+      for await (const _chunk of agents.orchestrator.produce(history, { requested: new Promise<void>(() => { /* never */ }) })) { /* consume response */ }
       for (const specialist of agents.specialists) {
-        for await (const _chunk of specialist.reply.produce(history, new AbortController().signal)) { /* consume response */ }
+        for await (const _chunk of specialist.reply.produce(history, { requested: new Promise<void>(() => { /* never */ }) })) { /* consume response */ }
       }
       expect(seen.map(request => request.authorization)).toEqual([
         // The orchestrator chooses the bearer agent, which answers; then each agent answers directly.

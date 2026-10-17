@@ -3,7 +3,8 @@ import type { Result } from '../domain/turn.js';
 import type { BeginTurn, BeginTurnInput, BeginTurnRejection } from './begin-turn.use-case.js';
 import type { CompleteTurnUseCase } from './complete-turn.use-case.js';
 import type { ConversationHistory, ConversationHistoryRead } from './conversation-history-read.js';
-import type { ProduceConversationReply, ReplyPart } from './produce-conversation-reply.js';
+import type { ProduceConversationReply, ReplyCancellation, ReplyPart } from './produce-conversation-reply.js';
+import type { Deadlines } from './turn-capabilities.js';
 
 export type ExchangeTurnSuccess =
   | Readonly<{ conversationId: string; turnId: string; outcome: 'answered'; expectsReply: boolean }>
@@ -40,11 +41,9 @@ export function createExchangeTurn(dependencies: Readonly<{
   history: ConversationHistoryRead;
   reply: ProduceConversationReply;
   failureMessage: string;
-  /** Only tests shorten the fixed limit. */
-  replyTimeLimitMs?: number;
+  deadlines: Deadlines;
 }>): ExchangeTurn {
   const failureMessage = dependencies.failureMessage;
-  const replyTimeLimitMs = dependencies.replyTimeLimitMs ?? REPLY_TIME_LIMIT_MS;
   return async (input, observer, shouldInterrupt = () => false) => {
     const admitted = await dependencies.begin(input);
     if (!admitted.ok) return admitted;
@@ -80,15 +79,19 @@ export function createExchangeTurn(dependencies: Readonly<{
     let agent: string | undefined;
     let textStarted = false;
     const limit = new ProjectError('Reply production time limit exceeded');
-    const controller = new AbortController();
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const expiry = new Promise<typeof timedOut>(resolve => {
-      timer = setTimeout(() => { controller.abort(limit); resolve(timedOut); }, replyTimeLimitMs);
+    let requestStop!: () => void;
+    const cancellation: ReplyCancellation = { requested: new Promise<void>(resolve => { requestStop = resolve; }) };
+    let expired = false;
+    const deadline = dependencies.deadlines.start(REPLY_TIME_LIMIT_MS);
+    const expiry = deadline.elapsed.then((): typeof timedOut => {
+      expired = true;
+      requestStop();
+      return timedOut;
     });
     let parts: AsyncIterator<ReplyPart> | undefined;
     let finished = false;
     try {
-      parts = dependencies.reply.produce(history, controller.signal)[Symbol.asyncIterator]();
+      parts = dependencies.reply.produce(history, cancellation)[Symbol.asyncIterator]();
       for (;;) {
         const pending = parts.next();
         // A producer that fails after the limit is no longer awaited.
@@ -114,10 +117,10 @@ export function createExchangeTurn(dependencies: Readonly<{
       if (expectsReply === undefined) throw new ProjectError('Missing reply expectation');
     } catch (error) {
       if (shouldInterrupt()) return interrupted();
-      return failAdmittedTurn(controller.signal.aborted ? limit : error);
+      return failAdmittedTurn(expired ? limit : error);
     } finally {
-      clearTimeout(timer);
-      // Release a producer left mid-stream; a stalled one is abandoned to its aborted signal.
+      deadline.cancel();
+      // Release a producer left mid-stream; a stalled one is abandoned to the requested stop.
       if (!finished) void parts?.return?.(undefined)?.catch(() => { /* already failed */ });
     }
     if (shouldInterrupt()) return interrupted();

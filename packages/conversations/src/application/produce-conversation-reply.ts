@@ -9,10 +9,10 @@ export type ReplyPart =
   | Readonly<{ kind: 'text'; text: string }>
   | Readonly<{ kind: 'reply_expectation'; expectsReply: boolean }>;
 
-/**
- * Produces the reply of an admitted turn from its persisted conversation context; the signal is
- * aborted when the reply must stop, so requests still in flight can be cancelled.
- */
+/** `requested` resolves when the reply must stop, so the producer cancels its requests in flight. */
+export type ReplyCancellation = Readonly<{ requested: Promise<void> }>;
+
+/** Produces the reply of an admitted turn from its persisted conversation context. */
 export interface ProduceConversationReply {
-  produce(history: ConversationHistory, signal: AbortSignal): AsyncIterable<ReplyPart>;
+  produce(history: ConversationHistory, cancellation: ReplyCancellation): AsyncIterable<ReplyPart>;
 }

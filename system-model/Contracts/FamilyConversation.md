@@ -33,6 +33,17 @@ Prima di attivare gli ingressi conversazionali, il server confronta lo schema SQ
   * define: [Migrazione automatica dell'archivio delle conversazioni](../Requirements/FamilyConversation.md#migrazione-automatica-dellarchivio-delle-conversazioni)
 ---
 
+### Causa tecnica dell'errore del turno
+
+Decisione concordata il 17 ottobre 2026, dopo la prova del canale con il backend installato, in cui i guasti della produzione della risposta non lasciavano alcuna diagnostica. Quando il caso d'uso del turno conclude un turno ammesso con l'esito di errore perché la lettura dello storico o la produzione della risposta ha lanciato un guasto o ha violato il contratto della risposta, per esempio senza l'indicazione `expectsReply`, l'esito `failed` restituito all'adapter di ingresso porta anche la causa tecnica originale, senza modificarla. Il caso d'uso non registra log e non conserva la causa: l'esito persistente contiene soltanto il messaggio pubblico. L'adapter del canale conversazionale, che decide l'esito comunicato al client, emette un solo evento `conversation_reply_failed` con `err` normalizzato secondo il contratto di normalizzazione diagnostica e con il `correlationId` della sessione; `turn.failed` e la trasmissione dell'errore mantengono il messaggio pubblico. Un esito `failed` senza causa tecnica non produce questo evento.
+
+#### Metadata
+  * type: behavior
+
+#### Relations
+  * define: [Diagnostica del guasto nella produzione della risposta](../Requirements/FamilyConversation.md#diagnostica-del-guasto-nella-produzione-della-risposta)
+---
+
 ### Ciclo di vita della risorsa SQLite conversazionale
 
 La composition root del server costruisce e possiede una risorsa SQLite/Kysely condivisa dagli adapter interessati. Gli adapter ricevono l'accesso necessario per le proprie operazioni e non ne controllano la chiusura; Domain e Application non ricevono handle tecnici SQLite o Kysely. Prima di abilitare il lavoro che dipende dall'archivio, il proprietario ne verifica l'apertura e completa le migrazioni richieste. Se la preparazione fallisce, chiude la risorsa già creata. Al termine del processo, la chiude dopo il completamento o l'interruzione delle operazioni che la usano. Non si prescrive un pool PostgreSQL né un numero di connessioni fisiche SQLite.
@@ -124,6 +135,8 @@ Il caso d'uso del turno conversazionale riceve un input Application costruito da
 ### Decisione di delega mediante chiamata di funzione
 
 Per ogni agente specializzato attivo, l'adapter presenta all'orchestratore una funzione di delega identificata dall'agente e descritta mediante il suo campo `description`. L'orchestratore riceve lo storico del turno e può produrre direttamente testo oppure richiedere una chiamata strutturata a una di queste funzioni, con il compito da affidare. Ambrogio accetta una sola delega per turno, esegue soltanto la funzione corrispondente a un agente attivo e usa la risposta dell'agente come esito del turno nella conversazione corrente. Una funzione sconosciuta, argomenti invalidi o più deleghe nello stesso turno causano il guasto pubblico previsto per la produzione della risposta. Le istruzioni e le credenziali dell'agente specializzato restano nel suo adapter.
+
+Decisione concordata il 17 ottobre 2026: nella richiesta dell'orchestratore l'adapter disattiva le chiamate di funzione parallele del provider (`parallelToolCalls: false` per Mistral). La prova con il backend installato ha mostrato che `mistral-small-latest` emetteva spesso due deleghe nello stesso passo, identiche o riformulate, facendo fallire il turno; con l'opzione disattivata, nove richieste su nove hanno prodotto una sola delega. La regola della delega singola resta invariata e una richiesta con più deleghe resta un guasto. L'opzione non si applica agli agenti specializzati, che eseguono gli strumenti MCP uno alla volta entro il proprio limite.
 
 #### Metadata
   * type: behavior

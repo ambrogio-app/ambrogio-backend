@@ -878,6 +878,21 @@ La prova passa se il guasto tecnico inatteso è registrato dal componente tecnic
   * verify: [Diagnostica del guasto tecnico di consegna](../Requirements/FamilyConversation.md#diagnostica-del-guasto-tecnico-di-consegna)
 ---
 
+### Prova della diagnostica del guasto nella risposta
+
+Con un logger di prova, far fallire la produzione della risposta di un turno ammesso con un errore che contiene marcatori tecnici, poi con una risposta priva di `expectsReply` e con una lettura dello storico non riuscita; acquisire gli eventi diagnostici, i messaggi inviati al client e lo storico.
+
+#### Details
+La prova passa se per ogni guasto esiste un solo evento `conversation_reply_failed` emesso dall'adapter del canale, con `err` che conserva la causa originale e con i soli campi selezionati, mentre `turn.failed`, la trasmissione dell'errore e lo storico contengono soltanto il messaggio pubblico. Fallisce se il guasto resta senza diagnostica, se viene registrato più volte o dal caso d'uso, o se un marcatore tecnico raggiunge il client o lo storico.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * verify: [Diagnostica del guasto nella produzione della risposta](../Requirements/FamilyConversation.md#diagnostica-del-guasto-nella-produzione-della-risposta)
+---
+
 ### Prova della disponibilità dello storico dopo riavvio
 
 Creare una conversazione con più scambi testuali, riavviare l'installazione e recuperare la stessa conversazione.

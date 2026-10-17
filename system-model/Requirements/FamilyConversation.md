@@ -442,6 +442,18 @@ Quando produce la risposta a un turno, il backend deve determinare se essa richi
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
+### Diagnostica del guasto nella produzione della risposta
+
+Quando un turno ammesso si conclude con l'errore pubblico per un guasto tecnico nella lettura dello storico o nella produzione della risposta, il componente che comunica l'esito al client deve registrare un solo evento diagnostico con la causa tecnica del guasto, senza esporla nel messaggio pubblico né conservarla nello storico.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * derivedFrom: [Diagnostica dei guasti nei componenti tecnici](ServerFoundation.md#diagnostica-dei-guasti-nei-componenti-tecnici)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
 ### Diagnostica del guasto tecnico di consegna
 
 Quando la consegna di una notifica conversazionale fallisce per un guasto tecnico diverso dalla disconnessione del client, il componente tecnico che gestisce la consegna deve registrare il guasto nel canale diagnostico del server.

@@ -900,6 +900,7 @@ Quando il progetto distribuisce l'immagine Docker del backend, deve includere le
 
 #### Relations
   * satisfiedBy: [Dockerfile](../../Dockerfile)
+  * satisfiedBy: [fetch-voices.mjs](../../scripts/fetch-voices.mjs)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 

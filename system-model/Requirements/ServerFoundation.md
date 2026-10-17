@@ -92,11 +92,12 @@ Quando un clone del repository ha attivato gli hook Git versionati e viene creat
 #### Metadata
   * type: requirement
 
-#### Relations
-  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
-
 #### Contract Bindings
-* [Profilo di scansione dei segreti con gitleaks](../Contracts/ServerFoundation.md#profilo-di-scansione-dei-segreti-con-gitleaks)
+  * [Profilo di scansione dei segreti con gitleaks](../Contracts/ServerFoundation.md#profilo-di-scansione-dei-segreti-con-gitleaks)
+
+#### Relations
+  * satisfiedBy: [pre-commit](../../.githooks/pre-commit)
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
 ### Campi specifici dei rifiuti previsti
@@ -249,6 +250,11 @@ Se la preparazione del processo server fallisce prima che il server sia in ascol
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
+  * satisfiedBy: [main.ts](../../apps/server/src/main.ts)
+  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
+  * satisfiedBy: [startup-failure.ts](../../apps/server/src/runtime/startup-failure.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -397,6 +403,7 @@ Quando il repository fornisce esempi di file di configurazione JSON, tali esempi
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [home-assistant.json](../../examples/agents/home-assistant.json)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -814,6 +821,8 @@ Quando una modifica viene inviata al repository remoto o proposta per l'integraz
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [publish-image.yml](../../.github/workflows/publish-image.yml)
+  * satisfiedBy: [secret-scan.yml](../../.github/workflows/secret-scan.yml)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 

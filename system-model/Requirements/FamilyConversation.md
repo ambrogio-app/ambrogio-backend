@@ -272,11 +272,12 @@ Il repository deve fornire un file JSON pronto dell'agente Home Assistant, accet
 #### Metadata
   * type: requirement
 
-#### Relations
-  * specify: [Interazione domestica tramite Home Assistant](../Capabilities/FamilyAssistance.md#interazione-domestica-tramite-home-assistant)
-
 #### Contract Bindings
-* [Profilo del connettore Home Assistant](../Contracts/FamilyConversation.md#profilo-del-connettore-home-assistant)
+  * [Profilo del connettore Home Assistant](../Contracts/FamilyConversation.md#profilo-del-connettore-home-assistant)
+
+#### Relations
+  * satisfiedBy: [home-assistant.json](../../examples/agents/home-assistant.json)
+  * specify: [Interazione domestica tramite Home Assistant](../Capabilities/FamilyAssistance.md#interazione-domestica-tramite-home-assistant)
 ---
 
 ### Connettore Home Assistant tramite il server MCP di Home Assistant
@@ -287,6 +288,8 @@ Dove l'installazione abilita il connettore Home Assistant, il server deve raggiu
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
+  * satisfiedBy: [home-assistant.json](../../examples/agents/home-assistant.json)
   * specify: [Interazione domestica tramite Home Assistant](../Capabilities/FamilyAssistance.md#interazione-domestica-tramite-home-assistant)
 ---
 

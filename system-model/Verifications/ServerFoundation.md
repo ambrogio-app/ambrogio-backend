@@ -39,6 +39,8 @@ La prova passa se ogni caso produce su `stdout` una sola riga JSON con livello `
 
 #### Relations
   * derivedFrom: [Verifica del ciclo di vita del server](#verifica-del-ciclo-di-vita-del-server)
+  * satisfiedBy: [agents.test.ts](../../apps/server/test/composition/agents.test.ts)
+  * satisfiedBy: [startup-failure.test.ts](../../apps/server/test/runtime/startup-failure.test.ts)
   * verify: [Diagnostica del mancato avvio del server](../Requirements/ServerFoundation.md#diagnostica-del-mancato-avvio-del-server)
 ---
 

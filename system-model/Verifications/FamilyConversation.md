@@ -194,6 +194,7 @@ La prova passa se il file è accettato senza modifiche come agente specializzato
 
 #### Relations
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
+  * satisfiedBy: [home-assistant-example.test.ts](../../apps/server/test/runtime/home-assistant-example.test.ts)
   * verify: [Configurazione pronta del connettore Home Assistant](../Requirements/FamilyConversation.md#configurazione-pronta-del-connettore-home-assistant)
 ---
 

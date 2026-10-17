@@ -11,15 +11,15 @@ Alla richiesta di arresto ordinato, il server impedisce subito nuove ammissioni 
   * define: [Interruzione dei turni durante l'arresto](../Requirements/ServerFoundation.md#interruzione-dei-turni-durante-larresto)
 ---
 
-### Catalogo Piper italiano nell'immagine backend
+### Catalogo delle voci italiane nell'immagine backend
 
-L'immagine backend contiene in `/opt/ambrogio/voices` i file `it_IT-riccardo-x_low.onnx`, `it_IT-riccardo-x_low.onnx.json`, `it_IT-paola-medium.onnx`, `it_IT-paola-medium.onnx.json`, le schede dei modelli e una nota di provenienza e licenza. Il JSON vocale sceglie una sola voce tramite `piperModelPath`; per l'installazione di riferimento Riccardo x_low resta la scelta attiva finché l'amministratore non indica Paola medium. Un mount in sola lettura su `/opt/ambrogio/voices` sostituisce la directory inclusa e permette di usare modelli propri; deve contenere il file ONNX selezionato e il suo JSON adiacente. Il modello Vosk rimane esterno e usa un percorso distinto. Non è prevista la scelta della voce durante una conversazione.
+L'immagine backend contiene in `/opt/ambrogio/voices` le directory `vits-piper-it_IT-riccardo-x_low` e `vits-piper-it_IT-paola-medium`, ciascuna con il modello `.onnx`, il JSON originale della voce, `tokens.txt`, `espeak-ng-data/` e la scheda del modello, oltre a una nota di provenienza e licenza. Le directory provengono dagli archivi della release `tts-models` di k2-fsa/sherpa-onnx, scaricati durante la build e verificati con SHA-256 fissati: `7541f75778afa164e44e34baaef63befad7698595df26a95ca944b63ef1a16b4` per Paola medium e `8ad0791558ae2b3e96054fc5756ae3ae2f6457fb1765bc01f43bbab85e0a7021` per Riccardo x_low; un'impronta diversa interrompe la build. Le voci sono rilasciate con licenza MIT da rhasspy/piper-voices e convertite per sherpa-onnx da k2-fsa. Il JSON vocale sceglie una sola voce tramite `voiceModelDir`; l'installazione di riferimento seleziona Paola medium. Un mount in sola lettura su `/opt/ambrogio/voices` sostituisce il catalogo incluso e permette di usare voci proprie con la stessa struttura di directory. Il modello Vosk rimane esterno e usa un percorso distinto. Non è prevista la scelta della voce durante una conversazione.
 
 #### Metadata
   * type: specification
 
 #### Relations
-  * define: [Voci Piper italiane incluse nell'immagine](../Requirements/ServerFoundation.md#voci-piper-italiane-incluse-nellimmagine)
+  * define: [Voci italiane incluse nell'immagine](../Requirements/ServerFoundation.md#voci-italiane-incluse-nellimmagine)
 ---
 
 ### Contratto di normalizzazione diagnostica
@@ -56,7 +56,7 @@ Motivazione: Martin Fowler sostiene una politica coerente dei nomi dei ruoli e l
 
 ### Distribuzione dei modelli vocali
 
-Quando la voce è abilitata, Vosk e Piper sono eseguiti nel medesimo container Docker del backend. Le librerie necessarie a Vosk, il binario Piper e i modelli Piper italiani Riccardo x_low e Paola medium appartengono all'immagine runtime. Il modello di trascrizione Vosk è fornito tramite una directory esterna montata in sola lettura. Una directory di voci Piper montata in sola lettura al posto di quella inclusa nell'immagine può sostituire il catalogo predefinito senza ricostruire l'immagine. Il componente vocale riceve i percorsi dalla configurazione validata e ne verifica la disponibilità prima di attivare l'ingresso vocale; un modello necessario assente o illeggibile impedisce l'attivazione della voce. Quando la voce è disabilitata, i percorsi dei modelli non sono richiesti.
+Quando la voce è abilitata, Vosk e la sintesi vocale sherpa-onnx sono eseguiti nel processo backend del medesimo container Docker. Le librerie necessarie a Vosk e a sherpa-onnx e le voci italiane Riccardo x_low e Paola medium appartengono all'immagine runtime; l'immagine non contiene un ambiente Python né il binario Piper. Il modello di trascrizione Vosk è fornito tramite una directory esterna montata in sola lettura. Una directory di voci montata in sola lettura al posto di quella inclusa nell'immagine può sostituire il catalogo predefinito senza ricostruire l'immagine. Il componente vocale riceve i percorsi dalla configurazione validata e ne verifica la disponibilità prima di attivare l'ingresso vocale; un modello necessario assente, illeggibile o non caricabile impedisce l'avvio. Quando la voce è disabilitata, i percorsi dei modelli non sono richiesti.
 
 #### Metadata
   * type: specification

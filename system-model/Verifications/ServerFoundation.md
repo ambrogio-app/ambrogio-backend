@@ -976,16 +976,14 @@ La prova passa se, senza elenco, nessuna risposta autorizza CORS; con l'elenco, 
   * verify: [Origini CORS esplicite dell'API HTTP](../Requirements/ServerFoundation.md#origini-cors-esplicite-dellapi-http)
 ---
 
-### Prova delle voci Piper incluse e sostituibili
+### Prova delle voci incluse e sostituibili
 
-Costruire l'immagine backend, ispezionare i modelli Riccardo x_low e Paola medium e i rispettivi JSON e sintetizzare una breve frase italiana con ciascuno usando il Piper dell'immagine. Avviare inoltre un container con una directory di prova montata in sola lettura su `/opt/ambrogio/voices` e osservare che il mount sostituisce il contenuto incluso.
+Costruire l'immagine backend, ispezionare le directory delle voci Riccardo x_low e Paola medium e sintetizzare una breve frase italiana con ciascuna usando sherpa-onnx nel Node dell'immagine. Verificare che l'immagine non contenga l'ambiente Python né il binario Piper. Avviare inoltre un container con una directory di prova montata in sola lettura su `/opt/ambrogio/voices` e osservare che il mount sostituisce il contenuto incluso.
 
 #### Details
-La prova passa se entrambi i modelli e i metadati sono presenti nell'immagine, Piper produce file WAV non vuoti per entrambi e il mount presenta i file esterni al posto delle voci incluse senza una nuova build. Fallisce se manca una voce, la sintesi fallisce o il mount non sostituisce la directory. La prova non sostituisce l'ascolto umano della qualità delle voci.
+La prova passa se entrambe le directory contengono modello, `tokens.txt`, `espeak-ng-data/` e note di provenienza, sherpa-onnx produce audio non vuoto alla frequenza del modello per entrambe le voci, l'immagine non contiene `/opt/piper` e il mount presenta i file esterni al posto delle voci incluse senza una nuova build. Fallisce se manca una voce, la sintesi fallisce o il mount non sostituisce la directory. La prova non sostituisce l'ascolto umano della qualità delle voci.
 
-Eseguita il 17 ottobre 2026 con `node scripts/verify-docker-image.mjs`: immagine costruita, sintesi Piper riuscita con entrambi i modelli, file WAV non vuoti, mount sostitutivo e HTTP `200`. La qualità percepita di Paola non è stata ancora valutata all'ascolto.
-
-Il 17 ottobre 2026 l'immagine verificata è stata distribuita sul server dell'installazione di riferimento come `ambrogio-server:paola-20261017`, con `/opt/ambrogio/voices/it_IT-paola-medium.onnx` selezionato in `voice.json`. Il container era attivo senza riavvii e l'endpoint HTTP ha risposto `200`; la persona ha confermato che la successiva prova vocale con il satellite ha funzionato. Questa conferma attesta la riproduzione operativa della voce selezionata, non una valutazione sistematica della sua qualità.
+Il 17 ottobre 2026, con la precedente sintesi Piper, l'immagine `ambrogio-server:paola-20261017` è stata distribuita sul server dell'installazione di riferimento con Paola medium selezionata e la persona ha confermato il funzionamento della prova vocale con il satellite. Le esecuzioni della prova con sherpa-onnx sono registrate di seguito.
 
 #### Metadata
   * type: test-verification
@@ -993,6 +991,6 @@ Il 17 ottobre 2026 l'immagine verificata è stata distribuita sul server dell'in
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
   * satisfiedBy: [verify-docker-image.mjs](../../scripts/verify-docker-image.mjs)
-  * verify: [Voci Piper italiane incluse nell'immagine](../Requirements/ServerFoundation.md#voci-piper-italiane-incluse-nellimmagine)
+  * verify: [Voci italiane incluse nell'immagine](../Requirements/ServerFoundation.md#voci-italiane-incluse-nellimmagine)
 ---
 

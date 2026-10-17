@@ -224,22 +224,6 @@ La prova passa se entrambi gli ingressi testuali si avviano e completano un turn
   * verify: [Ingressi testuali indipendenti dalla voce](../Requirements/FamilyConversation.md#ingressi-testuali-indipendenti-dalla-voce)
 ---
 
-### Prova del processo Piper pre-avviato
-
-Con un eseguibile Piper controllato che impiega un tempo di avvio misurabile prima di leggere l'ingresso, eseguire due trasmissioni distanziate più del tempo di avvio, poi due trasmissioni ravvicinate; far terminare da solo il processo in attesa e chiudere il sintetizzatore.
-
-#### Details
-La prova passa se la seconda trasmissione distanziata riceve il primo audio senza attendere il tempo di avvio, ogni trasmissione usa un processo distinto e termina con la fine del suo output, una trasmissione senza processo pronto ne avvia uno nuovo, il processo terminato da solo viene sostituito al primo uso e la chiusura non lascia processi in esecuzione. Fallisce se una trasmissione riusa il processo di un'altra, se l'audio di due trasmissioni si mescola o se restano processi attivi dopo la chiusura.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
-  * satisfiedBy: [piper-synthesizer.test.ts](../../packages/conversations/test/adapters/in/piper-synthesizer.test.ts)
-  * verify: [Risposta parlata su richiesta del client](../Requirements/FamilyConversation.md#risposta-parlata-su-richiesta-del-client)
----
-
 ### Prova dell'assenza di audio persistente
 
 Eseguire un turno vocale con risposta parlata, riavviare Ambrogio e ispezionare lo stato persistente prodotto dalla prova.
@@ -254,6 +238,22 @@ La prova passa se lo storico conserva solo testo e dati non audio e se nessuna r
   * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
   * satisfiedBy: [session-lifecycle.test.ts](../../apps/server/test/runtime/session-lifecycle.test.ts)
   * verify: [Conservazione solo testuale della conversazione](../Requirements/FamilyConversation.md#conservazione-solo-testuale-della-conversazione)
+---
+
+### Prova della sintesi vocale nel processo backend
+
+Con un motore di sintesi controllato, che espone `createAsync`, `generateAsync` e `sampleRate` e registra le chiamate, costruire il sintetizzatore, eseguire più trasmissioni con testo frammentato in più frasi, interromperne una dopo la prima frase e chiudere il sintetizzatore. Verificare che una sintesi controllata lenta non blocchi l'event loop. Quando la variabile d'ambiente che indica una directory di voce reale è presente, caricare inoltre il modello reale e sintetizzare una breve frase italiana.
+
+#### Details
+La prova passa se la voce è caricata una sola volta per tutte le trasmissioni, con `numThreads` pari al minimo fra 4 e il parallelismo disponibile; ogni frase completa è sintetizzata con `generateAsync` appena disponibile e la parte residua alla fine del testo; l'audio è PCM16 little-endian mono con campioni convertiti correttamente e la frequenza esposta è quella del modello; dopo l'interruzione non viene sintetizzata alcuna frase successiva; un timer dell'event loop scatta mentre una sintesi è in corso; un errore di caricamento rifiuta la costruzione. Con la voce reale la prova passa se l'audio prodotto è non vuoto e la frequenza è quella del modello. Fallisce se la voce viene ricaricata per una trasmissione, se viene usata la sintesi sincrona, se l'audio non rispetta il formato o se una frase successiva a un'interruzione viene sintetizzata.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
+  * satisfiedBy: [piper-synthesizer.test.ts](../../packages/conversations/test/adapters/in/piper-synthesizer.test.ts)
+  * verify: [Risposta parlata su richiesta del client](../Requirements/FamilyConversation.md#risposta-parlata-su-richiesta-del-client)
 ---
 
 ### Prova della trascrizione e della risposta parlata
@@ -471,7 +471,7 @@ Il controllo passa se ogni capacità tecnica esterna richiesta da un caso d'uso 
 Esaminare i componenti del modulo «Conversazioni» e seguire il percorso completo di un turno testuale e di un turno vocale nel canale conversazionale. Classificare regole di dominio, coordinamento applicativo, porte, gestione degli agenti, trascrizione e sintesi, persistenza e trasporto.
 
 #### Details
-Il controllo passa se Domain contiene stati e transizioni, Application coordina ammissione ed esito tramite porte e gli adapter possiedono i tipi e i meccanismi di AI SDK, Fastify, WebSocket, Vosk, Piper, MCP e SQLite. Un callback SDK può invocare un caso d'uso attraverso dati tradotti; non determina autonomamente una transizione persistente. Verificare anche gli import solo di tipi. Gli adapter contengono conversioni e politiche di integrazione necessarie, senza duplicare un framework agentico o un secondo protocollo dei turni. Fallisce se una dipendenza tecnica raggiunge i layer interni, se un adapter diventa autorità delle regole comuni ai turni o se resta un percorso tecnico parallelo privo di obbligo applicativo.
+Il controllo passa se Domain contiene stati e transizioni, Application coordina ammissione ed esito tramite porte e gli adapter possiedono i tipi e i meccanismi di AI SDK, Fastify, WebSocket, Vosk, sherpa-onnx, MCP e SQLite. Un callback SDK può invocare un caso d'uso attraverso dati tradotti; non determina autonomamente una transizione persistente. Verificare anche gli import solo di tipi. Gli adapter contengono conversioni e politiche di integrazione necessarie, senza duplicare un framework agentico o un secondo protocollo dei turni. Fallisce se una dipendenza tecnica raggiunge i layer interni, se un adapter diventa autorità delle regole comuni ai turni o se resta un percorso tecnico parallelo privo di obbligo applicativo.
 
 #### Metadata
   * type: inspection-verification

@@ -55,6 +55,8 @@ Configurare due agenti specializzati in file JSON distinti, ciascuno con `mcp.ur
 #### Details
 La prova passa se ogni agente riceve soltanto l'endpoint MCP definito nel proprio file, entrambe le connessioni usano il client comune e Streamable HTTP, ciascuna espone i tool del proprio server e le invocazioni raggiungono il server corretto senza un campo `transport`. Una configurazione invalida impedisce l'attivazione dell'agente interessato prima di contattare un server. Fallisce se serve un client specifico per un server, se le connessioni o i tool si confondono tra agenti oppure se la configurazione invalida raggiunge un server. La prova resta da eseguire dopo l'implementazione.
 
+Evidenza operativa parziale del 17 ottobre 2026: sul backend v0.1.1 è stato aggiunto il file utente `home-assistant.json` con endpoint Home Assistant `/api/mcp` e autenticazione Bearer, poi il container è stato riavviato. Il client MCP del container ha completato la connessione, scoperto 18 tool e invocato `GetLiveContext` senza errore e senza modificare dispositivi. Un turno HTTP di sola lettura sulle luci è terminato con `finishReason: stop` e `turnStatus: answered`; la persona ha inoltre confermato il funzionamento del connettore sia dalla chat sia dalla voce. La prova completa con due agenti e i casi di configurazione invalida resta aperta. Credenziali e configurazione dell'utente non sono versionate.
+
 #### Metadata
   * type: test-verification
 

@@ -148,6 +148,25 @@ test('transcribes only the frames of the open audio transmission and refuses a s
 });
 
 // Verification: Prova della trasmissione della richiesta del turno
+test('transcribes audio while it is received and uses the transcript only after input.end', async () => {
+  const { reply, histories } = echoReply();
+  const server = await start({ reply, voice: true });
+  const client = await ProtocolClient.ready(server.url);
+  const requestId = client.requestId();
+  const stream = client.startAudio(requestId);
+  client.sendAudio(stream, pcm('spegni la luce'));
+  await waitUntil(() => (server.speech.receivedBytes[0] ?? 0) > 0, 'frames reach the transcriber before input.end');
+  await new Promise(resolve => setTimeout(resolve, 50));
+  expect(histories).toEqual([]);
+  expect(await server.conversationIds()).toEqual([]);
+  expect(client.view(requestId)).toBeUndefined();
+  client.end(requestId);
+  const result = await client.result(requestId);
+  expect(result.accepted!.text).toBe('spegni la luce');
+  expect(server.speech.transcriptions).toBe(1);
+});
+
+// Verification: Prova della trasmissione della richiesta del turno
 test('lets text requests on different conversations progress in parallel', async () => {
   const pending = gate();
   const { reply } = scriptedReply(async function* (history): AsyncGenerator<ReplyPart> {

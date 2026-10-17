@@ -71,13 +71,18 @@ export function echoReply(expectsReply = false) {
  */
 export function fakeSpeech() {
   const state = { transcriptions: 0, synthesisAborts: 0, synthesisGate: undefined as Promise<void> | undefined,
-    closed: false };
+    closed: false, receivedBytes: [] as number[] };
   const components: SpeechComponents = {
     transcriber: {
       async transcribe(audio) {
+        const index = state.transcriptions;
         state.transcriptions += 1;
+        state.receivedBytes[index] = 0;
         const parts: Buffer[] = [];
-        for await (const chunk of audio) parts.push(Buffer.from(chunk));
+        for await (const chunk of audio) {
+          parts.push(Buffer.from(chunk));
+          state.receivedBytes[index]! += chunk.length;
+        }
         const transcript = Buffer.concat(parts).toString('utf8');
         if (transcript.includes('FAIL')) throw new Error('Simulated transcription failure');
         return transcript.trim();

@@ -168,7 +168,7 @@ test('rejects oversized text immediately and ignores the rest of the request', a
 });
 
 // Verification: Prova del rifiuto oltre i limiti di trasmissione
-test('rejects audio beyond 60 seconds without transcribing it', async () => {
+test('rejects audio beyond 60 seconds and stops its transcription at the limit', async () => {
   const server = await start({ voice: true, language: 'en' });
   const client = await ProtocolClient.ready(server.url);
   const within = await client.audioTurn(pcm('long question', maxAudioBytes));
@@ -184,7 +184,9 @@ test('rejects audio beyond 60 seconds without transcribing it', async () => {
   client.end(requestId);
   await new Promise(resolve => setTimeout(resolve, 50));
   expect(client.errors()).toEqual([]);
-  expect(server.speech.transcriptions).toBe(1);
+  // Transcription started while receiving, but no audio beyond the limit reached it.
+  expect(server.speech.transcriptions).toBe(2);
+  expect(server.speech.receivedBytes[1]).toBeLessThanOrEqual(maxAudioBytes);
   expect(await server.conversationIds()).toHaveLength(1);
 });
 

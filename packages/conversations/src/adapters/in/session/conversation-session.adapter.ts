@@ -71,15 +71,15 @@ function normalizeError(value: unknown): Error {
   return value instanceof Error ? value : new Error('Unknown conversation session failure', { cause: value });
 }
 
-/** An ordered text source that the producer can end; iteration finishes once ended and drained. */
-class TextQueue implements AsyncIterable<string> {
-  private readonly items: string[] = [];
+/** An ordered source that the producer can end; iteration finishes once ended and drained. */
+class Queue<T> implements AsyncIterable<T> {
+  private readonly items: T[] = [];
   private ended = false;
   private wake?: () => void;
 
-  push(text: string): void {
+  push(item: T): void {
     if (this.ended) return;
-    this.items.push(text);
+    this.items.push(item);
     this.wake?.();
   }
 
@@ -88,7 +88,7 @@ class TextQueue implements AsyncIterable<string> {
     this.wake?.();
   }
 
-  async *[Symbol.asyncIterator](): AsyncIterator<string> {
+  async *[Symbol.asyncIterator](): AsyncIterator<T> {
     for (;;) {
       if (this.items.length) { yield this.items.shift()!; continue; }
       if (this.ended) return;
@@ -106,7 +106,8 @@ type OpenRequest = {
   readonly conversationId?: string;
   readonly text: string[];
   textBytes: number;
-  readonly audio: Buffer[];
+  /** Frames go to the transcriber while the request is open; the transcript is used after `input.end`. */
+  transcription?: Readonly<{ frames: Queue<Uint8Array>; transcript: Promise<string> }>;
   audioBytes: number;
 };
 
@@ -244,7 +245,15 @@ class ConversationSession {
     if (message.content.type === 'audio' && this.audioInput) { this.error('audio_busy', requestId); return; }
     const request: OpenRequest = { requestId, stream, content: message.content.type, reply: message.reply,
       ...(message.conversationId === undefined ? {} : { conversationId: message.conversationId }),
-      text: [], textBytes: 0, audio: [], audioBytes: 0 };
+      text: [], textBytes: 0, audioBytes: 0 };
+    const speech = this.owner.dependencies.speech;
+    if (request.content === 'audio' && speech) {
+      const frames = new Queue<Uint8Array>();
+      const transcript = speech.transcriber.transcribe(frames);
+      // An unusable transcription is decided after `input.end`; a discarded one has no effect.
+      transcript.catch(() => undefined);
+      request.transcription = { frames, transcript };
+    }
     this.requests.set(requestId, request);
     this.inputStreams.set(stream, request);
     if (request.content === 'audio') this.audioInput = request;
@@ -259,10 +268,11 @@ class ConversationSession {
     if (!request || request.content !== 'audio') { this.error('unknown_stream'); return; }
     request.audioBytes += frame.length - 4;
     if (request.audioBytes > maxAudioBytes) { this.discard(request); return; }
-    if (this.owner.dependencies.speech) request.audio.push(frame.subarray(4));
+    request.transcription?.frames.push(frame.subarray(4));
   }
 
   private close(request: OpenRequest): void {
+    request.transcription?.frames.end();
     this.requests.delete(request.requestId);
     this.inputStreams.delete(request.stream);
     if (this.audioInput === request) this.audioInput = undefined;
@@ -272,7 +282,7 @@ class ConversationSession {
   private discard(request: OpenRequest): void {
     this.close(request);
     request.text.length = 0;
-    request.audio.length = 0;
+    request.transcription = undefined;
     this.discarded.set(request.requestId, request.stream);
     const turn: ActiveTurn = { requestId: request.requestId, reply: request.reply, finished: false };
     this.turns.add(turn);
@@ -292,10 +302,8 @@ class ConversationSession {
       let text: string;
       if (request.content === 'text') text = request.text.join('');
       else {
-        try {
-          text = await speech!.transcriber.transcribe((async function* () { yield* request.audio; })());
-        } catch { text = ''; }
-        request.audio.length = 0;
+        try { text = await request.transcription!.transcript; }
+        catch { text = ''; }
         if (typeof text !== 'string' || !text.trim()) { await this.reject(turn, 'transcription_failed'); return; }
       }
       if (!text.trim()) { await this.reject(turn, 'invalid'); return; }
@@ -413,6 +421,8 @@ class ConversationSession {
     if (this.closed) return;
     this.closed = true;
     clearInterval(this.ping);
+    // Unfinished requests are discarded: their transcription ends without effects.
+    for (const request of this.requests.values()) request.transcription?.frames.end();
     this.requests.clear();
     this.inputStreams.clear();
     this.discarded.clear();
@@ -427,7 +437,7 @@ class ConversationSession {
 
 /** One server transmission: `output.start`, text chunks or audio frames, `output.end`. */
 class Transmission {
-  private readonly queue = new TextQueue();
+  private readonly queue = new Queue<string>();
   private readonly controller = new AbortController();
   private readonly done: Promise<void>;
 

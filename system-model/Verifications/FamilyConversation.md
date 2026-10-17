@@ -252,6 +252,7 @@ La prova passa se i testi consegnati al motore non contengono asterischi, tilde 
 
 #### Relations
   * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
+  * satisfiedBy: [sherpa-synthesizer.test.ts](../../packages/conversations/test/adapters/in/sherpa-synthesizer.test.ts)
   * verify: [Risposta parlata senza marcatura testuale](../Requirements/FamilyConversation.md#risposta-parlata-senza-marcatura-testuale)
 ---
 

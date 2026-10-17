@@ -1036,6 +1036,8 @@ Quando Ambrogio pronuncia una risposta o un messaggio pubblico che contiene marc
 
 #### Relations
   * derivedFrom: [Risposta parlata su richiesta del client](#risposta-parlata-su-richiesta-del-client)
+  * satisfiedBy: [sentences.ts](../../packages/conversations/src/adapters/in/session/sentences.ts)
+  * satisfiedBy: [sherpa-synthesizer.ts](../../packages/conversations/src/adapters/in/session/sherpa-synthesizer.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 

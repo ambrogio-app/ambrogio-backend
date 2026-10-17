@@ -387,6 +387,26 @@ L'adapter del canale conversazionale possiede la verifica della forma dei messag
   * define: [Validazione del formato negli ingressi conversazionali](../Requirements/FamilyConversation.md#validazione-del-formato-negli-ingressi-conversazionali)
 ---
 
+### Pulizia della marcatura Markdown prima della sintesi
+
+Ogni frase, dopo la separazione e prima della sintesi, è ripulita dalla marcatura Markdown; la pulizia riguarda solo il testo consegnato alla sintesi e non modifica il testo della risposta trasmesso al client né lo scambio conservato. Le regole sono applicate alla singola frase:
+
+- collegamenti `[testo](indirizzo)` e immagini `![testo](indirizzo)` sono sostituiti dal solo testo;
+- i delimitatori del codice, cioè apici inversi singoli o ripetuti, sono rimossi e il loro contenuto resta;
+- gli asterischi e le tilde doppie sono rimossi ovunque; i trattini bassi sono rimossi solo quando delimitano un'enfasi, cioè quando non stanno fra due lettere o cifre, così i nomi composti con trattino basso restano intatti;
+- all'inizio della frase, che include ogni inizio di riga perché l'a capo separa le frasi, sono rimossi i segni di titolo `#`, di citazione `>` e di elenco puntato `-`, `*` e `+` seguiti da spazio; gli elenchi numerati restano;
+- in una riga di tabella le barre verticali iniziali e finali sono rimosse e quelle interne sostituite da una virgola seguita da spazio; le righe che contengono solo barre, trattini, due punti e spazi sono scartate, come le linee orizzontali `---`, `***` e `___`;
+- dopo la pulizia gli spazi sono compressi; una frase rimasta senza lettere o cifre non viene sintetizzata.
+
+Una marcatura che si estende su più frasi è ripulita in ciascuna frase per i soli simboli che contiene; un collegamento spezzato fra due frasi può lasciare parentesi o indirizzo, che restano pronunciati.
+
+#### Metadata
+  * type: behavior
+
+#### Relations
+  * define: [Risposta parlata senza marcatura testuale](../Requirements/FamilyConversation.md#risposta-parlata-senza-marcatura-testuale)
+---
+
 ### Responsabilità di Domain Application e adapter
 
 Nel modulo business «Conversazioni», Domain contiene le regole e i tipi del dominio della conversazione; Application contiene i casi d'uso e le porte necessarie per collaborare con componenti esterni; gli adapter realizzano gli ingressi del modulo e le integrazioni tecniche richieste dalle porte. Questa suddivisione riguarda le responsabilità del codice, indipendentemente dai percorsi delle cartelle.

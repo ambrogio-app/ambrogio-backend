@@ -1027,6 +1027,18 @@ Quando un client chiede la risposta in audio e l'interazione vocale è abilitata
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
+### Risposta parlata senza marcatura testuale
+
+Quando Ambrogio pronuncia una risposta o un messaggio pubblico che contiene marcatura di formattazione Markdown, deve pronunciare soltanto il testo leggibile, senza leggere i simboli di formattazione; il testo conservato e trasmesso resta invariato.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * derivedFrom: [Risposta parlata su richiesta del client](#risposta-parlata-su-richiesta-del-client)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
 ### Risposta testuale nella conversazione
 
 Quando la famiglia invia un turno, Ambrogio deve produrre una risposta testuale o un messaggio di errore nella conversazione a cui appartiene il turno, qualunque sia il tipo di contenuto con cui la risposta viene trasmessa.

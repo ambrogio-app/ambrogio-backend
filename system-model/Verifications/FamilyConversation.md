@@ -240,6 +240,21 @@ La prova passa se lo storico conserva solo testo e dati non audio e se nessuna r
   * verify: [Conservazione solo testuale della conversazione](../Requirements/FamilyConversation.md#conservazione-solo-testuale-della-conversazione)
 ---
 
+### Prova della sintesi senza marcatura Markdown
+
+Con il motore di sintesi controllato, sintetizzare risposte frammentate che contengono grassetto e corsivo con asterischi e trattini bassi, un nome composto con trattino basso, tilde doppie, codice in linea, un collegamento, un titolo, una citazione, un elenco puntato, un elenco numerato, una tabella con riga di separazione, una linea orizzontale e un grassetto spezzato fra due frammenti, conservando i frammenti consegnati al sintetizzatore.
+
+#### Details
+La prova passa se i testi consegnati al motore non contengono asterischi, tilde doppie, apici inversi, segni di titolo, citazione o elenco puntato iniziali, barre di tabella né indirizzi dei collegamenti; conservano il testo leggibile, il nome composto con trattino basso e il numero dell'elenco numerato; la riga di tabella diventa celle separate da virgole; la riga di separazione e la linea orizzontale non sono sintetizzate; il grassetto spezzato fra frammenti è ripulito; i frammenti ricevuti dal sintetizzatore, che sono lo stesso testo trasmesso e conservato, restano invariati. Fallisce se un simbolo di formattazione previsto raggiunge la sintesi, se si perde testo leggibile o se i frammenti ricevuti vengono alterati.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
+  * verify: [Risposta parlata senza marcatura testuale](../Requirements/FamilyConversation.md#risposta-parlata-senza-marcatura-testuale)
+---
+
 ### Prova della sintesi vocale nel processo backend
 
 Con un motore di sintesi controllato, che espone `createAsync`, `generateAsync` e `sampleRate` e registra le chiamate, costruire il sintetizzatore, eseguire più trasmissioni con testo frammentato in più frasi, anche contemporanee, interromperne una dopo la prima frase e chiudere il sintetizzatore. Verificare che una sintesi controllata lenta non blocchi l'event loop. Quando la variabile d'ambiente che indica una directory di voce reale è presente, caricare inoltre il modello reale e sintetizzare una breve frase italiana.

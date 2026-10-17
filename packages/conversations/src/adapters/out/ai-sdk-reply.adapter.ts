@@ -44,13 +44,12 @@ function modelFor(settings: AgentSettings, model?: LanguageModel): LanguageModel
   return model ?? createMistral({ apiKey: settings.apiKey })(settings.model);
 }
 
-function messagesFor(history: ConversationHistory, task?: string): ModelMessage[] {
+function messagesFor(history: ConversationHistory): ModelMessage[] {
   const messages: ModelMessage[] = [];
   for (const turn of history.turns) {
     messages.push({ role: 'user', content: turn.text });
     if (turn.status === 'answered') messages.push({ role: 'assistant', content: turn.answer });
   }
-  if (task) messages.push({ role: 'user', content: task });
   return messages;
 }
 
@@ -113,7 +112,7 @@ export class AiSdkToolAgentReply implements ProduceConversationReply {
     this.model = modelFor(settings, model);
   }
 
-  async *produce(history: ConversationHistory, task?: string): AsyncIterable<ReplyPart> {
+  async *produce(history: ConversationHistory): AsyncIterable<ReplyPart> {
     let used = 0;
     // Structured output reports a failed step only as a missing object; keep the limit failure.
     let limitExceeded: ProjectError | undefined;
@@ -132,7 +131,7 @@ export class AiSdkToolAgentReply implements ProduceConversationReply {
       }),
     ]));
     const response = streamText({ model: this.model, system: replyInstructions(this.settings.instructions),
-      messages: messagesFor(history, task), tools, output: replyOutput,
+      messages: messagesFor(history), tools, output: replyOutput,
       toolCallConcurrency: 1, stopWhen: stepCountIs(this.maxToolCalls + 1),
       maxRetries: 0, ...this.options });
     try {
@@ -160,8 +159,9 @@ export class AiSdkOrchestratorReply implements ProduceConversationReply {
     const agents = new Map(this.specialists.map(agent => [agent.id, agent]));
     const tools = Object.fromEntries([...agents].map(([name, agent]) => [name, tool({
       description: agent.description,
-      inputSchema: jsonSchema<{ task: string }>({ type: 'object',
-        properties: { task: { type: 'string' } }, required: ['task'], additionalProperties: false }),
+      // The delegation only names the agent: it has no arguments.
+      inputSchema: jsonSchema<Record<string, never>>({ type: 'object', properties: {},
+        additionalProperties: false }),
     })]));
     // One delegation per turn: the provider must not emit parallel delegations.
     const response = streamText({ model: this.model, system: replyInstructions(this.settings.instructions),
@@ -178,12 +178,11 @@ export class AiSdkOrchestratorReply implements ProduceConversationReply {
         const agent = agents.get(call.toolName);
         const input: unknown = call.input;
         if (!agent || input === null || typeof input !== 'object'
-          || Array.isArray(input) || typeof (input as { task?: unknown }).task !== 'string'
-          || !(input as { task: string }).task.trim()
-          || Object.keys(input).some(key => key !== 'task')) {
+          || Array.isArray(input) || Object.keys(input).length > 0) {
           throw new ProjectError('Invalid agent delegation');
         }
-        yield* agent.reply.produce(history, (input as { task: string }).task);
+        // The chosen agent answers the original turn from the stored history.
+        yield* agent.reply.produce(history);
         return;
       }
       yield* concludeAnswer(response, emitted);

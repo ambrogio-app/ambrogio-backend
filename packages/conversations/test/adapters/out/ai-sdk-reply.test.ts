@@ -78,34 +78,43 @@ test('producer rejects a response without a boolean reply flag', async () => {
 });
 
 test('orchestrator delegates once to the selected specialist and takes its reply flag', async () => {
-  const tasks: string[] = [];
-  const model = scripted({ parts: [callPart('home', { task: 'Switch the light' })],
-    reason: 'tool-calls' });
+  const received: unknown[] = [];
+  const model = scripted({ parts: [callPart('home', {})], reason: 'tool-calls' });
   const reply = new AiSdkOrchestratorReply(settings, [
     { id: 'memory', description: 'Search memory', reply: { async *produce() {
       throw new Error('Wrong specialist');
     } } },
-    { id: 'home', description: 'Control home', reply: { async *produce(_history, task) {
-      tasks.push(task ?? '');
+    { id: 'home', description: 'Control home', reply: { async *produce(...args: unknown[]) {
+      received.push(args);
       yield text('Which room?');
       yield expectation(true);
     } } },
   ], model);
   expect(await collect(reply.produce(history))).toEqual([text('Which room?'), expectation(true)]);
-  expect(tasks).toEqual(['Switch the light']);
+  // Only the agent is chosen: it gets the stored history with the original text, no task.
+  expect(received).toEqual([[history]]);
   expect(model.doStreamCalls).toHaveLength(1);
+  expect((model.doStreamCalls[0]?.tools?.[0] as { inputSchema?: unknown }).inputSchema)
+    .toMatchObject({ type: 'object', properties: {}, additionalProperties: false });
 });
 
 test('orchestrator rejects more than one delegation in a turn', async () => {
-  const model = scripted({ parts: [callPart('helper', { task: 'one' }),
-    callPart('helper', { task: 'two' }, 'call-2')], reason: 'tool-calls' });
+  const model = scripted({ parts: [callPart('helper', {}),
+    callPart('helper', {}, 'call-2')], reason: 'tool-calls' });
   const reply = new AiSdkOrchestratorReply(settings, [{ id: 'helper', description: 'Help',
     reply: { async *produce() { yield text('unused'); yield expectation(false); } } }], model);
   await expect(collect(reply.produce(history))).rejects.toThrow('Invalid agent delegation');
 });
 
+test('a delegation carrying arguments is rejected', async () => {
+  const model = scripted({ parts: [callPart('home', { task: 'Accendi la luce' })], reason: 'tool-calls' });
+  const reply = new AiSdkOrchestratorReply(settings, [{ id: 'home', description: 'Control home',
+    reply: { async *produce() { yield text('unused'); yield expectation(false); } } }], model);
+  await expect(collect(reply.produce(history))).rejects.toThrow();
+});
+
 test('delegation functions are named after the agent identifiers and must match exactly', async () => {
-  const model = scripted({ parts: [callPart('home_assistant', { task: 'Spegni la luce' })], reason: 'tool-calls' });
+  const model = scripted({ parts: [callPart('home_assistant', {})], reason: 'tool-calls' });
   const reply = new AiSdkOrchestratorReply(settings, [{ id: 'home-assistant', description: 'Control home',
     reply: { async *produce() { yield text('unused'); yield expectation(false); } } }], model);
   await expect(collect(reply.produce(history))).rejects.toThrow('Invalid agent delegation');
@@ -125,11 +134,12 @@ test('specialist executes discovered MCP tools and allows a final answer at its 
     called.push({ name, args });
     return { isError: false, content: [{ type: 'text', text: 'result' }] };
   } }, 1, model);
-  expect(await collect(reply.produce(history, 'Find a fact'))).toEqual([text('Found it'), expectation(false)]);
+  expect(await collect(reply.produce(history))).toEqual([text('Found it'), expectation(false)]);
   expect(called).toEqual([{ name: 'lookup', args: { key: 'answer' } }]);
   expect(model.doStreamCalls).toHaveLength(2);
+  // The specialist answers the family's original text, the last turn of the history.
   expect(model.doStreamCalls[0]?.prompt.at(-1)).toEqual(
-    { role: 'user', content: [{ type: 'text', text: 'Find a fact' }] });
+    { role: 'user', content: [{ type: 'text', text: 'Find it' }] });
 });
 
 test('specialist refuses the first MCP call beyond its per-turn limit', async () => {

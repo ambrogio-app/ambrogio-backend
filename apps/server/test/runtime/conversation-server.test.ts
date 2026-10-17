@@ -801,7 +801,7 @@ test('a session turn delegates to a configured MCP tool and persists the answer'
           const first = orchestratorStep++ === 0;
           return { stream: simulateReadableStream({ chunks: first ? [
             { type: 'tool-call', toolCallId: 'delegate-1', toolName: 'facts',
-              input: '{"task":"Find answer"}' }, finish('tool-calls'),
+              input: '{}' }, finish('tool-calls'),
           ] as any[] : [...answer('Direct answer.'), finish('stop')] as any[] }) };
         } });
       const orchestrator = new AiSdkOrchestratorReply({

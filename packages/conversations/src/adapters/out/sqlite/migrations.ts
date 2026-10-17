@@ -110,6 +110,16 @@ const perConversationOccupancy: Migration = {
   },
 };
 
+const turnAgent: Migration = {
+  async up(db) {
+    // Earlier turns keep a null agent: the answering agent is unknown.
+    await db.schema.alterTable('turns').addColumn('agent', 'text').execute();
+  },
+  async down(db) {
+    await db.schema.alterTable('turns').dropColumn('agent').execute();
+  },
+};
+
 export const conversationMigrations = {
   '001_initial': initial,
   '002_ordered_turns': orderedTurns,
@@ -117,6 +127,7 @@ export const conversationMigrations = {
   '004_turn_owner': turnOwner,
   '005_remove_turn_owner': removeTurnOwner,
   '006_per_conversation_occupancy': perConversationOccupancy,
+  '007_turn_agent': turnAgent,
 };
 
 /** Must finish successfully before any conversational ingress is enabled. */

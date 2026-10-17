@@ -87,3 +87,35 @@ test.each([undefined, 0, -1, 1.5, '3', Number.MAX_SAFE_INTEGER + 1])(
     await expect(loadAgentConfigs(path)).rejects.toThrow('Invalid agent configuration: specialist');
   },
 );
+
+// Verification: Prova delle configurazioni degli agenti con e senza MCP
+test('accepts an agent without MCP and without a tool call limit next to an MCP agent', async () => {
+  const path = await directory();
+  const llm = { provider: 'mistral', model: 'mistral-medium-latest', apiKey: 'key-3' };
+  await writeFile(join(path, 'generic.json'), JSON.stringify({
+    description: 'Answers general questions.', instructions: 'Answer from knowledge.', llm }));
+  await writeFile(join(path, 'home.json'), JSON.stringify({
+    description: 'Controls the home.', maxToolCalls: 2, instructions: 'Use tools.', llm,
+    mcp: { url: 'https://home.example/mcp' } }));
+  const loaded = await loadAgentConfigs(path);
+  expect(loaded.specialists).toEqual([
+    { id: 'generic', description: 'Answers general questions.', instructions: 'Answer from knowledge.', llm },
+    { id: 'home', description: 'Controls the home.', maxToolCalls: 2, instructions: 'Use tools.', llm,
+      mcp: { url: 'https://home.example/mcp' } },
+  ]);
+});
+
+// Verification: Prova delle configurazioni degli agenti con e senza MCP
+test('rejects a tool call limit on an agent without MCP', async () => {
+  const path = await directory();
+  await writeFile(join(path, 'generic.json'), JSON.stringify({
+    description: 'Answers general questions.', maxToolCalls: 3, instructions: 'Answer.',
+    llm: { provider: 'mistral', model: 'model', apiKey: 'key' } }));
+  await expect(loadAgentConfigs(path)).rejects.toThrow('Invalid agent configuration: generic');
+});
+
+// Verification: Prova delle configurazioni degli agenti con e senza MCP
+test('rejects a directory without specialist agents', async () => {
+  const path = await directory();
+  await expect(loadAgentConfigs(path)).rejects.toThrow('No specialist agent configured');
+});

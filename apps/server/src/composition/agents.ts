@@ -1,6 +1,7 @@
 import { McpToolClient } from '@ambrogio/conversations/adapters/out/mcp-tool-client';
 import type { AvailableMcpTool, McpConnection } from '@ambrogio/conversations/adapters/out/mcp-tool-client';
-import { aiSdkOptions, AiSdkOrchestratorReply, AiSdkToolAgentReply } from '@ambrogio/conversations/adapters/out/ai-sdk-reply';
+import { aiSdkOptions, AiSdkKnowledgeAgentReply, AiSdkOrchestratorReply, AiSdkToolAgentReply }
+  from '@ambrogio/conversations/adapters/out/ai-sdk-reply';
 import { loadAgentConfigs } from '../runtime/agent-config.js';
 import type { AgentConfig } from '../runtime/agent-config.js';
 
@@ -17,9 +18,9 @@ export async function prepareAgents(
   connect: (connection: McpConnection) => Promise<ToolConnection> = McpToolClient.connect,
 ): Promise<Readonly<{
   orchestrator: AiSdkOrchestratorReply;
-  specialists: readonly Readonly<{ id: string; description: string; maxToolCalls: number;
-    reply: AiSdkToolAgentReply;
-    tools: readonly AvailableMcpTool[]; mcp: ToolConnection }>[];
+  specialists: readonly Readonly<{ id: string; description: string; maxToolCalls?: number;
+    reply: AiSdkToolAgentReply | AiSdkKnowledgeAgentReply;
+    tools: readonly AvailableMcpTool[]; mcp?: ToolConnection }>[];
   close(): Promise<void>;
 }>> {
   const configs = await loadAgentConfigs(directory);
@@ -30,7 +31,13 @@ export async function prepareAgents(
   try {
     const specialists = [];
     for (const config of configs.specialists) {
-      const mcp = await connect(config.mcp!);
+      if (!config.mcp) {
+        // An agent without MCP opens no connection and is offered no tools.
+        specialists.push({ id: config.id, description: config.description!,
+          reply: new AiSdkKnowledgeAgentReply(settingsFor(config)), tools: [] });
+        continue;
+      }
+      const mcp = await connect(config.mcp);
       opened.push(mcp);
       const tools = await mcp.listTools();
       const reply = new AiSdkToolAgentReply(settingsFor(config), tools, mcp,

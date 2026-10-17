@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Turn } from '../../src/domain/turn.js';
-import { createExchangeTurn } from '../../src/application/exchange-turn.use-case.js';
+import { REPLY_TIME_LIMIT_MS, createExchangeTurn } from '../../src/application/exchange-turn.use-case.js';
 import type { BeginTurn } from '../../src/application/begin-turn.use-case.js';
 import type { CompleteTurnUseCase } from '../../src/application/complete-turn.use-case.js';
 import type { ConversationHistoryRead } from '../../src/application/conversation-history-read.js';
@@ -13,6 +13,7 @@ const englishFailure = "I can't complete the response.";
 const italianFailure = 'Non riesco a completare la risposta.';
 const text = (value: string): ReplyPart => ({ kind: 'text', text: value });
 const expectation = (expectsReply: boolean): ReplyPart => ({ kind: 'reply_expectation', expectsReply });
+const responder = (agent: string): ReplyPart => ({ kind: 'agent', agent });
 
 function setup() {
   const calls: string[] = [];
@@ -293,6 +294,112 @@ describe('conversation exchange use case', () => {
       outcome: 'interrupted' } });
     expect(deltas).toEqual([]);
     expect(deps.outcomes).toEqual([]);
+  });
+
+  // Verification: Prova della continuità dell'agente nella conversazione
+  it('records the agent that formulated the answer with the stored outcome', async () => {
+    const deps = setup();
+    const exchange = createExchangeTurn({ ...deps, reply: { async *produce() {
+      yield responder('home'); yield text('Fatto.'); yield expectation(false);
+    } } });
+    expect(await exchange({ text: '  domanda  ' })).toEqual({ ok: true, value: {
+      conversationId, turnId, outcome: 'answered', expectsReply: false } });
+    expect(deps.outcomes).toEqual([{ kind: 'answer', text: 'Fatto.', agent: 'home' }]);
+  });
+
+  // Verification: Prova della continuità dell'agente nella conversazione
+  it.each<[string, ReplyPart[]]>([
+    ['repeated', [responder('home'), responder('home'), text('Fatto.'), expectation(false)]],
+    ['empty', [responder(''), text('Fatto.'), expectation(false)]],
+    ['after text', [text('Fatto.'), responder('home'), expectation(false)]],
+    ['after the reply expectation', [text('Fatto.'), expectation(false), responder('home')]],
+  ])('fails the turn when the responding agent is %s', async (_label, parts) => {
+    const deps = setup();
+    const exchange = createExchangeTurn({ ...deps, reply: { async *produce() { yield* parts; } } });
+    expect(await exchange({ text: '  domanda  ' })).toMatchObject({ ok: true, value: { outcome: 'failed' } });
+    expect(deps.outcomes).toEqual([{ kind: 'error', message: englishFailure }]);
+  });
+
+  // Verification: Prova del tempo massimo della produzione della risposta
+  it('fails a stalled reply at the time limit without waiting for the producer', async () => {
+    const deps = setup();
+    let seen: AbortSignal | undefined;
+    const exchange = createExchangeTurn({ ...deps, replyTimeLimitMs: 20, reply: { async *produce(_history, signal) {
+      seen = signal;
+      yield text('parziale');
+      await new Promise(() => { /* stalled stream that ignores the signal */ });
+    } } });
+    const deltas: string[] = [];
+    const result = await exchange({ text: '  domanda  ' }, { delta(value) { deltas.push(value); } });
+    expect(result).toEqual({ ok: true, value: { conversationId, turnId, outcome: 'failed',
+      error: englishFailure, cause: expect.objectContaining({ message: 'Reply production time limit exceeded' }) } });
+    expect(seen?.aborted).toBe(true);
+    expect(deltas).toEqual(['parziale']);
+    // The occupancy is released by completing the turn with the error, never with the partial text.
+    expect(deps.outcomes).toEqual([{ kind: 'error', message: englishFailure }]);
+  });
+
+  // Verification: Prova del tempo massimo della produzione della risposta
+  it('reports the time limit as the cause when the producer reacts to the signal', async () => {
+    const deps = setup();
+    const exchange = createExchangeTurn({ ...deps, replyTimeLimitMs: 20, reply: { async *produce(_history, signal) {
+      await new Promise((_resolve, reject) => {
+        signal.addEventListener('abort', () => reject(new Error('aborted by provider')), { once: true });
+      });
+      yield text('unreachable');
+    } } });
+    expect(await exchange({ text: '  domanda  ' })).toMatchObject({ ok: true, value: { outcome: 'failed',
+      cause: { message: 'Reply production time limit exceeded' } } });
+  });
+
+  // Verification: Prova del tempo massimo della produzione della risposta
+  it('leaves the signal untouched when the reply finishes in time', async () => {
+    const deps = setup();
+    let seen: AbortSignal | undefined;
+    const exchange = createExchangeTurn({ ...deps, replyTimeLimitMs: 20, reply: { async *produce(_history, signal) {
+      seen = signal;
+      yield text('in tempo'); yield expectation(false);
+    } } });
+    expect(await exchange({ text: '  domanda  ' })).toMatchObject({ ok: true, value: { outcome: 'answered' } });
+    await new Promise(resolve => setTimeout(resolve, 40));
+    expect(seen?.aborted).toBe(false);
+  });
+
+  // Verification: Prova del tempo massimo della produzione della risposta
+  it('keeps an interrupted turn interrupted when the time limit expires', async () => {
+    const deps = setup();
+    // The session closes while the producer is already stalled.
+    let closed = false;
+    const exchange = createExchangeTurn({ ...deps, replyTimeLimitMs: 20, reply: { async *produce() {
+      closed = true;
+      await new Promise(() => { /* stalled */ });
+      yield text('unreachable');
+    } } });
+    expect(await exchange({ text: '  domanda  ' }, undefined, () => closed)).toEqual({ ok: true, value: {
+      conversationId, turnId, outcome: 'interrupted' } });
+    expect(deps.outcomes).toEqual([]);
+  });
+
+  // Verification: Prova del tempo massimo della produzione della risposta
+  it('allows 30 seconds when no test limit is given', async () => {
+    expect(REPLY_TIME_LIMIT_MS).toBe(30_000);
+    vi.useFakeTimers();
+    try {
+      const deps = setup();
+      let seen: AbortSignal | undefined;
+      const exchange = createExchangeTurn({ ...deps, reply: { async *produce(_history, signal) {
+        seen = signal;
+        await new Promise(() => { /* stalled */ });
+        yield text('unreachable');
+      } } });
+      let settled = false;
+      const result = exchange({ text: '  domanda  ' }).finally(() => { settled = true; });
+      await vi.advanceTimersByTimeAsync(29_999);
+      expect([settled, seen?.aborted]).toEqual([false, false]);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(await result).toMatchObject({ ok: true, value: { outcome: 'failed' } });
+      expect(seen?.aborted).toBe(true);
+    } finally { vi.useRealTimers(); }
   });
 });
 

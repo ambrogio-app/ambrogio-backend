@@ -85,6 +85,45 @@ describe('conversation history and startup recovery', () => {
       .toMatchObject([{ id: otherTurnId, text: 'altra domanda', answer: 'altra risposta' }]);
   });
 
+  // Verification: Prova della continuità dell'agente nella conversazione
+  it('stores the responding agent internally and keeps it out of the consultation view', async () => {
+    const db = open(':memory:');
+    await migrateConversationArchive(db);
+    const writer = new SqliteConversationWrite(db);
+    await writer.admit({ conversationId, createConversation: true, turn: accepted(firstTurnId) });
+    await writer.complete({ turnId: firstTurnId, outcome: { kind: 'answer', text: 'Fatto.', agent: 'home' },
+      finishedAt: new Date(2000) });
+    await writer.admit({ conversationId, createConversation: false, turn: accepted(secondTurnId) });
+    await writer.complete({ turnId: secondTurnId, outcome: { kind: 'answer', text: 'Ciao.' },
+      finishedAt: new Date(3000) });
+    expect(await db.selectFrom('turns').select(['id', 'agent']).orderBy('ordinal').execute())
+      .toEqual([{ id: firstTurnId, agent: 'home' }, { id: secondTurnId, agent: null }]);
+    const turns = (await new SqliteConversationHistoryRead(db).find(conversationId))?.turns;
+    expect(turns?.map(turn => turn.status === 'answered' ? turn.agent : 'none')).toEqual(['home', undefined]);
+    const view = await createGetConversation(new SqliteConversationHistoryRead(db))({ conversationId });
+    expect(view.ok && view.value.turns.every(turn => !('agent' in turn))).toBe(true);
+    expect(JSON.stringify(view)).not.toContain('home');
+  });
+
+  // Verification: Prova della continuità dell'agente nella conversazione
+  it('adds the agent column to an existing archive and keeps earlier turns readable', async () => {
+    const db = open(':memory:');
+    const migrator = new Migrator({ db, provider: { async getMigrations() { return conversationMigrations; } } });
+    expect((await migrator.migrateTo('006_per_conversation_occupancy')).error).toBeUndefined();
+    await db.insertInto('conversations').values({ id: conversationId, created_at: 100, last_activity_at: 100,
+      active_turn_id: null }).execute();
+    await sql.raw(`insert into turns (id, conversation_id, ordinal, text, accepted_at, status, answer, finished_at)
+      values ('${firstTurnId}', '${conversationId}', 1, 'legacy', 100, 'answered', 'vecchia risposta', 200)`).execute(db);
+    await migrateConversationArchive(db);
+    const turns = (await new SqliteConversationHistoryRead(db).find(conversationId))?.turns;
+    expect(turns).toEqual([{ id: firstTurnId, text: 'legacy', acceptedAt: new Date(100), status: 'answered',
+      answer: 'vecchia risposta', finishedAt: new Date(200) }]);
+    expect(turns?.[0] && 'agent' in turns[0]).toBe(false);
+    await db.updateTable('turns').set({ status: 'failed', answer: null, error: 'errore', agent: 'home' })
+      .where('id', '=', firstTurnId).execute();
+    await expect(new SqliteConversationHistoryRead(db).find(conversationId)).rejects.toThrow('Invalid persisted turn state');
+  });
+
   it('stores and restores exact Unix milliseconds before and after the epoch', async () => {
     const db = open(':memory:');
     await migrateConversationArchive(db);

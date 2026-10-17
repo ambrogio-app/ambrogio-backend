@@ -2,7 +2,7 @@ import { expect, test, vi } from 'vitest';
 import { simulateReadableStream } from 'ai';
 import { MockLanguageModelV4 } from 'ai/test';
 import type { ReplyPart } from '../../../src/application/produce-conversation-reply.js';
-import { AiSdkOrchestratorReply, AiSdkToolAgentReply, aiSdkOptions } from '../../../src/adapters/out/ai-sdk-reply.adapter.js';
+import { AiSdkKnowledgeAgentReply, AiSdkOrchestratorReply, AiSdkToolAgentReply, aiSdkOptions } from '../../../src/adapters/out/ai-sdk-reply.adapter.js';
 
 const settings = { instructions: 'Use available tools when needed.', model: 'mistral-small-latest',
   apiKey: 'fake-key' };
@@ -44,82 +44,128 @@ async function collect(stream: AsyncIterable<ReplyPart>): Promise<ReplyPart[]> {
   return result;
 }
 
-test('orchestrator streams an answer and a validated reply flag in one model call', async () => {
-  const model = scripted({ parts: answer('Do you need anything else?', true), reason: 'stop' });
-  const reply = new AiSdkOrchestratorReply(settings, [], model);
-  expect(await collect(reply.produce(history))).toEqual([
-    text('Do you need anything else?'), expectation(true),
+function chooser(...outputs: string[]) {
+  let next = 0;
+  return new MockLanguageModelV4({ doGenerate: async () => {
+    const output = outputs[next++];
+    if (output === undefined) throw new Error('Unexpected router call');
+    return { content: [{ type: 'text', text: output }], warnings: [],
+      finishReason: { unified: 'stop', raw: undefined }, usage } as any;
+  } });
+}
+
+function recordingAgent(id: string, description: string, parts: ReplyPart[], received: unknown[] = []) {
+  return { id, description, reply: { async *produce(...args: unknown[]) {
+    received.push(args);
+    yield* parts;
+  } } };
+}
+
+// Verification: Prova della scelta dell'agente da parte dell'orchestratore
+test('orchestrator only chooses the agent with structured output and the agent answers', async () => {
+  const received: unknown[] = [];
+  const model = chooser('{"agent":"home"}');
+  const signal = new AbortController().signal;
+  const reply = new AiSdkOrchestratorReply(settings, [
+    recordingAgent('memory', 'Search memory', [text('wrong')]),
+    recordingAgent('home', 'Control home', [text('Which room?'), expectation(true)], received),
+  ], model);
+  expect(await collect(reply.produce(history, signal))).toEqual([
+    { kind: 'agent', agent: 'home' }, text('Which room?'), expectation(true)]);
+  // The chosen agent gets the stored history with the original text, no task, and the same signal.
+  expect(received).toEqual([[history, signal]]);
+  expect(model.doGenerateCalls).toHaveLength(1);
+  const call = model.doGenerateCalls[0]!;
+  expect(call.tools ?? []).toEqual([]);
+  expect(call.responseFormat).toMatchObject({ type: 'json', schema: { type: 'object',
+    properties: { agent: { type: 'string', enum: ['memory', 'home'] } },
+    required: ['agent'], additionalProperties: false } });
+  expect(call.prompt[0]).toMatchObject({ role: 'system',
+    content: expect.stringContaining(settings.instructions) });
+  const system = String(call.prompt[0]?.content);
+  expect(system).toContain('- memory: Search memory');
+  expect(system).toContain('- home: Control home');
+  expect(call.prompt.at(-1)).toEqual({ role: 'user', content: [{ type: 'text', text: 'Find it' }] });
+});
+
+// Verification: Prova della scelta dell'agente da parte dell'orchestratore
+test.each(['{"agent":"home_assistant"}', '{}', 'home', '{"agent":"home","answer":"Fatto"}'])(
+  'an invalid choice fails the reply without activating any agent: %s', async (output) => {
+    const received: unknown[] = [];
+    const reply = new AiSdkOrchestratorReply(settings, [
+      recordingAgent('home', 'Control home', [text('unused'), expectation(false)], received),
+    ], chooser(output));
+    await expect(collect(reply.produce(history, new AbortController().signal))).rejects.toThrow();
+    expect(received).toEqual([]);
+  });
+
+// Verification: Prova della continuità dell'agente nella conversazione
+test('the router sees which agent gave each previous answer; the agents do not', async () => {
+  const conversation = { ...history, turns: [
+    { id: 'first', acceptedAt: new Date(0), status: 'answered' as const, text: 'Accendi la luce',
+      answer: 'Quale stanza?', finishedAt: new Date(1), agent: 'home' },
+    { id: 'older', acceptedAt: new Date(2), status: 'answered' as const, text: 'Ciao',
+      answer: 'Ciao!', finishedAt: new Date(3) },
+    { id: 'turn', acceptedAt: new Date(4), status: 'pending' as const, text: 'camera' },
+  ] };
+  const router = chooser('{"agent":"home"}');
+  const agentModel = scripted({ parts: answer('Fatto.'), reason: 'stop' });
+  const home = new AiSdkToolAgentReply(settings, [], { async callTool() {
+    return { isError: false, content: [] };
+  } }, 1, agentModel);
+  const reply = new AiSdkOrchestratorReply(settings, [{ id: 'home', description: 'Control home', reply: home }], router);
+  expect(await collect(reply.produce(conversation, new AbortController().signal))).toEqual([
+    { kind: 'agent', agent: 'home' }, text('Fatto.'), expectation(false)]);
+  expect(router.doGenerateCalls[0]?.prompt.slice(1)).toEqual([
+    { role: 'user', content: [{ type: 'text', text: 'Accendi la luce' }] },
+    { role: 'assistant', content: [{ type: 'text', text: '[agent: home] Quale stanza?' }] },
+    { role: 'user', content: [{ type: 'text', text: 'Ciao' }] },
+    { role: 'assistant', content: [{ type: 'text', text: 'Ciao!' }] },
+    { role: 'user', content: [{ type: 'text', text: 'camera' }] },
   ]);
+  expect(agentModel.doStreamCalls[0]?.prompt.slice(1, 3)).toEqual([
+    { role: 'user', content: [{ type: 'text', text: 'Accendi la luce' }] },
+    { role: 'assistant', content: [{ type: 'text', text: 'Quale stanza?' }] },
+  ]);
+});
+
+// Verification: Prova dell'agente specializzato senza connettore MCP
+test('an agent without MCP answers with its own instructions and no tools', async () => {
+  const model = scripted({ parts: answer('Nel 1492.'), reason: 'stop' });
+  const reply = new AiSdkKnowledgeAgentReply({ ...settings, instructions: 'Answer from knowledge.' }, model);
+  expect(await collect(reply.produce(history, new AbortController().signal)))
+    .toEqual([text('Nel 1492.'), expectation(false)]);
   expect(model.doStreamCalls).toHaveLength(1);
+  expect(model.doStreamCalls[0]?.tools ?? []).toEqual([]);
   expect(model.doStreamCalls[0]?.prompt).toEqual([
-    { role: 'system', content: expect.stringContaining(settings.instructions) },
+    { role: 'system', content: expect.stringContaining('Answer from knowledge.') },
     { role: 'user', content: [{ type: 'text', text: 'Find it' }] },
   ]);
-  expect(model.doStreamCalls[0]?.prompt[0]).toMatchObject({ role: 'system',
+  expect(model.doStreamCalls[0]?.prompt[0]).toMatchObject({
     content: expect.stringContaining('Set expectsReply to true') });
 });
 
-test('answer is delivered incrementally while structured output is still arriving', async () => {
-  const model = scripted({ parts: [{ type: 'text-start', id: 'text-1' },
-    { type: 'text-delta', id: 'text-1', delta: '{"answer":"Hello' },
-    { type: 'text-delta', id: 'text-1', delta: ' world","expectsReply":false}' },
-    { type: 'text-end', id: 'text-1' }], reason: 'stop' });
-  const reply = new AiSdkOrchestratorReply(settings, [], model);
-  expect(await collect(reply.produce(history))).toEqual([
-    text('Hello'), text(' world'), expectation(false),
-  ]);
-});
-
-test('producer rejects a response without a boolean reply flag', async () => {
-  const model = scripted({ parts: textParts('{"answer":"Question?"}'), reason: 'stop' });
-  const reply = new AiSdkOrchestratorReply(settings, [], model);
-  await expect(collect(reply.produce(history))).rejects.toThrow();
-  expect(model.doStreamCalls).toHaveLength(1);
-});
-
-test('orchestrator delegates once to the selected specialist and takes its reply flag', async () => {
-  const received: unknown[] = [];
-  const model = scripted({ parts: [callPart('home', {})], reason: 'tool-calls' });
-  const reply = new AiSdkOrchestratorReply(settings, [
-    { id: 'memory', description: 'Search memory', reply: { async *produce() {
-      throw new Error('Wrong specialist');
-    } } },
-    { id: 'home', description: 'Control home', reply: { async *produce(...args: unknown[]) {
-      received.push(args);
-      yield text('Which room?');
-      yield expectation(true);
-    } } },
-  ], model);
-  expect(await collect(reply.produce(history))).toEqual([text('Which room?'), expectation(true)]);
-  // Only the agent is chosen: it gets the stored history with the original text, no task.
-  expect(received).toEqual([[history]]);
-  expect(model.doStreamCalls).toHaveLength(1);
-  expect((model.doStreamCalls[0]?.tools?.[0] as { inputSchema?: unknown }).inputSchema)
-    .toMatchObject({ type: 'object', properties: {}, additionalProperties: false });
-});
-
-test('orchestrator rejects more than one delegation in a turn', async () => {
-  const model = scripted({ parts: [callPart('helper', {}),
-    callPart('helper', {}, 'call-2')], reason: 'tool-calls' });
-  const reply = new AiSdkOrchestratorReply(settings, [{ id: 'helper', description: 'Help',
-    reply: { async *produce() { yield text('unused'); yield expectation(false); } } }], model);
-  await expect(collect(reply.produce(history))).rejects.toThrow('Invalid agent delegation');
-});
-
-test('a delegation carrying arguments is rejected', async () => {
-  const model = scripted({ parts: [callPart('home', { task: 'Accendi la luce' })], reason: 'tool-calls' });
-  const reply = new AiSdkOrchestratorReply(settings, [{ id: 'home', description: 'Control home',
-    reply: { async *produce() { yield text('unused'); yield expectation(false); } } }], model);
-  await expect(collect(reply.produce(history))).rejects.toThrow();
-});
-
-test('delegation functions are named after the agent identifiers and must match exactly', async () => {
-  const model = scripted({ parts: [callPart('home_assistant', {})], reason: 'tool-calls' });
-  const reply = new AiSdkOrchestratorReply(settings, [{ id: 'home-assistant', description: 'Control home',
-    reply: { async *produce() { yield text('unused'); yield expectation(false); } } }], model);
-  await expect(collect(reply.produce(history))).rejects.toThrow('Invalid agent delegation');
-  const offered = (model.doStreamCalls[0]?.tools ?? []).map(tool => (tool as { name: string }).name);
-  expect(offered).toEqual(['home-assistant']);
+// Verification: Prova del tempo massimo della produzione della risposta
+test('the abort signal reaches the router, the agent model and the MCP invocation', async () => {
+  const controller = new AbortController();
+  const router = chooser('{"agent":"home"}');
+  const agentModel = scripted(
+    { parts: [callPart('mcp_0', { key: 'answer' })], reason: 'tool-calls' },
+    { parts: answer('Found it'), reason: 'stop' },
+  );
+  const toolSignals: Array<AbortSignal | undefined> = [];
+  const home = new AiSdkToolAgentReply(settings, [{ name: 'lookup',
+    inputSchema: { type: 'object' } }], { async callTool(_name, _args, signal) {
+    toolSignals.push(signal);
+    return { isError: false, content: [{ type: 'text', text: 'result' }] };
+  } }, 1, agentModel);
+  const reply = new AiSdkOrchestratorReply(settings, [{ id: 'home', description: 'Control home', reply: home }], router);
+  await collect(reply.produce(history, controller.signal));
+  const routerSignal = router.doGenerateCalls[0]?.abortSignal;
+  const agentSignal = agentModel.doStreamCalls[0]?.abortSignal;
+  expect([routerSignal?.aborted, agentSignal?.aborted, toolSignals[0]?.aborted]).toEqual([false, false, false]);
+  controller.abort();
+  expect([routerSignal?.aborted, agentSignal?.aborted, toolSignals[0]?.aborted]).toEqual([true, true, true]);
 });
 
 test('specialist executes discovered MCP tools and allows a final answer at its call limit', async () => {
@@ -134,7 +180,7 @@ test('specialist executes discovered MCP tools and allows a final answer at its 
     called.push({ name, args });
     return { isError: false, content: [{ type: 'text', text: 'result' }] };
   } }, 1, model);
-  expect(await collect(reply.produce(history))).toEqual([text('Found it'), expectation(false)]);
+  expect(await collect(reply.produce(history, new AbortController().signal))).toEqual([text('Found it'), expectation(false)]);
   expect(called).toEqual([{ name: 'lookup', args: { key: 'answer' } }]);
   expect(model.doStreamCalls).toHaveLength(2);
   // The specialist answers the family's original text, the last turn of the history.
@@ -152,7 +198,7 @@ test('specialist refuses the first MCP call beyond its per-turn limit', async ()
     inputSchema: { type: 'object' } }], { async callTool(name) {
     called.push(name); return { isError: false, content: [] };
   } }, 1, model);
-  await expect(collect(reply.produce(history))).rejects.toThrow('MCP tool call limit exceeded');
+  await expect(collect(reply.produce(history, new AbortController().signal))).rejects.toThrow('MCP tool call limit exceeded');
   expect(called).toEqual(['lookup']);
 });
 
@@ -179,9 +225,10 @@ test('AI SDK Mistral provider sends the selected model and key to its default en
     });
   });
   try {
-    const reply = new AiSdkOrchestratorReply({ ...settings,
-      options: { temperature: 0.2, max_tokens: 128 } }, []);
-    expect(await collect(reply.produce(history))).toEqual([text('SDK answer'), expectation(false)]);
+    const reply = new AiSdkKnowledgeAgentReply({ ...settings,
+      options: { temperature: 0.2, max_tokens: 128 } });
+    expect(await collect(reply.produce(history, new AbortController().signal)))
+      .toEqual([text('SDK answer'), expectation(false)]);
     expect(seen).toHaveLength(1);
     expect(seen[0]?.url).toBe('https://api.mistral.ai/v1/chat/completions');
     expect(seen[0]?.authorization).toBe('Bearer fake-key');
@@ -190,24 +237,26 @@ test('AI SDK Mistral provider sends the selected model and key to its default en
   } finally { vi.unstubAllGlobals(); }
 });
 
-test('orchestrator requests a single delegation per step from Mistral', async () => {
+// Verification: Prova della scelta dell'agente da parte dell'orchestratore
+test('the router asks Mistral for a closed agent choice without tools', async () => {
   const requests: Array<Record<string, unknown>> = [];
   vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
     const request = new Request(input, init);
     requests.push(JSON.parse(await request.text()) as Record<string, unknown>);
-    const event = { id: 'controlled-2', object: 'chat.completion.chunk', created: 0,
-      model: 'mistral-small-latest', choices: [{ index: 0,
-        delta: { content: '{"answer":"Ciao","expectsReply":false}' }, finish_reason: 'stop' }] };
-    return new Response(`data: ${JSON.stringify(event)}\n\ndata: [DONE]\n\n`, {
-      status: 200, headers: { 'content-type': 'text/event-stream' },
-    });
+    return Response.json({ id: 'controlled-2', object: 'chat.completion', created: 0,
+      model: 'mistral-medium-latest', choices: [{ index: 0,
+        message: { role: 'assistant', content: '{"agent":"home"}' }, finish_reason: 'stop' }],
+      usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } });
   });
   try {
-    const reply = new AiSdkOrchestratorReply(settings, [{ id: 'home', description: 'Control home',
-      reply: { async *produce() { yield text('unused'); yield expectation(false); } } }]);
-    expect(await collect(reply.produce(history))).toEqual([text('Ciao'), expectation(false)]);
+    const reply = new AiSdkOrchestratorReply({ ...settings, model: 'mistral-medium-latest' }, [
+      recordingAgent('home', 'Control home', [text('Fatto.'), expectation(false)])]);
+    expect(await collect(reply.produce(history, new AbortController().signal))).toEqual([
+      { kind: 'agent', agent: 'home' }, text('Fatto.'), expectation(false)]);
     expect(requests).toHaveLength(1);
-    expect(requests[0]).toMatchObject({ parallel_tool_calls: false });
-    expect(requests[0]!.tools).toHaveLength(1);
+    expect(requests[0]).toMatchObject({ model: 'mistral-medium-latest',
+      response_format: { type: 'json_schema' } });
+    expect(requests[0]!.tools).toBeUndefined();
+    expect(JSON.stringify(requests[0]!.response_format)).toContain('"enum":["home"]');
   } finally { vi.unstubAllGlobals(); }
 });

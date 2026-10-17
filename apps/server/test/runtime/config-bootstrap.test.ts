@@ -97,6 +97,7 @@ test('rejects a secret-bearing invalid component JSON before opening its archive
   await new Promise<void>(resolve => probe.close(() => resolve()));
 });
 
+// Verification: Prova dell'agente specializzato senza connettore MCP
 test('uses the validated agent, HTTP and conversation JSON throughout the active server', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'ambrogio-bootstrap-'));
   directories.push(directory);
@@ -110,15 +111,26 @@ test('uses the validated agent, HTTP and conversation JSON throughout the active
     allowedOrigins: ['https://allowed.example'] }));
   await writeFile(conversations, JSON.stringify({ archivePath: archive, language: 'it' }));
   await writeFile(join(agents, 'orchestrator.json'), JSON.stringify({
-    instructions: 'Rispondi brevemente.',
-    llm: { provider: 'mistral', model: 'mistral-small-latest', apiKey: 'json-agent-key' },
+    instructions: 'Scegli l\'agente.',
+    llm: { provider: 'mistral', model: 'mistral-medium-latest', apiKey: 'json-router-key' },
+  }));
+  // An agent with instructions only: no MCP section and no tool call limit.
+  await writeFile(join(agents, 'generic.json'), JSON.stringify({
+    description: 'Risponde alle domande generali.', instructions: 'Rispondi brevemente.',
+    llm: { provider: 'mistral', model: 'mistral-medium-latest', apiKey: 'json-agent-key' },
   }));
 
   const seen: Array<{ authorization: string | null; body: unknown }> = [];
   vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
     const request = new Request(input, init);
-    seen.push({ authorization: request.headers.get('authorization'),
-      body: JSON.parse(await request.text()) as unknown });
+    const body = JSON.parse(await request.text()) as { stream?: boolean; tools?: unknown };
+    seen.push({ authorization: request.headers.get('authorization'), body });
+    if (!body.stream) {
+      return Response.json({ id: 'controlled-0', object: 'chat.completion', created: 0,
+        model: 'mistral-medium-latest', choices: [{ index: 0,
+          message: { role: 'assistant', content: '{"agent":"generic"}' }, finish_reason: 'stop' }],
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } });
+    }
     const event = { id: 'controlled-1', object: 'chat.completion.chunk', created: 0,
       model: 'mistral-small-latest', choices: [{ index: 0, delta: { content: '{"answer":"Risposta","expectsReply":false}' },
         finish_reason: null }] };
@@ -152,10 +164,15 @@ test('uses the validated agent, HTTP and conversation JSON throughout the active
       await writeFile(join(agents, 'orchestrator.json'), '{');
       await exercise();
       expect(seen.map(request => request.authorization)).toEqual([
-        'Bearer json-agent-key', 'Bearer json-agent-key',
+        'Bearer json-router-key', 'Bearer json-agent-key', 'Bearer json-router-key', 'Bearer json-agent-key',
       ]);
-      expect(seen.every(request => (request.body as { messages?: Array<{ content: string }> })
-        .messages?.[0]?.content.startsWith('Rispondi brevemente.'))).toBe(true);
+      const system = (request: typeof seen[number]) => (request.body as { messages?: Array<{ content: string }> })
+        .messages?.[0]?.content ?? '';
+      expect(seen.map(request => system(request).split('\n')[0])).toEqual([
+        'Scegli l\'agente.', 'Rispondi brevemente.', 'Scegli l\'agente.', 'Rispondi brevemente.',
+      ]);
+      // The agent without MCP is offered no tools.
+      expect(seen.every(request => (request.body as { tools?: unknown }).tools === undefined)).toBe(true);
     } finally { await runtime.close(); }
   } finally { vi.unstubAllGlobals(); }
 });

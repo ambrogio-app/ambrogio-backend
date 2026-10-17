@@ -17,6 +17,7 @@ export interface TurnRows {
   answer: string | null;
   error: string | null;
   finished_at: number | null;
+  agent: Generated<string | null>;
 }
 
 export interface InstallationRows {

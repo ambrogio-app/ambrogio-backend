@@ -61,7 +61,23 @@ Il processo richiede i file JSON locali HTTP, Conversazioni e degli agenti, este
 {"archivePath":"/percorso/locale/conversations.sqlite","listPageSize":20,"maxListPageSize":100,"language":"it"}
 ```
 
-Per questo ingresso `archivePath` è obbligatorio; gli altri campi conservano i valori predefiniti già definiti nel modello. Dopo la build, avviare il processo indicando solo i percorsi dei file:
+Per questo ingresso `archivePath` è obbligatorio; gli altri campi conservano i valori predefiniti già definiti nel modello.
+
+La directory degli agenti (`/etc/ambrogio/agents`) contiene `orchestrator.json` e almeno un agente specializzato. L'orchestratore non risponde: sceglie soltanto l'agente che risponde al turno, vedendo quale agente ha dato le risposte precedenti della conversazione; il modello consigliato per l'orchestratore è `mistral-medium-latest`. Ogni turno ha al massimo 30 secondi per la risposta, dopo i quali le richieste in corso sono annullate e il turno termina con l'errore pubblico. Esempio di orchestratore:
+
+```json
+{"instructions":"Sei Ambrogio, l'assistente della famiglia.","llm":{"provider":"mistral","model":"mistral-medium-latest","apiKey":"..."}}
+```
+
+Un agente con sole istruzioni, senza `mcp` e senza `maxToolCalls`, risponde con la conoscenza del proprio modello, per esempio `agents/generic.json`:
+
+```json
+{"description":"Risponde alle domande generali e alla conversazione.","instructions":"Rispondi in italiano in modo breve.","llm":{"provider":"mistral","model":"mistral-medium-latest","apiKey":"..."}}
+```
+
+Un agente con connettore MCP contiene anche `mcp` (`url` e `auth` facoltativo) e `maxToolCalls`, intero positivo obbligatorio solo in questo caso.
+
+Dopo la build, avviare il processo indicando solo i percorsi dei file:
 
 ```bash
 pnpm build

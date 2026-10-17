@@ -7,7 +7,9 @@ type Base = Readonly<{ id: string; text: string; acceptedAt: Date }>;
 
 export type TurnSnapshot =
   | (Base & Readonly<{ status: 'pending' }>)
-  | (Base & Readonly<{ status: 'answered'; answer: string; finishedAt: Date }>)
+  | (Base & Readonly<{ status: 'answered'; answer: string; finishedAt: Date;
+    /** The agent that formulated the answer, when known. */
+    agent?: string }>)
   | (Base & Readonly<{ status: 'failed'; error: string; finishedAt: Date }>)
   | (Base & Readonly<{ status: 'interrupted'; finishedAt: Date }>);
 
@@ -16,6 +18,12 @@ function copyDate(value: Date): Date {
     throw new ProjectError('Invalid conversation instant');
   }
   return new Date(value.getTime());
+}
+
+function checkAgent(agent: unknown): Readonly<{ agent?: string }> {
+  if (agent === undefined) return {};
+  if (typeof agent !== 'string' || agent.length === 0) throw new ProjectError('Invalid responding agent');
+  return { agent };
 }
 
 function checkBase(value: Base): Base {
@@ -28,16 +36,17 @@ function copySnapshot(value: TurnSnapshot): TurnSnapshot {
   const base = checkBase(value);
   switch (value.status) {
     case 'pending':
-      if ('finishedAt' in value || 'answer' in value || 'error' in value) break;
+      if ('finishedAt' in value || 'answer' in value || 'error' in value || 'agent' in value) break;
       return { ...base, status: 'pending' };
     case 'answered':
       if (typeof value.answer !== 'string' || 'error' in value) break;
-      return { ...base, status: 'answered', answer: value.answer, finishedAt: copyDate(value.finishedAt) };
+      return { ...base, status: 'answered', answer: value.answer, finishedAt: copyDate(value.finishedAt),
+        ...checkAgent(value.agent) };
     case 'failed':
-      if (typeof value.error !== 'string' || 'answer' in value) break;
+      if (typeof value.error !== 'string' || 'answer' in value || 'agent' in value) break;
       return { ...base, status: 'failed', error: value.error, finishedAt: copyDate(value.finishedAt) };
     case 'interrupted':
-      if ('answer' in value || 'error' in value) break;
+      if ('answer' in value || 'error' in value || 'agent' in value) break;
       return { ...base, status: 'interrupted', finishedAt: copyDate(value.finishedAt) };
   }
   throw new ProjectError('Invalid persisted turn state');
@@ -59,11 +68,12 @@ export class Turn {
     return copySnapshot(this.state);
   }
 
-  answer(answer: string, finishedAt: Date): Result<void, TurnTransitionRejected> {
+  answer(answer: string, finishedAt: Date, agent?: string): Result<void, TurnTransitionRejected> {
     if (this.state.status !== 'pending') return { ok: false, error: { kind: 'already_closed' } };
     if (typeof answer !== 'string') throw new ProjectError('Invalid turn answer');
+    const responder = checkAgent(agent);
     const instant = copyDate(finishedAt);
-    this.state = { ...this.state, status: 'answered', answer, finishedAt: instant };
+    this.state = { ...this.state, status: 'answered', answer, finishedAt: instant, ...responder };
     return { ok: true, value: undefined };
   }
 

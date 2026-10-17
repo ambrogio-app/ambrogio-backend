@@ -234,7 +234,7 @@ describe('conversation session diagnostics', () => {
     const marker = new Error('TECH_REPLY_MARKER');
     const failingParts = label === 'a thrown provider error'
       ? { async *[Symbol.asyncIterator]() { yield { kind: 'text', text: 'parziale' } as ReplyPart; throw marker; } }
-      : parts;
+      : (async function* () { yield* parts; })();
     const outcomes: unknown[] = [];
     let pending: ReturnType<Turn['snapshot']> | undefined;
     const exchange = createExchangeTurn({

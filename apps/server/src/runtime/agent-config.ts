@@ -70,6 +70,11 @@ function parseAgent(id: string, value: unknown): AgentConfig {
     return base;
   }
   if (!nonempty(fields.description)) throw new ProjectError(`Invalid agent description: ${id}`);
+  // Without MCP the agent has instructions and a model only, and no tool call limit.
+  if (fields.mcp === undefined) {
+    if (fields.maxToolCalls !== undefined) throw new ProjectError(`Invalid agent tool call limit: ${id}`);
+    return { ...base, description: fields.description };
+  }
   if (!Number.isSafeInteger(fields.maxToolCalls) || (fields.maxToolCalls as number) < 1) {
     throw new ProjectError(`Invalid agent tool call limit: ${id}`);
   }
@@ -91,6 +96,8 @@ export async function loadAgentConfigs(directory = '/etc/ambrogio/agents'): Prom
   catch { throw new ProjectError('Agent configuration directory unavailable'); }
   if (!filenames.includes('orchestrator.json')) throw new ProjectError('Missing orchestrator configuration');
   const specialistNames = filenames.filter((name) => name.endsWith('.json') && name !== 'orchestrator.json');
+  // The orchestrator only chooses: at least one agent must be able to answer.
+  if (specialistNames.length === 0) throw new ProjectError('No specialist agent configured');
   for (const filename of specialistNames) {
     if (!agentId.test(filename.slice(0, -5))) throw new ProjectError('Invalid agent configuration filename');
   }

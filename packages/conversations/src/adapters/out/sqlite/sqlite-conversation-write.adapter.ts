@@ -81,7 +81,7 @@ export class SqliteConversationWrite implements ConversationWrite {
       const turn = restoreTurn(row);
       let result: Result<void, { kind: 'already_closed' }>;
       switch (input.outcome.kind) {
-        case 'answer': result = turn.answer(input.outcome.text, input.finishedAt); break;
+        case 'answer': result = turn.answer(input.outcome.text, input.finishedAt, input.outcome.agent); break;
         case 'error': result = turn.fail(input.outcome.message, input.finishedAt); break;
         case 'interrupted': result = turn.interrupt(input.finishedAt); break;
         default: return assertNever(input.outcome);
@@ -93,6 +93,7 @@ export class SqliteConversationWrite implements ConversationWrite {
         status: state.status,
         answer: state.status === 'answered' ? state.answer : null,
         error: state.status === 'failed' ? state.error : null,
+        agent: state.status === 'answered' ? state.agent ?? null : null,
         finished_at: toMillis(state.finishedAt),
       }).where('id', '=', input.turnId).where('status', '=', 'pending').executeTakeFirst();
       if (updated.numUpdatedRows !== 1n) throw new ProjectError('Turn completion postcondition failed');

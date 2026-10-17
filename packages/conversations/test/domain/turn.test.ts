@@ -46,6 +46,22 @@ describe('Turn', () => {
     expect(() => Turn.restore({ ...turn.snapshot(), status: 'unknown' } as never)).toThrow();
   });
 
+  // Verification: Prova della continuità dell'agente nella conversazione
+  it('keeps the responding agent only on answered turns', () => {
+    const turn = accepted();
+    expect(turn.answer('salve', new Date(1_700_000_000_001), 'home').ok).toBe(true);
+    expect(turn.snapshot()).toMatchObject({ status: 'answered', answer: 'salve', agent: 'home' });
+    expect(Turn.restore(turn.snapshot()).snapshot()).toEqual(turn.snapshot());
+    const unknown = accepted();
+    unknown.answer('salve', new Date(1_700_000_000_001));
+    expect('agent' in unknown.snapshot()).toBe(false);
+    expect(() => accepted().answer('salve', new Date(1_700_000_000_001), '')).toThrow();
+    const failed = accepted();
+    failed.fail('Errore pubblico', new Date(1_700_000_000_001));
+    expect(() => Turn.restore({ ...failed.snapshot(), agent: 'home' } as never)).toThrow();
+    expect(() => Turn.restore({ ...turn.snapshot(), agent: '' } as never)).toThrow();
+  });
+
   it('defensively copies valid dates on creation, restore and read', () => {
     const supplied = new Date(1_700_000_000_000);
     const turn = Turn.accept({ id, text: 'ciao', acceptedAt: supplied });

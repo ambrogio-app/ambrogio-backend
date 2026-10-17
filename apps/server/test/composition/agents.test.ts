@@ -74,3 +74,34 @@ test('closes an earlier MCP connection when a later agent cannot start', async (
     expect(closed).toEqual(['https://home.example/mcp']);
   } finally { await fixture.close(); }
 });
+
+// Verification: Prova dell'agente specializzato senza connettore MCP
+test('prepares an agent without MCP without opening any connection', async () => {
+  const fixture = await files();
+  const connected: string[] = [];
+  try {
+    await writeFile(join(fixture.directory, 'generic.json'), JSON.stringify({
+      description: 'Answers general questions.', instructions: 'Answer from knowledge.', llm: fixture.llm }));
+    await writeFile(join(fixture.directory, 'home.json'), JSON.stringify({
+      description: 'Controls the home.', maxToolCalls: 2, instructions: 'Use tools.', llm: fixture.llm,
+      mcp: { url: 'https://home.example/mcp' } }));
+    const agents = await prepareAgents(fixture.directory, async (connection) => {
+      connected.push(connection.url);
+      return { listTools: async () => [], callTool: async () => ({ isError: false, content: [] }),
+        close: async () => {} };
+    });
+    expect(agents.specialists.map((agent) => [agent.id, agent.mcp === undefined, agent.tools.length]))
+      .toEqual([['generic', true, 0], ['home', false, 0]]);
+    expect(connected).toEqual(['https://home.example/mcp']);
+    await agents.close();
+  } finally { await fixture.close(); }
+});
+
+// Verification: Prova delle configurazioni degli agenti con e senza MCP
+test('fails before any connection when there is no specialist agent', async () => {
+  const fixture = await files();
+  try {
+    await expect(prepareAgents(fixture.directory, async () => { throw new Error('Should not connect'); }))
+      .rejects.toThrow('No specialist agent configured');
+  } finally { await fixture.close(); }
+});

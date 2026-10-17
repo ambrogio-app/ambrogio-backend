@@ -19,6 +19,8 @@ async function testServer() {
       reply.writeHead(404).end();
       return;
     }
+    // A tool that never answers, like a stalled connector.
+    if (rpc.method === 'tools/call' && (rpc as { params?: { name?: string } }).params?.name === 'stall') return;
     if (rpc.method === 'notifications/initialized') {
       reply.writeHead(202).end();
       return;
@@ -38,7 +40,10 @@ async function testServer() {
   });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   return { url: `http://127.0.0.1:${(server.address() as AddressInfo).port}/mcp`, seen,
-    close: () => new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve())) };
+    close: () => new Promise<void>((resolve, reject) => {
+      server.closeAllConnections();
+      server.close((error) => error ? reject(error) : resolve());
+    }) };
 }
 
 test.each([undefined, { type: 'bearer' as const, token: 'agent-token' }])(
@@ -59,6 +64,22 @@ test.each([undefined, { type: 'bearer' as const, token: 'agent-token' }])(
     }
   },
 );
+
+// Verification: Prova del tempo massimo della produzione della risposta
+test('aborts an in-flight tool invocation when the turn signal is aborted', async () => {
+  const server = await testServer();
+  let client: McpToolClient | undefined;
+  try {
+    client = await McpToolClient.connect({ url: server.url });
+    const controller = new AbortController();
+    const call = client.callTool('stall', {}, controller.signal);
+    setTimeout(() => controller.abort(), 20);
+    await expect(call).rejects.toThrow('MCP tool invocation failed');
+  } finally {
+    await client?.close();
+    await server.close();
+  }
+});
 
 test('preserves the original cause when MCP operations add safe operational context', async () => {
   async function expectContext(operation: Promise<unknown>, message: string, cause: unknown) {

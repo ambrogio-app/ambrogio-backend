@@ -29,7 +29,12 @@ try {
   }));
   writeFileSync(join(config, 'agents', 'orchestrator.json'), JSON.stringify({
     instructions: 'Docker image verification',
-    llm: { provider: 'mistral', model: 'mistral-small-latest', apiKey: 'test-only-placeholder' },
+    llm: { provider: 'mistral', model: 'mistral-medium-latest', apiKey: 'test-only-placeholder' },
+  }));
+  // The orchestrator only chooses: at least one agent, here one without MCP, must answer.
+  writeFileSync(join(config, 'agents', 'generic.json'), JSON.stringify({
+    description: 'Answers general questions.', instructions: 'Docker image verification',
+    llm: { provider: 'mistral', model: 'mistral-medium-latest', apiKey: 'test-only-placeholder' },
   }));
 
   if (!existingImage) docker('build', '--tag', image, '.');

@@ -64,7 +64,7 @@ async function listen(built: Awaited<ReturnType<typeof buildConversationServer>>
 async function downgradeArchiveToInitial(filename: string) {
   const archive = await openConversationArchive(filename, new Date());
   try {
-    for (const name of ['006_per_conversation_occupancy', '005_remove_turn_owner', '004_turn_owner',
+    for (const name of ['007_turn_agent', '006_per_conversation_occupancy', '005_remove_turn_owner', '004_turn_owner',
       '003_list_order', '002_ordered_turns'] as const) {
       await conversationMigrations[name].down(archive.db);
     }
@@ -723,6 +723,7 @@ test('a failed archive migration prevents the conversation listener', async () =
   await new Promise<void>((resolve) => probe.close(() => resolve()));
 });
 
+// Verification: Prova della scelta dell'agente da parte dell'orchestratore
 test('a session turn delegates to a configured MCP tool and persists the answer', async () => {
   const files = await fixture();
   const agentDirectory = join(files.directory, 'agents');
@@ -762,6 +763,7 @@ test('a session turn delegates to a configured MCP tool and persists the answer'
     mcp: { url: `http://127.0.0.1:${address.port}/mcp` },
   }));
   const modelRequests: Array<{ model: string; instructions: string }> = [];
+  const routerPrompts: unknown[] = [];
   let orchestratorStep = 0;
   let runtime: Awaited<ReturnType<typeof startConversationServer>> | undefined;
   // The adapter appends the reply-format guidance to the configured instructions.
@@ -784,25 +786,24 @@ test('a session turn delegates to a configured MCP tool and persists the answer'
         doStream: async (request) => {
           modelRequests.push({ model: 'controlled-model',
             instructions: configuredInstructions(request.prompt[0]?.content) });
-          const first = specialistStep++ === 0;
-          return { stream: simulateReadableStream({ chunks: first ? [
+          const step = specialistStep++;
+          return { stream: simulateReadableStream({ chunks: step % 3 === 0 ? [
             { type: 'tool-call', toolCallId: 'tool-1', toolName: 'mcp_0',
               input: '{"key":"answer"}' }, finish('tool-calls'),
-          ] as any[] : [...answer('Answer from tool.'), finish('stop')] as any[] }) };
+          ] as any[] : [...answer(step % 3 === 1 ? 'Answer from tool.' : 'Second answer.'), finish('stop')] as any[] }) };
         } });
       const specialist = new AiSdkToolAgentReply({ instructions: config.instructions,
         model: config.llm.model, apiKey: config.llm.apiKey },
         tools, mcp, config.maxToolCalls!, specialistModel);
       const orchestratorModel = new MockLanguageModelV4({ modelId: 'controlled-model',
-        doStream: async (request) => {
+        doGenerate: async (request) => {
           modelRequests.push({ model: 'controlled-model',
             instructions: configuredInstructions(request.prompt[0]?.content) });
-          expect(request.tools?.[0]?.description).toBe('Find facts.');
-          const first = orchestratorStep++ === 0;
-          return { stream: simulateReadableStream({ chunks: first ? [
-            { type: 'tool-call', toolCallId: 'delegate-1', toolName: 'facts',
-              input: '{}' }, finish('tool-calls'),
-          ] as any[] : [...answer('Direct answer.'), finish('stop')] as any[] }) };
+          routerPrompts.push(request.prompt.slice(1));
+          expect(String(request.prompt[0]?.content)).toContain('- facts: Find facts.');
+          orchestratorStep++;
+          return { content: [{ type: 'text', text: '{"agent":"facts"}' }], warnings: [],
+            finishReason: { unified: 'stop', raw: undefined }, usage } as any;
         } });
       const orchestrator = new AiSdkOrchestratorReply({
         instructions: configs.orchestrator.instructions, model: configs.orchestrator.llm.model,
@@ -823,19 +824,29 @@ test('a session turn delegates to a configured MCP tool and persists the answer'
     const id = delegated.accepted!.conversationId as string;
     const list = await fetch(`http://127.0.0.1:${port}/api/conversations`);
     expect((await list.json() as { items: Array<{ id: string }> }).items.map(item => item.id)).toEqual([id]);
-    const direct = await client.textTurn('Answer directly.', { conversationId: id });
-    expect(direct.final.type).toBe('turn.completed');
-    expect(direct.outputs[0]!.text).toBe('Direct answer.');
+    const second = await client.textTurn('And the next one?', { conversationId: id });
+    expect(second.final.type).toBe('turn.completed');
+    expect(second.outputs[0]!.text).toBe('Second answer.');
     expect(calls).toEqual(['lookup']);
     expect(modelRequests).toEqual([
       { model: 'controlled-model', instructions: 'Delegate fact lookups.' },
       { model: 'controlled-model', instructions: 'Use lookup.' },
       { model: 'controlled-model', instructions: 'Use lookup.' },
       { model: 'controlled-model', instructions: 'Delegate fact lookups.' },
+      { model: 'controlled-model', instructions: 'Use lookup.' },
     ]);
+    // Verification: Prova della continuità dell'agente nella conversazione
+    // The router sees which agent answered the stored turn; clients never do.
+    expect(routerPrompts[1]).toEqual([
+      { role: 'user', content: [{ type: 'text', text: 'What is the answer?' }] },
+      { role: 'assistant', content: [{ type: 'text', text: '[agent: facts] Answer from tool.' }] },
+      { role: 'user', content: [{ type: 'text', text: 'And the next one?' }] },
+    ]);
+    expect(JSON.stringify([delegated, second])).not.toContain('facts');
     const history = await fetch(`http://127.0.0.1:${port}/api/conversations/${id}`);
-    const turns = (await history.json() as { turns: Array<{ answer: string }> }).turns;
-    expect(turns.map((turn) => turn.answer)).toEqual(['Answer from tool.', 'Direct answer.']);
+    const historyBody = await history.json() as { turns: Array<Record<string, unknown>> };
+    expect(historyBody.turns.map((turn) => turn.answer)).toEqual(['Answer from tool.', 'Second answer.']);
+    expect(historyBody.turns.every((turn) => !('agent' in turn))).toBe(true);
     await client.close();
     await runtime.close();
     runtime = undefined;
@@ -882,6 +893,28 @@ test('unavailable configured MCP connector prevents the conversation listener', 
   await expect(startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
     AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, agentDirectory))
     .rejects.toThrow('MCP connection failed');
+  const probe = createServer();
+  await new Promise<void>((resolve, reject) => {
+    probe.once('error', reject);
+    probe.listen(port, '127.0.0.1', resolve);
+  });
+  await new Promise<void>((resolve) => probe.close(() => resolve()));
+});
+
+// Verification: Prova delle configurazioni degli agenti con e senza MCP
+test('a directory without specialist agents prevents the conversation listener', async () => {
+  const files = await fixture();
+  const agentDirectory = join(files.directory, 'agents');
+  await mkdir(agentDirectory);
+  const port = await freePort();
+  await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
+  await writeFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
+  await writeFile(join(agentDirectory, 'orchestrator.json'), JSON.stringify({
+    instructions: 'Choose.', llm: { provider: 'mistral', model: 'controlled-model', apiKey: 'fake-key' },
+  }));
+  await expect(startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
+    AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, agentDirectory))
+    .rejects.toThrow('No specialist agent configured');
   const probe = createServer();
   await new Promise<void>((resolve, reject) => {
     probe.once('error', reject);

@@ -1,5 +1,6 @@
 import { createMistral } from '@ai-sdk/mistral';
-import { jsonSchema, Output, stepCountIs, streamText, tool, type LanguageModel, type ModelMessage } from 'ai';
+import { generateText, jsonSchema, Output, stepCountIs, streamText, tool, type LanguageModel,
+  type ModelMessage } from 'ai';
 import { ProjectError } from '../../project-error.js';
 import type { ConversationHistory } from '../../application/conversation-history-read.js';
 import type { ProduceConversationReply, ReplyPart } from '../../application/produce-conversation-reply.js';
@@ -12,7 +13,7 @@ export type AgentSettings = Readonly<{
   options?: Readonly<Record<string, unknown>>;
 }>;
 
-type ToolClient = { callTool(name: string, args: Record<string, unknown>): Promise<Readonly<{
+type ToolClient = { callTool(name: string, args: Record<string, unknown>, signal?: AbortSignal): Promise<Readonly<{
   isError: boolean; content: readonly unknown[];
 }>> };
 
@@ -44,11 +45,14 @@ function modelFor(settings: AgentSettings, model?: LanguageModel): LanguageModel
   return model ?? createMistral({ apiKey: settings.apiKey })(settings.model);
 }
 
-function messagesFor(history: ConversationHistory): ModelMessage[] {
+/** The stored conversation; only the router sees which agent gave each answer. */
+function messagesFor(history: ConversationHistory, showAgents = false): ModelMessage[] {
   const messages: ModelMessage[] = [];
   for (const turn of history.turns) {
     messages.push({ role: 'user', content: turn.text });
-    if (turn.status === 'answered') messages.push({ role: 'assistant', content: turn.answer });
+    if (turn.status !== 'answered') continue;
+    const marker = showAgents && turn.agent !== undefined ? `[agent: ${turn.agent}] ` : '';
+    messages.push({ role: 'assistant', content: `${marker}${turn.answer}` });
   }
   return messages;
 }
@@ -112,7 +116,7 @@ export class AiSdkToolAgentReply implements ProduceConversationReply {
     this.model = modelFor(settings, model);
   }
 
-  async *produce(history: ConversationHistory): AsyncIterable<ReplyPart> {
+  async *produce(history: ConversationHistory, signal: AbortSignal): AsyncIterable<ReplyPart> {
     let used = 0;
     // Structured output reports a failed step only as a missing object; keep the limit failure.
     let limitExceeded: ProjectError | undefined;
@@ -121,19 +125,19 @@ export class AiSdkToolAgentReply implements ProduceConversationReply {
         description: available.description ?? available.name,
         inputSchema: jsonSchema<Record<string, unknown>>(
           available.inputSchema as Parameters<typeof jsonSchema>[0]),
-        execute: async input => {
+        execute: async (input, { abortSignal }) => {
           if (++used > this.maxToolCalls) {
             limitExceeded = new ProjectError('MCP tool call limit exceeded');
             throw limitExceeded;
           }
-          return this.mcp.callTool(available.name, input);
+          return this.mcp.callTool(available.name, input, abortSignal ?? signal);
         },
       }),
     ]));
     const response = streamText({ model: this.model, system: replyInstructions(this.settings.instructions),
       messages: messagesFor(history), tools, output: replyOutput,
       toolCallConcurrency: 1, stopWhen: stepCountIs(this.maxToolCalls + 1),
-      maxRetries: 0, ...this.options });
+      maxRetries: 0, abortSignal: signal, ...this.options });
     try {
       const emitted = yield* answerParts(response);
       yield* concludeAnswer(response, emitted);
@@ -141,51 +145,73 @@ export class AiSdkToolAgentReply implements ProduceConversationReply {
   }
 }
 
-export type DelegatedAgent = Readonly<{ id: string; description: string;
-  reply: Pick<AiSdkToolAgentReply, 'produce'> }>;
-
-export class AiSdkOrchestratorReply implements ProduceConversationReply {
+/** An agent without MCP: it answers with its own model and instructions, without tools. */
+export class AiSdkKnowledgeAgentReply implements ProduceConversationReply {
   private readonly model: LanguageModel;
   private readonly options: ReturnType<typeof aiSdkOptions>;
 
-  constructor(private readonly settings: AgentSettings,
-    private readonly specialists: readonly DelegatedAgent[], model?: LanguageModel) {
+  constructor(private readonly settings: AgentSettings, model?: LanguageModel) {
     this.options = aiSdkOptions(settings.options);
     this.model = modelFor(settings, model);
   }
 
-  async *produce(history: ConversationHistory): AsyncIterable<ReplyPart> {
-    // The function name is the agent identifier, already a valid provider function name.
-    const agents = new Map(this.specialists.map(agent => [agent.id, agent]));
-    const tools = Object.fromEntries([...agents].map(([name, agent]) => [name, tool({
-      description: agent.description,
-      // The delegation only names the agent: it has no arguments.
-      inputSchema: jsonSchema<Record<string, never>>({ type: 'object', properties: {},
-        additionalProperties: false }),
-    })]));
-    // One delegation per turn: the provider must not emit parallel delegations.
+  async *produce(history: ConversationHistory, signal: AbortSignal): AsyncIterable<ReplyPart> {
     const response = streamText({ model: this.model, system: replyInstructions(this.settings.instructions),
-      messages: messagesFor(history), tools, output: replyOutput,
-      providerOptions: { mistral: { parallelToolCalls: false } },
-      maxRetries: 0, ...this.options });
+      messages: messagesFor(history), output: replyOutput, maxRetries: 0, abortSignal: signal, ...this.options });
     try {
       const emitted = yield* answerParts(response);
-      const calls = await response.toolCalls;
-      if (calls.length) {
-        if (emitted) throw new ProjectError('Delegation after answer');
-        if (calls.length !== 1) throw new ProjectError('Invalid agent delegation');
-        const call = calls[0]!;
-        const agent = agents.get(call.toolName);
-        const input: unknown = call.input;
-        if (!agent || input === null || typeof input !== 'object'
-          || Array.isArray(input) || Object.keys(input).length > 0) {
-          throw new ProjectError('Invalid agent delegation');
-        }
-        // The chosen agent answers the original turn from the stored history.
-        yield* agent.reply.produce(history);
-        return;
-      }
       yield* concludeAnswer(response, emitted);
     } catch (error) { throwStreamError(error); }
+  }
+}
+
+export type DelegatedAgent = Readonly<{ id: string; description: string;
+  reply: Pick<ProduceConversationReply, 'produce'> }>;
+
+function routerInstructions(instructions: string, agents: readonly DelegatedAgent[]): string {
+  return `${instructions}\nAvailable agents:\n${agents.map(agent => `- ${agent.id}: ${agent.description}`).join('\n')}\n`
+    + 'Choose the agent that must answer the last message of the family and put its identifier in agent. '
+    + 'Previous answers are marked with [agent: <id>] when the answering agent is known. '
+    + 'Do not answer the message yourself.';
+}
+
+/** The orchestrator only chooses the agent; the chosen agent formulates the whole reply. */
+export class AiSdkOrchestratorReply implements ProduceConversationReply {
+  private readonly model: LanguageModel;
+  private readonly options: ReturnType<typeof aiSdkOptions>;
+  private readonly agents: ReadonlyMap<string, DelegatedAgent>;
+  private readonly choice: ReturnType<typeof Output.object<{ agent: string }>>;
+
+  constructor(private readonly settings: AgentSettings,
+    private readonly specialists: readonly DelegatedAgent[], model?: LanguageModel) {
+    if (specialists.length === 0) throw new ProjectError('No specialist agent configured');
+    this.options = aiSdkOptions(settings.options);
+    this.model = modelFor(settings, model);
+    this.agents = new Map(specialists.map(agent => [agent.id, agent]));
+    this.choice = Output.object({ schema: jsonSchema<{ agent: string }>({
+      type: 'object', properties: { agent: { type: 'string', enum: [...this.agents.keys()] } },
+      required: ['agent'], additionalProperties: false,
+    }) });
+  }
+
+  async *produce(history: ConversationHistory, signal: AbortSignal): AsyncIterable<ReplyPart> {
+    let agent: DelegatedAgent | undefined;
+    try {
+      const result = await generateText({ model: this.model,
+        system: routerInstructions(this.settings.instructions, this.specialists),
+        messages: messagesFor(history, true), output: this.choice,
+        maxRetries: 0, abortSignal: signal, ...this.options });
+      const output: unknown = result.output;
+      const fields = output !== null && typeof output === 'object' && !Array.isArray(output)
+        ? output as Record<string, unknown> : undefined;
+      // The schema is a closed choice: anything else selects no agent.
+      if (fields && Object.keys(fields).length === 1 && typeof fields.agent === 'string') {
+        agent = this.agents.get(fields.agent);
+      }
+    } catch (error) { throwStreamError(error); }
+    if (!agent) throw new ProjectError('Invalid agent choice');
+    yield { kind: 'agent', agent: agent.id };
+    // The chosen agent answers the original turn from the stored history.
+    yield* agent.reply.produce(history, signal);
   }
 }

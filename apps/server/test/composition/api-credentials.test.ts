@@ -16,6 +16,13 @@ test('passes each agent JSON credential to its own controlled Mistral client', a
     const request = new Request(input, init);
     seen.push({ authorization: request.headers.get('authorization'),
       body: JSON.parse(await request.text()) as unknown });
+    const body = JSON.parse(await new Request(input, init).text()) as { stream?: boolean };
+    if (!body.stream) {
+      return Response.json({ id: 'controlled-0', object: 'chat.completion', created: 0,
+        model: 'mistral-small-latest', choices: [{ index: 0,
+          message: { role: 'assistant', content: '{"agent":"bearer"}' }, finish_reason: 'stop' }],
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } });
+    }
     const event = { id: 'controlled-1', object: 'chat.completion.chunk', created: 0,
       model: 'mistral-small-latest', choices: [{ index: 0, delta: { content: '{"answer":"answer","expectsReply":false}' },
         finish_reason: null }] };
@@ -51,12 +58,13 @@ test('passes each agent JSON credential to its own controlled Mistral client', a
       await writeFile(join(directory, 'orchestrator.json'), '{');
       await writeFile(join(directory, 'bearer.json'), '{');
       await writeFile(join(directory, 'oauth.json'), '{');
-      for await (const _chunk of agents.orchestrator.produce(history)) { /* consume response */ }
+      for await (const _chunk of agents.orchestrator.produce(history, new AbortController().signal)) { /* consume response */ }
       for (const specialist of agents.specialists) {
-        for await (const _chunk of specialist.reply.produce(history)) { /* consume response */ }
+        for await (const _chunk of specialist.reply.produce(history, new AbortController().signal)) { /* consume response */ }
       }
       expect(seen.map(request => request.authorization)).toEqual([
-        'Bearer orchestrator-json-key', 'Bearer specialist-json-key',
+        // The orchestrator chooses the bearer agent, which answers; then each agent answers directly.
+        'Bearer orchestrator-json-key', 'Bearer specialist-json-key', 'Bearer specialist-json-key',
         'Bearer oauth-agent-json-key',
       ]);
       expect(seen.every(request => (request.body as { model?: string }).model

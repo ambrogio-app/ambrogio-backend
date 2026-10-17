@@ -15,7 +15,7 @@ export type AdmitTurn = Readonly<{
 export type CompleteTurn = Readonly<{
   turnId: string;
   outcome:
-    | Readonly<{ kind: 'answer'; text: string }>
+    | Readonly<{ kind: 'answer'; text: string; agent?: string }>
     | Readonly<{ kind: 'error'; message: string }>
     | Readonly<{ kind: 'interrupted' }>;
   finishedAt: Date;

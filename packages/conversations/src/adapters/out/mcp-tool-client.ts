@@ -49,11 +49,12 @@ export class McpToolClient {
     } catch (error) { throw new ProjectError('MCP tool discovery failed', { cause: error }); }
   }
 
-  async callTool(name: string, args: Record<string, unknown>): Promise<Readonly<{
+  /** The signal cancels the request still in flight when the turn must stop. */
+  async callTool(name: string, args: Record<string, unknown>, signal?: AbortSignal): Promise<Readonly<{
     isError: boolean; content: readonly unknown[];
   }>> {
     try {
-      const result = await this.client.callTool({ name, arguments: args });
+      const result = await this.client.callTool({ name, arguments: args }, signal ? { signal } : undefined);
       return { isError: result.isError === true, content: result.content };
     } catch (error) { throw new ProjectError('MCP tool invocation failed', { cause: error }); }
   }

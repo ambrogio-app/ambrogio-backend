@@ -830,10 +830,10 @@ La prova passa se in entrambi i casi la produzione prosegue fino al proprio esit
 
 ### Prova della decisione e della delega dell'orchestratore
 
-Eseguire due turni con un orchestratore controllato: nel primo fargli scegliere una risposta diretta, nel secondo fargli affidare il compito a un agente specializzato controllato. Consultare la conversazione dopo ciascun esito.
+Eseguire due turni con un orchestratore controllato: nel primo fargli scegliere una risposta diretta, nel secondo fargli affidare il turno a un agente specializzato controllato. Consultare la conversazione dopo ciascun esito.
 
 #### Details
-La prova passa se la risposta diretta non attiva un agente specializzato, il turno delegato attiva soltanto l'agente scelto e in entrambi i casi l'esito viene comunicato e conservato nella conversazione del turno. Fallisce se il turno viene perso, attribuito a un'altra conversazione o delegato a un agente non scelto. La prova resta da eseguire dopo l'implementazione.
+La prova passa se la risposta diretta non attiva un agente specializzato, il turno delegato attiva soltanto l'agente scelto con una funzione senza argomenti, l'agente riceve lo storico con il testo originale del turno senza riformulazioni dell'orchestratore e in entrambi i casi l'esito viene comunicato e conservato nella conversazione del turno. Fallisce se il turno viene perso, attribuito a un'altra conversazione, delegato a un agente non scelto, se la delega con argomenti viene accettata o se l'agente riceve un compito riformulato al posto del testo originale.
 
 #### Metadata
   * type: test-verification

@@ -23,7 +23,7 @@ Componente conversazionale di Ambrogio che usa un modello linguistico e istruzio
 
 ### Agente orchestratore
 
-Agente che riceve la richiesta conversazionale della famiglia e sceglie se formulare direttamente una risposta o affidare il compito a un agente specializzato, usando l'esito per comporre la risposta alla famiglia.
+Agente che riceve la richiesta conversazionale della famiglia e sceglie se formulare direttamente una risposta o affidare il turno a un agente specializzato; nel secondo caso indica soltanto l'agente, e la risposta dell'agente scelto è la risposta alla famiglia.
 
 #### Metadata
   * type: concept
@@ -88,3 +88,4 @@ Singola richiesta formulata dalla famiglia in una conversazione. È rappresentat
 #### Relations
   * derivedFrom: [Lessico Ambrogio](#lessico-ambrogio)
 ---
+

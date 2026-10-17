@@ -70,7 +70,7 @@ Dopo `input.end` il server comunica l'ammissione oppure il rifiuto del turno. `t
 
 Ogni turno termina con un solo messaggio di esito, successivo all'ultima trasmissione del turno: `turn.completed` con `turnId` ed `expectsReply` booleano, inviato soltanto dopo la conferma del commit dell'esito riuscito; `turn.failed` con `turnId` e `message`, uguale al messaggio pubblico conservato come esito di errore; `turn.interrupted` con `turnId`, quando l'arresto del server interrompe il turno; `turn.rejected` con `requestId`, `reason` e `message` per un turno non ammesso, senza `turnId`. La fine della generazione del modello, `output.end` o la chiusura della sessione non attestano un esito conservato.
 
-Se la sessione si chiude dopo l'ammissione, il backend completa il turno e ne conserva l'esito; i messaggi non consegnati non vengono ripetuti in una sessione successiva e l'esito si legge dallo storico. Un guasto della persistenza dopo l'ammissione segue la politica di indisponibilità degli ingressi e non viene comunicato come `turn.completed`.
+Se la sessione si chiude dopo l'ammissione, il backend completa il turno e ne conserva l'esito; i messaggi non consegnati non vengono ripetuti in una sessione successiva e l'esito si legge dallo storico. Un guasto della persistenza dopo l'ammissione segue la politica di indisponibilità degli ingressi e non viene comunicato come `turn.completed`: il server trasmette il messaggio standard del guasto conversazionale e conclude il turno con `turn.failed` con lo stesso messaggio, anche se l'esito non è stato conservato; il turno rimasto senza esito viene riconosciuto come interrotto al riavvio.
 
 #### Metadata
   * type: input-output

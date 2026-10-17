@@ -22,6 +22,9 @@ Quando il file di un agente specializzato non contiene un connettore MCP, Ambrog
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
+  * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -847,6 +850,13 @@ Quando l'orchestratore sceglie l'agente per un turno di una conversazione con tu
 
 #### Relations
   * derivedFrom: [Orchestrazione della risposta conversazionale](#orchestrazione-della-risposta-conversazionale)
+  * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
+  * satisfiedBy: [migrations.ts](../../packages/conversations/src/adapters/out/sqlite/migrations.ts)
+  * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
+  * satisfiedBy: [sqlite-turn-mapper.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-mapper.ts)
+  * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
+  * satisfiedBy: [get-conversation.use-case.ts](../../packages/conversations/src/application/get-conversation.use-case.ts)
+  * satisfiedBy: [turn.ts](../../packages/conversations/src/domain/turn.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -1181,6 +1191,9 @@ Quando la produzione della risposta di un turno ammesso non termina entro il tem
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
+  * satisfiedBy: [mcp-tool-client.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.ts)
+  * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 

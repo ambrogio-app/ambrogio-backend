@@ -265,6 +265,31 @@ Quando il server prepara la consultazione dell'elenco delle conversazioni, deve 
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
+### Configurazione pronta del connettore Home Assistant
+
+Il repository deve fornire un file JSON pronto dell'agente Home Assistant, accettato dalla validazione delle configurazioni degli agenti, che chi installa completa con l'indirizzo di Home Assistant e con le proprie credenziali senza modificarne la struttura.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Interazione domestica tramite Home Assistant](../Capabilities/FamilyAssistance.md#interazione-domestica-tramite-home-assistant)
+
+#### Contract Bindings
+* [Profilo del connettore Home Assistant](../Contracts/FamilyConversation.md#profilo-del-connettore-home-assistant)
+---
+
+### Connettore Home Assistant tramite il server MCP di Home Assistant
+
+Dove l'installazione abilita il connettore Home Assistant, il server deve raggiungere Home Assistant attraverso un agente specializzato con connettore MCP collegato all'integrazione ufficiale «Model Context Protocol Server» di Home Assistant e autenticato con un token di accesso di lunga durata di Home Assistant.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Interazione domestica tramite Home Assistant](../Capabilities/FamilyAssistance.md#interazione-domestica-tramite-home-assistant)
+---
+
 ### Conservazione del testo originale del turno
 
 Quando Ambrogio accetta un turno testuale dalla chat o dalla trascrizione vocale, deve conservare il testo ricevuto senza rimuovere né modificare gli spazi iniziali, finali o interni. L'eventuale rimozione degli spazi per verificare se il testo è vuoto non modifica il testo accettato.

@@ -85,6 +85,20 @@ Il server non deve definire un catalogo globale condiviso dei rifiuti previsti d
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
+### Blocco locale dei commit con segreti
+
+Quando un clone del repository ha attivato gli hook Git versionati e viene creato un commit, il commit deve essere impedito se le modifiche in staging contengono un segreto oppure se lo scanner dei segreti non è disponibile.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+
+#### Contract Bindings
+* [Profilo di scansione dei segreti con gitleaks](../Contracts/ServerFoundation.md#profilo-di-scansione-dei-segreti-con-gitleaks)
+---
+
 ### Campi specifici dei rifiuti previsti
 
 Le varianti di rifiuto previsto di Domain, Application e delle porte del server devono contenere, oltre a `kind`, soltanto eventuali campi specifici tipizzati, stabili nel loro significato e necessari al chiamante, senza imporre campi generici comuni obbligatori a tutte le varianti.
@@ -219,6 +233,17 @@ Ogni modulo business del server che usa `Result<T, E>` deve definire il tipo nel
 ### Diagnostica dei guasti nei componenti tecnici
 
 Quando un guasto inatteso del server richiede diagnostica, la diagnostica deve essere gestita dai componenti tecnici che trattano il guasto.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
+### Diagnostica del mancato avvio del server
+
+Se la preparazione del processo server fallisce prima che il server sia in ascolto, il processo deve emettere un unico log diagnostico definitivo che identifichi la causa del mancato avvio senza riprodurre valori segreti, comunicare il mancato avvio su stderr e terminare con un codice di uscita non riuscito.
 
 #### Metadata
   * type: requirement
@@ -778,6 +803,17 @@ Quando un'operazione Domain, un caso d'uso Application o una porta Application d
   * satisfiedBy: [complete-turn.use-case.ts](../../packages/conversations/src/application/complete-turn.use-case.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
   * satisfiedBy: [turn.ts](../../packages/conversations/src/domain/turn.ts)
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
+### Scansione dei segreti nella CI del backend
+
+Quando una modifica viene inviata al repository remoto o proposta per l'integrazione, e prima della pubblicazione di un'immagine di release, la CI deve scansionare l'intera storia Git del repository alla ricerca di segreti e impedire integrazione e pubblicazione se la scansione rileva un segreto o non può essere completata.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 

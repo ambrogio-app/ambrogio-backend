@@ -347,6 +347,19 @@ La configurazione JSON mantiene `llm.provider: "mistral"`, `model`, `apiKey` e l
   * define: [Risposta testuale nella conversazione](../Requirements/FamilyConversation.md#risposta-testuale-nella-conversazione)
 ---
 
+### Profilo del connettore Home Assistant
+
+Decisione concordata con la persona il 18 ottobre 2026. Il connettore Home Assistant non richiede codice dedicato: è un agente specializzato configurato con il client MCP comune, il trasporto Streamable HTTP e il Bearer statico già definiti. La sezione `mcp.url` indica l'endpoint `/api/mcp` dell'integrazione ufficiale «Model Context Protocol Server» di Home Assistant, per esempio `http://homeassistant.local:8123/api/mcp`; `mcp.auth` ha `type: "bearer"` e `token` pari a un token di accesso di lunga durata creato nel profilo dell'utente Home Assistant, nella scheda Sicurezza. Home Assistant offre ai client MCP soltanto le entità esposte ad Assist: la scelta dei dispositivi che Ambrogio può consultare o comandare appartiene alla configurazione di Home Assistant. L'autorizzazione OAuth con login interattivo e PKCE offerta da Home Assistant non è usata, perché il client MCP di Ambrogio non supporta flussi con login nel browser. Fonte: https://www.home-assistant.io/integrations/mcp_server/ .
+
+Il repository fornisce `examples/agents/home-assistant.json`, da copiare in `/etc/ambrogio/agents/home-assistant.json`, che definisce quindi l'agente con identificativo `home-assistant`. Il file contiene `description` che presenta all'orchestratore la consultazione dello stato e il comando dei dispositivi domestici; `instructions` che chiedono di rispondere in italiano, di usare gli strumenti per leggere stati ed eseguire azioni e di dichiarare un'azione eseguita soltanto dopo la conferma di uno strumento; `llm` con `provider: "mistral"`, `model: "mistral-medium-latest"` e `apiKey` segnaposto; `maxToolCalls: 5`; `mcp.url` con l'indirizzo d'esempio sopra indicato e `mcp.auth.token` segnaposto. I segnaposto sono `<MISTRAL_API_KEY>` e `<HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN>`: soddisfano la validazione strutturale, ma non sono credenziali utilizzabili e vanno sostituiti da chi installa.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Connettore Home Assistant tramite il server MCP di Home Assistant](../Requirements/FamilyConversation.md#connettore-home-assistant-tramite-il-server-mcp-di-home-assistant)
+---
+
 ### Profilo del trasporto MCP iniziale
 
 Per la prima implementazione, ogni agente specializzato usa il medesimo client MCP basato su `@modelcontextprotocol/client` versione 2.3.1, con trasporto Streamable HTTP verso l'endpoint indicato in `mcp.url` nel proprio file JSON. `mcp.url` è un URL HTTP o HTTPS assoluto. Il client segue il ciclo di inizializzazione del protocollo e usa la connessione per scoprire e invocare i tool del server configurato. La sezione `mcp` non contiene un campo `transport` e non richiede un comando locale da eseguire: il trasporto iniziale è determinato dal contratto. L'autenticazione segue i contratti del Bearer statico e di OAuth `client_credentials`. La compatibilità con il precedente trasporto HTTP+SSE sarà valutata separatamente prima di introdurla; il trasporto stdio non appartiene alla prima implementazione.

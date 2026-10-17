@@ -65,6 +65,19 @@ Quando la voce è abilitata, Vosk e la sintesi vocale sherpa-onnx sono eseguiti 
   * define: [Distribuzione del server come immagine Docker](../Requirements/ServerFoundation.md#distribuzione-del-server-come-immagine-docker)
 ---
 
+### Evento diagnostico del mancato avvio del server
+
+Decisione concordata con la persona il 18 ottobre 2026, perché la sola riga `Unable to start HTTP server.` non permetteva a chi installa Ambrogio di capire quale configurazione o risorsa impedisse l'avvio. L'entrypoint del processo server è il confine definitivo dei guasti avvenuti prima dell'ascolto: quando la preparazione fallisce emette una sola riga JSON Pino su `stdout` con livello `error`, `event: "server_startup_failed"`, il messaggio fisso `Server startup failed` e il campo `err`, poi scrive su `stderr` la riga invariata `Unable to start HTTP server.` e termina con codice di uscita `1`. Il server non si mette in ascolto e non emette altri log definitivi per lo stesso guasto.
+
+Il campo `err` segue il profilo controllato di serializzazione già adottato dal runtime HTTP: un `ProjectError` espone tipo, messaggio e stack; ogni altro valore riceve la descrizione costante `Unexpected startup failure` con stack oscurato, senza copiarne messaggio o proprietà. La catena `cause` non è serializzata. Per rendere identificabile la causa, le fasi di avvio che possono ricevere guasti esterni li incapsulano in un `ProjectError` con un messaggio fisso che nomina la fase e conserva l'originale come `cause`: `Conversation archive could not be prepared` per apertura, migrazione e recupero dell'archivio, `Voice components could not be loaded` per il caricamento di trascrizione e sintesi, `HTTP listener could not start` per l'ascolto, `Agent MCP connection failed: <id>` per connessione e scoperta degli strumenti MCP di un agente e `Invalid agent options: <id>` per opzioni del modello non valide. Un `ProjectError` già prodotto da una fase, come quelli di validazione dei file JSON, resta invariato. I messaggi possono contenere l'identificativo di un agente o il nome di un file di agente, ma mai valori letti dai file, URL, credenziali, token o chiavi.
+
+#### Metadata
+  * type: input-output
+
+#### Relations
+  * define: [Diagnostica del mancato avvio del server](../Requirements/ServerFoundation.md#diagnostica-del-mancato-avvio-del-server)
+---
+
 ### Forma del tipo Result
 
 La definizione TypeScript locale a un modulo business è `type Result<T, E> = Readonly<{ ok: true; value: T }> | Readonly<{ ok: false; error: E }>`; il ramo `ok: true` contiene `value`, il ramo `ok: false` contiene `error`. Entrambi i rami sono immutabili tramite `Readonly`.
@@ -188,6 +201,23 @@ Decisione concordata il 16 ottobre 2026: il backend pubblica l'immagine su GitHu
 
 #### Relations
   * define: [Pubblicazione dell'immagine Docker del server](../Requirements/ServerFoundation.md#pubblicazione-dellimmagine-docker-del-server)
+---
+
+### Profilo di scansione dei segreti con gitleaks
+
+Decisione concordata con la persona il 18 ottobre 2026: il repository backend usa gitleaks per impedire che chiavi API, token o altre credenziali entrino nella storia Git, con due controlli complementari, uno in CI e uno locale. La stessa scelta è adottata dagli altri repository di Ambrogio; questa registrazione riguarda soltanto il backend.
+
+Nella CI il workflow `.github/workflows/secret-scan.yml` è eseguito a ogni push su qualunque branch, a ogni pull request, su richiesta manuale e come workflow riutilizzabile. Esegue il checkout dell'intera storia (`fetch-depth: 0`) senza conservare le credenziali del checkout, scarica dalla release ufficiale l'archivio `gitleaks_8.30.1_linux_x64.tar.gz` di gitleaks v8.30.1 e ne verifica l'impronta SHA-256 `551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb`; un'impronta diversa interrompe il workflow con esito negativo. Lo scanner esegue `gitleaks git --redact --no-banner --exit-code 1 .` sull'intera storia; un ritrovamento produce esito negativo e i valori trovati sono oscurati nell'output. Il workflow di pubblicazione dell'immagine richiama questo workflow e il job di pubblicazione dipende dal suo esito, così che nessuna immagine venga pubblicata se la scansione fallisce.
+
+In locale l'hook versionato `.githooks/pre-commit`, script POSIX eseguibile, controlla le modifiche in staging con `gitleaks git --pre-commit --staged --redact --no-banner .` e impedisce il commit in caso di ritrovamento. Se `gitleaks` non è disponibile nel `PATH`, l'hook stampa un messaggio che indica come installarlo e impedisce il commit invece di proseguire senza controllo. L'hook si attiva una volta per clone con `git config core.hooksPath .githooks`; lo stesso vale per i commit eseguiti da strumenti come il server MCP Reqvire, che devono trovare `gitleaks` nel proprio `PATH`. La configurazione predefinita delle regole di gitleaks è adottata senza eccezioni; un'eccezione per un falso positivo richiede una nuova decisione registrata qui.
+
+Alternative considerate: l'action `gitleaks/gitleaks-action` richiede una chiave di licenza per i repository di organizzazioni e aggiunge una dipendenza di terze parti al percorso di pubblicazione, mentre il binario fissato con impronta verificata non dipende da licenze; un controllo solo in CI lascerebbe entrare il segreto nella storia locale e lo bloccherebbe soltanto al push; un controllo solo locale dipenderebbe dall'attivazione dell'hook in ogni clone e non proteggerebbe integrazione e pubblicazione. L'aggiornamento della versione di gitleaks richiede di aggiornare insieme versione e impronta.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Scansione dei segreti nella CI del backend](../Requirements/ServerFoundation.md#scansione-dei-segreti-nella-ci-del-backend)
 ---
 
 ### Profilo di uscita dei log tecnici

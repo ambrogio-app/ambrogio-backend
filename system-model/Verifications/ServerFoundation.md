@@ -27,6 +27,21 @@ La prova passa se il server rifiuta i nuovi turni con `unavailable`, richiede su
   * verify: [Interruzione dei turni durante l'arresto](../Requirements/ServerFoundation.md#interruzione-dei-turni-durante-larresto)
 ---
 
+### Prova della diagnostica del mancato avvio
+
+Provocare il fallimento dell'avvio del processo server in ciascuna fase: file HTTP o conversazionale mancante o invalido, file vocale invalido, directory degli agenti senza agenti specializzati, opzioni del modello non valide in un agente, server MCP di un agente irraggiungibile, archivio non apribile e porta di ascolto occupata. Inserire un segreto marcatore nei file e nelle credenziali MCP e un messaggio marcatore nel guasto esterno. Catturare `stdout`, `stderr` e codice di uscita.
+
+#### Details
+La prova passa se ogni caso produce su `stdout` una sola riga JSON con livello `error`, `event` `server_startup_failed` ed `err` conforme al profilo del contratto, con il messaggio fisso della fase o il messaggio di validazione già previsto e, per gli agenti, l'identificativo dell'agente; se `stderr` contiene `Unable to start HTTP server.`, il codice di uscita è `1` e il server non è in ascolto. Fallisce se manca l'evento o ne compaiono più di uno, se il segreto o il messaggio marcatore del guasto esterno compaiono in un output, se la causa non distingue la fase o l'agente, o se il processo termina con successo.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica del ciclo di vita del server](#verifica-del-ciclo-di-vita-del-server)
+  * verify: [Diagnostica del mancato avvio del server](../Requirements/ServerFoundation.md#diagnostica-del-mancato-avvio-del-server)
+---
+
 ### Verifica della distinzione degli esiti applicativi
 
 Raggruppa le prove che distinguono i rifiuti previsti dai guasti inattesi nelle operazioni Domain, nei casi d'uso Application e nelle porte del server.
@@ -520,6 +535,44 @@ La prova passa se il messaggio pubblico non contiene nessuno dei marcatori tecni
   * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
   * verify: [Esclusione dei dettagli tecnici dal messaggio pubblico](../Requirements/ServerFoundation.md#esclusione-dei-dettagli-tecnici-dal-messaggio-pubblico)
   * verify: [Separazione del messaggio pubblico dalla diagnosi tecnica](../Requirements/ServerFoundation.md#separazione-del-messaggio-pubblico-dalla-diagnosi-tecnica)
+---
+
+### Verifica della protezione dai segreti
+
+Raggruppa i controlli che impediscono l'ingresso di credenziali nella storia Git del backend, in CI e nei commit locali.
+
+#### Metadata
+  * type: verification-objective
+---
+
+### Controllo della scansione dei segreti in CI
+
+Esaminare `.github/workflows/secret-scan.yml` e `.github/workflows/publish-image.yml`: eventi che avviano la scansione, profondità del checkout, versione e impronta SHA-256 dell'archivio gitleaks, comando eseguito e dipendenza del job di pubblicazione dall'esito della scansione. Esaminare l'esito di un'esecuzione del workflow su GitHub quando disponibile.
+
+#### Details
+Il controllo passa se la scansione parte a ogni push su qualunque branch e a ogni pull request, esegue il checkout dell'intera storia senza conservare le credenziali, scarica gitleaks v8.30.1 e interrompe il workflow se l'impronta non coincide con quella del contratto, esegue `gitleaks git` su tutta la storia con valori oscurati e uscita non riuscita in caso di ritrovamento, e se il job di pubblicazione dell'immagine non può partire senza l'esito positivo della scansione. Fallisce se un evento previsto non avvia la scansione, se la storia è troncata, se il binario non è verificato o se un'immagine può essere pubblicata dopo una scansione fallita o non eseguita.
+
+#### Metadata
+  * type: inspection-verification
+
+#### Relations
+  * derivedFrom: [Verifica della protezione dai segreti](#verifica-della-protezione-dai-segreti)
+  * verify: [Scansione dei segreti nella CI del backend](../Requirements/ServerFoundation.md#scansione-dei-segreti-nella-ci-del-backend)
+---
+
+### Dimostrazione dell'hook pre-commit dei segreti
+
+In un clone con `core.hooksPath` impostato a `.githooks`, mettere in staging un file che contiene un segreto fittizio riconosciuto dalle regole predefinite di gitleaks e tentare il commit; ripetere con modifiche prive di segreti; ripetere con `gitleaks` assente dal `PATH`.
+
+#### Details
+La dimostrazione passa se il commit con il segreto fittizio è impedito e l'output non mostra il valore, il commit senza segreti riesce e, senza `gitleaks` nel `PATH`, il commit è impedito con un messaggio che indica come installare lo scanner. Fallisce se un commit con il segreto viene creato, se il valore compare in chiaro o se l'assenza dello scanner lascia passare il commit.
+
+#### Metadata
+  * type: demonstration-verification
+
+#### Relations
+  * derivedFrom: [Verifica della protezione dai segreti](#verifica-della-protezione-dai-segreti)
+  * verify: [Blocco locale dei commit con segreti](../Requirements/ServerFoundation.md#blocco-locale-dei-commit-con-segreti)
 ---
 
 ### Verifica della pubblicazione dell'immagine Docker del server

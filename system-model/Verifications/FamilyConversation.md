@@ -115,6 +115,21 @@ Raggruppa le prove di connessione, scoperta e invocazione dei tool tramite il cl
   * type: verification-objective
 ---
 
+### Dimostrazione del connettore Home Assistant su un'installazione reale
+
+Su un'installazione Home Assistant reale abilitare l'integrazione «Model Context Protocol Server», esporre ad Assist una luce e un sensore, creare un token di accesso di lunga durata e installare `examples/agents/home-assistant.json` completato con indirizzo, token e chiave API. Avviare il backend e chiedere in conversazione lo stato del sensore, poi di accendere e spegnere la luce; chiedere infine di comandare un'entità non esposta. Ripetere l'avvio con un token errato.
+
+#### Details
+La dimostrazione passa se il backend si avvia scoprendo gli strumenti di Home Assistant, la risposta riporta lo stato effettivo del sensore, la luce cambia stato in Home Assistant e la risposta lo dichiara solo dopo la conferma dello strumento, l'entità non esposta non viene comandata e, con il token errato, l'avvio fallisce con l'evento `server_startup_failed` che indica `Agent MCP connection failed: home-assistant` senza mostrare il token. Fallisce se uno di questi esiti non si verifica. La dimostrazione è affidata alla persona su un'installazione reale e non è ancora stata eseguita.
+
+#### Metadata
+  * type: demonstration-verification
+
+#### Relations
+  * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
+  * verify: [Connettore Home Assistant tramite il server MCP di Home Assistant](../Requirements/FamilyConversation.md#connettore-home-assistant-tramite-il-server-mcp-di-home-assistant)
+---
+
 ### Prova del Bearer token per i connettori MCP
 
 Configurare due agenti con `mcp.url` verso endpoint MCP Streamable HTTP di prova e token Bearer distinti in `mcp.auth: { "type": "bearer", "token": "…" }`. Far inizializzare i client, scoprire i tool e invocare un tool per agente; osservare gli header ricevuti dai due server e i log del processo. Ripetere con un token errato per uno degli agenti. Configurare un terzo endpoint senza `mcp.auth` e ripetere inizializzazione e invocazione. Provare anche un tipo di autenticazione non supportato e un token assente o vuoto.
@@ -165,6 +180,21 @@ La prova passa se ciascun agente usa il proprio limite, nessuna chiamata viene i
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
   * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
   * verify: [Limite delle chiamate agli strumenti per agente](../Requirements/FamilyConversation.md#limite-delle-chiamate-agli-strumenti-per-agente)
+---
+
+### Prova della configurazione pronta di Home Assistant
+
+Copiare `examples/agents/home-assistant.json` in una directory degli agenti di prova insieme a un orchestratore valido e caricarla con la validazione delle configurazioni degli agenti usata all'avvio. Esaminare i valori del file e cercare nei campi delle credenziali valori diversi dai segnaposto previsti.
+
+#### Details
+La prova passa se il file è accettato senza modifiche come agente specializzato `home-assistant` con connettore MCP, `mcp.url` termina con `/api/mcp`, `mcp.auth` è di tipo `bearer`, `maxToolCalls` vale 5, `llm` usa il provider `mistral` con il modello `mistral-medium-latest`, `description` e `instructions` corrispondono al contratto e le credenziali sono esattamente i segnaposto `<MISTRAL_API_KEY>` e `<HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN>`. Fallisce se il file viene rifiutato, se un campo differisce dal contratto o se contiene un valore che può essere una credenziale effettiva.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
+  * verify: [Configurazione pronta del connettore Home Assistant](../Requirements/FamilyConversation.md#configurazione-pronta-del-connettore-home-assistant)
 ---
 
 ### Prova della disponibilità degli agenti dai file JSON

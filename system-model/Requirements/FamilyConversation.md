@@ -82,16 +82,12 @@ Quando il processo avvia l'ingresso HTTP di consultazione delle conversazioni, d
 
 ### Avvio dell'ingresso dei turni conversazionali
 
-Quando il server avvia la conversazione testuale con agenti configurati, deve rendere disponibile l'invio HTTP dei turni con risposta SSE insieme alle rotte di elenco e storico, dopo aver validato i file degli agenti e preparato i loro connettori.
+Quando il server avvia la conversazione con agenti configurati, deve rendere disponibile il canale conversazionale insieme alle rotte HTTP di elenco e storico, dopo aver validato i file degli agenti e preparato i loro connettori.
 
 #### Metadata
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
-  * satisfiedBy: [main.ts](../../apps/server/src/main.ts)
-  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
-  * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -109,18 +105,6 @@ Il package del modulo business «Conversazioni» deve collocare il codice Domain
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Chiusura dell'interazione vocale
-
-Quando il client vocale chiude la WebSocket dopo una risposta conclusiva o per inattività, Ambrogio deve terminare la corrispondente interazione vocale e rilasciarne le risorse. La chiusura di un'interazione non deve interrompere quelle degli altri client.
-
-#### Metadata
-  * type: requirement
-
-#### Relations
-  * satisfiedBy: [voice-session.adapter.ts](../../packages/conversations/src/adapters/in/voice/voice-session.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
 ### Chiusura della risorsa SQLite conversazionale
 
 Quando il server termina normalmente o fallisce durante l'avvio dopo aver creato la risorsa SQLite/Kysely dell'archivio, il proprietario deve chiudere la risorsa dopo le operazioni che ne dipendono.
@@ -130,6 +114,17 @@ Quando il server termina normalmente o fallisce durante l'avvio dopo aver creato
 
 #### Contract References
   * [Ciclo di vita della risorsa SQLite conversazionale](../Contracts/FamilyConversation.md#ciclo-di-vita-della-risorsa-sqlite-conversazionale)
+
+#### Relations
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Chiusura della sessione conversazionale
+
+Quando la sessione conversazionale di un client si chiude, Ambrogio deve rilasciarne le risorse senza interrompere i turni già ammessi e senza influenzare le sessioni degli altri client.
+
+#### Metadata
+  * type: requirement
 
 #### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
@@ -161,7 +156,7 @@ Quando Ambrogio abilita un connettore a un server MCP configurato, deve usare un
 
 ### Completamento del turno accettato dopo disconnessione
 
-Quando il backend ha accettato un turno della chat testuale e il client si disconnette durante l'elaborazione, il backend deve proseguire il turno fino a un esito di risposta o di errore e conservarne lo scambio nella conversazione, indipendentemente dalla disponibilità del flusso SSE.
+Quando il backend ha ammesso un turno e la sessione del client si chiude durante l'elaborazione, il backend deve proseguire il turno fino a un esito di risposta o di errore e conservarne lo scambio nella conversazione, indipendentemente dalla possibilità di consegnare la risposta.
 
 #### Metadata
   * type: requirement
@@ -173,16 +168,30 @@ Quando il backend ha accettato un turno della chat testuale e il client si disco
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Comunicazione dell'identificativo della nuova conversazione testuale
+### Comunicazione degli identificativi del turno ammesso
 
-Quando un turno della chat testuale avvia una nuova conversazione, il backend deve comunicare al client l'identificativo della conversazione nel primo evento applicativo SSE, prima degli incrementi della risposta testuale.
+Quando ammette un turno, il backend deve comunicare al client l'identificativo della conversazione e quello del turno nel messaggio di ammissione, prima di ogni trasmissione della risposta, anche quando il turno continua una conversazione esistente.
 
 #### Metadata
   * type: requirement
 
 #### Contract References
+  * [Esiti del turno nel protocollo Ambrogio v1](../Contracts/ConversationProtocol.md#esiti-del-turno-nel-protocollo-ambrogio-v1)
   * [Identità di conversazioni e turni](../Contracts/FamilyConversation.md#identità-di-conversazioni-e-turni)
-  * [Profilo di trasporto SSE della chat](../Contracts/FamilyConversation.md#profilo-di-trasporto-sse-della-chat)
+
+#### Relations
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Conferma del completamento del turno
+
+Quando il backend completa correttamente un turno, deve inviare al client la conferma di completamento come ultimo messaggio del turno, dopo tutte le trasmissioni della risposta e dopo la conferma del commit dell'esito riuscito.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Confini atomici dell'archivio conversazioni](../Contracts/FamilyConversation.md#confini-atomici-dellarchivio-conversazioni)
 
 #### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
@@ -255,15 +264,15 @@ Quando Ambrogio comunica l'esito di un turno rappresentato come testo, deve cons
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Conservazione dell'errore dopo risposta testuale parziale
+### Conservazione dell'errore dopo risposta parziale
 
-Quando il backend ha trasmesso frammenti della risposta a un turno della chat testuale e poi comunica un errore conversazionale nel flusso, deve conservare lo scambio con esito di errore e con il messaggio pubblico della parte `error` definita dal profilo di trasporto, senza registrare i frammenti precedenti come risposta completata.
+Quando il backend ha trasmesso parte della risposta a un turno e poi lo conclude con un errore, deve conservare lo scambio con esito di errore e con il messaggio pubblico comunicato nell'esito, senza registrare la parte già trasmessa come risposta completata.
 
 #### Metadata
   * type: requirement
 
 #### Contract References
-  * [Profilo di trasporto SSE della chat](../Contracts/FamilyConversation.md#profilo-di-trasporto-sse-della-chat)
+  * [Esiti del turno nel protocollo Ambrogio v1](../Contracts/ConversationProtocol.md#esiti-del-turno-nel-protocollo-ambrogio-v1)
   * [Struttura testuale dello scambio](../Contracts/FamilyConversation.md#struttura-testuale-dello-scambio)
 
 #### Relations
@@ -283,9 +292,9 @@ Quando Ambrogio conserva una conversazione, deve conservarne la rappresentazione
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Continuazione testuale di ogni conversazione
+### Continuazione di ogni conversazione da qualunque client
 
-Quando la famiglia riapre nella chat testuale una conversazione conservata, indipendentemente dall'ingresso in cui è iniziata, e invia un turno testuale, Ambrogio deve aggiungere il nuovo scambio alla stessa conversazione.
+Quando un client invia un turno con l'identificativo di una conversazione conservata, Ambrogio deve aggiungere il nuovo scambio alla stessa conversazione, indipendentemente dall'ingresso in cui la conversazione è iniziata e dal tipo di contenuto del turno.
 
 #### Metadata
   * type: requirement
@@ -363,6 +372,21 @@ Quando un adapter del modulo «Conversazioni» legge o scrive l'archivio SQLite,
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
+### Creazione della conversazione all'ammissione del turno
+
+Quando un client invia un turno senza identificativo di conversazione, Ambrogio deve creare una nuova conversazione insieme all'ammissione di quel turno; un turno rifiutato non deve creare una conversazione.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Occupazione della conversazione e ammissione dei turni](../Contracts/FamilyConversation.md#occupazione-della-conversazione-e-ammissione-dei-turni)
+
+#### Relations
+  * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
 ### Dati Application dei casi d'uso conversazionali
 
 Quando un caso d'uso del modulo «Conversazioni» riceve dati di ingresso o produce dati di successo, deve usare contratti definiti in Application e indipendenti dai formati HTTP e voce. Gli adapter di ingresso devono tradurre i rispettivi dati di protocollo in tali contratti e rappresentarne gli esiti nel proprio formato.
@@ -390,19 +414,17 @@ Quando Ambrogio prepara un agente specializzato da un file JSON, deve rendere di
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Determinazione della replica vocale attesa
+### Determinazione della replica attesa
 
-Quando produce una risposta vocale, il backend deve determinare se essa richiede una replica della famiglia, mantenendo sul backend la responsabilità di questa decisione.
+Quando produce la risposta a un turno, il backend deve determinare se essa richiede una replica della famiglia, indipendentemente dal tipo di contenuto del turno e della risposta, mantenendo sul backend la responsabilità di questa decisione.
 
 #### Metadata
   * type: requirement
 
 #### Contract References
-  * [Indicazione di attesa della replica vocale](../Contracts/FamilyConversation.md#indicazione-di-attesa-della-replica-vocale)
+  * [Indicazione della replica attesa](../Contracts/FamilyConversation.md#indicazione-della-replica-attesa)
 
 #### Relations
-  * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
-  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -763,20 +785,6 @@ Quando Application del modulo «Conversazioni» dichiara una porta verso una cap
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Nuovo avvio dell'interazione vocale
-
-Quando la famiglia richiede l'apertura di una nuova interazione vocale, Ambrogio deve ammettere e creare una nuova conversazione prima che la WebSocket possa consegnare audio alla sessione. Se l'avvio è rifiutato, la connessione vocale non deve essere resa operativa.
-
-#### Metadata
-  * type: requirement
-
-#### Relations
-  * satisfiedBy: [voice-route.adapter.ts](../../apps/server/src/adapters/in/voice-route.adapter.ts)
-  * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
-  * satisfiedBy: [start-voice-conversation.use-case.ts](../../packages/conversations/src/application/start-voice-conversation.use-case.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
 ### Orchestrazione della risposta conversazionale
 
 Quando Ambrogio elabora un turno della famiglia, l'agente orchestratore deve scegliere se formulare la risposta direttamente oppure affidare il compito a un agente con connettore MCP configurato, e l'esito deve appartenere alla stessa conversazione.
@@ -832,21 +840,6 @@ Quando un turno supera la validazione dell'ingresso, il caso d'uso Application d
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Pronuncia della risposta vocale
-
-Quando Ambrogio produce una risposta a un turno vocale, deve pronunciare la risposta alla famiglia.
-
-#### Metadata
-  * type: requirement
-
-#### Contract Bindings
-  * [Esclusione dell'audio persistente](../Contracts/FamilyConversation.md#esclusione-dellaudio-persistente)
-
-#### Relations
-  * satisfiedBy: [voice-session.adapter.ts](../../packages/conversations/src/adapters/in/voice/voice-session.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
 ### Proprietà della risorsa SQLite conversazionale
 
 Quando il server usa l'archivio delle conversazioni, la sua composition root deve creare un solo proprietario della risorsa SQLite/Kysely per quell'archivio e fornire agli adapter le capacità necessarie senza trasferire loro la responsabilità di chiuderla.
@@ -858,16 +851,16 @@ Quando il server usa l'archivio delle conversazioni, la sua composition root dev
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Recupero dello storico per il turno testuale
+### Recupero dello storico per il turno
 
-Quando il backend riceve da un client della chat testuale un nuovo turno con l'identificativo di una conversazione conservata, deve recuperare dall'archivio lo storico testuale di quella conversazione per elaborare il turno.
+Quando il backend riceve un nuovo turno con l'identificativo di una conversazione conservata, deve recuperare dall'archivio lo storico testuale di quella conversazione per elaborare il turno, senza riceverlo dal client.
 
 #### Metadata
   * type: requirement
 
 #### Contract References
+  * [Trasmissione in ingresso del protocollo Ambrogio v1](../Contracts/ConversationProtocol.md#trasmissione-in-ingresso-del-protocollo-ambrogio-v1)
   * [Archivio SQLite con Kysely](../Contracts/FamilyConversation.md#archivio-sqlite-con-kysely)
-  * [Dati della richiesta del turno della chat testuale](../Contracts/FamilyConversation.md#dati-della-richiesta-del-turno-della-chat-testuale)
 
 #### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
@@ -882,35 +875,6 @@ Quando Ambrogio accetta un turno rappresentato come testo dalla chat o dalla tra
 
 #### Contract References
   * [Stati persistenti dei turni conversazionali](../Contracts/FamilyConversation.md#stati-persistenti-dei-turni-conversazionali)
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
-### Replica vocale nella conversazione attiva
-
-Mentre un'interazione vocale è attiva, quando la famiglia formula una replica immediata, Ambrogio deve aggiungere il turno alla conversazione vocale attiva.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Stati dell'interazione vocale](../Contracts/FamilyConversation.md#stati-dellinterazione-vocale)
-
-#### Relations
-  * satisfiedBy: [voice-server.test.ts](../../apps/server/test/runtime/voice-server.test.ts)
-  * satisfiedBy: [conversation-agent.adapter.ts](../../packages/conversations/src/adapters/in/voice/conversation-agent.adapter.ts)
-  * satisfiedBy: [voice-session.adapter.ts](../../packages/conversations/src/adapters/in/voice/voice-session.adapter.ts)
-  * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
-### Riapertura delle conversazioni tramite chat testuale
-
-Quando un ingresso tenta di riaprire una conversazione conservata per aggiungere nuovi turni, Ambrogio deve consentire la riapertura soltanto tramite un client della chat testuale; una nuova interazione vocale deve usare una nuova conversazione.
-
-#### Metadata
-  * type: requirement
 
 #### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
@@ -935,30 +899,100 @@ Quando una conversazione ha un turno accettato il cui esito non è ancora conser
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [conversation-agent.adapter.ts](../../packages/conversations/src/adapters/in/voice/conversation-agent.adapter.ts)
   * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Risposta progressiva SSE nella chat testuale
+### Rifiuto del turno prima dell'ammissione
 
-Quando il backend avvia il flusso di risposta a un turno della chat testuale, deve trasmettere progressivamente la risposta come Server-Sent Events nella risposta alla stessa richiesta HTTP POST che ha ricevuto il turno, conforme al profilo di trasporto SSE della chat.
+Quando un turno non può essere ammesso, il backend deve comunicare al client il rifiuto con il motivo previsto e trasmettere il messaggio pubblico sicuro nella lingua configurata, senza conservare il turno; se l'archivio rifiuta temporaneamente l'ammissione, il server sta arrestandosi o gli ingressi sono disabilitati dopo una conclusione non conservata deve usare il motivo `unavailable`, e se un guasto tecnico inatteso avviene prima dell'ammissione deve usare il motivo `failure` con il messaggio standard nella lingua configurata.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * derivedFrom: [Esclusione dei dettagli tecnici dal messaggio pubblico](ServerFoundation.md#esclusione-dei-dettagli-tecnici-dal-messaggio-pubblico)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Rifiuto del turno nella conversazione occupata
+
+Quando il backend riceve un turno valido destinato a una conversazione che sta già elaborando un altro turno, deve rifiutarlo con il motivo `occupied`, senza avviare la risposta né conservare il turno rifiutato.
 
 #### Metadata
   * type: requirement
 
 #### Contract References
-  * [Adozione di AI SDK nei layer conversazionali](../Contracts/AiSdkIntegration.md#adozione-di-ai-sdk-nei-layer-conversazionali)
+  * [Motivi di rifiuto del turno](../Contracts/ConversationProtocol.md#motivi-di-rifiuto-del-turno)
 
 #### Relations
-  * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
-  * satisfiedBy: [turn-route.adapter.ts](../../packages/conversations/src/adapters/in/http/turn-route.adapter.ts)
+  * derivedFrom: [Rifiuto del turno prima dell'ammissione](#rifiuto-del-turno-prima-dellammissione)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Rifiuto del turno testuale vuoto
+
+Quando il testo di un turno testuale è vuoto o contiene soltanto spazi bianchi, il backend deve rifiutare il turno con il motivo `invalid`, senza creare una conversazione né aggiungere uno scambio.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Motivi di rifiuto del turno](../Contracts/ConversationProtocol.md#motivi-di-rifiuto-del-turno)
+  * [Trasmissione in ingresso del protocollo Ambrogio v1](../Contracts/ConversationProtocol.md#trasmissione-in-ingresso-del-protocollo-ambrogio-v1)
+
+#### Relations
+  * derivedFrom: [Rifiuto del turno prima dell'ammissione](#rifiuto-del-turno-prima-dellammissione)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Rifiuto della continuazione con conversazione inesistente
+
+Quando un turno contiene un testo valido o un audio e un identificativo di conversazione che non identifica una conversazione conservata, il backend deve rifiutarlo con il motivo `conversation_not_found`, senza creare una nuova conversazione.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Motivi di rifiuto del turno](../Contracts/ConversationProtocol.md#motivi-di-rifiuto-del-turno)
+
+#### Relations
+  * derivedFrom: [Rifiuto del turno prima dell'ammissione](#rifiuto-del-turno-prima-dellammissione)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Trascrizione vocale non riuscita
+
+Se Ambrogio non ottiene una trascrizione utilizzabile di un turno vocale, non deve creare uno scambio per quel turno e deve rifiutarlo con il motivo `transcription_failed`.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Motivi di rifiuto del turno](../Contracts/ConversationProtocol.md#motivi-di-rifiuto-del-turno)
+
+#### Relations
+  * derivedFrom: [Rifiuto del turno prima dell'ammissione](#rifiuto-del-turno-prima-dellammissione)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Risposta parlata su richiesta del client
+
+Quando un client chiede la risposta in audio e l'interazione vocale è abilitata, Ambrogio deve pronunciare alla famiglia la risposta e ogni messaggio pubblico del turno, trasmettendoli in audio.
+
+#### Metadata
+  * type: requirement
+
+#### Contract Bindings
+  * [Esclusione dell'audio persistente](../Contracts/FamilyConversation.md#esclusione-dellaudio-persistente)
+
+#### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
 ### Risposta testuale nella conversazione
 
-Quando la famiglia invia un turno testuale, Ambrogio deve comunicare una risposta testuale o un messaggio di errore nella conversazione a cui appartiene il turno.
+Quando la famiglia invia un turno, Ambrogio deve produrre una risposta testuale o un messaggio di errore nella conversazione a cui appartiene il turno, qualunque sia il tipo di contenuto con cui la risposta viene trasmessa.
 
 #### Metadata
   * type: requirement
@@ -994,112 +1028,33 @@ Quando Ambrogio accetta, conclude o interrompe un turno, deve confermare insieme
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Segnalazione del completamento della risposta testuale
+### Segnalazione dell'errore dopo l'ammissione
 
-Quando il backend completa correttamente la risposta a un turno della chat testuale, deve trasmettere la conferma di successo definita dal profilo di trasporto UI dopo tutti gli incrementi testuali e dopo la conferma del commit dell'esito riuscito, prima di chiudere il flusso.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Confini atomici dell'archivio conversazioni](../Contracts/FamilyConversation.md#confini-atomici-dellarchivio-conversazioni)
-  * [Profilo di trasporto SSE della chat](../Contracts/FamilyConversation.md#profilo-di-trasporto-sse-della-chat)
-
-#### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
-### Segnalazione dell'errore HTTP prima del flusso testuale
-
-Quando un turno della chat testuale non può avviare la risposta SSE, il backend deve restituire una risposta HTTP di errore con un messaggio pubblico sicuro in formato JSON, senza iniziare un flusso SSE; se l'archivio rifiuta temporaneamente l'ammissione perché occupato o gli ingressi sono disabilitati dopo una conclusione non conservata, deve usare HTTP 503 con il messaggio di indisponibilità nella lingua configurata; se un guasto tecnico inatteso avviene prima dell'ammissione, deve usare HTTP 500 e il messaggio standard nella lingua configurata.
-
-#### Metadata
-  * type: requirement
-
-#### Relations
-  * derivedFrom: [Esclusione dei dettagli tecnici dal messaggio pubblico](ServerFoundation.md#esclusione-dei-dettagli-tecnici-dal-messaggio-pubblico)
-  * satisfiedBy: [turn-route.adapter.ts](../../packages/conversations/src/adapters/in/http/turn-route.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
-### Rifiuto HTTP del turno concorrente
-
-Quando il backend riceve un turno valido della chat testuale e lo rifiuta perché la stessa conversazione sta già elaborando un altro turno, deve rispondere con HTTP 409 e un messaggio pubblico sicuro nel corpo JSON di errore, senza avviare SSE né conservare il turno rifiutato.
+Quando un errore impedisce di completare la risposta a un turno ammesso, il backend deve chiudere l'eventuale trasmissione in corso, trasmettere il messaggio pubblico sicuro e concludere il turno con l'esito di errore, senza la conferma di completamento.
 
 #### Metadata
   * type: requirement
 
 #### Contract References
-  * [Risposta di errore HTTP prima del flusso testuale](../Contracts/FamilyConversation.md#risposta-di-errore-http-prima-del-flusso-testuale)
-
-#### Relations
-  * derivedFrom: [Segnalazione dell'errore HTTP prima del flusso testuale](#segnalazione-dellerrore-http-prima-del-flusso-testuale)
-  * satisfiedBy: [turn-route.adapter.ts](../../packages/conversations/src/adapters/in/http/turn-route.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
-### Rifiuto del turno vuoto della chat testuale
-
-Quando il campo `text` di un turno della chat testuale è vuoto o contiene soltanto spazi bianchi, il backend deve rifiutare il turno con HTTP 400 senza creare una conversazione né aggiungere uno scambio.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Dati della richiesta del turno della chat testuale](../Contracts/FamilyConversation.md#dati-della-richiesta-del-turno-della-chat-testuale)
-  * [Risposta di errore HTTP prima del flusso testuale](../Contracts/FamilyConversation.md#risposta-di-errore-http-prima-del-flusso-testuale)
-
-#### Relations
-  * derivedFrom: [Segnalazione dell'errore HTTP prima del flusso testuale](#segnalazione-dellerrore-http-prima-del-flusso-testuale)
-  * satisfiedBy: [turn-route.adapter.ts](../../packages/conversations/src/adapters/in/http/turn-route.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
-### Rifiuto della continuazione testuale con conversazione inesistente
-
-Quando una richiesta della chat testuale contiene un `text` valido e un `conversationId` che non identifica una conversazione conservata, il backend deve rifiutare il turno con HTTP 404 senza creare una nuova conversazione.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Risposta di errore HTTP prima del flusso testuale](../Contracts/FamilyConversation.md#risposta-di-errore-http-prima-del-flusso-testuale)
-
-#### Relations
-  * derivedFrom: [Segnalazione dell'errore HTTP prima del flusso testuale](#segnalazione-dellerrore-http-prima-del-flusso-testuale)
-  * satisfiedBy: [turn-route.adapter.ts](../../packages/conversations/src/adapters/in/http/turn-route.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
-### Segnalazione dell'errore nel flusso testuale
-
-Quando un errore impedisce di completare la risposta a un turno della chat testuale dopo l'avvio del flusso, il backend deve trasmettere una parte `error` del profilo di trasporto UI con un messaggio pubblico sicuro e terminare il flusso senza la conferma di successo.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Profilo di trasporto SSE della chat](../Contracts/FamilyConversation.md#profilo-di-trasporto-sse-della-chat)
+  * [Esiti del turno nel protocollo Ambrogio v1](../Contracts/ConversationProtocol.md#esiti-del-turno-nel-protocollo-ambrogio-v1)
+  * [Trasmissione in uscita del protocollo Ambrogio v1](../Contracts/ConversationProtocol.md#trasmissione-in-uscita-del-protocollo-ambrogio-v1)
 
 #### Relations
   * derivedFrom: [Esclusione dei dettagli tecnici dal messaggio pubblico](ServerFoundation.md#esclusione-dei-dettagli-tecnici-dal-messaggio-pubblico)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Segnalazione della replica vocale attesa
+### Segnalazione della replica attesa
 
-Quando comunica una risposta vocale, il backend deve fornire al satellite un’indicazione esplicita che distingua se attende oppure non attende una replica della famiglia per quella risposta.
+Quando conferma il completamento di un turno, il backend deve indicare esplicitamente al client se la risposta attende oppure non attende una replica della famiglia.
 
 #### Metadata
   * type: requirement
 
 #### Contract References
-  * [Protocollo vocale del prodotto](../Contracts/FamilyConversation.md#protocollo-vocale-del-prodotto)
+  * [Esiti del turno nel protocollo Ambrogio v1](../Contracts/ConversationProtocol.md#esiti-del-turno-nel-protocollo-ambrogio-v1)
 
 #### Relations
-  * satisfiedBy: [conversation-agent.adapter.ts](../../packages/conversations/src/adapters/in/voice/conversation-agent.adapter.ts)
-  * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
-  * satisfiedBy: [voice-session.test.ts](../../packages/conversations/test/adapters/in/voice-session.test.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -1171,15 +1126,14 @@ Quando la famiglia pronuncia un turno vocale trascrivibile, Ambrogio deve rappre
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Trascrizione vocale non riuscita
+### Trasmissione progressiva della risposta del turno
 
-Se Ambrogio non ottiene una trascrizione utilizzabile di un turno vocale, non deve creare uno scambio per quel turno.
+Quando il backend produce la risposta a un turno ammesso, deve trasmetterla progressivamente durante la generazione nella sessione del client che ha inviato il turno, nel tipo di contenuto richiesto dal client, conforme alla trasmissione in uscita del protocollo conversazionale.
 
 #### Metadata
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [vosk-streaming-stt.ts](../../packages/conversations/src/adapters/in/voice/vosk-streaming-stt.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -1197,7 +1151,7 @@ Quando Ambrogio connette un agente specializzato al suo server MCP nella prima i
 
 ### Validazione del formato negli ingressi conversazionali
 
-Quando l'ingresso HTTP riceve un turno, il suo adapter deve verificare forma e decodifica dei dati del rispettivo protocollo prima di invocare il caso d'uso conversazionale, interrompendo il flusso per input non validi senza attribuirsi le regole di stato della conversazione.
+Quando il canale conversazionale riceve un messaggio, il suo adapter deve verificarne forma e decodifica rispetto allo schema del protocollo prima di invocare il caso d'uso conversazionale, interrompendo il flusso per input non validi senza attribuirsi le regole di stato della conversazione.
 
 #### Metadata
   * type: requirement
@@ -1217,6 +1171,6 @@ Quando un ingresso HTTP riceve una richiesta per le operazioni conversazionali, 
   * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
   * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
   * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
-  * satisfiedBy: [turn-route.adapter.ts](../../packages/conversations/src/adapters/in/http/turn-route.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
+

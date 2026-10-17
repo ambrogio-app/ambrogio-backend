@@ -33,17 +33,6 @@ Prima di attivare gli ingressi conversazionali, il server confronta lo schema SQ
   * define: [Migrazione automatica dell'archivio delle conversazioni](../Requirements/FamilyConversation.md#migrazione-automatica-dellarchivio-delle-conversazioni)
 ---
 
-### Chiusura coordinata con la riproduzione
-
-Il satellite osserva `isAssistantSpeaking` e la fine effettiva dei campioni riprodotti dal proprio driver audio. Per una risposta che non attende replica chiude la chiamata dopo la riproduzione; per una risposta che attende replica avvia localmente l'intervallo di inattività e chiude la chiamata alla scadenza. Il backend non deduce la fine della riproduzione dalla generazione TTS e non richiede un comando di conferma dal client. Alla chiusura della WebSocket, anche anticipata, l'ingresso backend chiude la sessione vocale e ne rilascia le risorse; le altre interazioni restano attive.
-
-#### Metadata
-  * type: specification
-
-#### Relations
-  * define: [Chiusura dell'interazione vocale](../Requirements/FamilyConversation.md#chiusura-dellinterazione-vocale)
----
-
 ### Ciclo di vita della risorsa SQLite conversazionale
 
 La composition root del server costruisce e possiede una risorsa SQLite/Kysely condivisa dagli adapter interessati. Gli adapter ricevono l'accesso necessario per le proprie operazioni e non ne controllano la chiusura; Domain e Application non ricevono handle tecnici SQLite o Kysely. Prima di abilitare il lavoro che dipende dall'archivio, il proprietario ne verifica l'apertura e completa le migrazioni richieste. Se la preparazione fallisce, chiude la risorsa già creata. Al termine del processo, la chiude dopo il completamento o l'interruzione delle operazioni che la usano. Non si prescrive un pool PostgreSQL né un numero di connessioni fisiche SQLite.
@@ -57,7 +46,7 @@ La composition root del server costruisce e possiede una risorsa SQLite/Kysely c
 
 ### Configurazione facoltativa dell'interazione vocale
 
-Un'installazione può non abilitare l'ingresso vocale. L'assenza della variabile di percorso `AMBROGIO_VOICE_CONFIG_PATH` lo disabilita: la composition root non legge file vocali e non costruisce né avvia Micdrop, Vosk o Piper. La chat testuale HTTP resta utilizzabile con le proprie dipendenze. Quando il percorso è presente, il file JSON vocale richiede `voskModelPath` (directory del modello), `piperModelPath` (file ONNX della voce) e `piperBinaryPath` (eseguibile Piper). L'intervallo di inattività della replica è configurato dal satellite. I percorsi dei modelli devono essere leggibili all'avvio, il binario deve essere eseguibile e il file JSON della voce Piper adiacente al modello ONNX deve essere leggibile. Un valore mancante o invalido impedisce l'attivazione della voce prima dell'ascolto del server. La configurazione e il modello Vosk restano esterni all'immagine; l'immagine include due voci Piper e consente di sostituirle tramite un mount della directory dedicata.
+Un'installazione può non abilitare l'ingresso vocale. L'assenza della variabile di percorso `AMBROGIO_VOICE_CONFIG_PATH` lo disabilita: la composition root non legge file vocali e non costruisce né avvia Vosk o Piper. I turni testuali del canale conversazionale restano utilizzabili con le proprie dipendenze, e i turni che trasmettono audio o chiedono la risposta in audio ricevono il rifiuto previsto. Quando il percorso è presente, il file JSON vocale richiede `voskModelPath` (directory del modello), `piperModelPath` (file ONNX della voce) e `piperBinaryPath` (eseguibile Piper). L'intervallo di inattività della replica è configurato dal satellite. I percorsi dei modelli devono essere leggibili all'avvio, il binario deve essere eseguibile e il file JSON della voce Piper adiacente al modello ONNX deve essere leggibile. Un valore mancante o invalido impedisce l'attivazione della voce prima dell'ascolto del server. La configurazione e il modello Vosk restano esterni all'immagine; l'immagine include due voci Piper e consente di sostituirle tramite un mount della directory dedicata.
 
 #### Metadata
   * type: specification
@@ -79,7 +68,7 @@ I tipi delle righe SQLite/Kysely restano nell'adapter di persistenza. L'adapter 
 
 ### Confini atomici dell'archivio conversazioni
 
-Application richiede all'archivio la persistenza delle transizioni complete del turno tramite un contratto dedicato; questo può esporre il salvataggio della conversazione come aggregato o operazioni di transizione esplicite. L'adapter SQLite/Kysely controlla la transazione breve. L'ammissione registra insieme il turno accettato e l'occupazione della conversazione interessata. La conclusione o l'interruzione registrano insieme l'esito persistente del turno e la liberazione dell'occupazione, salvo l'arresto che impedisce nuovi ingressi. Un errore in una delle scritture della transizione annulla l'intera transazione; il chiamante osserva il successo solo dopo il commit. Le chiamate ad agenti e connettori e l'invio progressivo della risposta avvengono fuori da transazioni SQLite; la conferma di successo del profilo UI Message Stream viene emessa solo dopo il commit dell'esito riuscito. Non è richiesto un coordinatore generico di transazioni esposto ai casi d'uso.
+Application richiede all'archivio la persistenza delle transizioni complete del turno tramite un contratto dedicato; questo può esporre il salvataggio della conversazione come aggregato o operazioni di transizione esplicite. L'adapter SQLite/Kysely controlla la transazione breve. L'ammissione registra insieme il turno accettato e l'occupazione della conversazione interessata. La conclusione o l'interruzione registrano insieme l'esito persistente del turno e la liberazione dell'occupazione, salvo l'arresto che impedisce nuovi ingressi. Un errore in una delle scritture della transizione annulla l'intera transazione; il chiamante osserva il successo solo dopo il commit. Le chiamate ad agenti e connettori, la sintesi vocale e la trasmissione progressiva della risposta avvengono fuori da transazioni SQLite; la conferma `turn.completed` del protocollo conversazionale viene inviata solo dopo il commit dell'esito riuscito. Non è richiesto un coordinatore generico di transazioni esposto ai casi d'uso.
 
 #### Metadata
   * type: specification
@@ -123,24 +112,13 @@ Quando un agente specializzato usa OAuth tra servizi, il suo JSON contiene `mcp.
 
 ### Dati dei casi d'uso indipendenti dagli ingressi
 
-Il caso d'uso del turno conversazionale riceve un input Application costruito dall'adapter di ingresso a partire dai dati già decodificati. I suoi dati di successo, compresi gli eventuali incrementi della risposta progressiva, hanno significato proprio del modulo e non sono oggetti HTTP, eventi SSE, righe di terminale o dati audio. Ogni adapter di ingresso converte tali valori nella rappresentazione richiesta dal proprio protocollo; il caso d'uso non restituisce direttamente oggetti Domain o rappresentazioni del trasporto. Il caso d'uso consegna prima la notifica di ammissione e poi ciascun incremento nell'ordine di produzione, attendendo che la consegna di una notifica sia terminata prima di iniziare la successiva. Tale attesa riguarda la consegna all'adapter, non la lettura da parte della persona. Se la consegna fallisce dopo l'ammissione, anche per un guasto tecnico diverso dalla disconnessione, il caso d'uso continua il turno e conserva l'esito prodotto senza trasformare il solo guasto di consegna in un errore conversazionale. L'adapter che esegue la consegna distingue la disconnessione dal guasto tecnico e registra quest'ultimo nel canale diagnostico prima che il caso d'uso ignori il fallimento della notifica; non delega al caso d'uso la classificazione o il log. La normale disconnessione del client non richiede di per sé un log di errore. Gli altri casi d'uso del modulo seguono lo stesso confine quando ricevono input o producono dati di successo.
+Il caso d'uso del turno conversazionale riceve un input Application costruito dall'adapter di ingresso a partire dai dati già decodificati. I suoi dati di successo, compresi gli eventuali incrementi della risposta progressiva, hanno significato proprio del modulo e non sono messaggi del protocollo conversazionale, oggetti HTTP, righe di terminale o dati audio. Ogni adapter di ingresso converte tali valori nella rappresentazione richiesta dal proprio protocollo; il caso d'uso non restituisce direttamente oggetti Domain o rappresentazioni del trasporto. Il caso d'uso consegna prima la notifica di ammissione e poi ciascun incremento nell'ordine di produzione, attendendo che la consegna di una notifica sia terminata prima di iniziare la successiva. Tale attesa riguarda la consegna all'adapter, non la lettura da parte della persona. Se la consegna fallisce dopo l'ammissione, anche per un guasto tecnico diverso dalla disconnessione, il caso d'uso continua il turno e conserva l'esito prodotto senza trasformare il solo guasto di consegna in un errore conversazionale. L'adapter che esegue la consegna distingue la disconnessione dal guasto tecnico e registra quest'ultimo nel canale diagnostico prima che il caso d'uso ignori il fallimento della notifica; non delega al caso d'uso la classificazione o il log. La normale disconnessione del client non richiede di per sé un log di errore. Gli altri casi d'uso del modulo seguono lo stesso confine quando ricevono input o producono dati di successo.
 
 #### Metadata
   * type: input-output
 
 #### Relations
   * define: [Dati Application dei casi d'uso conversazionali](../Requirements/FamilyConversation.md#dati-application-dei-casi-duso-conversazionali)
----
-
-### Dati della richiesta del turno della chat testuale
-
-La richiesta HTTP `POST /api/conversations/turns` della chat testuale usa `Content-Type: application/json` e un corpo JSON di al massimo 64 KiB (65 536 byte) con `text`, stringa che contiene il nuovo turno testuale, e `conversationId`, stringa presente quando si prosegue una conversazione conservata e assente quando se ne avvia una nuova. Il valore di `text`, eliminati gli spazi bianchi iniziali e finali per la sola verifica di validità, deve contenere almeno un carattere. Il corpo non contiene gli scambi precedenti: lo storico è recuperato dal backend dall'archivio delle conversazioni.
-
-#### Metadata
-  * type: input-output
-
-#### Relations
-  * define: [Validazione strutturale delle richieste conversazionali HTTP](../Requirements/FamilyConversation.md#validazione-strutturale-delle-richieste-conversazionali-http)
 ---
 
 ### Decisione di delega mediante chiamata di funzione
@@ -198,17 +176,15 @@ Ogni nuova conversazione e ogni nuovo turno ricevono un UUID versione 4. Il caso
   * define: [Identificativi UUID v4 di conversazioni e turni](../Requirements/FamilyConversation.md#identificativi-uuid-v4-di-conversazioni-e-turni)
 ---
 
-### Indicazione di attesa della replica vocale
+### Indicazione della replica attesa
 
-La prima versione del satellite riconosce localmente la wake word. Durante la generazione della risposta, il caso d'uso condiviso riceve dall'agente il booleano strutturato `expectsReply` insieme al testo, senza una seconda chiamata al modello dedicata alla classificazione. Il backend consegna la risposta tramite il messaggio Micdrop standard `Message` con `role: "assistant"` e `metadata.expectsReply` booleano obbligatorio. Il valore vale soltanto per quella risposta e non si deduce dalla punteggiatura.
-
-Audio e messaggio possono terminare in ordini diversi. Il satellite applica la decisione soltanto dopo aver ricevuto il messaggio valido e completato la riproduzione: se `true`, ammette una replica senza wake word sulla stessa connessione entro l'intervallo locale configurato; se `false`, chiude la connessione e torna alla wake word. Se il messaggio manca o il valore non è booleano, non apre una replica, attende al massimo l'intervallo locale per un messaggio valido tardivo e poi chiude. Un messaggio arrivato dopo la chiusura è ignorato. Il backend non presenta un valore mancante come `false` valido. Il tipo di messaggio Micdrop prevede metadati applicativi: https://micdrop.dev/docs/client/display-conversation-messages .
+Durante la generazione della risposta a ogni turno, il caso d'uso condiviso riceve dall'agente il booleano strutturato `expectsReply` insieme al testo, senza una seconda chiamata al modello dedicata alla classificazione. Il backend lo comunica nel campo `expectsReply` di `turn.completed`. Il valore vale soltanto per quella risposta, non si deduce dalla punteggiatura e non dipende dal tipo di contenuto del turno o della risposta. Un valore mancante o non booleano costituisce un guasto della produzione della risposta e non viene presentato come `false`. I turni rifiutati, falliti o interrotti non comunicano `expectsReply` e il client li tratta come conclusivi. L'uso dell'indicazione, per esempio l'apertura di una replica senza wake word, è responsabilità del client.
 
 #### Metadata
   * type: specification
 
 #### Relations
-  * define: [Segnalazione della replica vocale attesa](../Requirements/FamilyConversation.md#segnalazione-della-replica-vocale-attesa)
+  * define: [Segnalazione della replica attesa](../Requirements/FamilyConversation.md#segnalazione-della-replica-attesa)
 ---
 
 ### Invarianti dello stato del turno
@@ -279,7 +255,7 @@ Per un guasto inatteso di un turno già ammesso, il server sceglie il messaggio 
 
 ### Occupazione della conversazione e ammissione dei turni
 
-L'ammissione è atomica per identificativo di conversazione ed è condivisa dagli ingressi HTTP e voce. Ogni conversazione è occupata dall'accettazione di un turno fino alla conservazione del suo esito o dello stato `interrotto`. Richieste simultanee sulla stessa conversazione ammettono al massimo un turno; le altre ricevono un rifiuto previsto, senza persistenza né accodamento. Turni di conversazioni diverse possono essere ammessi ed elaborati in parallelo; anche due richieste che creano conversazioni nuove non si escludono reciprocamente. Storico, risposta ed esito di un turno restano associati alla propria conversazione. L'arresto impedisce nuove ammissioni in tutte le conversazioni. Al riavvio, dopo le migrazioni e prima degli ingressi, i turni rimasti `in elaborazione` diventano `interrotti` e le rispettive occupazioni vengono liberate atomicamente. Una conclusione tardiva non sostituisce lo stato `interrotto`. Le transazioni SQLite restano brevi: non includono produzione remota o streaming. La serializzazione delle scritture SQLite non impone la serializzazione dell'intera elaborazione.
+L'ammissione è atomica per identificativo di conversazione ed è condivisa da tutti i turni, testuali e vocali, di qualunque client. Ogni conversazione è occupata dall'accettazione di un turno fino alla conservazione del suo esito o dello stato `interrotto`. Richieste simultanee sulla stessa conversazione ammettono al massimo un turno; le altre ricevono un rifiuto previsto, senza persistenza né accodamento. Turni di conversazioni diverse possono essere ammessi ed elaborati in parallelo; anche due richieste che creano conversazioni nuove non si escludono reciprocamente. Storico, risposta ed esito di un turno restano associati alla propria conversazione. L'arresto impedisce nuove ammissioni in tutte le conversazioni. Al riavvio, dopo le migrazioni e prima degli ingressi, i turni rimasti `in elaborazione` diventano `interrotti` e le rispettive occupazioni vengono liberate atomicamente. Una conclusione tardiva non sostituisce lo stato `interrotto`. Le transazioni SQLite restano brevi: non includono produzione remota o streaming. La serializzazione delle scritture SQLite non impone la serializzazione dell'intera elaborazione.
 
 Decisione concordata il 16 ottobre 2026, da implementare e verificare: sostituisce il blocco globale dell'installazione. La migrazione ad AI SDK non dimostra da sola questa garanzia. Eventuali limiti globali di capacità richiedono una decisione separata. Il comportamento di indisponibilità globale già previsto per guasti di persistenza resta distinto dal normale conflitto tra turni.
 
@@ -328,7 +304,7 @@ Ogni file JSON di agente specializzato contiene al primo livello `description`, 
 
 ### Produzione della risposta con Vercel AI SDK
 
-La produzione delle risposte dell'orchestratore e degli agenti specializzati usa un adapter del componente «Conversazioni» basato su Vercel AI SDK, con provider Mistral configurato per ciascun agente. L'adapter implementa la porta applicativa `ProduceConversationReply`: riceve a ogni turno lo storico dall'archivio comune, restituisce frammenti testuali e mantiene i tipi dell'SDK fuori da Domain e Application. Il ponte vocale Micdrop continua a usare il medesimo caso d'uso; l'adapter HTTP della chat presenta i frammenti secondo il proprio profilo SSE.
+La produzione delle risposte dell'orchestratore e degli agenti specializzati usa un adapter del componente «Conversazioni» basato su Vercel AI SDK, con provider Mistral configurato per ciascun agente. L'adapter implementa la porta applicativa `ProduceConversationReply`: riceve a ogni turno lo storico dall'archivio comune, restituisce i frammenti testuali della risposta e l'indicazione strutturata `expectsReply`, con un unico percorso di generazione indipendente dal tipo di contenuto del turno, e mantiene i tipi dell'SDK fuori da Domain e Application. L'adapter del canale conversazionale presenta frammenti ed esito secondo il protocollo `ambrogio.v1`.
 
 La configurazione JSON mantiene `llm.provider: "mistral"`, `model`, `apiKey` e le sole `options` facoltative `temperature` e `max_tokens`. L'adapter valida le opzioni prima dell'attivazione e le traduce nei parametri equivalenti dell'AI SDK; omette quelle assenti. L'endpoint Mistral predefinito non richiede un URL nel JSON. Il client MCP comune esistente conserva connessione, autenticazione e ciclo di vita; i suoi tool sono adattati all'AI SDK senza esporre credenziali al modello. Orchestratore e agenti specializzati conservano la delega singola e il limite di chiamate MCP per turno previsti dagli altri contratti.
 
@@ -361,9 +337,9 @@ L'ingresso eseguibile di questa tranche registra `GET /api/conversations` e `GET
   * define: [Avvio consultivo dell'API conversazioni](../Requirements/FamilyConversation.md#avvio-consultivo-dellapi-conversazioni)
 ---
 
-### Profilo dell'ingresso HTTP conversazionale con agenti
+### Profilo dell'ingresso conversazionale con agenti
 
-L'ingresso eseguibile valida prima dell'ascolto i JSON HTTP, Conversazioni e degli agenti attivi, apre l'archivio e recupera i turni pendenti, prepara gli adapter dei provider e i client MCP degli agenti specializzati, quindi registra `POST /api/conversations/turns` insieme ai due GET già disponibili. La rotta POST usa l'agente orchestratore come produttore concreto della risposta tramite la porta Application `ProduceConversationReply`. La politica CORS autorizza il metodo POST per le origini configurate. L'arresto dell'ingresso segue la politica generale del ciclo di vita del server; la richiesta al provider non viene annullata esplicitamente dall'adapter.
+L'ingresso eseguibile valida prima dell'ascolto i JSON HTTP, Conversazioni, degli agenti attivi e, se configurato, quello della voce, apre l'archivio e recupera i turni pendenti, prepara gli adapter dei provider e i client MCP degli agenti specializzati, quindi registra il canale conversazionale `/api/session` insieme ai due GET già disponibili. Il canale usa l'agente orchestratore come produttore concreto della risposta tramite la porta Application `ProduceConversationReply`; quando la voce è configurata usa Vosk per trascrivere i turni audio e Piper per le risposte richieste in audio. La politica CORS riguarda le rotte GET; l'apertura del canale segue il controllo dell'origine definito per la sessione. L'arresto dell'ingresso segue la politica generale del ciclo di vita del server; la richiesta al provider non viene annullata esplicitamente dall'adapter.
 
 #### Metadata
   * type: specification
@@ -383,51 +359,15 @@ Ogni agente attivo ha un file JSON locale separato, gestito dall'utente e indivi
   * define: [Configurazione del modello per agente](../Requirements/FamilyConversation.md#configurazione-del-modello-per-agente)
 ---
 
-### Profilo di trasporto SSE della chat
-
-Il client invia il turno testuale con `POST /api/conversations/turns`, `Content-Type: application/json` e il corpo già definito dal contratto di invio: `text` e l'eventuale `conversationId`, senza lo storico. L'adapter restituisce i rifiuti precedenti all'ammissione come HTTP JSON secondo il contratto degli errori. Dopo l'ammissione, restituisce sulla stessa richiesta un UI Message Stream v1 di AI SDK, codificato in UTF-8 nel formato SSE, con `Content-Type: text/event-stream`, `x-vercel-ai-ui-message-stream: v1` e `Cache-Control: no-store`. I commenti SSE eventualmente prodotti dall'SDK non sono eventi applicativi.
-
-Il primo evento applicativo contiene una parte `start` con `messageId` stabile per la risposta del turno e `messageMetadata` contenente le stringhe `conversationId` e `turnId`, corrispondenti agli identificativi conservati. Questi metadata sono presenti anche nella continuazione di una conversazione. L'identità precede ogni incremento testuale; `messageId` identifica il messaggio UI della risposta, senza sostituire l'identità del turno nel dominio.
-
-Il testo usa le parti standard `text-start`, `text-delta` e `text-end` con un `id` coerente per ciascun blocco. Il campo `delta` di `text-delta` contiene soltanto il nuovo frammento. La concatenazione ordinata dei frammenti ricostruisce la risposta; gli incrementi disponibili vengono trasmessi durante la generazione. La serializzazione SSE e la chiusura del protocollo sono affidate agli helper AI SDK, senza un encoder SSE locale parallelo.
-
-La conferma di successo del prodotto è una parte `finish` con `finishReason: "stop"` e `messageMetadata.turnStatus: "answered"`, emessa dopo gli incrementi e la chiusura dei blocchi testuali, e soltanto dopo la conferma applicativa del commit dell'esito riuscito. La fine della generazione del modello, `text-end`, la sola chiusura HTTP e il marcatore di trasporto `data: [DONE]` non attestano un esito conservato. L'adapter traduce l'esito applicativo in questa conferma; non inoltra come successo una parte `finish` del provider prima della persistenza.
-
-Se il turno fallisce dopo l'avvio del flusso, l'adapter emette una parte standard `error` con `errorText` uguale al messaggio pubblico sicuro e chiude il flusso senza la conferma di successo. Nel caso di esito di errore conservato, il messaggio coincide con quello nell'archivio. Un guasto della persistenza segue anche la politica di indisponibilità degli ingressi; non viene presentato come esito conservato. La normale chiusura può comunque includere `[DONE]`, che resta un marcatore di trasporto.
-
-Il profilo usa testo, metadata di correlazione ed esiti pubblici. La migrazione non pubblica ragionamento, credenziali o risultati interni dei tool. Non è prevista compatibilità simultanea con i precedenti eventi SSE nominati `conversation`, `delta`, `done` ed `error`. La consultazione dello storico e il comportamento dopo disconnessione continuano a seguire i rispettivi contratti del prodotto.
-
-#### Metadata
-  * type: input-output
-
-#### Relations
-  * define: [Risposta progressiva SSE nella chat testuale](../Requirements/FamilyConversation.md#risposta-progressiva-sse-nella-chat-testuale)
----
-
 ### Proprietà dei controlli del turno conversazionale
 
-L'adapter HTTP possiede la verifica della forma dell'input e della decodifica del proprio protocollo: ferma i dati non validi prima del caso d'uso, senza decidere invarianti o precondizioni di business. Application riceve dati già interpretati e coordina le precondizioni che richiedono contesto, per esempio il recupero della conversazione richiesta, tramite porte; un rifiuto previsto ferma il turno prima degli effetti successivi. Domain garantisce gli stati e le transizioni del singolo turno anche se un ingresso ha eseguito controlli preliminari. L'archivio SQLite garantisce atomicamente l'ammissione di al massimo un turno attivo per conversazione; una lettura o un controllo preliminare non sostituisce tale garanzia. I controlli pubblici aggiuntivi sono ammessi solo se servono al rispettivo confine e non ridefiniscono la regola autorevole di un altro livello.
+L'adapter del canale conversazionale possiede la verifica della forma dei messaggi e della decodifica del proprio protocollo: ferma i dati non validi prima del caso d'uso, senza decidere invarianti o precondizioni di business. Application riceve dati già interpretati e coordina le precondizioni che richiedono contesto, per esempio il recupero della conversazione richiesta, tramite porte; un rifiuto previsto ferma il turno prima degli effetti successivi. Domain garantisce gli stati e le transizioni del singolo turno anche se un ingresso ha eseguito controlli preliminari. L'archivio SQLite garantisce atomicamente l'ammissione di al massimo un turno attivo per conversazione; una lettura o un controllo preliminare non sostituisce tale garanzia. I controlli pubblici aggiuntivi sono ammessi solo se servono al rispettivo confine e non ridefiniscono la regola autorevole di un altro livello.
 
 #### Metadata
   * type: specification
 
 #### Relations
   * define: [Validazione del formato negli ingressi conversazionali](../Requirements/FamilyConversation.md#validazione-del-formato-negli-ingressi-conversazionali)
----
-
-### Protocollo vocale del prodotto
-
-L'ingresso vocale usa il protocollo WebSocket documentato da Micdrop sul percorso `/api/voice`, condividendo la porta del server HTTP. L'ammissione e la creazione della nuova conversazione avvengono prima dell'upgrade WebSocket: dopo l'apertura il client Micdrop può trasmettere il primo turno senza attendere un messaggio aggiuntivo. Un avvio rifiutato non produce una sessione vocale operativa. Ogni connessione ammessa appartiene a una nuova conversazione; connessioni di client diversi restano indipendenti. Le repliche usano la stessa connessione e conversazione finché il satellite la mantiene aperta.
-
-Il client Micdrop invia `StartSpeaking`, frame audio PCM16 mono a 16 kHz e `StopSpeaking`; MicdropServer consegna progressivamente l'audio a Vosk e trasporta le risposte parlate. Per i risultati ordinari della chiamata si usano i messaggi standard Micdrop, fra cui `Message`, `SkipAnswer` ed `EndCall`. `Ready`, `TurnRejected` e `Played` non fanno parte del protocollo adottato. I metadati `Message.metadata.expectsReply` sono l'estensione di contenuto già ammessa dal tipo di messaggio Micdrop. Il satellite decide localmente quando chiudere dopo la riproduzione o l'inattività; alla chiusura della WebSocket il backend rilascia la sessione.
-
-Un Agent Micdrop personalizzato negli adapter tecnici del package «Conversazioni» traduce la trascrizione in input del caso d'uso `exchangeTurn` condiviso con HTTP/chat e consegna progressivamente il testo della risposta alla sintesi vocale. Il caso d'uso e l'archivio comuni restano autorità per ammissione atomica, stato, rifiuto ed esito del turno: Micdrop delimita e trasporta il parlato, senza mantenere un secondo archivio persistente o decidere i turni di business. Se il caso d'uso rifiuta un turno vocale, l'adapter presenta il rifiuto con una risposta parlata tramite il normale `Message` e audio Micdrop, con `metadata.expectsReply: false`; il turno rifiutato non viene conservato. Il testo sicuro e localizzato corrisponde alla causa applicativa (`occupied`, `conversation_not_found`, `temporarily_unavailable`) e usa lo stesso significato dei messaggi pubblici della chat testuale. La chiusura avviene dopo la riproduzione sul satellite. Domain e Application non importano Micdrop. Fonti del protocollo e dei messaggi: https://micdrop.dev/docs/server/protocol e https://micdrop.dev/docs/server/auth-and-parameters .
-
-#### Metadata
-  * type: specification
-
-#### Relations
-  * define: [Dati Application dei casi d'uso conversazionali](../Requirements/FamilyConversation.md#dati-application-dei-casi-duso-conversazionali)
 ---
 
 ### Responsabilità di Domain Application e adapter
@@ -480,24 +420,11 @@ Se la conversazione non esiste, la risposta ha stato `404`; se la lettura fallis
   * define: [Lettura HTTP dello storico conversazionale](../Requirements/FamilyConversation.md#lettura-http-dello-storico-conversazionale)
 ---
 
-### Risposta di errore HTTP prima del flusso testuale
-
-Se un errore viene determinato prima dell'invio degli header SSE, il backend risponde alla richiesta POST con uno stato HTTP di errore `4xx` o `5xx` e `Content-Type: application/json`. Il corpo è un oggetto JSON con il campo stringa `error` contenente un messaggio pubblico sicuro, per esempio `{"error":"..."}`. Il messaggio non espone dettagli tecnici del guasto. Questa risposta non usa `text/event-stream` e non contiene eventi SSE. Se `text` è vuoto o contiene soltanto spazi bianchi, il corpo JSON è malformato, contiene campi non previsti o usa tipi diversi da quelli contrattuali, oppure `Content-Type` non è `application/json`, il codice di stato è `400` e il messaggio è «Invalid message.» in inglese oppure «Messaggio non valido.» in italiano; il testo vuoto ha precedenza anche quando è presente un `conversationId` inesistente. Se `text` è valido ma il `conversationId` non identifica una conversazione conservata, il codice di stato è `404` e il messaggio è «Conversation not found.» oppure «Conversazione non trovata.». Se il turno valido è rifiutato perché la conversazione destinataria è occupata, il codice di stato è `409` e il messaggio è «Another turn is in progress.» oppure «Un altro turno è in corso.»; il turno non viene conservato né accodato. Se l'archivio rifiuta temporaneamente l'ammissione perché occupato, il codice di stato è `503` e il messaggio è «Service temporarily unavailable.» oppure «Servizio temporaneamente non disponibile.»; il turno non viene conservato né accodato. Se il corpo supera 64 KiB, il codice di stato è `413` e il messaggio è «Request too large.» oppure «Richiesta troppo grande.». Per i messaggi alternativi di questo paragrafo, il primo testo è inglese e il secondo italiano, secondo la lingua configurata. Se un guasto tecnico inatteso avviene prima dell'ammissione del turno e prima degli header SSE, il codice di stato è `500` e `error` contiene il messaggio standard già definito per la lingua configurata: «I can't complete the response.» in inglese oppure «Non riesco a completare la risposta.» in italiano. La scelta del codice di stato specifico per gli altri casi di errore resta da definire.
-
-Quando il server ha disabilitato gli ingressi conversazionali perché non è riuscito a conservare l'esito di un turno già ammesso, ogni nuovo POST del turno testuale riceve fino al riavvio HTTP `503` con la stessa risposta JSON e lo stesso messaggio tradotto di indisponibilità temporanea; nessun nuovo turno viene ammesso, conservato o accodato.
-
-#### Metadata
-  * type: input-output
-
-#### Relations
-  * define: [Segnalazione dell'errore HTTP prima del flusso testuale](../Requirements/FamilyConversation.md#segnalazione-dellerrore-http-prima-del-flusso-testuale)
----
-
 ### Schema delle richieste HTTP conversazionali
 
-Le rotte HTTP JSON di elenco, storico e turno dichiarano con TypeBox la forma delle parti di richiesta che usano: corpo, query e parametri di percorso. Fastify valida tali schemi con Ajv prima del gestore. Gli oggetti di richiesta dichiarati sono chiusi: campi non previsti producono un rifiuto, senza essere eliminati. La configurazione Ajv dell'ingresso usa `coerceTypes: false`, `useDefaults: false`, `removeAdditional: false` e `allErrors: false`; la validazione non converte tipi, inserisce valori predefiniti né altera i dati ricevuti.
+Le rotte HTTP JSON di elenco e storico dichiarano con TypeBox la forma delle parti di richiesta che usano: query e parametri di percorso. Fastify valida tali schemi con Ajv prima del gestore. Gli oggetti di richiesta dichiarati sono chiusi: campi non previsti producono un rifiuto, senza essere eliminati. La configurazione Ajv dell'ingresso usa `coerceTypes: false`, `useDefaults: false`, `removeAdditional: false` e `allErrors: false`; la validazione non converte tipi, inserisce valori predefiniti né altera i dati ricevuti.
 
-Lo schema controlla la forma del protocollo. L'adapter converte esplicitamente le rappresentazioni ammesse nei dati Application, come il limite decimale e il cursore dell'elenco. La verifica che il testo del turno non sia composto solo da spazi resta un controllo dell'ingresso che non modifica il testo accettato. Le precondizioni contestuali e gli invarianti restano ai rispettivi proprietari. Un errore di schema o di conversione interrompe la richiesta prima del caso d'uso e viene presentato secondo il contratto HTTP pubblico della rotta. Questa scelta non introduce la pubblicazione OpenAPI.
+Lo schema controlla la forma del protocollo. L'adapter converte esplicitamente le rappresentazioni ammesse nei dati Application, come il limite decimale e il cursore dell'elenco. Le precondizioni contestuali e gli invarianti restano ai rispettivi proprietari. Un errore di schema o di conversione interrompe la richiesta prima del caso d'uso e viene presentato secondo il contratto HTTP pubblico della rotta. Questa scelta non introduce la pubblicazione OpenAPI. I messaggi del canale conversazionale seguono invece lo schema JSON del protocollo `ambrogio.v1`.
 
 #### Metadata
   * type: specification
@@ -510,7 +437,7 @@ Lo schema controlla la forma del protocollo. L'adapter converte esplicitamente l
 
 Ogni porta outbound di Application descrive una capacità coerente richiesta da uno o più casi d'uso del modulo «Conversazioni». Nomi delle operazioni, input, output e rifiuti descrivono il significato per il modulo, senza riprodurre automaticamente metodi, payload o tipi di SDK, protocollo o API del fornitore. L'adapter realizza la porta e converte richieste, risposte e rifiuti fra le due rappresentazioni. La granularità delle porte segue le capacità effettivamente richieste, senza imporre un numero di operazioni per porta.
 
-La capacità di produzione della risposta riceve il contesto applicativo dello storico conservato, consegna i nuovi frammenti testuali nell'ordine di produzione e permette al coordinamento applicativo di distinguere conclusione e guasto della produzione. Le firme possono evolvere per usare i meccanismi SDK attraverso adapter, mantenendo dati ed esiti definiti in Application; non è prescritta una particolare firma TypeScript o il solo `AsyncIterable<string>`. Non attraversano la porta eventi SSE, `UIMessage`, risultati `streamText`, writer e callback dell'SDK o altri tipi del fornitore. Eventuali callback definiti da Application scambiano soltanto dati applicativi. Eventuali nuovi dati applicativi richiedono un bisogno concreto del modulo e non la duplicazione generale del protocollo SDK.
+La capacità di produzione della risposta riceve il contesto applicativo dello storico conservato, consegna i nuovi frammenti testuali nell'ordine di produzione insieme all'indicazione strutturata della replica attesa e permette al coordinamento applicativo di distinguere conclusione e guasto della produzione. Le firme possono evolvere per usare i meccanismi SDK attraverso adapter, mantenendo dati ed esiti definiti in Application; non è prescritta una particolare firma TypeScript. Non attraversano la porta messaggi del protocollo conversazionale, eventi SSE, `UIMessage`, risultati `streamText`, writer e callback dell'SDK o altri tipi del fornitore. Eventuali callback definiti da Application scambiano soltanto dati applicativi. Eventuali nuovi dati applicativi richiedono un bisogno concreto del modulo e non la duplicazione generale del protocollo SDK.
 
 #### Metadata
   * type: specification
@@ -528,17 +455,6 @@ Per ogni mutazione dell'archivio, la porta di scrittura definisce la postcondizi
 
 #### Relations
   * define: [Classificazione degli esiti delle scritture conversazionali](../Requirements/FamilyConversation.md#classificazione-degli-esiti-delle-scritture-conversazionali)
----
-
-### Stati dell'interazione vocale
-
-L'interazione vocale backend ha gli stati `chiusa` e `attiva`. Un avvio esplicito ammesso crea una nuova conversazione prima dell'upgrade della WebSocket. Una connessione attiva è associata a una sola conversazione; connessioni diverse restano indipendenti. L'ammissione di ogni turno resta nel caso d'uso condiviso fra voce e chat, con al massimo un turno attivo per conversazione. Le repliche sulla stessa connessione appartengono alla conversazione attiva. Il satellite, dopo la risposta riprodotta, mantiene aperta la connessione soltanto se il backend ha indicato una replica attesa, e la chiude alla scadenza del proprio intervallo di inattività. Il backend passa a `chiusa` quando la WebSocket si chiude; un turno successivo richiede un nuovo avvio e una nuova conversazione.
-
-#### Metadata
-  * type: state
-
-#### Relations
-  * define: [Chiusura dell'interazione vocale](../Requirements/FamilyConversation.md#chiusura-dellinterazione-vocale)
 ---
 
 ### Stati persistenti dei turni conversazionali
@@ -586,3 +502,4 @@ Il percorso del file è indicato dalla variabile d'ambiente `AMBROGIO_CONVERSATI
 #### Relations
   * define: [Configurazione della paginazione conversazionale](../Requirements/FamilyConversation.md#configurazione-della-paginazione-conversazionale)
 ---
+

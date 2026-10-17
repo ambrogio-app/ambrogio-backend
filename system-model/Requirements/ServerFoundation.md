@@ -901,3 +901,4 @@ Quando il progetto distribuisce l'immagine Docker del backend, deve includere i 
   * satisfiedBy: [Dockerfile](../../Dockerfile)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
+

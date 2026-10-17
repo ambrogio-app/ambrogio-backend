@@ -1,5 +1,82 @@
 # Elements
 
+### Prova dei rifiuti prima dell'ammissione
+
+Con `language` impostato separatamente a `en` e `it`, provocare ciascun rifiuto prima dell'ammissione: testo vuoto, conversazione inesistente, conversazione occupata, archivio temporaneamente occupato, server in arresto, ingressi disabilitati dopo una conclusione non conservata e guasto tecnico controllato prima dell'ammissione. Ripetere i casi con `reply: "text"` e con `reply: "audio"` a voce abilitata. Confrontare lo stato dell'archivio prima e dopo.
+
+#### Details
+La prova passa se ogni caso riceve una trasmissione del messaggio pubblico nel tipo di contenuto richiesto, seguita da `turn.rejected` con il `reason` previsto (`invalid`, `conversation_not_found`, `occupied`, `unavailable`, `failure`) e lo stesso `message`, che corrisponde esattamente al testo definito per la lingua configurata. Non compaiono `turn.accepted` né nuovi turni o conversazioni, e il guasto tecnico non espone dettagli diagnostici. Fallisce se un rifiuto viene comunicato con un messaggio diverso, se manca la trasmissione del messaggio, se viene creato un effetto persistente o se trapelano dettagli tecnici. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica del protocollo conversazionale](ConversationProtocol.md#verifica-del-protocollo-conversazionale)
+  * verify: [Rifiuto del turno prima dell'ammissione](../Requirements/FamilyConversation.md#rifiuto-del-turno-prima-dellammissione)
+---
+
+### Prova del ciclo della sessione conversazionale
+
+Aprire due sessioni di client distinti; tenere attiva la prima mentre la seconda avvia e completa un turno. Chiudere una sessione dopo un turno concluso, durante una trasmissione audio in ingresso non conclusa, durante una risposta audio in corso e durante un turno ammesso. Inviare turni senza identificativo di conversazione e osservare quando nasce la conversazione, anche per un turno rifiutato.
+
+#### Details
+La prova passa se la chiusura di una sessione rilascia soltanto le sue risorse: la trasmissione in ingresso non conclusa viene scartata senza creare turni, la sintesi in corso viene interrotta, il turno già ammesso prosegue fino all'esito conservato e l'altra sessione continua senza effetti. Una nuova conversazione nasce soltanto con l'ammissione del turno che la crea; un turno rifiutato non crea conversazioni. Il backend non attende né richiede conferme di fine riproduzione dal client. Fallisce se la chiusura interrompe altre sessioni o turni ammessi, se resta una sintesi attiva per una sessione chiusa o se un turno rifiutato lascia una conversazione. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica del protocollo conversazionale](ConversationProtocol.md#verifica-del-protocollo-conversazionale)
+  * verify: [Chiusura della sessione conversazionale](../Requirements/FamilyConversation.md#chiusura-della-sessione-conversazionale)
+  * verify: [Creazione della conversazione all'ammissione del turno](../Requirements/FamilyConversation.md#creazione-della-conversazione-allammissione-del-turno)
+---
+
+### Prova della conferma di completamento del turno
+
+Eseguire un turno con almeno due frammenti, prima con risposta in testo e poi in audio. Ritardare il commit del completamento dopo l'ultimo frammento, quindi consentirlo; ripetere facendolo fallire. Chiudere la sessione del client dopo `output.end` ma prima del commit.
+
+#### Details
+La prova passa se `turn.completed` arriva una sola volta come ultimo messaggio del turno, dopo `output.end` e dopo il commit riuscito, con `turnId` ed `expectsReply` booleano. Finché il commit è bloccato non arriva; se il commit fallisce non viene inviato e il guasto segue la politica di indisponibilità degli ingressi. La fine della generazione, `output.end` e la chiusura della sessione non sono trattate come successo. Fallisce se viene confermato un esito non conservato, se la conferma precede l'ultima trasmissione o se manca `expectsReply`. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica del protocollo conversazionale](ConversationProtocol.md#verifica-del-protocollo-conversazionale)
+  * verify: [Conferma del completamento del turno](../Requirements/FamilyConversation.md#conferma-del-completamento-del-turno)
+---
+
+### Prova della segnalazione della replica attesa
+
+Con un produttore controllato, eseguire turni testuali e vocali in cui la risposta chiede una replica e turni in cui conclude lo scambio. Ripetere con un produttore che non fornisce l'indicazione o la fornisce con tipo invalido. Osservare le chiamate al modello.
+
+#### Details
+La prova passa se l'agente produce il booleano strutturato `expectsReply` durante la stessa generazione della risposta, senza una seconda chiamata dedicata alla classificazione, e `turn.completed` porta il valore corretto per turni testuali e vocali, indipendentemente dal tipo di contenuto della risposta. Un'indicazione mancante o invalida produce l'esito di errore del turno e non `expectsReply: false`. Turni rifiutati, falliti o interrotti non portano `expectsReply`. Fallisce se il valore è dedotto dal testo, se differisce per canale o se un valore mancante viene presentato come `false`. Il comportamento dei client che usano l'indicazione è verificato nei rispettivi modelli. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica del protocollo conversazionale](ConversationProtocol.md#verifica-del-protocollo-conversazionale)
+  * verify: [Determinazione della replica attesa](../Requirements/FamilyConversation.md#determinazione-della-replica-attesa)
+  * verify: [Segnalazione della replica attesa](../Requirements/FamilyConversation.md#segnalazione-della-replica-attesa)
+---
+
+### Prova della trasmissione progressiva della risposta
+
+In una sessione pronta inviare un nuovo turno e poi continuare una conversazione conservata, prima con `reply: "text"` e poi con `reply: "audio"` usando un sintetizzatore controllato. Produrre almeno due frammenti controllati, inclusi Unicode e ritorni a capo, mantenendo la generazione aperta dopo il primo. Ritardare la consegna di una notifica all'adapter e osservare l'ordine delle successive.
+
+#### Details
+La prova passa se, dopo `turn.accepted`, il server apre una trasmissione con `output.start` contenente `requestId`, `turnId`, un `stream` non in uso e il `content` richiesto; per il testo ogni `output.chunk` contiene soltanto il nuovo frammento e la concatenazione ricostruisce il testo esatto; per l'audio i frame binari portano il numero `stream` della trasmissione e campioni PCM16 alla frequenza dichiarata della voce configurata. Il primo contenuto arriva prima della fine della generazione. `output.end` chiude la trasmissione prima dell'esito del turno. Le notifiche applicative sono consegnate in ordine. Fallisce se la risposta viene accumulata fino alla fine, se i frammenti si ripetono o si mescolano tra trasmissioni, se il contenuto non è nel tipo richiesto o se espone dati interni dei tool o credenziali. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica del protocollo conversazionale](ConversationProtocol.md#verifica-del-protocollo-conversazionale)
+  * verify: [Trasmissione progressiva della risposta del turno](../Requirements/FamilyConversation.md#trasmissione-progressiva-della-risposta-del-turno)
+---
+
 ### Verifica degli invarianti dei turni
 
 Raggruppa le prove delle transizioni di stato e della ricostruzione dei turni nel Domain.
@@ -125,22 +202,6 @@ Raggruppa le verifiche della trascrizione, della risposta parlata, della conserv
   * type: verification-objective
 ---
 
-### Dimostrazione della segnalazione di replica attesa
-
-Verifica pianificata dell'integrazione; nessuna esecuzione o evidenza positiva è ancora disponibile.
-
-#### Details
-Usare casi controllati in cui la risposta chiede una replica e casi in cui conclude lo scambio. Accertare che l'agente produca il booleano strutturato `expectsReply` durante la stessa generazione della risposta, senza una seconda chiamata al modello dedicata alla classificazione. Il backend deve inviare un `Message` Micdrop dell'assistente con `metadata.expectsReply` booleano per entrambe le risposte, preservando audio e testo. Provare messaggio ricevuto prima e dopo la fine dell'audio, campo assente e tipo invalido: il satellite non inferisce dal testo, ammette la replica solo con `true` e chiude dopo la riproduzione con `false` o entro l'intervallo locale per metadati mancanti o invalidi. La prova richiede backend reale e client conforme; un mock da solo non dimostra la compatibilità.
-
-#### Metadata
-  * type: demonstration-verification
-
-#### Relations
-  * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
-  * verify: [Determinazione della replica vocale attesa](../Requirements/FamilyConversation.md#determinazione-della-replica-vocale-attesa)
-  * verify: [Segnalazione della replica vocale attesa](../Requirements/FamilyConversation.md#segnalazione-della-replica-vocale-attesa)
----
-
 ### Prova degli ingressi testuali senza voce
 
 Avviare un'installazione con la configurazione e le risorse vocali assenti, mantenendo configurati i soli componenti necessari alla chat testuale. Eseguire un turno tramite la chat testuale.
@@ -155,25 +216,6 @@ La prova passa se entrambi gli ingressi testuali si avviano e completano un turn
   * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
   * satisfiedBy: [config-bootstrap.test.ts](../../apps/server/test/runtime/config-bootstrap.test.ts)
   * verify: [Ingressi testuali indipendenti dalla voce](../Requirements/FamilyConversation.md#ingressi-testuali-indipendenti-dalla-voce)
----
-
-### Prova del ciclo dell'interazione vocale
-
-Aprire due connessioni vocali distinte dopo ammissione backend; tenere attiva la prima mentre la seconda avvia e completa un turno. Simulare la chiusura della WebSocket da parte del satellite dopo una risposta conclusiva, dopo il suo intervallo locale di inattività e durante una disconnessione anticipata.
-
-#### Details
-La prova passa se l'ammissione e la creazione della conversazione precedono l'upgrade WebSocket, ogni connessione ammessa usa una nuova conversazione senza chiudere le altre, la replica tempestiva sulla stessa connessione resta nella stessa conversazione e la chiusura di una connessione rilascia soltanto la sua sessione. Un avvio rifiutato non espone una WebSocket vocale operativa e non produce una conversazione attiva. Nessun turno può perdersi tra upgrade e costruzione di MicdropServer. Non sono inviati né richiesti `Ready`, `TurnRejected` o `Played`. Il backend non avvia un timer sulla sola conclusione della sintesi; l'intervallo locale di 15 secondi e la sua configurazione sono verificati nel satellite.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
-  * satisfiedBy: [voice-server.test.ts](../../apps/server/test/runtime/voice-server.test.ts)
-  * satisfiedBy: [voice-session.test.ts](../../packages/conversations/test/adapters/in/voice-session.test.ts)
-  * verify: [Chiusura dell'interazione vocale](../Requirements/FamilyConversation.md#chiusura-dellinterazione-vocale)
-  * verify: [Nuovo avvio dell'interazione vocale](../Requirements/FamilyConversation.md#nuovo-avvio-dellinterazione-vocale)
-  * verify: [Replica vocale nella conversazione attiva](../Requirements/FamilyConversation.md#replica-vocale-nella-conversazione-attiva)
 ---
 
 ### Prova dell'assenza di audio persistente
@@ -194,34 +236,32 @@ La prova passa se lo storico conserva solo testo e dati non audio e se nessuna r
 
 ### Prova della trascrizione e della risposta parlata
 
-Inviare un campione vocale trascrivibile con testo atteso e ottenere una risposta controllata.
+Inviare un turno audio trascrivibile con testo atteso e `reply: "audio"`, ottenendo una risposta controllata; ripetere con un turno testuale e `reply: "audio"`.
 
 #### Details
-La prova passa se il turno conservato contiene la trascrizione testuale attesa, la risposta è emessa in voce e il suo testo compare nello scambio. Fallisce se viene creato un tipo diverso di conversazione, se manca la trascrizione o se la risposta non viene pronunciata.
+La prova passa se il turno conservato contiene la trascrizione testuale attesa, `turn.accepted` riporta lo stesso testo, la risposta è trasmessa in audio con la frequenza della voce configurata e il suo testo compare nello scambio conservato. Fallisce se manca la trascrizione, se la risposta non viene trasmessa in audio quando richiesto o se lo scambio conserva audio invece di testo. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
-  * satisfiedBy: [voice-server.test.ts](../../apps/server/test/runtime/voice-server.test.ts)
-  * verify: [Pronuncia della risposta vocale](../Requirements/FamilyConversation.md#pronuncia-della-risposta-vocale)
+  * verify: [Risposta parlata su richiesta del client](../Requirements/FamilyConversation.md#risposta-parlata-su-richiesta-del-client)
   * verify: [Trascrizione del turno vocale](../Requirements/FamilyConversation.md#trascrizione-del-turno-vocale)
 ---
 
 ### Prova della trascrizione non riuscita
 
-Simulare un errore del servizio di trascrizione e una trascrizione composta solo da spazi.
+Simulare un errore del servizio di trascrizione e una trascrizione composta solo da spazi, con risposta richiesta in audio.
 
 #### Details
-La prova passa se nessuno dei due tentativi genera uno scambio nello storico. Fallisce se compare un turno o un esito persistente per tali tentativi.
+La prova passa se entrambi i tentativi ricevono la trasmissione del messaggio pubblico e `turn.rejected` con `reason: "transcription_failed"`, senza `turn.accepted`, e nessuno genera uno scambio nello storico. Fallisce se compare un turno o un esito persistente per tali tentativi o se il motivo è diverso. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
-  * satisfiedBy: [voice-session.test.ts](../../packages/conversations/test/adapters/in/voice-session.test.ts)
   * verify: [Trascrizione vocale non riuscita](../Requirements/FamilyConversation.md#trascrizione-vocale-non-riuscita)
 ---
 
@@ -235,10 +275,10 @@ Raggruppa i controlli sulla collocazione dei flussi testuali e vocali nel modulo
 
 ### Analisi dei dati al confine dei casi d'uso
 
-Esaminare firme e valori scambiati tra Application e gli adapter HTTP e voce. Seguire un turno dalla decodifica fino al commit e alla rappresentazione dell'esito, compresi ammissione, incrementi, conclusione e cancellazione del solo trasporto. Controllare anche i casi d'uso di lettura.
+Esaminare firme e valori scambiati tra Application e l'adapter del canale conversazionale. Seguire un turno testuale e uno vocale dalla decodifica fino al commit e alla rappresentazione dell'esito, compresi ammissione, incrementi, conclusione e chiusura della sola sessione. Controllare anche i casi d'uso di lettura.
 
 #### Details
-L'analisi passa se i dati sono definiti in Application con significato indipendente dal protocollo e gli adapter traducono in entrambe le direzioni. Le eventuali fasi separate di ammissione ed esecuzione mantengono un coordinamento coerente condiviso tra chat e voce; un turno ammesso raggiunge l'esito previsto anche se il consumatore UI viene cancellato. Un callback tecnico invoca Application senza farle ricevere oggetti SDK. Fallisce se Application riceve un oggetto HTTP o vocale, produce direttamente parti UI/SSE, espone oggetti Domain o se chat e voce implementano due autorità incompatibili per la stessa intenzione.
+L'analisi passa se i dati sono definiti in Application con significato indipendente dal protocollo e l'adapter traduce in entrambe le direzioni. Il coordinamento del turno è unico per testo e voce; un turno ammesso raggiunge l'esito previsto anche se la sessione viene chiusa. Un callback tecnico invoca Application senza farle ricevere oggetti SDK. Fallisce se Application riceve messaggi del protocollo, oggetti HTTP o audio, produce direttamente messaggi del protocollo, espone oggetti Domain o se testo e voce implementano due autorità incompatibili per la stessa intenzione.
 
 #### Metadata
   * type: analysis-verification
@@ -403,10 +443,10 @@ Il controllo passa se ogni capacità tecnica esterna richiesta da un caso d'uso 
 
 ### Controllo delle responsabilità Domain Application e adapter
 
-Esaminare i componenti del modulo «Conversazioni» e seguire il percorso completo di un turno HTTP e di un turno vocale. Classificare regole di dominio, coordinamento applicativo, porte, gestione degli agenti, persistenza e trasporto; confrontare il percorso prima e dopo la migrazione AI SDK.
+Esaminare i componenti del modulo «Conversazioni» e seguire il percorso completo di un turno testuale e di un turno vocale nel canale conversazionale. Classificare regole di dominio, coordinamento applicativo, porte, gestione degli agenti, trascrizione e sintesi, persistenza e trasporto.
 
 #### Details
-Il controllo passa se Domain contiene stati e transizioni, Application coordina ammissione ed esito tramite porte e gli adapter possiedono i tipi e i meccanismi di AI SDK, Fastify, Micdrop, MCP e SQLite. Un callback SDK può invocare un caso d'uso attraverso dati tradotti; non determina autonomamente una transizione persistente. Verificare anche gli import solo di tipi. L'adozione usa i meccanismi SDK di generazione e serializzazione del protocollo ed elimina gli equivalenti locali sostituiti; gli adapter contengono conversioni e politiche di integrazione necessarie, senza duplicare un framework agentico o un protocollo SSE. Documentare il codice rimosso, il coordinamento residuo e le ragioni di eventuali conversioni aggiuntive: il solo numero di righe non determina l'esito. Fallisce se una dipendenza tecnica raggiunge i layer interni, se l'HTTP diventa autorità delle regole comuni alla voce o se resta un percorso tecnico parallelo privo di obbligo applicativo.
+Il controllo passa se Domain contiene stati e transizioni, Application coordina ammissione ed esito tramite porte e gli adapter possiedono i tipi e i meccanismi di AI SDK, Fastify, WebSocket, Vosk, Piper, MCP e SQLite. Un callback SDK può invocare un caso d'uso attraverso dati tradotti; non determina autonomamente una transizione persistente. Verificare anche gli import solo di tipi. Gli adapter contengono conversioni e politiche di integrazione necessarie, senza duplicare un framework agentico o un secondo protocollo dei turni. Fallisce se una dipendenza tecnica raggiunge i layer interni, se un adapter diventa autorità delle regole comuni ai turni o se resta un percorso tecnico parallelo privo di obbligo applicativo.
 
 #### Metadata
   * type: inspection-verification
@@ -456,21 +496,19 @@ La prova passa se l'ingresso della stessa interazione impedisce un nuovo turno f
 
 ### Prova del rifiuto dei turni concorrenti
 
-Preparare una conversazione esistente A e inviare contemporaneamente due turni verso A tramite client diversi e, quando abilitati, ingressi HTTP e voce. Ritardare la produzione del turno ammesso. Inviare nel frattempo turni verso B e richieste che creano conversazioni nuove.
+Preparare una conversazione esistente A e inviare contemporaneamente due turni verso A da sessioni di client diversi, uno testuale e uno audio quando la voce è abilitata. Ritardare la produzione del turno ammesso. Inviare nel frattempo turni verso B e turni che creano conversazioni nuove.
 
 #### Details
-Nella stessa conversazione viene ammesso al massimo un turno; gli altri sono rifiutati senza persistenza né coda. Il rifiuto HTTP usa 409, Content-Type application/json e un campo error sicuro, senza SSE. Il rifiuto vocale viene pronunciato come risposta Micdrop ordinaria con `Message.metadata.expectsReply: false`, senza `TurnRejected`; il satellite chiude dopo averla riprodotta. La mappatura del rifiuto applicativo conserva la causa e produce un testo pubblico sicuro nella lingua configurata. B e le conversazioni nuove possono progredire e concludersi mentre A è ancora in elaborazione. Storici, identificativi, frammenti e risultati restano separati. Dopo la conclusione di A si può ammettere un nuovo turno in A. Ripetere dopo errore e dopo interruzione con riavvio; un completamento tardivo non modifica un turno interrotto e non libera l'occupazione di un altro turno. Verifica aggiornata da eseguire; i file collegati devono essere adeguati e rieseguiti.
+Nella stessa conversazione viene ammesso al massimo un turno; gli altri ricevono la trasmissione del messaggio pubblico nel tipo di contenuto richiesto e `turn.rejected` con `reason: "occupied"`, senza persistenza né coda. Il rifiuto è identico per turni testuali e vocali. B e le conversazioni nuove possono progredire e concludersi mentre A è ancora in elaborazione. Storici, identificativi, frammenti e risultati restano separati. Dopo la conclusione di A si può ammettere un nuovo turno in A. Ripetere dopo errore e dopo interruzione con riavvio; un completamento tardivo non modifica un turno interrotto e non libera l'occupazione di un altro turno. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [voice-server.test.ts](../../apps/server/test/runtime/voice-server.test.ts)
   * verify: [Elaborazione parallela di conversazioni diverse](../Requirements/FamilyConversation.md#elaborazione-parallela-di-conversazioni-diverse)
   * verify: [Rifiuto dei turni concorrenti nella stessa conversazione](../Requirements/FamilyConversation.md#rifiuto-dei-turni-concorrenti-nella-stessa-conversazione)
-  * verify: [Rifiuto HTTP del turno concorrente](../Requirements/FamilyConversation.md#rifiuto-http-del-turno-concorrente)
+  * verify: [Rifiuto del turno nella conversazione occupata](../Requirements/FamilyConversation.md#rifiuto-del-turno-nella-conversazione-occupata)
 ---
 
 ### Prova dell'assenza di turni in coda
@@ -549,10 +587,10 @@ Raggruppa le verifiche della risposta testuale, dello storico degli scambi e del
 
 ### Analisi della proprietà dei controlli conversazionali
 
-Esaminare il percorso di un turno dall'adapter HTTP al caso d'uso Application, al Domain e all'archivio SQLite. Confrontare i controlli implementati con i contratti del turno vuoto, della conversazione richiesta, degli stati del turno e dell'ammissione concorrente; osservare anche dove il flusso si arresta dopo ciascun rifiuto.
+Esaminare il percorso di un turno dall'adapter del canale conversazionale al caso d'uso Application, al Domain e all'archivio SQLite. Confrontare i controlli implementati con i contratti del turno vuoto, della conversazione richiesta, degli stati del turno e dell'ammissione concorrente; osservare anche dove il flusso si arresta dopo ciascun rifiuto.
 
 #### Details
-L'analisi passa se gli adapter fermano forma e decodifica non valide prima del caso d'uso senza contenere regole di stato, Application coordina le precondizioni contestuali e i rifiuti tramite porte senza dipendere dal protocollo, Domain resta l'autorità per stati e transizioni, e SQLite mantiene l'ammissione atomica anche quando esiste un controllo preliminare. Fallisce se un ingresso decide un invariante Domain, se il caso d'uso riceve input non decodificato, se un rifiuto permette effetti successivi, se Domain legge il protocollo o se un controllo preliminare sostituisce la garanzia atomica. L'analisi resta da svolgere quando il codice è implementato.
+L'analisi passa se l'adapter ferma forma e decodifica non valide prima del caso d'uso senza contenere regole di stato, Application coordina le precondizioni contestuali e i rifiuti tramite porte senza dipendere dal protocollo, Domain resta l'autorità per stati e transizioni, e SQLite mantiene l'ammissione atomica anche quando esiste un controllo preliminare. Fallisce se un ingresso decide un invariante Domain, se il caso d'uso riceve input non decodificato, se un rifiuto permette effetti successivi, se Domain legge il protocollo o se un controllo preliminare sostituisce la garanzia atomica. L'analisi resta da svolgere quando il codice è implementato.
 
 #### Metadata
   * type: analysis-verification
@@ -578,12 +616,27 @@ Il controllo passa se lo stato persistente delle conversazioni è in SQLite e le
   * verify: [Disponibilità dello storico dopo riavvio](../Requirements/FamilyConversation.md#disponibilità-dello-storico-dopo-riavvio)
 ---
 
-### Prova degli schemi delle richieste HTTP conversazionali
+### Prova degli identificativi del turno ammesso
 
-Inviare alle rotte HTTP di elenco, storico e turno richieste valide e rappresentazioni non valide per ciascuna parte usata. Osservare il risultato pubblico e le invocazioni dei casi d'uso.
+Inviare un turno testuale che crea una conversazione, uno che la continua e un turno audio che crea una conversazione. Acquisire i messaggi nell'ordine di ricezione e confrontare gli identificativi con l'archivio. Ripetere con un rifiuto prima dell'ammissione.
 
 #### Details
-La prova passa se gli schemi TypeBox sono applicati da Fastify/Ajv prima dei gestori, gli oggetti dichiarati rifiutano campi sconosciuti e la validazione non converte tipi, inserisce valori predefiniti né rimuove proprietà. Richieste con dati di forma non validi o conversione impossibile non invocano il caso d'uso; richieste valide lo invocano una volta con i valori previsti. Il testo valido conserva gli spazi originari e il testo composto solo da spazi è rifiutato senza effetti. Le risposte di errore mantengono gli stati e i messaggi dei contratti HTTP esistenti. La prova fallisce se una richiesta invalida viene accettata dopo una modifica implicita o se cambia il comportamento pubblico concordato.
+La prova passa se `turn.accepted` arriva prima di qualsiasi trasmissione della risposta e contiene `requestId`, `conversationId`, `turnId` e `text` coerenti con l'archivio, anche nella continuazione; per il turno audio `text` è la trascrizione conservata. Gli identificativi restano gli stessi nei messaggi successivi del turno. I rifiuti prima dell'ammissione non producono `turn.accepted` né nuove identità persistenti. Fallisce se l'identità è assente, cambia durante il turno, identifica un altro turno o arriva dopo la risposta. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * verify: [Comunicazione degli identificativi del turno ammesso](../Requirements/FamilyConversation.md#comunicazione-degli-identificativi-del-turno-ammesso)
+---
+
+### Prova degli schemi delle richieste HTTP conversazionali
+
+Inviare alle rotte HTTP di elenco e storico richieste valide e rappresentazioni non valide per query e parametri di percorso. Osservare il risultato pubblico e le invocazioni dei casi d'uso.
+
+#### Details
+La prova passa se gli schemi TypeBox sono applicati da Fastify/Ajv prima dei gestori, gli oggetti dichiarati rifiutano campi sconosciuti e la validazione non converte tipi, inserisce valori predefiniti né rimuove proprietà. Richieste con dati di forma non validi o conversione impossibile non invocano il caso d'uso; richieste valide lo invocano una volta con i valori previsti. Le risposte di errore mantengono gli stati e i messaggi dei contratti HTTP delle rotte. La prova fallisce se una richiesta invalida viene accettata dopo una modifica implicita o se cambia il comportamento pubblico concordato.
 
 #### Metadata
   * type: test-verification
@@ -593,174 +646,97 @@ La prova passa se gli schemi TypeBox sono applicati da Fastify/Ajv prima dei ges
   * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
   * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
   * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
-  * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
   * verify: [Validazione strutturale delle richieste conversazionali HTTP](../Requirements/FamilyConversation.md#validazione-strutturale-delle-richieste-conversazionali-http)
 ---
 
-### Prova del completamento dopo disconnessione della chat testuale
+### Prova del completamento dopo la chiusura della sessione
 
-Avviare un turno della chat testuale la cui risposta sia controllabile e produca almeno un frammento; dopo aver ricevuto il primo frammento, chiudere la connessione del client e lasciare completare l'elaborazione. Riaprire la conversazione tramite un client della chat testuale e leggere lo storico. Ripetere con un guasto controllato che produca un errore dopo il primo frammento.
+Avviare un turno la cui risposta sia controllabile e produca almeno un frammento; dopo aver ricevuto il primo frammento, chiudere la sessione del client e lasciare completare l'elaborazione. Aprire una nuova sessione e leggere lo storico tramite HTTP. Ripetere con un guasto controllato che produca un errore dopo il primo frammento e con risposta in audio.
 
 #### Details
-La prova passa se, in entrambi i casi, il backend prosegue l'elaborazione dopo la disconnessione senza dipendere dalla scrittura sul flusso SSE ormai chiuso e conserva un solo scambio per il turno accettato nella conversazione corretta. Nel caso riuscito, lo scambio contiene l'intera risposta; nel caso di errore, contiene l'esito di errore e il messaggio pubblico, senza trattare i frammenti precedenti come risposta completa. Fallisce se il turno viene annullato per la sola disconnessione, se l'esito manca o resta incompleto nello storico, se compare più di uno scambio o se un errore di scrittura sul flusso sostituisce l'esito del turno. La prova resta da eseguire quando client e backend sono implementati.
+La prova passa se, in tutti i casi, il backend prosegue l'elaborazione dopo la chiusura senza dipendere dalla consegna alla sessione chiusa e conserva un solo scambio per il turno ammesso nella conversazione corretta. Nel caso riuscito lo scambio contiene l'intera risposta; nel caso di errore contiene l'esito di errore e il messaggio pubblico, senza trattare i frammenti precedenti come risposta completa. I messaggi non consegnati non vengono ripetuti nella nuova sessione. Fallisce se il turno viene annullato per la sola chiusura, se l'esito manca o resta incompleto, se compare più di uno scambio o se un errore di consegna sostituisce l'esito del turno. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
   * verify: [Completamento del turno accettato dopo disconnessione](../Requirements/FamilyConversation.md#completamento-del-turno-accettato-dopo-disconnessione)
 ---
 
-### Prova del completamento esplicito della risposta testuale
+### Prova del rifiuto del turno testuale vuoto
 
-Eseguire un turno con almeno due frammenti attraverso un consumatore UI Message Stream di AI SDK e acquisire anche gli eventi SSE. Ritardare il commit del completamento dopo l'ultimo frammento, quindi consentirlo; ripetere facendolo fallire. Provare flussi troncati dopo il primo frammento, una chiusura con il solo marcatore `[DONE]`, una parte `abort` e un `finish` privo della conferma applicativa.
+Inviare un turno testuale con testo vuoto e uno composto solo da spazi bianchi, sia per una nuova conversazione sia per una conversazione esistente. Ripetere con testo vuoto e un `conversationId` inesistente. Confrontare lo stato dell'archivio prima e dopo ogni turno.
 
 #### Details
-La prova passa se la conferma di successo (`finish`, `finishReason: "stop"`, `messageMetadata.turnStatus: "answered"`) arriva una sola volta dopo tutti i frammenti e dopo il commit riuscito. Finché il commit è bloccato non arriva; se fallisce, non viene emessa e il guasto segue il contratto pubblico. Il consumatore SDK ricostruisce la risposta e i metadata del profilo. La sola fine del testo, `[DONE]`, `abort`, la chiusura della connessione e un `finish` senza conferma non sono successi del prodotto. Fallisce se viene confermato un esito non conservato o se un marcatore di trasporto è interpretato come successo.
+La prova passa se ogni turno riceve la trasmissione del messaggio pubblico e `turn.rejected` con `reason: "invalid"`, senza `turn.accepted`, senza creare una conversazione né aggiungere uno scambio. Il caso con identificativo inesistente riceve comunque `invalid` per la precedenza della verifica del testo. Fallisce se il turno viene ammesso, se il motivo è diverso o se l'archivio cambia. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
-  * verify: [Segnalazione del completamento della risposta testuale](../Requirements/FamilyConversation.md#segnalazione-del-completamento-della-risposta-testuale)
----
-
-### Prova del rifiuto del turno vuoto della chat testuale
-
-Inviare da un client della chat testuale una richiesta con `text` vuoto e una con `text` composto solo da spazi bianchi, sia per una nuova conversazione sia per una conversazione esistente. Ripetere con testo vuoto e un `conversationId` inesistente. Confrontare lo stato dell'archivio prima e dopo ogni richiesta.
-
-#### Details
-La prova passa se ogni richiesta restituisce HTTP `400` con `Content-Type: application/json` e campo stringa `error` con messaggio pubblico sicuro, senza iniziare SSE, creare una conversazione o aggiungere uno scambio. Il caso con ID inesistente restituisce comunque `400` per la precedenza della validazione del testo. Fallisce se viene avviato il flusso, se lo stato è diverso da `400` o se l'archivio cambia. L'invio dal futuro client resta da verificare.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
-  * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
-  * verify: [Rifiuto del turno vuoto della chat testuale](../Requirements/FamilyConversation.md#rifiuto-del-turno-vuoto-della-chat-testuale)
----
-
-### Prova del trasporto HTTP e SSE della chat
-
-Inviare un nuovo turno a `POST /api/conversations/turns` e poi continuare una conversazione conservata. Produrre almeno due frammenti controllati, inclusi Unicode e ritorni a capo, mantenendo la generazione aperta dopo il primo. Leggere la risposta progressivamente sia come SSE sia tramite un consumatore UI Message Stream ufficiale AI SDK. Ritardare la consegna di una notifica all'adapter e osservare l'ordine delle successive.
-
-#### Details
-La prova passa se la richiesta contiene solo `text` e l'eventuale `conversationId`, la risposta usa la stessa POST e dichiara `text/event-stream`, `x-vercel-ai-ui-message-stream: v1` e `Cache-Control: no-store`. La prima parte applicativa è `start` con gli identificativi conservati nei metadata. Le parti `text-start`, `text-delta` e `text-end` usano ID coerenti; la concatenazione di `delta` ricostruisce il testo esatto. Il primo frammento arriva prima della fine della generazione. Le notifiche applicative sono consegnate in ordine; la consegna della successiva non anticipa la conclusione della precedente. Il consumatore ufficiale legge testo e metadata senza un parser del vecchio protocollo. Fallisce se il flusso è incompatibile con il profilo, richiede una seconda connessione, accumula tutta la risposta prima di trasmetterla o espone dati interni dei tool o credenziali. I test del futuro client verificano separatamente la sua presentazione.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
-  * satisfiedBy: [exchange-turn.test.ts](../../packages/conversations/test/application/exchange-turn.test.ts)
-  * verify: [Risposta progressiva SSE nella chat testuale](../Requirements/FamilyConversation.md#risposta-progressiva-sse-nella-chat-testuale)
+  * verify: [Rifiuto del turno testuale vuoto](../Requirements/FamilyConversation.md#rifiuto-del-turno-testuale-vuoto)
 ---
 
 ### Prova dell'arresto per input conversazionale non valido
 
-Inviare all'ingresso HTTP un corpo JSON malformato e poi un corpo ben formato con `text` di tipo errato. Strumentare il caso d'uso e l'archivio per osservare eventuali chiamate ed effetti.
+Inviare al canale conversazionale un JSON malformato, un `input.start` ben formato con tipi errati o campi aggiuntivi e un `input.chunk` con `text` non stringa. Strumentare il caso d'uso e l'archivio per osservare eventuali chiamate ed effetti. Verificare che lo schema `protocol/ambrogio-v1.schema.json` descriva i messaggi di entrambe le direzioni.
 
 #### Details
-La prova passa se gli adapter rifiutano ciascun input al proprio confine prima di invocare il caso d'uso, senza creare conversazioni o turni né tentare scritture. Gli esiti pubblici seguono il contratto HTTP previsto per errori di protocollo. Fallisce se un input non decodificato arriva ad Application, se il rifiuto avviene soltanto nel Domain o nell'archivio, oppure se resta un effetto persistente. La prova resta da eseguire quando gli ingressi esistono.
+La prova passa se l'adapter rifiuta ciascun messaggio al proprio confine con `session.error` prima di invocare il caso d'uso, senza creare conversazioni o turni né tentare scritture, e se la validazione segue lo schema senza coercizione dei tipi, valori predefiniti o rimozione dei campi. I messaggi inviati dal server nelle prove del protocollo sono conformi allo schema. Fallisce se un input non decodificato arriva ad Application, se il rifiuto avviene soltanto nel Domain o nell'archivio, se resta un effetto persistente o se lo schema manca o non corrisponde ai messaggi scambiati. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
   * verify: [Validazione del formato negli ingressi conversazionali](../Requirements/FamilyConversation.md#validazione-del-formato-negli-ingressi-conversazionali)
 ---
 
-### Prova dell'errore HTTP prima del flusso testuale
+### Prova dell'errore dopo l'ammissione
 
-Da un client della chat testuale di prova, inviare un turno che il backend rifiuta prima di avviare SSE; ripetere simulando il rifiuto temporaneo dell'ammissione da parte dell'archivio e provocando un guasto tecnico controllato prima dell'ammissione e prima dell'invio degli header, con `language` impostato separatamente a `en` e `it`. Intercettare stato, header e corpo HTTP.
+Avviare un turno in una conversazione conservata con un produttore che emette un frammento e poi fallisce con dettagli diagnostici riconoscibili, prima con risposta in testo e poi in audio. Acquisire i messaggi della sessione e riaprire lo storico.
 
 #### Details
-La prova passa se ogni caso restituisce uno stato HTTP `4xx` o `5xx` e `Content-Type: application/json`, con un corpo JSON contenente un campo stringa `error` con messaggio pubblico sicuro. Il valore di `error` nei casi `400`, `404`, `409`, `413` e `503` corrisponde esattamente alla coppia inglese/italiano definita dal contratto. Per il rifiuto temporaneo dell'archivio lo stato è `503` e il turno non viene conservato; per il guasto inatteso prima dell'ammissione lo stato è `500` e il testo è esattamente «I can't complete the response.» con `en` oppure «Non riesco a completare la risposta.» con `it`, senza creare un turno. La risposta non dichiara `text/event-stream` e non invia eventi SSE. Nel caso di guasto tecnico il messaggio pubblico non contiene dettagli diagnostici. La prova fallisce se la risposta è `2xx`, se il payload non rispetta il contratto, se viene avviato SSE o se trapelano dettagli tecnici.
+La prova passa se il server chiude la trasmissione in corso con `output.end`, apre una nuova trasmissione con il messaggio pubblico sicuro nel tipo di contenuto richiesto e conclude con `turn.failed` con lo stesso `message`, senza `turn.completed`; lo storico contiene l'esito di errore con quel messaggio, senza conservare il frammento come risposta completata. Fallisce se manca la trasmissione del messaggio di errore, se viene inviata una conferma di completamento, se le due trasmissioni si sovrappongono, se sono esposti dettagli tecnici o se lo storico conserva una risposta riuscita. Il guasto di commit è verificato separatamente dalla prova delle transizioni atomiche. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [http-turn-error-contract.test.ts](../../packages/conversations/test/adapters/in/http-turn-error-contract.test.ts)
-  * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
-  * verify: [Segnalazione dell'errore HTTP prima del flusso testuale](../Requirements/FamilyConversation.md#segnalazione-dellerrore-http-prima-del-flusso-testuale)
----
-
-### Prova dell'errore nel flusso testuale
-
-Avviare un turno in una conversazione conservata con un produttore che emette un frammento e poi fallisce con dettagli diagnostici riconoscibili. Leggere il flusso con un consumatore AI SDK, acquisire la parte di errore e riaprire lo storico.
-
-#### Details
-La prova passa se il backend emette una parte `error` con `errorText` sicuro, chiude il flusso senza conferma di successo e lo storico contiene l'esito di errore con lo stesso messaggio, senza conservare i frammenti come risposta completata. L'eventuale `[DONE]` non cambia l'esito. Fallisce se manca la parte di errore, se viene emessa una conferma di successo, se sono esposti dettagli tecnici o se lo storico conserva una risposta riuscita. Il guasto di commit, che non consente di attestare un esito conservato, è verificato separatamente dalla prova delle transizioni atomiche.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
-  * verify: [Conservazione dell'errore dopo risposta testuale parziale](../Requirements/FamilyConversation.md#conservazione-dellerrore-dopo-risposta-testuale-parziale)
-  * verify: [Segnalazione dell'errore nel flusso testuale](../Requirements/FamilyConversation.md#segnalazione-dellerrore-nel-flusso-testuale)
----
-
-### Prova dell'identificativo iniziale della conversazione testuale
-
-Inviare un turno che crea una conversazione e uno che la continua. Acquisire le parti UI nell'ordine di ricezione e confrontare i metadata iniziali con gli identificativi dell'archivio. Ripetere con un rifiuto prima dell'ammissione.
-
-#### Details
-La prova passa se la prima parte applicativa è `start` e contiene `messageId` della risposta, `messageMetadata.conversationId` e `messageMetadata.turnId` coerenti con l'archivio, prima di qualsiasi `text-delta`. Il consumatore SDK conserva tali metadata e la continuità dell'identità durante la risposta. I rifiuti precedenti all'ammissione conservano la risposta HTTP JSON e non producono un `start` o nuove identità persistenti. Fallisce se l'identità è assente, cambia durante il flusso, identifica un altro turno o arriva dopo il testo.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
-  * verify: [Comunicazione dell'identificativo della nuova conversazione testuale](../Requirements/FamilyConversation.md#comunicazione-dellidentificativo-della-nuova-conversazione-testuale)
+  * verify: [Conservazione dell'errore dopo risposta parziale](../Requirements/FamilyConversation.md#conservazione-dellerrore-dopo-risposta-parziale)
+  * verify: [Segnalazione dell'errore dopo l'ammissione](../Requirements/FamilyConversation.md#segnalazione-dellerrore-dopo-lammissione)
 ---
 
 ### Prova dell'ingresso dei turni con agenti configurati
 
-Avviare il processo con i JSON HTTP, Conversazioni, orchestratore e almeno un agente specializzato validi, usando un provider e un connettore MCP controllati. Inviare un turno con `POST /api/conversations/turns`, leggere il flusso SSE e lo storico, e richiedere anche i due GET. Ripetere con un JSON agente invalido e con un connettore non disponibile prima dell'ascolto.
+Avviare il processo con i JSON HTTP, Conversazioni, orchestratore e almeno un agente specializzato validi, usando un provider e un connettore MCP controllati. Aprire una sessione su `/api/session`, inviare un turno e leggere trasmissioni, esito e storico; richiedere anche i due GET. Ripetere con un JSON agente invalido e con un connettore non disponibile prima dell'ascolto.
 
 #### Details
-La prova passa se l'avvio valido espone POST e GET, il turno usa il produttore orchestratore e restituisce gli eventi SSE e lo storico previsti; l'avvio invalido non apre il listener e chiude le risorse già preparate. La preflight CORS autorizza POST solo per un'origine configurata e le risposte del turno conservano gli header di sicurezza, `Cache-Control: no-store` e l'identificativo di correlazione. Fallisce se il POST manca, usa un produttore diverso, espone dettagli segreti o lascia risorse aperte.
+La prova passa se l'avvio valido espone il canale conversazionale e i GET, il turno usa il produttore orchestratore e produce trasmissioni, esito e storico previsti; l'avvio invalido non apre il listener e chiude le risorse già preparate. Le risposte GET conservano gli header di sicurezza, `Cache-Control: no-store` e l'identificativo di correlazione. Fallisce se il canale manca, usa un produttore diverso, espone dettagli segreti o lascia risorse aperte. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
   * verify: [Avvio dell'ingresso dei turni conversazionali](../Requirements/FamilyConversation.md#avvio-dellingresso-dei-turni-conversazionali)
 ---
 
 ### Prova della configurazione dell'adapter AI SDK
 
-Avviare l'ingresso conversazionale con un agente il cui oggetto `llm` indica `provider: "mistral"`, modello e chiave API ma nessun URL. Provare opzioni assenti e opzioni `temperature` e `max_tokens` valide; ripetere con modello o chiave mancanti, opzione sconosciuta e valori invalidi. Con provider e stream controllati, osservare i parametri inviati e la conversione dei frammenti testuali alla porta applicativa. Verificare che lo stesso produttore alimenti la chat tramite SSE e il ponte vocale secondo il proprio contratto.
+Avviare l'ingresso conversazionale con un agente il cui oggetto `llm` indica `provider: "mistral"`, modello e chiave API ma nessun URL. Provare opzioni assenti e opzioni `temperature` e `max_tokens` valide; ripetere con modello o chiave mancanti, opzione sconosciuta e valori invalidi. Con provider e stream controllati, osservare i parametri inviati e la conversione di frammenti testuali e indicazione `expectsReply` alla porta applicativa, per turni testuali e vocali.
 
 #### Details
-La prova passa se l'adapter usa il provider Mistral dell'AI SDK senza URL nel JSON, trasmette solo le opzioni configurate e validate, e fornisce gli stessi frammenti a chat e voce tramite `ProduceConversationReply`. Configurazioni invalide impediscono l'attivazione prima delle richieste; i tipi dell'SDK non attraversano la porta Application. Fallisce se una configurazione invalida raggiunge il provider, se le opzioni assenti vengono forzate o se il ponte vocale cambia formato per effetto dell'adapter.
+La prova passa se l'adapter usa il provider Mistral dell'AI SDK senza URL nel JSON, trasmette solo le opzioni configurate e validate e fornisce, con un unico percorso di generazione, gli stessi frammenti e la stessa indicazione strutturata della replica attesa per qualsiasi tipo di contenuto del turno tramite `ProduceConversationReply`. Configurazioni invalide impediscono l'attivazione prima delle richieste; i tipi dell'SDK non attraversano la porta Application. Fallisce se una configurazione invalida raggiunge il provider, se le opzioni assenti vengono forzate o se esistono percorsi di generazione distinti per testo e voce. Verifica aggiornata per il protocollo `ambrogio.v1`, da eseguire.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
   * verify: [Risposta testuale nella conversazione](../Requirements/FamilyConversation.md#risposta-testuale-nella-conversazione)
   * verify: [Validazione preventiva della configurazione attiva](../Requirements/ServerFoundation.md#validazione-preventiva-della-configurazione-attiva)
 ---
@@ -782,39 +758,36 @@ La prova passa se ogni turno accettato compare nello storico con il testo identi
   * verify: [Conservazione del testo originale del turno](../Requirements/FamilyConversation.md#conservazione-del-testo-originale-del-turno)
 ---
 
-### Prova della continuazione testuale con identificativo inesistente
+### Prova della continuazione con identificativo inesistente
 
-Registrare le conversazioni conservate, poi inviare da un client della chat testuale una richiesta POST con un `text` valido e un `conversationId` che non corrisponde ad alcuna di esse. Intercettare risposta HTTP e stato dell'archivio prima e dopo il tentativo.
+Registrare le conversazioni conservate, poi inviare un turno testuale valido e un turno audio trascrivibile con un `conversationId` che non corrisponde ad alcuna di esse. Confrontare lo stato dell'archivio prima e dopo i tentativi.
 
 #### Details
-La prova passa se il backend restituisce HTTP `404` prima di avviare SSE, con `Content-Type: application/json` e campo stringa `error` con messaggio pubblico sicuro, e se non viene creata alcuna nuova conversazione. Fallisce se crea una conversazione sostitutiva, risponde con uno stato diverso, avvia SSE o espone dettagli tecnici. La prova resta da eseguire quando client e backend sono implementati.
+La prova passa se entrambi i turni ricevono la trasmissione del messaggio pubblico e `turn.rejected` con `reason: "conversation_not_found"`, senza `turn.accepted`, e se non viene creata alcuna nuova conversazione. Fallisce se viene creata una conversazione sostitutiva, se il motivo è diverso o se sono esposti dettagli tecnici. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
   * verify: [Precondizioni contestuali nel caso d'uso conversazionale](../Requirements/FamilyConversation.md#precondizioni-contestuali-nel-caso-duso-conversazionale)
-  * verify: [Rifiuto della continuazione testuale con conversazione inesistente](../Requirements/FamilyConversation.md#rifiuto-della-continuazione-testuale-con-conversazione-inesistente)
+  * verify: [Rifiuto della continuazione con conversazione inesistente](../Requirements/FamilyConversation.md#rifiuto-della-continuazione-con-conversazione-inesistente)
 ---
 
-### Prova della continuazione testuale delle conversazioni
+### Prova della continuazione delle conversazioni da qualunque client
 
-Creare e conservare separatamente una conversazione da un client della chat testuale e una dalla voce, ciascuna con scambi testuali distintivi. Terminare l'interazione vocale; riaprire ciascuna conversazione da un client della chat testuale e inviare un nuovo turno testuale con il solo identificativo della conversazione, senza reinviare gli scambi precedenti. Osservare l'accesso del backend all'archivio e il contesto usato per elaborare il turno. Avviare poi una nuova interazione vocale e osservare quali conversazioni usano.
+Creare e conservare separatamente una conversazione con un turno testuale e una con un turno audio, ciascuna con scambi distintivi, da due client diversi. Continuare ciascuna conversazione sia con un turno testuale sia con un turno audio, inviando il solo identificativo della conversazione senza gli scambi precedenti. Osservare l'accesso del backend all'archivio e il contesto usato per elaborare il turno.
 
 #### Details
-La prova passa se, per ogni origine, il backend recupera dall'archivio lo storico della conversazione identificata e lo usa per elaborare il nuovo turno; la chat testuale aggiunge il nuovo scambio alla medesima conversazione mantenendo identificativo e ordine degli scambi; e le nuove interazioni vocali con turni ammessi creano conversazioni distinte senza riaprire quelle conservate. Fallisce se il backend dipende dallo storico inviato dal client, recupera lo storico di un'altra conversazione, il client della chat testuale crea una copia o una nuova conversazione per il turno aggiunto, non può continuare una delle conversazioni conservate o la voce riapre uno storico. Le repliche immediate dell'interazione vocale ancora attiva sono verificate separatamente.
+La prova passa se, per ogni origine e per ogni tipo di contenuto, il backend recupera dall'archivio lo storico della conversazione identificata, lo usa per elaborare il nuovo turno e aggiunge lo scambio alla medesima conversazione mantenendo identificativo e ordine. Un turno senza identificativo crea invece una conversazione distinta. Fallisce se il backend dipende dallo storico inviato dal client, recupera lo storico di un'altra conversazione, crea una copia o una nuova conversazione per il turno aggiunto, o rifiuta la continuazione per il solo tipo di contenuto. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * verify: [Continuazione testuale di ogni conversazione](../Requirements/FamilyConversation.md#continuazione-testuale-di-ogni-conversazione)
-  * verify: [Recupero dello storico per il turno testuale](../Requirements/FamilyConversation.md#recupero-dello-storico-per-il-turno-testuale)
-  * verify: [Riapertura delle conversazioni tramite chat testuale](../Requirements/FamilyConversation.md#riapertura-delle-conversazioni-tramite-chat-testuale)
+  * verify: [Continuazione di ogni conversazione da qualunque client](../Requirements/FamilyConversation.md#continuazione-di-ogni-conversazione-da-qualunque-client)
+  * verify: [Recupero dello storico per il turno](../Requirements/FamilyConversation.md#recupero-dello-storico-per-il-turno)
 ---
 
 ### Prova della continuità dopo un guasto di consegna
@@ -1313,3 +1286,4 @@ La prova passa se le migrazioni pendenti sono applicate automaticamente prima ch
   * satisfiedBy: [sqlite-archive-startup.test.ts](../../packages/conversations/test/adapters/out/sqlite-archive-startup.test.ts)
   * verify: [Migrazione automatica dell'archivio delle conversazioni](../Requirements/FamilyConversation.md#migrazione-automatica-dellarchivio-delle-conversazioni)
 ---
+

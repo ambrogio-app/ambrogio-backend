@@ -2,7 +2,7 @@
 
 ### Arresto immediato con richiesta remota non attesa
 
-Alla richiesta di arresto ordinato, il server impedisce subito nuove ammissioni e conserva come `interrotto` ogni turno ancora senza esito, prima di chiudere l'archivio. Non attende il completamento della produzione remota e non invia un annullamento esplicito al provider tramite la porta della risposta. Dopo la persistenza interrompe le connessioni HTTP locali attive e termina il processo; una risposta remota successiva non viene acquisita né conservata. La chiusura della connessione locale non garantisce l'arresto dell'elaborazione presso il provider. Un turno già concluso prima dell'interruzione conserva il proprio esito.
+Alla richiesta di arresto ordinato, il server impedisce subito nuove ammissioni e conserva come `interrotto` ogni turno ancora senza esito, prima di chiudere l'archivio. Non attende il completamento della produzione remota e non invia un annullamento esplicito al provider tramite la porta della risposta. Dopo la persistenza comunica `turn.interrupted` ai turni interrotti delle sessioni ancora aperte quando la consegna è possibile, chiude le sessioni conversazionali e le connessioni HTTP locali attive e termina il processo; una risposta remota successiva non viene acquisita né conservata. La chiusura della connessione locale non garantisce l'arresto dell'elaborazione presso il provider. Un turno già concluso prima dell'interruzione conserva il proprio esito.
 
 #### Metadata
   * type: behavior
@@ -100,7 +100,7 @@ Il JSON locale validato del componente HTTP dichiara se l'origine pubblica è es
 
 ### Politica di cache delle risposte conversazionali HTTP
 
-L'header `Cache-Control: no-store` accompagna le risposte HTTP che trasportano dati conversazionali, incluse pagine dell'elenco, storico, risposta SSE al turno e flussi di aggiornamento. Il comportamento si applica alle risposte pertinenti anche quando il flusso termina con un errore dopo l'invio degli header. Non modifica la politica di cache delle risorse statiche prive di dati conversazionali.
+L'header `Cache-Control: no-store` accompagna le risposte HTTP che trasportano dati conversazionali, incluse pagine dell'elenco e storico, anche quando la risposta segnala un errore. Il comportamento non modifica la politica di cache delle risorse statiche prive di dati conversazionali. I messaggi del canale conversazionale WebSocket non sono risposte HTTP memorizzabili in cache e non sono soggetti a questa politica.
 
 #### Metadata
   * type: specification
@@ -146,7 +146,7 @@ La rappresentazione JSON di `err` usa una vista composta soltanto da campi ammes
 
 ### Profilo del limite dei corpi HTTP
 
-Il componente HTTP configura un limite di dimensione positivo per i corpi ricevuti dalle rotte che ne accettano uno; un'eventuale eccezione per rotta dichiara un proprio limite esplicito. Il controllo riguarda la dimensione effettivamente ricevuta, anche quando il corpo arriva in più parti. Il rifiuto `413` usa la forma JSON pubblica degli errori HTTP e non passa il corpo al caso d'uso né crea un turno. La rotta del turno testuale usa 64 KiB, come definito nel contratto della sua richiesta; i valori delle altre rotte saranno fissati nei rispettivi contratti.
+Il componente HTTP configura un limite di dimensione positivo per i corpi ricevuti dalle rotte che ne accettano uno; un'eventuale eccezione per rotta dichiara un proprio limite esplicito. Il controllo riguarda la dimensione effettivamente ricevuta, anche quando il corpo arriva in più parti. Il rifiuto `413` usa la forma JSON pubblica degli errori HTTP e non passa il corpo al caso d'uso. Le rotte HTTP attuali di elenco e storico non accettano un corpo; i valori di future rotte con corpo saranno fissati nei rispettivi contratti. I limiti dei turni sono definiti dal protocollo conversazionale e non da questo profilo.
 
 #### Metadata
   * type: specification
@@ -244,3 +244,4 @@ Una variante può contenere solo `kind` oppure aggiungere campi propri, tipizzat
 #### Relations
   * define: [Campi specifici dei rifiuti previsti](../Requirements/ServerFoundation.md#campi-specifici-dei-rifiuti-previsti)
 ---
+

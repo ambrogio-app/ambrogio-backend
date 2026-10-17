@@ -13,7 +13,7 @@ Un'installazione di Ambrogio nel proprio homelab assiste i membri della famiglia
 
 ### Conversazione familiare
 
-La famiglia pone domande generali e riceve risposte tramite testo o voce quando l'interazione vocale è abilitata nell'installazione. L'ingresso testuale resta disponibile senza i componenti vocali. Ambrogio rappresenta e conserva ogni conversazione come testo; trascrive i turni vocali e pronuncia le risposte ai turni vocali. Ogni conversazione conservata, qualunque sia l'ingresso in cui è iniziata, può essere riaperta e continuata tramite l'API HTTP della chat testuale. Ogni nuova interazione vocale apre una nuova conversazione; soltanto le repliche immediate possono proseguire l'interazione vocale ancora attiva.
+La famiglia pone domande generali e riceve risposte tramite testo o voce quando l'interazione vocale è abilitata nell'installazione. L'ingresso testuale resta disponibile senza i componenti vocali. Ambrogio rappresenta e conserva ogni conversazione come testo; trascrive i turni vocali e pronuncia le risposte quando il client le richiede in voce. I client testuali e vocali comunicano con Ambrogio tramite lo stesso protocollo conversazionale, con le stesse regole per l'invio dei turni, le risposte e gli esiti. Ogni conversazione conservata, qualunque sia l'ingresso in cui è iniziata, può essere continuata da qualunque client tramite quel protocollo; è il client a decidere se continuare una conversazione esistente o iniziarne una nuova.
 
 #### Concept References
   * [Famiglia](../Thesaurus/Lessico.md#famiglia)
@@ -71,3 +71,4 @@ La famiglia può porre domande che richiedono informazioni contenute nelle conve
 #### Relations
   * derivedFrom: [Estensione tramite connettori MCP](#estensione-tramite-connettori-mcp)
 ---
+

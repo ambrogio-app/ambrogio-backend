@@ -10,17 +10,16 @@ Raggruppa le prove dell'interruzione dei turni attivi all'arresto ordinato e del
 
 ### Prova dell'interruzione dei turni all'arresto
 
-Avviare un turno con elaborazione controllata che resterebbe in corso, richiedere l'arresto del server e tentare un nuovo turno. Osservare la richiesta di interruzione, lo stato persistente del turno, l'ordine di chiusura delle risorse e gli eventi restituiti al client.
+Avviare un turno con elaborazione controllata che resterebbe in corso, richiedere l'arresto del server e tentare un nuovo turno. Osservare la richiesta di interruzione, lo stato persistente del turno, l'ordine di chiusura delle risorse e i messaggi ricevuti dalla sessione del client.
 
 #### Details
-La prova passa se il server non accetta nuovi turni, richiede subito l'interruzione di quello attivo senza attendere il completamento della risposta, conserva il turno senza esito come «Interrotto» prima di chiudere l'archivio e poi chiude le risorse. Nessun turno interrotto riceve un esito riuscito o viene riavviato automaticamente. Fallisce se l'arresto attende la risposta controllata, accetta altri turni, perde il turno interrotto o chiude l'archivio prima di registrarlo.
+La prova passa se il server rifiuta i nuovi turni con `unavailable`, richiede subito l'interruzione di quello attivo senza attendere il completamento della risposta, conserva il turno senza esito come «Interrotto» prima di chiudere l'archivio, invia `turn.interrupted` alla sessione ancora aperta e poi chiude sessioni e risorse. Nessun turno interrotto riceve un esito riuscito o viene riavviato automaticamente. Fallisce se l'arresto attende la risposta controllata, accetta altri turni, perde il turno interrotto o chiude l'archivio prima di registrarlo. Verifica aggiornata per il protocollo `ambrogio.v1`, da eseguire.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica del ciclo di vita del server](#verifica-del-ciclo-di-vita-del-server)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
   * verify: [Arresto controllato dei nuovi turni](../Requirements/ServerFoundation.md#arresto-controllato-dei-nuovi-turni)
   * verify: [Chiusura delle risorse dopo l'interruzione dei turni](../Requirements/ServerFoundation.md#chiusura-delle-risorse-dopo-linterruzione-dei-turni)
   * verify: [Interruzione dei turni durante l'arresto](../Requirements/ServerFoundation.md#interruzione-dei-turni-durante-larresto)
@@ -765,12 +764,27 @@ Change-impact rispetto alla revisione base propaga la modifica della capability 
   * verify: [Nomi dei file secondo il ruolo architetturale](../Requirements/ServerFoundation.md#nomi-dei-file-secondo-il-ruolo-architetturale)
 ---
 
-### Prova degli header di cache conversazionali
+### Ispezione del limite dei corpi HTTP
 
-Richiedere elenco, storico, invio di un turno con risposta SSE e flusso di aggiornamento di un turno in corso; osservare gli header prima degli eventi e dopo un eventuale errore nel flusso.
+Esaminare le rotte HTTP registrate dal server e la configurazione del limite dei corpi del componente HTTP. Per ogni rotta che accetta un corpo, quando esisterà, inviare corpi sotto e sopra il limite dichiarato, includendo un invio in più parti oltre il limite.
 
 #### Details
-La prova passa se tutte le risposte che trasportano dati conversazionali includono `Cache-Control: no-store`, anche quando il flusso segnala un errore dopo gli header. Fallisce se una risposta pertinente ne è priva. Da eseguire quando le relative rotte HTTP sono implementate.
+L'ispezione passa se nessuna rotta HTTP accetta un corpo senza un limite positivo esplicito e se le rotte attuali di elenco e storico non accettano corpo. Per una futura rotta con corpo, i corpi oltre il limite ricevono `413` con JSON `error` sicuro e non avviano l'operazione. I limiti dei turni appartengono al protocollo conversazionale e sono verificati separatamente. Fallisce se una rotta accetta un corpo senza limite o se il limite dipende solo da `Content-Length`.
+
+#### Metadata
+  * type: inspection-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * verify: [Limite dei corpi delle richieste HTTP](../Requirements/ServerFoundation.md#limite-dei-corpi-delle-richieste-http)
+---
+
+### Prova degli header di cache conversazionali
+
+Richiedere elenco e storico, anche in casi di errore; osservare gli header delle risposte.
+
+#### Details
+La prova passa se tutte le risposte HTTP che trasportano dati conversazionali includono `Cache-Control: no-store`, anche quando segnalano un errore. Fallisce se una risposta pertinente ne è priva. I messaggi del canale conversazionale WebSocket non rientrano in questa prova.
 
 #### Metadata
   * type: test-verification
@@ -779,7 +793,6 @@ La prova passa se tutte le risposte che trasportano dati conversazionali includo
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
   * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
   * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
-  * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
   * verify: [Esclusione dalla cache delle risposte conversazionali HTTP](../Requirements/ServerFoundation.md#esclusione-dalla-cache-delle-risposte-conversazionali-http)
 ---
 
@@ -816,22 +829,6 @@ La prova passa se il client ammesso può raggiungere l'ingresso previsto e il cl
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
   * verify: [Controllo dell'accesso nell'installazione](../Requirements/ServerFoundation.md#controllo-dellaccesso-nellinstallazione)
----
-
-### Prova del limite dei corpi HTTP
-
-Per una rotta che accetta un corpo, inviare corpi sotto e sopra il limite dichiarato, includendo un invio in più parti oltre il limite. Osservare risposta ed effetti sul caso d'uso e sull'archivio.
-
-#### Details
-La prova passa se i corpi entro il limite raggiungono la normale validazione della rotta, mentre quelli oltre il limite ricevono `413` con JSON `error` sicuro e non avviano l'operazione né creano un turno. Per la rotta del turno testuale, provare corpi di 65 536 e 65 537 byte e verificare il testo pubblico esatto nella lingua configurata. Fallisce se un corpo oltre il limite viene elaborato o se il limite dipende solo da `Content-Length`. Da eseguire quando l'API HTTP è implementata.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [http-turn-route.test.ts](../../packages/conversations/test/adapters/in/http-turn-route.test.ts)
-  * verify: [Limite dei corpi delle richieste HTTP](../Requirements/ServerFoundation.md#limite-dei-corpi-delle-richieste-http)
 ---
 
 ### Prova del profilo globale degli header HTTP
@@ -1001,3 +998,4 @@ Il 17 ottobre 2026 l'immagine verificata è stata distribuita sul server dell'in
   * satisfiedBy: [verify-docker-image.mjs](../../scripts/verify-docker-image.mjs)
   * verify: [Voci Piper italiane incluse nell'immagine](../Requirements/ServerFoundation.md#voci-piper-italiane-incluse-nellimmagine)
 ---
+

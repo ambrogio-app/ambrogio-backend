@@ -165,6 +165,22 @@ it('rejects a voice that cannot be loaded and reports a failed generation', asyn
   expect(await collect(synthesizer.synthesize(pieces('Dopo.'), new AbortController().signal))).toEqual([]);
 });
 
+// Verification: Prova della sintesi senza marcatura Markdown
+it('speaks only the readable text of Markdown replies, leaving the received text unchanged', async () => {
+  const { engine, state } = fakeEngine();
+  const synthesizer = await SherpaSynthesizer.load(files, engine);
+  const fragments = ['## Riepilogo\n', 'Nella zona giorno ci sono **25,', '8 °C**. ',
+    'Il file `config_casa.json` è _pronto_ e __salvato__. ', 'Vedi [la guida](https://example.com/guida). ',
+    '> Nota bene.\n', '- Luce cucina accesa\n', '* Tapparelle ~~aperte~~ chiuse\n', '1. Primo passo\n',
+    '| Stanza | Gradi |\n', '|---|:---:|\n', '| Cucina | 21 |\n', '---\n', '**Attenzione. Fat', 'to**'];
+  const received = [...fragments];
+  await collect(synthesizer.synthesize(pieces(...received), new AbortController().signal));
+  expect(state.texts).toEqual(['Riepilogo', 'Nella zona giorno ci sono 25,8 °C.',
+    'Il file config_casa.json è pronto e salvato.', 'Vedi la guida.', 'Nota bene.', 'Luce cucina accesa',
+    'Tapparelle aperte chiuse', '1.', 'Primo passo', 'Stanza, Gradi', 'Cucina, 21', 'Attenzione.', 'Fatto']);
+  expect(received).toEqual(fragments);
+});
+
 const realVoice = process.env.AMBROGIO_TEST_VOICE_MODEL_DIR;
 
 // Verification: Prova della sintesi vocale nel processo backend

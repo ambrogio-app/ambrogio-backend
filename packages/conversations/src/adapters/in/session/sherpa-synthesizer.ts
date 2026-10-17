@@ -2,7 +2,7 @@ import { createRequire } from 'node:module';
 import { availableParallelism } from 'node:os';
 import { ProjectError } from '../../../project-error.js';
 import type { VoiceModelFiles } from '../../out/voice-config.js';
-import { normalizeSentence, takeSentences } from './sentences.js';
+import { spokenSentence, takeSentences } from './sentences.js';
 import type { Synthesizer } from './speech-components.js';
 
 /** The `sherpa-onnx-node` configuration of a VITS voice. */
@@ -112,7 +112,7 @@ export class SherpaSynthesizer implements Synthesizer {
       for (;;) {
         const next = await unlessAborted(pieces.next());
         if (next === stopped || signal.aborted) return;
-        const split = next.done ? { sentences: [normalizeSentence(buffer)].filter(Boolean), rest: '' }
+        const split = next.done ? { sentences: [spokenSentence(buffer)].filter(Boolean), rest: '' }
           : takeSentences(buffer + next.value);
         buffer = split.rest;
         for (const sentence of split.sentences) {

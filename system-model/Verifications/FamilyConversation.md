@@ -117,10 +117,10 @@ Raggruppa le prove di connessione, scoperta e invocazione dei tool tramite il cl
 
 ### Dimostrazione del connettore Home Assistant su un'installazione reale
 
-Su un'installazione Home Assistant reale abilitare l'integrazione «Model Context Protocol Server», esporre ad Assist una luce e un sensore, creare un token di accesso di lunga durata e installare `examples/agents/home-assistant.json` completato con indirizzo, token e chiave API. Avviare il backend e chiedere in conversazione lo stato del sensore, poi di accendere e spegnere la luce; chiedere infine di comandare un'entità non esposta. Ripetere l'avvio con un token errato.
+Su un'installazione Home Assistant reale abilitare l'integrazione «Model Context Protocol Server», esporre ad Assist almeno due luci in aree diverse e un sensore, creare un token di accesso di lunga durata e installare `examples/agents/home-assistant.json` completato con indirizzo, token e chiave API. Avviare il backend e chiedere in conversazione lo stato del sensore, se una luce di un'area è accesa, poi di accendere e spegnere quella luce e di spegnere tutte le luci; chiedere infine di comandare un'entità non esposta. Ripetere l'avvio con un token errato.
 
 #### Details
-La dimostrazione passa se il backend si avvia scoprendo gli strumenti di Home Assistant, la risposta riporta lo stato effettivo del sensore, la luce cambia stato in Home Assistant e la risposta lo dichiara solo dopo la conferma dello strumento, l'entità non esposta non viene comandata e, con il token errato, l'avvio fallisce con l'evento `server_startup_failed` che indica `Agent MCP connection failed: home-assistant` senza mostrare il token. Fallisce se uno di questi esiti non si verifica. La dimostrazione è affidata alla persona su un'installazione reale e non è ancora stata eseguita.
+La dimostrazione passa se il backend si avvia scoprendo gli strumenti di Home Assistant, la risposta riporta lo stato effettivo del sensore, la domanda sullo stato della luce riceve lo stato effettivo senza che alcun dispositivo cambi stato, la luce cambia stato in Home Assistant e la risposta lo dichiara solo dopo la conferma dello strumento, la richiesta di spegnere tutte le luci spegne tutte le luci esposte, l'entità non esposta non viene comandata e, con il token errato, l'avvio fallisce con l'evento `server_startup_failed` che indica `Agent MCP connection failed: home-assistant` senza mostrare il token. Fallisce se uno di questi esiti non si verifica. La dimostrazione è affidata alla persona su un'installazione reale e non è ancora stata eseguita.
 
 #### Metadata
   * type: demonstration-verification
@@ -128,6 +128,22 @@ La dimostrazione passa se il backend si avvia scoprendo gli strumenti di Home As
 #### Relations
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
   * verify: [Connettore Home Assistant tramite il server MCP di Home Assistant](../Requirements/FamilyConversation.md#connettore-home-assistant-tramite-il-server-mcp-di-home-assistant)
+---
+
+### Prova dei nomi degli strumenti MCP
+
+Preparare un agente specializzato con strumenti scoperti di nome `HassTurnOff`, `GetLiveContext`, `light.toggle`, un nome di 65 caratteri e `mcp_7`, e un modello controllato che registra i nomi offerti e chiama alcuni strumenti con nomi presentati. Osservare i nomi offerti al modello e le chiamate ricevute dal client MCP.
+
+#### Details
+La prova passa se `HassTurnOff` e `GetLiveContext` sono offerti con il proprio nome, `light.toggle`, il nome di 65 caratteri e `mcp_7` sono offerti come `mcp_<indice>` secondo la posizione nella lista scoperta, descrizioni e schemi restano quelli del server, ogni chiamata del modello raggiunge il client MCP con il nome originale dello strumento corrispondente e il limite `maxToolCalls` continua a valere. Fallisce se un nome ammesso viene sostituito, se un nome non ammesso viene offerto al modello o se una chiamata raggiunge uno strumento diverso.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
+  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
+  * verify: [Nomi degli strumenti MCP offerti al modello](../Requirements/FamilyConversation.md#nomi-degli-strumenti-mcp-offerti-al-modello)
 ---
 
 ### Prova del Bearer token per i connettori MCP
@@ -231,6 +247,24 @@ La prova passa se la prima directory viene caricata con entrambi gli agenti disp
   * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
   * verify: [Agente specializzato senza connettore MCP](../Requirements/FamilyConversation.md#agente-specializzato-senza-connettore-mcp)
   * verify: [Disponibilità degli agenti dai file JSON](../Requirements/FamilyConversation.md#disponibilità-degli-agenti-dai-file-json)
+---
+
+### Prova delle istruzioni del server MCP
+
+Con un server MCP Streamable HTTP di prova che dichiara la capacità `prompts` ed espone un prompt senza argomenti, un prompt con un argomento obbligatorio e uno strumento, preparare un agente specializzato con connettore MCP e un modello controllato che registra le istruzioni ricevute. Elaborare due turni cambiando il testo del prompt fra il primo e il secondo. Ripetere con un server che non dichiara la capacità `prompts`, con un server la cui lista dei prompt fallisce all'avvio e con un server la cui lettura del prompt fallisce durante il turno.
+
+#### Details
+La prova passa se all'avvio il backend conserva soltanto il prompt senza argomenti obbligatori; a ogni turno il modello riceve le istruzioni del file JSON, l'intestazione `Instructions and context from the connected MCP server:` e il testo corrente del prompt, prima delle indicazioni sul formato della risposta, e il secondo turno vede il testo aggiornato senza riavvio; il server senza capacità `prompts` non riceve `prompts/list` e il modello riceve soltanto le istruzioni del file JSON con le indicazioni sul formato; l'errore della lista all'avvio impedisce l'attivazione con `Agent MCP connection failed: <id>`; l'errore di lettura durante il turno termina il turno con il guasto `MCP prompt retrieval failed` senza chiamare il modello. Le letture dei prompt non contano per `maxToolCalls`. Fallisce se uno di questi esiti non si verifica.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
+  * satisfiedBy: [agents.test.ts](../../apps/server/test/composition/agents.test.ts)
+  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
+  * satisfiedBy: [mcp-tool-client.test.ts](../../packages/conversations/test/adapters/out/mcp-tool-client.test.ts)
+  * verify: [Istruzioni del server MCP per l'agente](../Requirements/FamilyConversation.md#istruzioni-del-server-mcp-per-lagente)
 ---
 
 ### Prova di OAuth tra servizi per i connettori MCP

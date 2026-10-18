@@ -5,7 +5,7 @@ import { Client } from '@modelcontextprotocol/client';
 import { McpToolClient } from '../../../src/adapters/out/mcp-tool-client.js';
 import { ProjectError } from '../../../src/project-error.js';
 
-async function testServer() {
+async function testServer(options: { prompts?: 'ok' | 'list-fails' | 'get-fails' } = {}) {
   const seen: Array<{ method: string; authorization?: string }> = [];
   const server = createServer(async (request, reply) => {
     const body = await new Promise<string>((resolve) => {
@@ -25,15 +25,31 @@ async function testServer() {
       reply.writeHead(202).end();
       return;
     }
-    const result = rpc.method === 'initialize'
-      ? { protocolVersion: '2025-11-25', capabilities: { tools: {} },
+    const params = (rpc as { params?: { name?: string } }).params;
+    if ((rpc.method === 'prompts/list' && options.prompts === 'list-fails')
+      || (rpc.method === 'prompts/get' && options.prompts === 'get-fails')) {
+      reply.writeHead(200, { 'content-type': 'application/json' });
+      reply.end(JSON.stringify({ jsonrpc: '2.0', id: rpc.id, error: { code: -32603, message: 'broken' } }));
+      return;
+    }
+    const prompted = rpc.method === 'prompts/list'
+      ? { prompts: [{ name: 'assist', description: 'Default prompt' },
+        { name: 'optional', arguments: [{ name: 'area', required: false }] },
+        { name: 'per-area', arguments: [{ name: 'area', required: true }] }] }
+      : rpc.method === 'prompts/get' && params?.name === 'assist'
+        ? { messages: [{ role: 'assistant', content: { type: 'text', text: 'Use GetLiveContext.' } },
+          { role: 'assistant', content: { type: 'image', data: 'AAAA', mimeType: 'image/png' } },
+          { role: 'assistant', content: { type: 'text', text: 'Static Context: kitchen light' } }] }
+        : undefined;
+    const result = prompted ?? (rpc.method === 'initialize'
+      ? { protocolVersion: '2025-11-25', capabilities: options.prompts ? { tools: {}, prompts: {} } : { tools: {} },
         serverInfo: { name: 'test-mcp', version: '1.0.0' } }
       : rpc.method === 'tools/list'
         ? { tools: [{ name: 'echo', description: 'Echo text',
           inputSchema: { type: 'object', properties: { text: { type: 'string' } } } }] }
         : rpc.method === 'tools/call'
           ? { content: [{ type: 'text', text: 'ok' }] }
-          : null;
+          : null);
     if (result === null) { reply.writeHead(404).end(); return; }
     reply.writeHead(200, { 'content-type': 'application/json' });
     reply.end(JSON.stringify({ jsonrpc: '2.0', id: rpc.id, result }));
@@ -335,3 +351,46 @@ test('keeps OAuth credentials and tokens isolated across simultaneous MCP agents
     await Promise.all([first.close(), second.close()]);
   }
 });
+
+// Verification: Prova delle istruzioni del server MCP
+test('lists only prompts without required arguments and reads their text contents', async () => {
+  const server = await testServer({ prompts: 'ok' });
+  let client: McpToolClient | undefined;
+  try {
+    client = await McpToolClient.connect({ url: server.url });
+    expect(await client.listPrompts()).toEqual(['assist', 'optional']);
+    expect(await client.getPrompt('assist')).toBe('Use GetLiveContext.\n\nStatic Context: kitchen light');
+  } finally {
+    await client?.close();
+    await server.close();
+  }
+});
+
+// Verification: Prova delle istruzioni del server MCP
+test('a server without the prompts capability is not asked for prompts', async () => {
+  const server = await testServer();
+  let client: McpToolClient | undefined;
+  try {
+    client = await McpToolClient.connect({ url: server.url });
+    expect(await client.listPrompts()).toEqual([]);
+    expect(server.seen.map(({ method }) => method)).not.toContain('prompts/list');
+  } finally {
+    await client?.close();
+    await server.close();
+  }
+});
+
+// Verification: Prova delle istruzioni del server MCP
+test.each([['list-fails', 'MCP prompt discovery failed'], ['get-fails', 'MCP prompt retrieval failed']] as const)(
+  'a prompt request error is a project error: %s', async (mode, message) => {
+    const server = await testServer({ prompts: mode });
+    let client: McpToolClient | undefined;
+    try {
+      client = await McpToolClient.connect({ url: server.url });
+      const request = mode === 'list-fails' ? client.listPrompts() : client.getPrompt('assist');
+      await expect(request).rejects.toThrow(new ProjectError(message));
+    } finally {
+      await client?.close();
+      await server.close();
+    }
+  });

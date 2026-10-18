@@ -49,6 +49,25 @@ export class McpToolClient {
     } catch (error) { throw new ProjectError('MCP tool discovery failed', { cause: error }); }
   }
 
+  /** Names of the prompts without required arguments, in the server's order; none without the capability. */
+  async listPrompts(): Promise<readonly string[]> {
+    if (!this.client.getServerCapabilities()?.prompts) return [];
+    try {
+      const { prompts } = await this.client.listPrompts();
+      return prompts.filter((prompt) => !(prompt.arguments ?? []).some((argument) => argument.required))
+        .map((prompt) => prompt.name);
+    } catch (error) { throw new ProjectError('MCP prompt discovery failed', { cause: error }); }
+  }
+
+  /** The text contents of one prompt's messages, separated by a blank line. */
+  async getPrompt(name: string, signal?: AbortSignal): Promise<string> {
+    try {
+      const { messages } = await this.client.getPrompt({ name }, signal ? { signal } : undefined);
+      return messages.flatMap((message) => message.content.type === 'text' ? [message.content.text] : [])
+        .join('\n\n');
+    } catch (error) { throw new ProjectError('MCP prompt retrieval failed', { cause: error }); }
+  }
+
   /** The signal cancels the request still in flight when the turn must stop. */
   async callTool(name: string, args: Record<string, unknown>, signal?: AbortSignal): Promise<Readonly<{
     isError: boolean; content: readonly unknown[];

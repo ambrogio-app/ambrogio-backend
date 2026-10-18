@@ -26,6 +26,7 @@ test('prepares every discovered specialist with an isolated MCP connection and c
     const agents = await prepareAgents(fixture.directory, async (connection) => {
       connected.push(connection.url);
       return { listTools: async () => [{ name: connection.url, inputSchema: { type: 'object' } }],
+        listPrompts: async () => [], getPrompt: async () => '',
         callTool: async () => ({ isError: false, content: [] }),
         close: async () => { closed.push(connection.url); } };
     });
@@ -69,7 +70,8 @@ test('closes an earlier MCP connection when a later agent cannot start', async (
     }
     await expect(prepareAgents(fixture.directory, async (connection) => {
       if (connection.url.includes('memory')) throw new Error('MCP unavailable');
-      return { listTools: async () => [], callTool: async () => ({ isError: false, content: [] }),
+      return { listTools: async () => [], listPrompts: async () => [], getPrompt: async () => '',
+        callTool: async () => ({ isError: false, content: [] }),
         close: async () => { closed.push(connection.url); } };
     })).rejects.toMatchObject({ message: 'Agent MCP connection failed: memory',
       cause: expect.objectContaining({ message: 'MCP unavailable' }) });
@@ -89,7 +91,8 @@ test('prepares an agent without MCP without opening any connection', async () =>
       mcp: { url: 'https://home.example/mcp' } }));
     const agents = await prepareAgents(fixture.directory, async (connection) => {
       connected.push(connection.url);
-      return { listTools: async () => [], callTool: async () => ({ isError: false, content: [] }),
+      return { listTools: async () => [], listPrompts: async () => [], getPrompt: async () => '',
+        callTool: async () => ({ isError: false, content: [] }),
         close: async () => {} };
     });
     expect(agents.specialists.map((agent) => [agent.id, agent.mcp === undefined, agent.tools.length]))
@@ -105,5 +108,23 @@ test('fails before any connection when there is no specialist agent', async () =
   try {
     await expect(prepareAgents(fixture.directory, async () => { throw new Error('Should not connect'); }))
       .rejects.toThrow('No specialist agent configured');
+  } finally { await fixture.close(); }
+});
+
+// Verification: Prova delle istruzioni del server MCP
+test('a prompt discovery error at startup is an agent connection failure', async () => {
+  const fixture = await files();
+  let closed = false;
+  try {
+    await writeFile(join(fixture.directory, 'home.json'), JSON.stringify({
+      description: 'Controls the home.', maxToolCalls: 2, instructions: 'Use tools.', llm: fixture.llm,
+      mcp: { url: 'https://home.example/mcp' } }));
+    await expect(prepareAgents(fixture.directory, async () => ({ listTools: async () => [],
+      listPrompts: async () => { throw new Error('MCP prompt discovery failed'); },
+      getPrompt: async () => '', callTool: async () => ({ isError: false, content: [] }),
+      close: async () => { closed = true; } })))
+      .rejects.toMatchObject({ message: 'Agent MCP connection failed: home',
+        cause: expect.objectContaining({ message: 'MCP prompt discovery failed' }) });
+    expect(closed).toBe(true);
   } finally { await fixture.close(); }
 });

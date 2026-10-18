@@ -789,13 +789,13 @@ test('a session turn delegates to a configured MCP tool and persists the answer'
             instructions: configuredInstructions(request.prompt[0]?.content) });
           const step = specialistStep++;
           return { stream: simulateReadableStream({ chunks: step % 3 === 0 ? [
-            { type: 'tool-call', toolCallId: 'tool-1', toolName: 'mcp_0',
+            { type: 'tool-call', toolCallId: 'tool-1', toolName: 'lookup',
               input: '{"key":"answer"}' }, finish('tool-calls'),
           ] as any[] : [...answer(step % 3 === 1 ? 'Answer from tool.' : 'Second answer.'), finish('stop')] as any[] }) };
         } });
       const specialist = new AiSdkToolAgentReply({ instructions: config.instructions,
         model: config.llm.model, apiKey: config.llm.apiKey },
-        tools, mcp, config.maxToolCalls!, specialistModel);
+        { tools, prompts: [] }, mcp, config.maxToolCalls!, specialistModel);
       const orchestratorModel = new MockLanguageModelV4({ modelId: 'controlled-model',
         doGenerate: async (request) => {
           modelRequests.push({ model: 'controlled-model',

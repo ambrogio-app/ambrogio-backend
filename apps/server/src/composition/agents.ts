@@ -6,7 +6,7 @@ import { loadAgentConfigs } from '../runtime/agent-config.js';
 import type { AgentConfig } from '../runtime/agent-config.js';
 import { ProjectError } from '@ambrogio/conversations/application/project-error';
 
-type ToolConnection = Pick<McpToolClient, 'listTools' | 'callTool' | 'close'>;
+type ToolConnection = Pick<McpToolClient, 'listTools' | 'listPrompts' | 'getPrompt' | 'callTool' | 'close'>;
 
 function settingsFor(config: AgentConfig) {
   return { instructions: config.instructions,
@@ -41,15 +41,17 @@ export async function prepareAgents(
       }
       let mcp: ToolConnection;
       let tools: readonly AvailableMcpTool[];
+      let prompts: readonly string[];
       try {
         mcp = await connect(config.mcp);
         opened.push(mcp);
         tools = await mcp.listTools();
+        prompts = await mcp.listPrompts();
       } catch (error) {
         // Name the agent only: URL and credentials stay out of the diagnostic message.
         throw new ProjectError(`Agent MCP connection failed: ${config.id}`, { cause: error });
       }
-      const reply = new AiSdkToolAgentReply(settingsFor(config), tools, mcp,
+      const reply = new AiSdkToolAgentReply(settingsFor(config), { tools, prompts }, mcp,
         config.maxToolCalls!);
       specialists.push({ id: config.id, description: config.description!,
         maxToolCalls: config.maxToolCalls!, reply, tools, mcp });

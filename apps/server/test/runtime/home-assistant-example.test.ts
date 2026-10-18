@@ -26,6 +26,10 @@ test('the ready Home Assistant agent is accepted unchanged by the agent loader',
   expect(agent.description).toMatch(/Home Assistant/);
   expect(agent.instructions).toMatch(/Italian/);
   expect(agent.instructions).toMatch(/only after a tool has confirmed/);
+  expect(agent.instructions).toMatch(/Choose freely among the available tools/);
+  expect(agent.instructions).toMatch(/do not turn on, turn off or change anything/);
+  expect(agent.instructions).toMatch(/Change a device only when the user asks for a change/);
+  expect(agent.instructions).toMatch(/all the lights or the lights of a room, act on all of them/);
 });
 
 test('the ready Home Assistant agent contains only placeholder credentials', async () => {

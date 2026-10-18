@@ -2,6 +2,7 @@ import { expect, test, vi } from 'vitest';
 import { simulateReadableStream } from 'ai';
 import { MockLanguageModelV4 } from 'ai/test';
 import type { ReplyPart } from '../../../src/application/produce-conversation-reply.js';
+import { ProjectError } from '../../../src/project-error.js';
 import { AiSdkKnowledgeAgentReply, AiSdkOrchestratorReply, AiSdkToolAgentReply, aiSdkOptions } from '../../../src/adapters/out/ai-sdk-reply.adapter.js';
 
 const settings = { instructions: 'Use available tools when needed.', model: 'mistral-small-latest',
@@ -35,6 +36,8 @@ function answer(text: string, expectsReply = false) {
   return textParts(JSON.stringify({ answer: text, expectsReply }));
 }
 
+/** A server without prompts never has them read. */
+const getPrompt = async (): Promise<string> => { throw new Error('Unexpected prompt read'); };
 const text = (value: string): ReplyPart => ({ kind: 'text', text: value });
 /** A cancellation that is never requested. */
 const never = () => ({ requested: new Promise<void>(() => { /* never */ }) });
@@ -114,7 +117,7 @@ test('the router sees which agent gave each previous answer; the agents do not',
   ] };
   const router = chooser('{"agent":"home"}');
   const agentModel = scripted({ parts: answer('Fatto.'), reason: 'stop' });
-  const home = new AiSdkToolAgentReply(settings, [], { async callTool() {
+  const home = new AiSdkToolAgentReply(settings, { tools: [], prompts: [] }, { getPrompt, async callTool() {
     return { isError: false, content: [] };
   } }, 1, agentModel);
   const reply = new AiSdkOrchestratorReply(settings, [{ id: 'home', description: 'Control home', reply: home }], router);
@@ -155,12 +158,12 @@ test('the cancellation aborts the router, the agent model and the MCP invocation
   const stop = { requested: new Promise<void>(resolve => { request = resolve; }) };
   const router = chooser('{"agent":"home"}');
   const agentModel = scripted(
-    { parts: [callPart('mcp_0', { key: 'answer' })], reason: 'tool-calls' },
+    { parts: [callPart('lookup', { key: 'answer' })], reason: 'tool-calls' },
     { parts: answer('Found it'), reason: 'stop' },
   );
   const toolSignals: Array<AbortSignal | undefined> = [];
-  const home = new AiSdkToolAgentReply(settings, [{ name: 'lookup',
-    inputSchema: { type: 'object' } }], { async callTool(_name, _args, signal) {
+  const home = new AiSdkToolAgentReply(settings, { prompts: [], tools: [{ name: 'lookup',
+    inputSchema: { type: 'object' } }] }, { getPrompt, async callTool(_name, _args, signal) {
     toolSignals.push(signal);
     return { isError: false, content: [{ type: 'text', text: 'result' }] };
   } }, 1, agentModel);
@@ -177,12 +180,12 @@ test('the cancellation aborts the router, the agent model and the MCP invocation
 test('specialist executes discovered MCP tools and allows a final answer at its call limit', async () => {
   const called: unknown[] = [];
   const model = scripted(
-    { parts: [callPart('mcp_0', { key: 'answer' })], reason: 'tool-calls' },
+    { parts: [callPart('lookup', { key: 'answer' })], reason: 'tool-calls' },
     { parts: answer('Found it'), reason: 'stop' },
   );
-  const reply = new AiSdkToolAgentReply(settings, [{ name: 'lookup',
+  const reply = new AiSdkToolAgentReply(settings, { prompts: [], tools: [{ name: 'lookup',
     inputSchema: { type: 'object', properties: { key: { type: 'string' } },
-      required: ['key'] } }], { async callTool(name, args) {
+      required: ['key'] } }] }, { getPrompt, async callTool(name, args) {
     called.push({ name, args });
     return { isError: false, content: [{ type: 'text', text: 'result' }] };
   } }, 1, model);
@@ -197,15 +200,68 @@ test('specialist executes discovered MCP tools and allows a final answer at its 
 test('specialist refuses the first MCP call beyond its per-turn limit', async () => {
   const called: string[] = [];
   const model = scripted(
-    { parts: [callPart('mcp_0', {})], reason: 'tool-calls' },
-    { parts: [callPart('mcp_0', {}, 'call-2')], reason: 'tool-calls' },
+    { parts: [callPart('lookup', {})], reason: 'tool-calls' },
+    { parts: [callPart('lookup', {}, 'call-2')], reason: 'tool-calls' },
   );
-  const reply = new AiSdkToolAgentReply(settings, [{ name: 'lookup',
-    inputSchema: { type: 'object' } }], { async callTool(name) {
+  const reply = new AiSdkToolAgentReply(settings, { prompts: [], tools: [{ name: 'lookup',
+    inputSchema: { type: 'object' } }] }, { getPrompt, async callTool(name) {
     called.push(name); return { isError: false, content: [] };
   } }, 1, model);
   await expect(collect(reply.produce(history, never()))).rejects.toThrow('MCP tool call limit exceeded');
   expect(called).toEqual(['lookup']);
+});
+
+// Verification: Prova dei nomi degli strumenti MCP
+test('specialist offers accepted MCP names and positional names for the others', async () => {
+  const long = 'a'.repeat(65);
+  const discovered = ['HassTurnOff', 'GetLiveContext', 'light.toggle', long, 'mcp_7'].map(name => ({
+    name, description: `Tool ${name}`, inputSchema: { type: 'object', properties: { name: { type: 'string' } } } }));
+  const called: unknown[] = [];
+  const model = scripted(
+    { parts: [callPart('GetLiveContext', { name: 'camera' })], reason: 'tool-calls' },
+    { parts: [callPart('mcp_2', {}, 'call-2')], reason: 'tool-calls' },
+    { parts: [callPart('mcp_4', {}, 'call-3')], reason: 'tool-calls' },
+    { parts: answer('Fatto.'), reason: 'stop' },
+  );
+  const reply = new AiSdkToolAgentReply(settings, { tools: discovered, prompts: [] }, { getPrompt,
+    async callTool(name, args) { called.push({ name, args }); return { isError: false, content: [] }; } }, 3, model);
+  expect(await collect(reply.produce(history, never()))).toEqual([text('Fatto.'), expectation(false)]);
+  const offered = model.doStreamCalls[0]?.tools ?? [];
+  expect(offered.map(tool => tool.name)).toEqual(['HassTurnOff', 'GetLiveContext', 'mcp_2', 'mcp_3', 'mcp_4']);
+  expect(offered[2]).toMatchObject({ description: 'Tool light.toggle',
+    inputSchema: { type: 'object', properties: { name: { type: 'string' } } } });
+  expect(called).toEqual([{ name: 'GetLiveContext', args: { name: 'camera' } },
+    { name: 'light.toggle', args: {} }, { name: 'mcp_7', args: {} }]);
+});
+
+// Verification: Prova delle istruzioni del server MCP
+test('specialist reads the server prompts at every turn and puts them before the reply format', async () => {
+  const versions = ['Static Context: kitchen light', 'Static Context: kitchen and bedroom lights'];
+  const read: Array<{ name: string; signal?: AbortSignal }> = [];
+  const model = scripted({ parts: answer('Uno.'), reason: 'stop' }, { parts: answer('Due.'), reason: 'stop' });
+  const reply = new AiSdkToolAgentReply(settings, { tools: [], prompts: ['assist'] }, {
+    async getPrompt(name, signal) { read.push({ name, signal }); return versions[read.length - 1]!; },
+    async callTool() { throw new Error('Unexpected tool call'); } }, 1, model);
+  await collect(reply.produce(history, never()));
+  await collect(reply.produce(history, never()));
+  expect(read.map(({ name }) => name)).toEqual(['assist', 'assist']);
+  expect(read[0]?.signal).toBeInstanceOf(AbortSignal);
+  const systems = model.doStreamCalls.map(call => String(call.prompt[0]?.content));
+  expect(systems[0]).toBe(`${settings.instructions}\n\nInstructions and context from the connected MCP server:\n`
+    + `${versions[0]}\nPut the words of your reply in answer. `
+    + 'Set expectsReply to true only when the answer asks the user to reply; otherwise set it to false.');
+  expect(systems[1]).toContain(versions[1]);
+  expect(systems[1]).not.toContain(`${versions[0]}\n`);
+});
+
+// Verification: Prova delle istruzioni del server MCP
+test('a failed prompt read fails the turn without calling the model', async () => {
+  const model = scripted({ parts: answer('unused'), reason: 'stop' });
+  const reply = new AiSdkToolAgentReply(settings, { tools: [], prompts: ['assist'] }, {
+    async getPrompt() { throw new ProjectError('MCP prompt retrieval failed'); },
+    async callTool() { throw new Error('Unexpected tool call'); } }, 1, model);
+  await expect(collect(reply.produce(history, never()))).rejects.toThrow('MCP prompt retrieval failed');
+  expect(model.doStreamCalls).toHaveLength(0);
 });
 
 test('provider options remain validated and map to AI SDK settings', () => {

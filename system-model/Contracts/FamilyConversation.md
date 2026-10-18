@@ -285,6 +285,19 @@ Per un guasto inatteso di un turno già ammesso, il server sceglie il messaggio 
   * define: [Localizzazione dell'errore conversazionale inatteso](../Requirements/FamilyConversation.md#localizzazione-dellerrore-conversazionale-inatteso)
 ---
 
+### Nome degli strumenti presentati al modello
+
+Decisione concordata con la persona il 18 ottobre 2026, che sostituisce la presentazione di ogni strumento con il nome posizionale `mcp_<indice>`: il nome dello strumento aiuta il modello a sceglierlo, per esempio `HassTurnOff` o `GetLiveContext` di Home Assistant.
+
+L'adapter presenta al modello ogni strumento scoperto con il nome dichiarato dal server MCP quando il nome rispetta l'espressione `^[A-Za-z0-9_-]{1,64}$` e non ha la forma riservata `mcp_<cifre>`. L'espressione è la regola prudente dei fornitori compatibili con le API di OpenAI, adottata perché la documentazione di Mistral non dichiara i caratteri ammessi; i nomi MCP possono contenere anche il punto, che quei fornitori rifiutano. Uno strumento con un nome diverso è presentato con il nome `mcp_<indice>`, dove l'indice è la posizione nella lista scoperta a partire da 0; la forma riservata impedisce collisioni con i nomi dichiarati. La descrizione e lo schema degli argomenti restano quelli del server. Una chiamata del modello è inoltrata con il nome originale dello strumento corrispondente e conta per `maxToolCalls` come prima.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Nomi degli strumenti MCP offerti al modello](../Requirements/FamilyConversation.md#nomi-degli-strumenti-mcp-offerti-al-modello)
+---
+
 ### Occupazione della conversazione e ammissione dei turni
 
 L'ammissione è atomica per identificativo di conversazione ed è condivisa da tutti i turni, testuali e vocali, di qualunque client. Ogni conversazione è occupata dall'accettazione di un turno fino alla conservazione del suo esito o dello stato `interrotto`. Richieste simultanee sulla stessa conversazione ammettono al massimo un turno; le altre ricevono un rifiuto previsto, senza persistenza né accodamento. Turni di conversazioni diverse possono essere ammessi ed elaborati in parallelo; anche due richieste che creano conversazioni nuove non si escludono reciprocamente. Storico, risposta ed esito di un turno restano associati alla propria conversazione. L'arresto impedisce nuove ammissioni in tutte le conversazioni. Al riavvio, dopo le migrazioni e prima degli ingressi, i turni rimasti `in elaborazione` diventano `interrotti` e le rispettive occupazioni vengono liberate atomicamente. Una conclusione tardiva non sostituisce lo stato `interrotto`. Le transazioni SQLite restano brevi: non includono produzione remota o streaming. La serializzazione delle scritture SQLite non impone la serializzazione dell'intera elaborazione.
@@ -351,7 +364,9 @@ La configurazione JSON mantiene `llm.provider: "mistral"`, `model`, `apiKey` e l
 
 Decisione concordata con la persona il 18 ottobre 2026. Il connettore Home Assistant non richiede codice dedicato: è un agente specializzato configurato con il client MCP comune, il trasporto Streamable HTTP e il Bearer statico già definiti. La sezione `mcp.url` indica l'endpoint `/api/mcp` dell'integrazione ufficiale «Model Context Protocol Server» di Home Assistant, per esempio `http://homeassistant.local:8123/api/mcp`; `mcp.auth` ha `type: "bearer"` e `token` pari a un token di accesso di lunga durata creato nel profilo dell'utente Home Assistant, nella scheda Sicurezza. Home Assistant offre ai client MCP soltanto le entità esposte ad Assist: la scelta dei dispositivi che Ambrogio può consultare o comandare appartiene alla configurazione di Home Assistant. L'autorizzazione OAuth con login interattivo e PKCE offerta da Home Assistant non è usata, perché il client MCP di Ambrogio non supporta flussi con login nel browser. Fonte: https://www.home-assistant.io/integrations/mcp_server/ .
 
-Il repository fornisce `examples/agents/home-assistant.json`, da copiare in `/etc/ambrogio/agents/home-assistant.json`, che definisce quindi l'agente con identificativo `home-assistant`. Il file contiene `description` che presenta all'orchestratore la consultazione dello stato e il comando dei dispositivi domestici; `instructions` che chiedono di rispondere in italiano, di usare gli strumenti per leggere stati ed eseguire azioni e di dichiarare un'azione eseguita soltanto dopo la conferma di uno strumento; `llm` con `provider: "mistral"`, `model: "mistral-medium-latest"` e `apiKey` segnaposto; `maxToolCalls: 5`; `mcp.url` con l'indirizzo d'esempio sopra indicato e `mcp.auth.token` segnaposto. I segnaposto sono `<MISTRAL_API_KEY>` e `<HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN>`: soddisfano la validazione strutturale, ma non sono credenziali utilizzabili e vanno sostituiti da chi installa.
+Il repository fornisce `examples/agents/home-assistant.json`, da copiare in `/etc/ambrogio/agents/home-assistant.json`, che definisce quindi l'agente con identificativo `home-assistant`. Il file contiene `description` che presenta all'orchestratore la consultazione dello stato e il comando dei dispositivi domestici; `instructions`; `llm` con `provider: "mistral"`, `model: "mistral-medium-latest"` e `apiKey` segnaposto; `maxToolCalls: 5`; `mcp.url` con l'indirizzo d'esempio sopra indicato e `mcp.auth.token` segnaposto. I segnaposto sono `<MISTRAL_API_KEY>` e `<HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN>`: soddisfano la validazione strutturale, ma non sono credenziali utilizzabili e vanno sostituiti da chi installa.
+
+Decisione concordata con la persona il 18 ottobre 2026, che sostituisce le istruzioni precedenti dopo che l'agente aveva acceso una luce a una domanda sul suo stato e non riusciva a spegnere tutte le luci. Le `instructions` chiedono di rispondere in italiano e brevemente; lasciano scegliere liberamente fra gli strumenti disponibili, usando quelli che la richiesta richiede; per una domanda sullo stato di un dispositivo o di un sensore chiedono di leggere lo stato corrente senza accendere, spegnere o modificare nulla; chiedono di modificare un dispositivo soltanto quando l'utente chiede una modifica; quando l'utente indica più dispositivi, per esempio tutte le luci o le luci di una stanza, chiedono di agire su tutti, usando l'area o il tipo di dispositivo quando uno strumento lo consente; chiedono di dichiarare un'azione eseguita soltanto dopo la conferma di uno strumento e di dire quando uno strumento fallisce o un dispositivo non è disponibile. L'elenco dei dispositivi e le indicazioni d'uso degli strumenti non sono ripetuti nelle istruzioni: arrivano dal prompt del server MCP di Home Assistant, letto a ogni turno.
 
 #### Metadata
   * type: specification
@@ -404,6 +419,21 @@ Decisione concordata con la persona il 17 ottobre 2026, che sostituisce l'obblig
 
 #### Relations
   * define: [Configurazione del modello per agente](../Requirements/FamilyConversation.md#configurazione-del-modello-per-agente)
+---
+
+### Prompt del server MCP letti a ogni turno
+
+Decisione concordata con la persona il 18 ottobre 2026, dopo che l'agente Home Assistant dell'installazione di riferimento aveva acceso una luce a una domanda sul suo stato e non riusciva a spegnere tutte le luci: il server MCP di Home Assistant offre un prompt con le indicazioni d'uso degli strumenti, compreso l'uso di `GetLiveContext` per le domande sullo stato, e con l'elenco delle aree e dei dispositivi esposti ad Assist, che il backend non consegnava al modello. Fonti: https://www.home-assistant.io/integrations/mcp_server/ e il sorgente di Home Assistant `homeassistant/components/mcp_server/server.py` e `homeassistant/components/homeassistant/llm.py`.
+
+All'avvio, dopo la scoperta degli strumenti, il backend chiede la lista dei prompt (`prompts/list`) soltanto se il server dichiara la capacità `prompts` nell'inizializzazione; un server che non la dichiara non ha prompt. Conserva, nell'ordine della lista, i nomi dei prompt che non hanno argomenti obbligatori; i prompt con argomenti obbligatori sono ignorati perché il backend non saprebbe valorizzarli. Un errore della lista all'avvio è un guasto della connessione dell'agente, segnalato come `Agent MCP connection failed: <id>`.
+
+A ogni turno delegato a quell'agente, prima di chiamare il modello, il backend legge ciascun prompt conservato con `prompts/get`, senza argomenti, così che dispositivi esposti, rinominati o spostati di area in Home Assistant valgano dal turno successivo senza riavvio. Il testo di un prompt è la concatenazione, separata da una riga vuota, dei contenuti di tipo testo dei suoi messaggi; gli altri tipi di contenuto sono ignorati. Le istruzioni consegnate al modello sono, nell'ordine: le istruzioni del file JSON dell'agente, una riga vuota, l'intestazione `Instructions and context from the connected MCP server:` seguita dai testi dei prompt separati da una riga vuota, e infine le indicazioni sul formato della risposta. Senza prompt conservati le istruzioni restano quelle del file JSON con le indicazioni sul formato. Le letture usano il segnale di annullamento del turno e rientrano nel tempo massimo di 30 secondi della produzione della risposta; non contano per `maxToolCalls`. Se una lettura fallisce, il turno termina con il guasto e il messaggio pubblico standard, con causa tecnica `MCP prompt retrieval failed` per la diagnostica `conversation_reply_failed`. Il testo dei prompt non viene registrato nei log.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Istruzioni del server MCP per l'agente](../Requirements/FamilyConversation.md#istruzioni-del-server-mcp-per-lagente)
 ---
 
 ### Proprietà dei controlli del turno conversazionale

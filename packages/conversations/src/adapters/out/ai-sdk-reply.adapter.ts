@@ -14,9 +14,20 @@ export type AgentSettings = Readonly<{
   options?: Readonly<Record<string, unknown>>;
 }>;
 
-type ToolClient = { callTool(name: string, args: Record<string, unknown>, signal?: AbortSignal): Promise<Readonly<{
-  isError: boolean; content: readonly unknown[];
-}>> };
+type ToolClient = {
+  callTool(name: string, args: Record<string, unknown>, signal?: AbortSignal): Promise<Readonly<{
+    isError: boolean; content: readonly unknown[];
+  }>>;
+  getPrompt(name: string, signal?: AbortSignal): Promise<string>;
+};
+
+/** What the agent's MCP server offered at startup: its tools and the prompts without required arguments. */
+export type DiscoveredMcp = Readonly<{ tools: readonly AvailableMcpTool[]; prompts: readonly string[] }>;
+
+/** The MCP name when the provider accepts it; otherwise the reserved positional name. */
+function presentedToolName(name: string, index: number): string {
+  return /^[A-Za-z0-9_-]{1,64}$/.test(name) && !/^mcp_\d+$/.test(name) ? name : `mcp_${index}`;
+}
 
 export function aiSdkOptions(value?: AgentSettings['options']): Readonly<{
   temperature?: number; maxOutputTokens?: number;
@@ -75,6 +86,11 @@ const replyOutput = Output.object({ schema: jsonSchema<{ answer: string; expects
   required: ['answer', 'expectsReply'], additionalProperties: false,
 }) });
 
+function withServerPrompts(instructions: string, prompts: readonly string[]): string {
+  return prompts.length === 0 ? instructions
+    : `${instructions}\n\nInstructions and context from the connected MCP server:\n${prompts.join('\n\n')}`;
+}
+
 function replyInstructions(instructions: string): string {
   return `${instructions}\nPut the words of your reply in answer. `
     + 'Set expectsReply to true only when the answer asks the user to reply; otherwise set it to false.';
@@ -114,7 +130,7 @@ export class AiSdkToolAgentReply implements ProduceConversationReply {
   private readonly options: ReturnType<typeof aiSdkOptions>;
 
   constructor(private readonly settings: AgentSettings,
-    private readonly availableTools: readonly AvailableMcpTool[],
+    private readonly discovered: DiscoveredMcp,
     private readonly mcp: ToolClient, private readonly maxToolCalls: number,
     model?: LanguageModel) {
     if (!Number.isSafeInteger(maxToolCalls) || maxToolCalls < 1) {
@@ -129,8 +145,11 @@ export class AiSdkToolAgentReply implements ProduceConversationReply {
     let used = 0;
     // Structured output reports a failed step only as a missing object; keep the limit failure.
     let limitExceeded: ProjectError | undefined;
-    const tools = Object.fromEntries(this.availableTools.map((available, index) => [
-      `mcp_${index}`, tool({
+    // Read at every turn, so changes on the server apply without a restart.
+    const prompts: string[] = [];
+    for (const name of this.discovered.prompts) prompts.push(await this.mcp.getPrompt(name, signal));
+    const tools = Object.fromEntries(this.discovered.tools.map((available, index) => [
+      presentedToolName(available.name, index), tool({
         description: available.description ?? available.name,
         inputSchema: jsonSchema<Record<string, unknown>>(
           available.inputSchema as Parameters<typeof jsonSchema>[0]),
@@ -143,7 +162,8 @@ export class AiSdkToolAgentReply implements ProduceConversationReply {
         },
       }),
     ]));
-    const response = streamText({ model: this.model, system: replyInstructions(this.settings.instructions),
+    const response = streamText({ model: this.model,
+      system: replyInstructions(withServerPrompts(this.settings.instructions, prompts)),
       messages: messagesFor(history), tools, output: replyOutput,
       toolCallConcurrency: 1, stopWhen: stepCountIs(this.maxToolCalls + 1),
       maxRetries: 0, abortSignal: signal, ...this.options });

@@ -741,6 +741,23 @@ Quando Application e Domain rappresentano un istante della conversazione, devono
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
+### Istruzioni del server MCP per l'agente
+
+Quando un agente specializzato con connettore MCP elabora un turno delegato e il suo server MCP offre prompt senza argomenti obbligatori, Ambrogio deve leggerne il testo dal server durante quel turno e consegnarlo al modello dell'agente insieme alle istruzioni del file JSON dell'agente.
+
+#### Details
+Se la lettura dei prompt fallisce, Ambrogio deve concludere il turno con il guasto comunicato secondo il contratto pubblico del turno, senza produrre la risposta con le sole istruzioni del file JSON.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
+  * satisfiedBy: [mcp-tool-client.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.ts)
+  * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
+---
+
 ### Istruzioni dell'agente nel JSON dell'utente
 
 Quando il server attiva un agente, incluso l'orchestratore, deve leggere le istruzioni destinate a quell'agente dal suo file JSON locale gestito dall'utente e consegnarle soltanto al modello dell'agente interessato.
@@ -843,6 +860,18 @@ Quando Ambrogio riconosce dopo un riavvio un turno interrotto senza esito conser
 
 #### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Nomi degli strumenti MCP offerti al modello
+
+Quando offre al modello di un agente specializzato gli strumenti del proprio connettore MCP, Ambrogio deve presentare ciascuno strumento con il nome dichiarato dal server MCP, se il nome è ammesso dal fornitore del modello, e inoltrare le chiamate del modello allo strumento corrispondente.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
+  * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
 ---
 
 ### Nomi delle porte Application secondo la capacità richiesta

@@ -51,7 +51,8 @@ test('passes each agent JSON credential to its own controlled Mistral client', a
     }));
     const agents = await prepareAgents(directory, async (connection) => {
       connections.push(connection);
-      return { listTools: async () => [], callTool: async () => ({ isError: false, content: [] }),
+      return { listTools: async () => [], listPrompts: async () => [], getPrompt: async () => '',
+        callTool: async () => ({ isError: false, content: [] }),
         close: async () => {} };
     });
     try {

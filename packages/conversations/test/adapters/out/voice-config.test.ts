@@ -2,7 +2,7 @@ import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
-import { loadVoiceConfig, voiceModelFiles } from '../../../src/adapters/out/voice-config.js';
+import { loadVoiceConfig, voiceModel, voiceModelFiles } from '../../../src/adapters/out/voice-config.js';
 
 const directories: string[] = [];
 afterEach(async () => { await Promise.all(directories.splice(0).map(path =>
@@ -22,19 +22,31 @@ async function fixture() {
   return { directory, vosk, voice, config };
 }
 
+/** A Kokoro directory as extracted from `kokoro-multi-lang-v1_0.tar.bz2`. */
+async function kokoroFixture() {
+  const paths = await fixture();
+  const kokoro = join(paths.directory, 'kokoro');
+  await mkdir(join(kokoro, 'espeak-ng-data'), { recursive: true });
+  for (const name of ['model.onnx', 'voices.bin', 'tokens.txt', 'lexicon-us-en.txt']) {
+    await writeFile(join(kokoro, name), 'fixture');
+  }
+  return { ...paths, kokoro };
+}
+
 it('validates the Vosk model and the voice directory', async () => {
   const { vosk, voice, config } = await fixture();
-  await writeFile(config, JSON.stringify({ voskModelPath: vosk, voiceModelDir: voice }));
-  expect(await loadVoiceConfig(config)).toEqual({ voskModelPath: vosk, voiceModelDir: voice });
+  await writeFile(config, JSON.stringify({ voskModelPath: vosk, voiceEngine: 'piper', voiceModelDir: voice }));
+  expect(await loadVoiceConfig(config)).toEqual({ voskModelPath: vosk, voiceEngine: 'piper', voiceModelDir: voice });
   expect(await voiceModelFiles(voice)).toEqual({ model: join(voice, 'it_IT-paola-medium.onnx'),
     tokens: join(voice, 'tokens.txt'), dataDir: join(voice, 'espeak-ng-data') });
 });
 
 it('rejects missing, empty and unknown fields, including the former Piper paths', async () => {
   const { vosk, voice, config } = await fixture();
-  for (const value of [{ voskModelPath: vosk }, { voskModelPath: vosk, voiceModelDir: ' ' },
-    { voskModelPath: vosk, voiceModelDir: voice, piperModelPath: '/voice.onnx' },
-    { voskModelPath: vosk, voiceModelDir: voice, piperBinaryPath: '/piper' }, []]) {
+  for (const value of [{ voskModelPath: vosk, voiceEngine: 'piper' },
+    { voskModelPath: vosk, voiceEngine: 'piper', voiceModelDir: ' ' },
+    { voskModelPath: vosk, voiceEngine: 'piper', voiceModelDir: voice, piperModelPath: '/voice.onnx' },
+    { voskModelPath: vosk, voiceEngine: 'piper', voiceModelDir: voice, piperBinaryPath: '/piper' }, []]) {
     await writeFile(config, JSON.stringify(value));
     await expect(loadVoiceConfig(config)).rejects.toThrow('Invalid voice configuration file');
   }
@@ -42,7 +54,7 @@ it('rejects missing, empty and unknown fields, including the former Piper paths'
 
 it('requires exactly one readable model, tokens and espeak data in the voice directory', async () => {
   const { vosk, voice, config } = await fixture();
-  await writeFile(config, JSON.stringify({ voskModelPath: vosk, voiceModelDir: voice }));
+  await writeFile(config, JSON.stringify({ voskModelPath: vosk, voiceEngine: 'piper', voiceModelDir: voice }));
   await writeFile(join(voice, 'other.onnx'), 'fixture');
   await expect(loadVoiceConfig(config)).rejects.toThrow('Voice resources are unavailable');
   await rm(join(voice, 'other.onnx'));
@@ -59,7 +71,60 @@ it('requires exactly one readable model, tokens and espeak data in the voice dir
     await expect(loadVoiceConfig(config)).rejects.toThrow('Voice resources are unavailable');
     await chmod(join(voice, 'it_IT-paola-medium.onnx'), 0o644);
   }
-  await expect(loadVoiceConfig(config)).resolves.toEqual({ voskModelPath: vosk, voiceModelDir: voice });
-  await writeFile(config, JSON.stringify({ voskModelPath: join(vosk, 'absent'), voiceModelDir: voice }));
+  await expect(loadVoiceConfig(config)).resolves.toEqual({ voskModelPath: vosk, voiceEngine: 'piper', voiceModelDir: voice });
+  await writeFile(config, JSON.stringify({ voskModelPath: join(vosk, 'absent'), voiceEngine: 'piper', voiceModelDir: voice }));
+  await expect(loadVoiceConfig(config)).rejects.toThrow('Voice resources are unavailable');
+});
+
+// Verification: Prova della scelta del motore di sintesi
+it('accepts a Piper voice or a named Italian Kokoro voice', async () => {
+  const { vosk, voice, kokoro, config } = await kokoroFixture();
+  await writeFile(config, JSON.stringify({ voskModelPath: vosk, voiceEngine: 'piper', voiceModelDir: voice }));
+  const piper = await loadVoiceConfig(config);
+  expect(await voiceModel(piper)).toEqual({ engine: 'piper', files: { model: join(voice, 'it_IT-paola-medium.onnx'),
+    tokens: join(voice, 'tokens.txt'), dataDir: join(voice, 'espeak-ng-data') } });
+  for (const speaker of ['if_sara', 'im_nicola']) {
+    const value = { voskModelPath: vosk, voiceEngine: 'kokoro', voiceModelDir: kokoro, voiceSpeaker: speaker };
+    await writeFile(config, JSON.stringify(value));
+    const loaded = await loadVoiceConfig(config);
+    expect(loaded).toEqual(value);
+    expect(await voiceModel(loaded)).toEqual({ engine: 'kokoro', speaker, files: {
+      model: join(kokoro, 'model.onnx'), voices: join(kokoro, 'voices.bin'), tokens: join(kokoro, 'tokens.txt'),
+      dataDir: join(kokoro, 'espeak-ng-data') } });
+  }
+});
+
+// Verification: Prova della scelta del motore di sintesi
+it('rejects a missing or unknown engine and a speaker that does not fit the engine', async () => {
+  const { vosk, voice, kokoro, config } = await kokoroFixture();
+  for (const value of [{ voskModelPath: vosk, voiceModelDir: voice },
+    { voskModelPath: vosk, voiceEngine: '', voiceModelDir: voice },
+    { voskModelPath: vosk, voiceEngine: 'espeak', voiceModelDir: voice },
+    { voskModelPath: vosk, voiceEngine: 'Piper', voiceModelDir: voice },
+    { voskModelPath: vosk, voiceEngine: 'piper', voiceModelDir: voice, voiceSpeaker: 'if_sara' },
+    { voskModelPath: vosk, voiceEngine: 'kokoro', voiceModelDir: kokoro },
+    { voskModelPath: vosk, voiceEngine: 'kokoro', voiceModelDir: kokoro, voiceSpeaker: 'af_heart' },
+    { voskModelPath: vosk, voiceEngine: 'kokoro', voiceModelDir: kokoro, voiceSpeaker: 35 }]) {
+    await writeFile(config, JSON.stringify(value));
+    await expect(loadVoiceConfig(config)).rejects.toThrow('Invalid voice configuration file');
+  }
+});
+
+// Verification: Prova della scelta del motore di sintesi
+it('requires the readable Kokoro model, voices, tokens and espeak data', async () => {
+  const { vosk, kokoro, config } = await kokoroFixture();
+  await writeFile(config, JSON.stringify({ voskModelPath: vosk, voiceEngine: 'kokoro', voiceModelDir: kokoro,
+    voiceSpeaker: 'im_nicola' }));
+  for (const name of ['model.onnx', 'voices.bin', 'tokens.txt']) {
+    await rm(join(kokoro, name));
+    await expect(loadVoiceConfig(config)).rejects.toThrow('Voice resources are unavailable');
+    await writeFile(join(kokoro, name), 'fixture');
+  }
+  await rm(join(kokoro, 'espeak-ng-data'), { recursive: true });
+  await expect(loadVoiceConfig(config)).rejects.toThrow('Voice resources are unavailable');
+  await mkdir(join(kokoro, 'espeak-ng-data'));
+  // The int8 variant is not supported.
+  await rm(join(kokoro, 'model.onnx'));
+  await writeFile(join(kokoro, 'model.int8.onnx'), 'fixture');
   await expect(loadVoiceConfig(config)).rejects.toThrow('Voice resources are unavailable');
 });

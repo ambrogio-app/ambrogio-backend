@@ -2,13 +2,16 @@ import { availableParallelism } from 'node:os';
 import { expect, it } from 'vitest';
 import { takeSentences } from '../../../src/adapters/in/session/sentences.js';
 import { SherpaSynthesizer, pcm16, type SherpaTtsConfig } from '../../../src/adapters/in/session/sherpa-synthesizer.js';
-import { voiceModelFiles } from '../../../src/adapters/out/voice-config.js';
+import { voiceModel, type VoiceModel } from '../../../src/adapters/out/voice-config.js';
 
 const files = { model: '/voice/it.onnx', tokens: '/voice/tokens.txt', dataDir: '/voice/espeak-ng-data' };
+const piper: VoiceModel = { engine: 'piper', files };
+const kokoroFiles = { model: '/kokoro/model.onnx', voices: '/kokoro/voices.bin', tokens: '/kokoro/tokens.txt',
+  dataDir: '/kokoro/espeak-ng-data' };
 
 /** A controlled engine: each sentence becomes one sample per character, after `delayMs`. */
 function fakeEngine(options: Readonly<{ sampleRate?: number; delayMs?: number; fail?: string }> = {}) {
-  const state = { configs: [] as SherpaTtsConfig[], texts: [] as string[], running: 0, maxRunning: 0,
+  const state = { configs: [] as SherpaTtsConfig[], texts: [] as string[], sids: [] as number[], running: 0, maxRunning: 0,
     syncCalls: 0 };
   const sampleRate = options.sampleRate ?? 22_050;
   const engine = {
@@ -19,6 +22,7 @@ function fakeEngine(options: Readonly<{ sampleRate?: number; delayMs?: number; f
         generate() { state.syncCalls++; throw new Error('blocking generation used'); },
         async generateAsync(request: { text: string; sid: number; speed: number }) {
           state.texts.push(request.text);
+          state.sids.push(request.sid);
           state.running++;
           state.maxRunning = Math.max(state.maxRunning, state.running);
           try {
@@ -78,7 +82,7 @@ it('converts float samples to PCM16 little-endian', () => {
 // Verification: Prova della sintesi vocale nel processo backend
 it('loads the voice once and generates each completed sentence asynchronously', async () => {
   const { engine, state } = fakeEngine({ sampleRate: 16_000 });
-  const synthesizer = await SherpaSynthesizer.load(files, engine);
+  const synthesizer = await SherpaSynthesizer.load(piper, engine);
   expect(synthesizer.sampleRate).toBe(16_000);
   expect(state.configs).toEqual([{ model: { vits: files, numThreads: Math.min(4, availableParallelism()),
     debug: false, provider: 'cpu' }, maxNumSentences: 1 }]);
@@ -101,13 +105,14 @@ it('loads the voice once and generates each completed sentence asynchronously', 
 
   await collect(synthesizer.synthesize(pieces('Ancora.'), new AbortController().signal));
   expect(state.configs).toHaveLength(1);
+  expect(state.sids).toEqual([0, 0, 0, 0]);
   expect(state.syncCalls).toBe(0);
 });
 
 // Verification: Prova della sintesi vocale nel processo backend
 it('runs generations of concurrent transmissions one at a time without mixing their audio', async () => {
   const { engine, state } = fakeEngine({ delayMs: 10 });
-  const synthesizer = await SherpaSynthesizer.load(files, engine);
+  const synthesizer = await SherpaSynthesizer.load(piper, engine);
   const [first, second] = await Promise.all([
     collect(synthesizer.synthesize(pieces('Uno. Due.'), new AbortController().signal)),
     collect(synthesizer.synthesize(pieces('Tre tre. Quattro quattro.'), new AbortController().signal)),
@@ -120,7 +125,7 @@ it('runs generations of concurrent transmissions one at a time without mixing th
 // Verification: Prova della sintesi vocale nel processo backend
 it('stops after the current sentence when the transmission is aborted', async () => {
   const { engine, state } = fakeEngine({ delayMs: 20 });
-  const synthesizer = await SherpaSynthesizer.load(files, engine);
+  const synthesizer = await SherpaSynthesizer.load(piper, engine);
   const controller = new AbortController();
   const chunks: Uint8Array[] = [];
   for await (const chunk of synthesizer.synthesize(pieces('Prima. Seconda. Terza.'), controller.signal)) {
@@ -142,7 +147,7 @@ it('stops after the current sentence when the transmission is aborted', async ()
 // Verification: Prova della sintesi vocale nel processo backend
 it('keeps the event loop responsive while a sentence is generated', async () => {
   const { engine } = fakeEngine({ delayMs: 50 });
-  const synthesizer = await SherpaSynthesizer.load(files, engine);
+  const synthesizer = await SherpaSynthesizer.load(piper, engine);
   let ticks = 0;
   const timer = setInterval(() => { ticks++; }, 5);
   try { await collect(synthesizer.synthesize(pieces('Frase lenta.'), new AbortController().signal)); }
@@ -152,11 +157,11 @@ it('keeps the event loop responsive while a sentence is generated', async () => 
 
 // Verification: Prova della sintesi vocale nel processo backend
 it('rejects a voice that cannot be loaded and reports a failed generation', async () => {
-  await expect(SherpaSynthesizer.load(files, { async createAsync() { throw new Error('bad model'); } }))
+  await expect(SherpaSynthesizer.load(piper, { async createAsync() { throw new Error('bad model'); } }))
     .rejects.toThrow('Voice model could not be loaded');
-  await expect(SherpaSynthesizer.load(files, fakeEngine({ sampleRate: 0 }).engine))
+  await expect(SherpaSynthesizer.load(piper, fakeEngine({ sampleRate: 0 }).engine))
     .rejects.toThrow('Invalid voice sample rate');
-  const synthesizer = await SherpaSynthesizer.load(files, fakeEngine({ fail: 'Rotta.' }).engine);
+  const synthesizer = await SherpaSynthesizer.load(piper, fakeEngine({ fail: 'Rotta.' }).engine);
   await expect(collect(synthesizer.synthesize(pieces('Rotta.'), new AbortController().signal)))
     .rejects.toThrow('Speech synthesis failed');
   // A failed generation does not block the next transmission.
@@ -168,7 +173,7 @@ it('rejects a voice that cannot be loaded and reports a failed generation', asyn
 // Verification: Prova della sintesi senza marcatura Markdown
 it('speaks only the readable text of Markdown replies, leaving the received text unchanged', async () => {
   const { engine, state } = fakeEngine();
-  const synthesizer = await SherpaSynthesizer.load(files, engine);
+  const synthesizer = await SherpaSynthesizer.load(piper, engine);
   const fragments = ['## Riepilogo\n', 'Nella zona giorno ci sono **25,', '8 °C**. ',
     'Il file `config_casa.json` è _pronto_ e __salvato__. ', 'Vedi [la guida](https://example.com/guida). ',
     '> Nota bene.\n', '- Luce cucina accesa\n', '* Tapparelle ~~aperte~~ chiuse\n', '1. Primo passo\n',
@@ -181,11 +186,27 @@ it('speaks only the readable text of Markdown replies, leaving the received text
   expect(received).toEqual(fragments);
 });
 
+// Verification: Prova della scelta del motore di sintesi
+it('loads a Kokoro voice with Italian phonemes and speaks with the configured speaker', async () => {
+  for (const [speaker, sid] of [['if_sara', 35], ['im_nicola', 36]] as const) {
+    const { engine, state } = fakeEngine({ sampleRate: 24_000 });
+    const synthesizer = await SherpaSynthesizer.load({ engine: 'kokoro', files: kokoroFiles, speaker }, engine);
+    expect(synthesizer.sampleRate).toBe(24_000);
+    expect(state.configs).toEqual([{ model: { kokoro: { ...kokoroFiles, lang: 'it' },
+      numThreads: Math.min(4, availableParallelism()), debug: false, provider: 'cpu' }, maxNumSentences: 1 }]);
+    await collect(synthesizer.synthesize(pieces('Ciao. Come stai?'), new AbortController().signal));
+    expect(state.texts).toEqual(['Ciao.', 'Come stai?']);
+    expect(state.sids).toEqual([sid, sid]);
+    synthesizer.close();
+  }
+});
+
 const realVoice = process.env.AMBROGIO_TEST_VOICE_MODEL_DIR;
+const realKokoro = process.env.AMBROGIO_TEST_KOKORO_MODEL_DIR;
 
 // Verification: Prova della sintesi vocale nel processo backend
 it.skipIf(!realVoice)('synthesizes Italian speech with a real voice directory', async () => {
-  const synthesizer = await SherpaSynthesizer.load(await voiceModelFiles(realVoice!));
+  const synthesizer = await SherpaSynthesizer.load(await voiceModel({ voiceEngine: 'piper', voiceModelDir: realVoice! }));
   try {
     expect([16_000, 22_050]).toContain(synthesizer.sampleRate);
     let ticks = 0;
@@ -199,6 +220,20 @@ it.skipIf(!realVoice)('synthesizes Italian speech with a real voice directory', 
     expect(ticks).toBeGreaterThan(0);
   } finally { synthesizer.close(); }
 }, 30_000);
+
+// Verification: Prova della scelta del motore di sintesi
+it.skipIf(!realKokoro)('synthesizes Italian speech with both Italian voices of a real Kokoro model', async () => {
+  for (const voiceSpeaker of ['if_sara', 'im_nicola'] as const) {
+    const synthesizer = await SherpaSynthesizer.load(await voiceModel({ voiceEngine: 'kokoro',
+      voiceModelDir: realKokoro!, voiceSpeaker }));
+    try {
+      expect(synthesizer.sampleRate).toBe(24_000);
+      const audio = await collect(synthesizer.synthesize(pieces('Ciao, sono Ambrogio.'),
+        new AbortController().signal));
+      expect(audio.reduce((total, chunk) => total + chunk.length, 0)).toBeGreaterThan(synthesizer.sampleRate);
+    } finally { synthesizer.close(); }
+  }
+}, 120_000);
 
 async function until(check: () => boolean): Promise<void> {
   const deadline = Date.now() + 5_000;

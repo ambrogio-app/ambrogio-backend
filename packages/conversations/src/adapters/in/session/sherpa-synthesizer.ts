@@ -1,14 +1,13 @@
 import { createRequire } from 'node:module';
 import { availableParallelism } from 'node:os';
 import { ProjectError } from '../../../project-error.js';
-import type { VoiceModelFiles } from '../../out/voice-config.js';
+import { kokoroSpeakers, type KokoroModelFiles, type VoiceModel, type VoiceModelFiles } from '../../out/voice-config.js';
 import { spokenSentence, takeSentences } from './sentences.js';
 import type { Synthesizer } from './speech-components.js';
 
-/** The `sherpa-onnx-node` configuration of a VITS voice. */
+/** The `sherpa-onnx-node` configuration of a Piper (VITS) voice or of the Kokoro model. */
 export type SherpaTtsConfig = Readonly<{
-  model: Readonly<{
-    vits: VoiceModelFiles;
+  model: Readonly<({ vits: VoiceModelFiles } | { kokoro: KokoroModelFiles & Readonly<{ lang: 'it' }> }) & {
     numThreads: number;
     debug: boolean;
     provider: 'cpu';
@@ -31,11 +30,18 @@ function nativeEngine(): SherpaTtsEngine {
   return sherpa.OfflineTts;
 }
 
-export function sherpaConfig(files: VoiceModelFiles): SherpaTtsConfig {
+export function sherpaConfig(voice: VoiceModel): SherpaTtsConfig {
+  // Kokoro phonemizes with espeak-ng in the language given here, otherwise in English.
+  const model = voice.engine === 'kokoro' ? { kokoro: { ...voice.files, lang: 'it' as const } } : { vits: voice.files };
   return {
-    model: { vits: files, numThreads: Math.min(4, availableParallelism()), debug: false, provider: 'cpu' },
+    model: { ...model, numThreads: Math.min(4, availableParallelism()), debug: false, provider: 'cpu' },
     maxNumSentences: 1,
   };
+}
+
+/** The sherpa-onnx speaker ID: a Piper voice has a single speaker. */
+function speakerId(voice: VoiceModel): number {
+  return voice.engine === 'kokoro' ? kokoroSpeakers[voice.speaker] : 0;
 }
 
 /** Float samples in [-1, 1] as PCM16 little-endian. */
@@ -59,20 +65,20 @@ export class SherpaSynthesizer implements Synthesizer {
   private tts?: SherpaTts;
   private previous: Promise<unknown> = Promise.resolve();
 
-  private constructor(tts: SherpaTts) {
+  private constructor(tts: SherpaTts, private readonly sid: number) {
     this.tts = tts;
     this.sampleRate = tts.sampleRate;
   }
 
-  static async load(files: VoiceModelFiles, engine?: SherpaTtsEngine): Promise<SherpaSynthesizer> {
+  static async load(voice: VoiceModel, engine?: SherpaTtsEngine): Promise<SherpaSynthesizer> {
     let tts: SherpaTts;
-    try { tts = await (engine ?? nativeEngine()).createAsync(sherpaConfig(files)); }
+    try { tts = await (engine ?? nativeEngine()).createAsync(sherpaConfig(voice)); }
     catch (error) { throw new ProjectError('Voice model could not be loaded', { cause: error }); }
     const rate = tts.sampleRate;
     if (!Number.isSafeInteger(rate) || rate < 8_000 || rate > 48_000) {
       throw new ProjectError('Invalid voice sample rate');
     }
-    return new SherpaSynthesizer(tts);
+    return new SherpaSynthesizer(tts, speakerId(voice));
   }
 
   /** Release the loaded voice; transmissions in progress end without further sentences. */
@@ -86,7 +92,7 @@ export class SherpaSynthesizer implements Synthesizer {
       const tts = this.tts;
       if (signal.aborted || !tts) return undefined;
       let audio: Awaited<ReturnType<SherpaTts['generateAsync']>>;
-      try { audio = await tts.generateAsync({ text, sid: 0, speed: 1 }); }
+      try { audio = await tts.generateAsync({ text, sid: this.sid, speed: 1 }); }
       catch (error) { throw new ProjectError('Speech synthesis failed', { cause: error }); }
       if (audio.sampleRate !== this.sampleRate) throw new ProjectError('Speech synthesis failed');
       return pcm16(audio.samples);

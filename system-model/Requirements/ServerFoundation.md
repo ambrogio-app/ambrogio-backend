@@ -195,6 +195,7 @@ Quando il server contiene codice applicativo e una modifica funzionale viene pro
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [ci.yml](../../.github/workflows/ci.yml)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 

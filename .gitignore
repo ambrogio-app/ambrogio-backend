@@ -1,13 +1,13 @@
-# Segreti locali
+# Local secrets
 .env
 .env.*
 !.env.example
 !.env.*.example
 
-# File del sistema operativo
+# Operating system files
 .DS_Store
 Thumbs.db
 
-# Dipendenze e artefatti del workspace
+# Workspace dependencies and build output
 node_modules/
 dist/

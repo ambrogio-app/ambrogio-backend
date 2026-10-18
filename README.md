@@ -7,8 +7,8 @@ This repository holds the **backend**: the server that receives turns from clien
 | Repository | Role |
 |---|---|
 | **ambrogio-backend** (this one) | Conversation server, agents, speech, storage, public protocol |
-| [ambrogio-cli](https://github.com/adrianofoschi/ambrogio-cli) | Terminal chat client |
-| [ambrogio-satellite](https://github.com/adrianofoschi/ambrogio-satellite) | Voice satellite with wake word, microphone and speaker |
+| [ambrogio-cli](https://github.com/ambrogio-app/ambrogio-cli) | Terminal chat client |
+| [ambrogio-satellite](https://github.com/ambrogio-app/ambrogio-satellite) | Voice satellite with wake word, microphone and speaker |
 
 > Ambrogio is in early development. It currently speaks Italian, and the configuration format may still change between versions.
 
@@ -141,7 +141,7 @@ docker run -d --name ambrogio -p 3000:3000 \
   -v /srv/ambrogio/data:/data \
   -e AMBROGIO_HTTP_CONFIG_PATH=/etc/ambrogio/http.json \
   -e AMBROGIO_CONVERSATIONS_CONFIG_PATH=/etc/ambrogio/conversations.json \
-  ghcr.io/adrianofoschi/ambrogio-backend:<version>
+  ghcr.io/ambrogio-app/ambrogio-backend:<version>
 ```
 
 Versioned images are published on GHCR for every `vX.Y.Z` tag. There is no `latest` tag.

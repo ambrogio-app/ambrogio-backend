@@ -18,7 +18,7 @@ RUN node /tmp/fetch-voices.mjs /opt/ambrogio/voices
 FROM node:24-bookworm-slim
 
 WORKDIR /workspace
-LABEL org.opencontainers.image.source="https://github.com/adrianofoschi/ambrogio-backend" \
+LABEL org.opencontainers.image.source="https://github.com/ambrogio-app/ambrogio-backend" \
       org.opencontainers.image.licenses="MIT"
 RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 && rm -rf /var/lib/apt/lists/*
 COPY --from=build /opt/ambrogio/voices/ /opt/ambrogio/voices/

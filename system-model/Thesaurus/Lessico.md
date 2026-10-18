@@ -6,7 +6,7 @@ Termini condivisi per descrivere la famiglia, le conversazioni e i connettori di
 
 #### Metadata
   * type: concept-scheme
-  * concept_base: https://github.com/adrianofoschi/ambrogio-app/concepts
+  * concept_base: https://github.com/ambrogio-app/ambrogio-backend/concepts
   * concept_prefix: ambrogio
 ---
 

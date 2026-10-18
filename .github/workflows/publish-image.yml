@@ -38,7 +38,7 @@ jobs:
             echo "Tag version and server package version differ" >&2
             exit 1
           fi
-          echo "IMAGE=ghcr.io/adrianofoschi/ambrogio-backend:${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+          echo "IMAGE=ghcr.io/ambrogio-app/ambrogio-backend:${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
 
       - name: Build release image
         shell: bash

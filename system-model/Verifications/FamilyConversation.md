@@ -324,6 +324,23 @@ La prova passa se lo storico conserva solo testo e dati non audio e se nessuna r
   * verify: [Conservazione solo testuale della conversazione](../Requirements/FamilyConversation.md#conservazione-solo-testuale-della-conversazione)
 ---
 
+### Prova della scelta del motore di sintesi
+
+Caricare file vocali di prova con directory di voce fittizie per entrambi i motori: `voiceEngine` uguale a `piper` senza `voiceSpeaker` e uguale a `kokoro` con `if_sara` e con `im_nicola`. Provare poi i casi invalidi: `voiceEngine` assente, vuoto o sconosciuto; `voiceSpeaker` presente con `piper`, assente con `kokoro` oppure con un nome diverso dalle due voci italiane; directory Kokoro priva di `model.onnx`, `voices.bin`, `tokens.txt` o `espeak-ng-data/`. Con il motore di sintesi controllato costruire il sintetizzatore per ciascun motore, sintetizzare una frase e registrare la configurazione passata a `createAsync` e il `sid` di ogni generazione. Quando la variabile d'ambiente che indica una directory Kokoro reale è presente, sintetizzare inoltre una breve frase italiana con entrambe le voci italiane.
+
+#### Details
+La prova passa se i file validi sono accettati con il motore e la voce indicati; ogni caso invalido rende il file vocale invalido oppure la directory della voce non disponibile prima della costruzione del sintetizzatore; con `piper` la configurazione contiene la sola sezione `vits` con i file della directory e ogni generazione usa `sid` 0; con `kokoro` la configurazione contiene la sola sezione `kokoro` con `model.onnx`, `voices.bin`, `tokens.txt`, `espeak-ng-data/` e `lang` uguale a `it`, e le generazioni usano `sid` 35 per `if_sara` e 36 per `im_nicola`; caricamento unico, `numThreads` e formato dell'audio restano quelli della prova della sintesi nel processo backend. Con il modello Kokoro reale la prova passa se l'audio di entrambe le voci è non vuoto alla frequenza di 24 kHz. Fallisce se un file invalido è accettato, se il motore o la voce usati differiscono da quelli configurati o se la sintesi Kokoro non riceve la lingua italiana.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
+  * satisfiedBy: [sherpa-synthesizer.test.ts](../../packages/conversations/test/adapters/in/sherpa-synthesizer.test.ts)
+  * satisfiedBy: [voice-config.test.ts](../../packages/conversations/test/adapters/out/voice-config.test.ts)
+  * verify: [Scelta del motore di sintesi vocale](../Requirements/FamilyConversation.md#scelta-del-motore-di-sintesi-vocale)
+---
+
 ### Prova della sintesi senza marcatura Markdown
 
 Con il motore di sintesi controllato, sintetizzare risposte frammentate che contengono grassetto e corsivo con asterischi e trattini bassi, un nome composto con trattino basso, tilde doppie, codice in linea, un collegamento, un titolo, una citazione, un elenco puntato, un elenco numerato, una tabella con riga di separazione, una linea orizzontale e un grassetto spezzato fra due frammenti, conservando i frammenti consegnati al sintetizzatore.

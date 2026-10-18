@@ -1131,6 +1131,24 @@ Quando Ambrogio pronuncia una risposta o un messaggio pubblico che contiene marc
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
+### Scelta del motore di sintesi vocale
+
+Quando l'interazione vocale è abilitata, Ambrogio deve pronunciare le risposte con il motore di sintesi e la voce indicati nella configurazione vocale dell'installazione, scegliendo fra le voci Piper VITS e il modello Kokoro.
+
+#### Metadata
+  * type: requirement
+
+#### Contract Bindings
+  * [Configurazione facoltativa dell'interazione vocale](../Contracts/FamilyConversation.md#configurazione-facoltativa-dellinterazione-vocale)
+
+#### Relations
+  * derivedFrom: [Risposta parlata su richiesta del client](#risposta-parlata-su-richiesta-del-client)
+  * satisfiedBy: [local-speech-components.ts](../../packages/conversations/src/adapters/in/session/local-speech-components.ts)
+  * satisfiedBy: [sherpa-synthesizer.ts](../../packages/conversations/src/adapters/in/session/sherpa-synthesizer.ts)
+  * satisfiedBy: [voice-config.ts](../../packages/conversations/src/adapters/out/voice-config.ts)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
 ### Risposta testuale nella conversazione
 
 Quando la famiglia invia un turno, Ambrogio deve produrre una risposta testuale o un messaggio di errore nella conversazione a cui appartiene il turno, qualunque sia il tipo di contenuto con cui la risposta viene trasmessa.

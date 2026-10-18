@@ -1,0 +1,55 @@
+name: Backend CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Backend checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Install pnpm
+        run: npm install --global pnpm@12.11.2
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate Reqvire model
+        run: npx --yes @reqvire-org/reqvire@1.3.2 --workspace "$PWD" validate
+
+      - name: Lint Reqvire model
+        shell: bash
+        run: |
+          set -euo pipefail
+          report="$RUNNER_TEMP/reqvire-lint.json"
+          npx --yes @reqvire-org/reqvire@1.3.2 --workspace "$PWD" lint --json > "$report"
+          cat "$report"
+          jq -e '.auto_fixable == [] and .needs_manual_review == []' "$report"
+
+      - name: Check TypeScript
+        run: pnpm typecheck
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build

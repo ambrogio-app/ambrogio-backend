@@ -384,7 +384,7 @@ Quando un caso d'uso del modulo «Conversazioni» richiede una capacità esterna
   * type: requirement
 
 #### Contract References
-  * [Adozione di client ufficiali dei provider nei layer conversazionali](../Contracts/AiSdkIntegration.md#adozione-di-client-ufficiali-dei-provider-nei-layer-conversazionali)
+  * [Adozione di AI SDK nei layer conversazionali](../Contracts/AiSdkIntegration.md#adozione-di-ai-sdk-nei-layer-conversazionali)
 
 #### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
@@ -449,7 +449,7 @@ Quando un caso d'uso del modulo «Conversazioni» riceve dati di ingresso o prod
   * type: requirement
 
 #### Contract References
-  * [Adozione di client ufficiali dei provider nei layer conversazionali](../Contracts/AiSdkIntegration.md#adozione-di-client-ufficiali-dei-provider-nei-layer-conversazionali)
+  * [Adozione di AI SDK nei layer conversazionali](../Contracts/AiSdkIntegration.md#adozione-di-ai-sdk-nei-layer-conversazionali)
 
 #### Relations
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)

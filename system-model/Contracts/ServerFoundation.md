@@ -201,6 +201,8 @@ Decisione concordata con la persona il 18 ottobre 2026: le release `v0.1.0`, `v0
 
 Decisione concordata con la persona il 18 ottobre 2026, che sostituisce lo spazio dei nomi personale deciso il 16 ottobre: i repository di Ambrogio appartengono all'organizzazione GitHub `ambrogio-app` e l'immagine è pubblicata come `ghcr.io/ambrogio-app/ambrogio-backend`. Il pacchetto nello spazio dei nomi personale è cancellato dopo la prima pubblicazione nell'organizzazione.
 
+Decisione concordata con la persona il 18 ottobre 2026: i numeri delle release ritirate, a parte `v0.1.0` già ripubblicato, non sono riusati. La release successiva a `v0.1.0` è `v0.1.2`, che salta `v0.1.1` per non confonderla con l'immagine ritirata ancora presente in cache o citata nelle evidenze; `v0.2.0` resta anch'esso escluso.
+
 #### Metadata
   * type: specification
 

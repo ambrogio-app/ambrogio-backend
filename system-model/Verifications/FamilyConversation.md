@@ -572,16 +572,18 @@ Raggruppa le verifiche sul singolo turno attivo per conversazione, sull'elaboraz
 
 ### Prova degli ingressi disabilitati durante un turno
 
-Avviare un turno nella conversazione A e controllare l'ingresso della stessa interazione durante elaborazione e riproduzione; contemporaneamente avviare una conversazione B da un altro client. Ripetere con testo e voce.
+Avviare un turno nella conversazione A e, mentre è in elaborazione, inviare dallo stesso e da un altro client nuovi turni testuali e vocali sulla conversazione A e su una conversazione B. Ripetere dopo la conclusione di A.
 
 #### Details
-La prova passa se l'ingresso della stessa interazione impedisce un nuovo turno finché quello corrente termina, mentre B resta utilizzabile e può ricevere una risposta prima della conclusione di A. Dopo conclusione o errore A torna utilizzabile; dopo arresto il recupero avviene al riavvio. Verifica aggiornata e da eseguire; nessuna evidenza positiva della nuova politica è dichiarata.
+La prova passa se, finché il turno di A non ha un esito conservato, ogni nuovo turno testuale o vocale su A è rifiutato come `occupied` senza essere conservato né accodato, mentre i turni su B e quelli che aprono nuove conversazioni sono ammessi e completati prima della conclusione di A; dopo la conclusione A torna utilizzabile. La prova copre la parte di questa obbligazione che spetta al backend, cioè l'ammissione dei turni condivisa da tutti i client. La disabilitazione dell'ingresso locale durante elaborazione e riproduzione è un obbligo dei client e si verifica nei rispettivi modelli; il recupero dopo un arresto è verificato dalle prove degli stati persistenti dei turni.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
+  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
+  * satisfiedBy: [session-rejections.test.ts](../../apps/server/test/runtime/session-rejections.test.ts)
   * verify: [Disabilitazione degli ingressi durante un turno](../Requirements/FamilyConversation.md#disabilitazione-degli-ingressi-durante-un-turno)
 ---
 

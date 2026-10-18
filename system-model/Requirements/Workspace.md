@@ -198,3 +198,4 @@ I test di ciascun modulo business del monorepo devono risiedere nel package del 
 #### Relations
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
+

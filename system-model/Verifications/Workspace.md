@@ -13,13 +13,14 @@ Raggruppa le verifiche della configurazione del workspace comune e dell'installa
 In un checkout pulito, individuare i pacchetti del workspace dalla radice e installare le dipendenze con pnpm.
 
 #### Details
-La prova passa se il workspace radice include l'applicazione server e i suoi package business e se `pnpm install` dalla radice completa l'installazione delle loro dipendenze senza errori. Fallisce se uno dei pacchetti non appartiene al workspace o richiede un'installazione separata fuori dal workspace.
+La prova passa se il workspace radice include l'applicazione server e i suoi package business e se `pnpm install` dalla radice completa l'installazione delle loro dipendenze senza errori. Fallisce se uno dei pacchetti non appartiene al workspace o richiede un'installazione separata fuori dal workspace. La prova è eseguita dalla CI del backend a ogni push sul branch principale e a ogni pull request: il job parte da un checkout pulito ed esegue `pnpm install --frozen-lockfile` dalla radice prima di compilare e testare tutti i pacchetti.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica del workspace pnpm](#verifica-del-workspace-pnpm)
+  * satisfiedBy: [ci.yml](../../.github/workflows/ci.yml)
   * verify: [Gestione pnpm del workspace](../Requirements/Workspace.md#gestione-pnpm-del-workspace)
 ---
 
@@ -215,3 +216,4 @@ Il controllo passa se i meccanismi tecnici specifici del processo risiedono in `
   * verify: [Coordinamento dell'esecuzione negli entrypoint](../Requirements/Workspace.md#coordinamento-dellesecuzione-negli-entrypoint)
   * verify: [Meccanismi tecnici del processo nelle app](../Requirements/Workspace.md#meccanismi-tecnici-del-processo-nelle-app)
 ---
+

@@ -875,10 +875,10 @@ La prova passa se ciascun processo legge una volta all'avvio i soli file necessa
 Per ogni installazione dell'MVP da verificare, ispezionare la configurazione di rete e dell'eventuale reverse proxy; tentare l'accesso agli ingressi del server da un client ammesso e da un client non ammesso dall'installatore.
 
 #### Details
-La prova passa se il client ammesso può raggiungere l'ingresso previsto e il client non ammesso non può raggiungere l'applicazione attraverso la rete o il proxy. Fallisce se un client non ammesso può usare l'ingresso. La prova richiede l'installazione concreta: la validazione del repository non certifica le configurazioni degli installatori.
+La prova passa se il client ammesso può raggiungere l'ingresso previsto e il client non ammesso non può raggiungere l'applicazione attraverso la rete o il proxy. Fallisce se un client non ammesso può usare l'ingresso. La prova richiede l'installazione concreta: la validazione del repository non certifica le configurazioni degli installatori. Il 18 ottobre 2026 la verifica è stata riclassificata da test a dimostrazione, perché si svolge su un'installazione reale e non può avere un test automatico nel repository; non è ancora stata eseguita.
 
 #### Metadata
-  * type: test-verification
+  * type: demonstration-verification
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)

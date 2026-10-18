@@ -24,7 +24,8 @@ test('the ready Home Assistant agent is accepted unchanged by the agent loader',
   expect(new URL(agent.mcp!.url).pathname).toBe('/api/mcp');
   expect(agent.mcp!.auth).toEqual({ type: 'bearer', token: '<HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN>' });
   expect(agent.description).toMatch(/Home Assistant/);
-  expect(agent.instructions).toMatch(/Italian/);
+  expect(agent.instructions).toMatch(/^You control the family's home through Home Assistant. Answer briefly./);
+  expect(agent.instructions).not.toMatch(/Italian/);
   expect(agent.instructions).toMatch(/only after a tool has confirmed/);
   expect(agent.instructions).toMatch(/Choose freely among the available tools/);
   expect(agent.instructions).toMatch(/do not turn on, turn off or change anything/);

@@ -48,8 +48,9 @@ jobs:
       - name: Check TypeScript
         run: pnpm typecheck
 
-      - name: Run tests
-        run: pnpm test
-
+      # The workspace packages export their compiled dist/, so tests need the build first.
       - name: Build
         run: pnpm build
+
+      - name: Run tests
+        run: pnpm test

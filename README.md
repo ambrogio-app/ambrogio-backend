@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/logo-dark.svg">
+    <img src=".github/logo-light.svg" alt="Ambrogio" width="320">
+  </picture>
+</p>
+
 # Ambrogio — backend
 
 **Ambrogio** is an open source home assistant that you host yourself, for example in your homelab. Members of the family talk to it by typing or by voice. Ambrogio keeps the conversation history and can hand each request to a specialised AI agent.

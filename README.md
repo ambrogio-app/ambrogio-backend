@@ -163,7 +163,7 @@ AMBROGIO_CONVERSATIONS_CONFIG_PATH=/etc/ambrogio/conversations.json \
 node apps/server/dist/main.js
 ```
 
-To enable voice, set `AMBROGIO_VOICE_CONFIG_PATH` to a JSON file that contains `voskModelPath`, `voiceEngine` (`piper` or `kokoro`) and `voiceModelDir`, plus `voiceSpeaker` (`if_sara` or `im_nicola`) with Kokoro. Kokoro (`kokoro-multi-lang-v1_0` from the sherpa-onnx `tts-models` release) is not bundled and needs a faster CPU than the Piper voices.
+To enable voice, set `AMBROGIO_VOICE_CONFIG_PATH` to a JSON file that contains `voskModelPath`, `voiceEngine` (`piper` or `kokoro`) and `voiceModelDir`, plus, with Kokoro, `voiceSpeaker` (the numeric ID of the voice in the model) and `voiceLanguage` (an espeak-ng language code such as `it`, `en` or `pt-br`). Any Kokoro model from the sherpa-onnx `tts-models` release can be used; none is bundled, and Kokoro needs a faster CPU than the Piper voices.
 
 If the server cannot start, it writes one JSON line with `"event":"server_startup_failed"` to stdout, whose `err.message` names the cause (for example `Invalid agent configuration: general` or `Agent MCP connection failed: home-assistant`), then prints `Unable to start HTTP server.` to stderr and exits with code 1.
 

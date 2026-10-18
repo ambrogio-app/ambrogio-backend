@@ -1,13 +1,13 @@
 import { createRequire } from 'node:module';
 import { availableParallelism } from 'node:os';
 import { ProjectError } from '../../../project-error.js';
-import { kokoroSpeakers, type KokoroModelFiles, type VoiceModel, type VoiceModelFiles } from '../../out/voice-config.js';
+import { type KokoroModelFiles, type VoiceModel, type VoiceModelFiles } from '../../out/voice-config.js';
 import { spokenSentence, takeSentences } from './sentences.js';
 import type { Synthesizer } from './speech-components.js';
 
 /** The `sherpa-onnx-node` configuration of a Piper (VITS) voice or of the Kokoro model. */
 export type SherpaTtsConfig = Readonly<{
-  model: Readonly<({ vits: VoiceModelFiles } | { kokoro: KokoroModelFiles & Readonly<{ lang: 'it' }> }) & {
+  model: Readonly<({ vits: VoiceModelFiles } | { kokoro: KokoroModelFiles & Readonly<{ lang: string }> }) & {
     numThreads: number;
     debug: boolean;
     provider: 'cpu';
@@ -18,6 +18,7 @@ export type SherpaTtsConfig = Readonly<{
 /** The part of `OfflineTts` used here: only the asynchronous generation, never the blocking one. */
 export type SherpaTts = Readonly<{
   sampleRate: number;
+  numSpeakers: number;
   generateAsync(request: Readonly<{ text: string; sid: number; speed: number }>):
     Promise<Readonly<{ samples: Float32Array; sampleRate: number }>>;
 }>;
@@ -31,8 +32,8 @@ function nativeEngine(): SherpaTtsEngine {
 }
 
 export function sherpaConfig(voice: VoiceModel): SherpaTtsConfig {
-  // Kokoro phonemizes with espeak-ng in the language given here, otherwise in English.
-  const model = voice.engine === 'kokoro' ? { kokoro: { ...voice.files, lang: 'it' as const } } : { vits: voice.files };
+  // Kokoro phonemizes with espeak-ng in the language chosen by the installation.
+  const model = voice.engine === 'kokoro' ? { kokoro: { ...voice.files, lang: voice.language } } : { vits: voice.files };
   return {
     model: { ...model, numThreads: Math.min(4, availableParallelism()), debug: false, provider: 'cpu' },
     maxNumSentences: 1,
@@ -41,7 +42,7 @@ export function sherpaConfig(voice: VoiceModel): SherpaTtsConfig {
 
 /** The sherpa-onnx speaker ID: a Piper voice has a single speaker. */
 function speakerId(voice: VoiceModel): number {
-  return voice.engine === 'kokoro' ? kokoroSpeakers[voice.speaker] : 0;
+  return voice.engine === 'kokoro' ? voice.speaker : 0;
 }
 
 /** Float samples in [-1, 1] as PCM16 little-endian. */
@@ -78,7 +79,9 @@ export class SherpaSynthesizer implements Synthesizer {
     if (!Number.isSafeInteger(rate) || rate < 8_000 || rate > 48_000) {
       throw new ProjectError('Invalid voice sample rate');
     }
-    return new SherpaSynthesizer(tts, speakerId(voice));
+    const sid = speakerId(voice);
+    if (!(sid < tts.numSpeakers)) throw new ProjectError('Voice speaker is not in the model');
+    return new SherpaSynthesizer(tts, sid);
   }
 
   /** Release the loaded voice; transmissions in progress end without further sentences. */

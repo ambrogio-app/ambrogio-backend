@@ -10,7 +10,7 @@ const kokoroFiles = { model: '/kokoro/model.onnx', voices: '/kokoro/voices.bin',
   dataDir: '/kokoro/espeak-ng-data' };
 
 /** A controlled engine: each sentence becomes one sample per character, after `delayMs`. */
-function fakeEngine(options: Readonly<{ sampleRate?: number; delayMs?: number; fail?: string }> = {}) {
+function fakeEngine(options: Readonly<{ sampleRate?: number; numSpeakers?: number; delayMs?: number; fail?: string }> = {}) {
   const state = { configs: [] as SherpaTtsConfig[], texts: [] as string[], sids: [] as number[], running: 0, maxRunning: 0,
     syncCalls: 0 };
   const sampleRate = options.sampleRate ?? 22_050;
@@ -19,6 +19,7 @@ function fakeEngine(options: Readonly<{ sampleRate?: number; delayMs?: number; f
       state.configs.push(config);
       return {
         sampleRate,
+        numSpeakers: options.numSpeakers ?? 1,
         generate() { state.syncCalls++; throw new Error('blocking generation used'); },
         async generateAsync(request: { text: string; sid: number; speed: number }) {
           state.texts.push(request.text);
@@ -187,18 +188,26 @@ it('speaks only the readable text of Markdown replies, leaving the received text
 });
 
 // Verification: Prova della scelta del motore di sintesi
-it('loads a Kokoro voice with Italian phonemes and speaks with the configured speaker', async () => {
-  for (const [speaker, sid] of [['if_sara', 35], ['im_nicola', 36]] as const) {
-    const { engine, state } = fakeEngine({ sampleRate: 24_000 });
-    const synthesizer = await SherpaSynthesizer.load({ engine: 'kokoro', files: kokoroFiles, speaker }, engine);
+it('loads a Kokoro model with the configured language and speaks with the configured speaker', async () => {
+  for (const [speaker, language] of [[0, 'en'], [35, 'it'], [52, 'pt-br']] as const) {
+    const { engine, state } = fakeEngine({ sampleRate: 24_000, numSpeakers: 53 });
+    const synthesizer = await SherpaSynthesizer.load({ engine: 'kokoro', files: kokoroFiles, speaker, language }, engine);
     expect(synthesizer.sampleRate).toBe(24_000);
-    expect(state.configs).toEqual([{ model: { kokoro: { ...kokoroFiles, lang: 'it' },
+    expect(state.configs).toEqual([{ model: { kokoro: { ...kokoroFiles, lang: language },
       numThreads: Math.min(4, availableParallelism()), debug: false, provider: 'cpu' }, maxNumSentences: 1 }]);
     await collect(synthesizer.synthesize(pieces('Ciao. Come stai?'), new AbortController().signal));
     expect(state.texts).toEqual(['Ciao.', 'Come stai?']);
-    expect(state.sids).toEqual([sid, sid]);
+    expect(state.sids).toEqual([speaker, speaker]);
     synthesizer.close();
   }
+});
+
+// Verification: Prova della scelta del motore di sintesi
+it('rejects a Kokoro speaker that the model does not have', async () => {
+  const { engine, state } = fakeEngine({ sampleRate: 24_000, numSpeakers: 53 });
+  await expect(SherpaSynthesizer.load({ engine: 'kokoro', files: kokoroFiles, speaker: 53, language: 'it' }, engine))
+    .rejects.toThrow('Voice speaker is not in the model');
+  expect(state.texts).toEqual([]);
 });
 
 const realVoice = process.env.AMBROGIO_TEST_VOICE_MODEL_DIR;
@@ -222,14 +231,14 @@ it.skipIf(!realVoice)('synthesizes Italian speech with a real voice directory', 
 }, 30_000);
 
 // Verification: Prova della scelta del motore di sintesi
-it.skipIf(!realKokoro)('synthesizes Italian speech with both Italian voices of a real Kokoro model', async () => {
-  for (const voiceSpeaker of ['if_sara', 'im_nicola'] as const) {
+it.skipIf(!realKokoro)('synthesizes Italian and English speech with a real Kokoro model', async () => {
+  for (const [voiceSpeaker, voiceLanguage, text] of [[35, 'it', 'Ciao, sono Ambrogio.'],
+    [36, 'it', 'Ciao, sono Ambrogio.'], [0, 'en', 'Hello, I am Ambrogio.']] as const) {
     const synthesizer = await SherpaSynthesizer.load(await voiceModel({ voiceEngine: 'kokoro',
-      voiceModelDir: realKokoro!, voiceSpeaker }));
+      voiceModelDir: realKokoro!, voiceSpeaker, voiceLanguage }));
     try {
       expect(synthesizer.sampleRate).toBe(24_000);
-      const audio = await collect(synthesizer.synthesize(pieces('Ciao, sono Ambrogio.'),
-        new AbortController().signal));
+      const audio = await collect(synthesizer.synthesize(pieces(text), new AbortController().signal));
       expect(audio.reduce((total, chunk) => total + chunk.length, 0)).toBeGreaterThan(synthesizer.sampleRate);
     } finally { synthesizer.close(); }
   }

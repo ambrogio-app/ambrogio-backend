@@ -1133,7 +1133,7 @@ Quando Ambrogio pronuncia una risposta o un messaggio pubblico che contiene marc
 
 ### Scelta del motore di sintesi vocale
 
-Quando l'interazione vocale è abilitata, Ambrogio deve pronunciare le risposte con il motore di sintesi e la voce indicati nella configurazione vocale dell'installazione, scegliendo fra le voci Piper VITS e il modello Kokoro.
+Quando l'interazione vocale è abilitata, Ambrogio deve pronunciare le risposte con il motore di sintesi, il modello, la voce e la lingua indicati nella configurazione vocale dell'installazione, scegliendo fra le voci Piper VITS e i modelli Kokoro, senza limitare la lingua o la voce a un elenco fissato dal prodotto.
 
 #### Metadata
   * type: requirement

@@ -417,6 +417,7 @@ test('restores completed history after restart and uses it for textual continuat
   }
 });
 
+// Verification: Prova degli ingressi disabilitati durante un turno
 test('processes separate conversations in parallel and rejects a second turn in the same conversation', async () => {
   const files = await fixture();
   const port = await freePort();

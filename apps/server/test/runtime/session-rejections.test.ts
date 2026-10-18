@@ -111,6 +111,7 @@ test('rejects text and audio continuations of unknown conversations', async () =
 });
 
 // Verification: Prova del rifiuto dei turni concorrenti
+// Verification: Prova degli ingressi disabilitati durante un turno
 test('admits one turn per conversation across clients while other conversations progress', async () => {
   const pending = gate();
   const { reply } = scriptedReply(async function* (history) {

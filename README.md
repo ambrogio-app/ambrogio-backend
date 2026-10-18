@@ -16,8 +16,9 @@ This repository holds the **backend**: the server that receives turns from clien
 | **ambrogio-backend** (this one) | Conversation server, agents, speech, storage, public protocol |
 | [ambrogio-cli](https://github.com/ambrogio-app/ambrogio-cli) | Terminal chat client |
 | [ambrogio-satellite](https://github.com/ambrogio-app/ambrogio-satellite) | Voice satellite with wake word, microphone and speaker |
+| [ambrogio-web](https://github.com/ambrogio-app/ambrogio-web) | Optional web chat client |
 
-> Ambrogio is in early development. It currently speaks Italian, and the configuration format may still change between versions.
+> Ambrogio is in early development. Its own messages are in English or Italian, and the configuration format may still change between versions.
 
 ## How it works
 
@@ -94,7 +95,7 @@ sequenceDiagram
 - Node.js 24 or later; pnpm to build from source
 - Linux, or Docker (the published image is `linux/amd64`)
 - An API key for each LLM provider you use. Agents reach Mistral, OpenAI, Anthropic, Google Gemini or any OpenAI-compatible API through the [Vercel AI SDK](https://ai-sdk.dev/). The models must support tool calling and structured JSON output
-- For voice only: a [Vosk](https://alphacephei.com/vosk/models) speech model, such as `vosk-model-small-it-0.22`. The Docker image already contains two Italian Piper voices; see [`voices/README.md`](voices/README.md)
+- For voice only: a [Vosk](https://alphacephei.com/vosk/models) speech model, such as `vosk-model-small-en-us-0.15`, and a voice for the same language. The Docker image already contains two Italian Piper voices; see [`voices/README.md`](voices/README.md)
 
 **Main libraries**
 
@@ -128,7 +129,7 @@ Minimal examples:
 { "host": "0.0.0.0", "port": 3000 }
 
 // conversations.json
-{ "archivePath": "/data/conversations.sqlite", "language": "it" }
+{ "archivePath": "/data/conversations.sqlite", "language": "en" }
 
 // agents/orchestrator.json
 { "instructions": "You are Ambrogio, the family assistant.",

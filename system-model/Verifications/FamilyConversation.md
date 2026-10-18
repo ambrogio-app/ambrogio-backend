@@ -331,6 +331,8 @@ Caricare file vocali di prova con directory di voce fittizie per entrambi i moto
 #### Details
 La prova passa se i file validi sono accettati con il motore e la voce indicati; ogni caso invalido rende il file vocale invalido oppure la directory della voce non disponibile prima della costruzione del sintetizzatore; con `piper` la configurazione contiene la sola sezione `vits` con i file della directory e ogni generazione usa `sid` 0; con `kokoro` la configurazione contiene la sola sezione `kokoro` con `model.onnx`, `voices.bin`, `tokens.txt`, `espeak-ng-data/` e `lang` uguale a `it`, e le generazioni usano `sid` 35 per `if_sara` e 36 per `im_nicola`; caricamento unico, `numThreads` e formato dell'audio restano quelli della prova della sintesi nel processo backend. Con il modello Kokoro reale la prova passa se l'audio di entrambe le voci è non vuoto alla frequenza di 24 kHz. Fallisce se un file invalido è accettato, se il motore o la voce usati differiscono da quelli configurati o se la sintesi Kokoro non riceve la lingua italiana.
 
+Eseguita il 18 ottobre 2026 sulla revisione `ff8da68f6c4974974a14adb65e73e016d754b141`, pubblicata come `v0.3.0`: `vitest run` PASS, comprese le prove con Paola medium e con il modello `kokoro-multi-lang-v1_0` reali indicati dalle variabili d'ambiente; nell'immagine costruita da quella revisione, con il modello Kokoro montato in sola lettura su `/opt/ambrogio/kokoro`, `if_sara` e `im_nicola` producono audio non vuoto a 24 kHz. Sull'installazione di riferimento l'immagine `v0.3.0` si avvia con il file vocale esistente integrato da `voiceEngine` uguale a `piper` e sintetizza con Paola medium a 22050 Hz.
+
 #### Metadata
   * type: test-verification
 

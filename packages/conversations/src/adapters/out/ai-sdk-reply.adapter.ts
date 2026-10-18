@@ -1,4 +1,8 @@
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createMistral } from '@ai-sdk/mistral';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { generateText, jsonSchema, Output, stepCountIs, streamText, tool, type LanguageModel,
   type ModelMessage } from 'ai';
 import { ProjectError } from '../../project-error.js';
@@ -7,10 +11,17 @@ import type { ProduceConversationReply, ReplyCancellation, ReplyPart }
   from '../../application/produce-conversation-reply.js';
 import type { AvailableMcpTool } from './mcp-tool-client.js';
 
+/** The providers this adapter can build a model for. */
+export const llmProviders = ['mistral', 'openai', 'anthropic', 'google', 'openai-compatible'] as const;
+export type LlmProvider = typeof llmProviders[number];
+
 export type AgentSettings = Readonly<{
+  provider: LlmProvider;
   instructions: string;
   model: string;
   apiKey: string;
+  /** Only for `openai-compatible`: the API the agent talks to. */
+  baseURL?: string;
   options?: Readonly<Record<string, unknown>>;
 }>;
 
@@ -24,9 +35,9 @@ type ToolClient = {
 /** What the agent's MCP server offered at startup: its tools and the prompts without required arguments. */
 export type DiscoveredMcp = Readonly<{ tools: readonly AvailableMcpTool[]; prompts: readonly string[] }>;
 
-/** The MCP name when the provider accepts it; otherwise the reserved positional name. */
+/** The MCP name when every provider accepts it; otherwise the reserved positional name. */
 function presentedToolName(name: string, index: number): string {
-  return /^[A-Za-z0-9_-]{1,64}$/.test(name) && !/^mcp_\d+$/.test(name) ? name : `mcp_${index}`;
+  return /^[A-Za-z_][A-Za-z0-9_-]{0,63}$/.test(name) && !/^mcp_\d+$/.test(name) ? name : `mcp_${index}`;
 }
 
 export function aiSdkOptions(value?: AgentSettings['options']): Readonly<{
@@ -34,27 +45,38 @@ export function aiSdkOptions(value?: AgentSettings['options']): Readonly<{
 }> {
   if (value === undefined) return {};
   if (Object.keys(value).some(key => key !== 'temperature' && key !== 'max_tokens')) {
-    throw new ProjectError('Unsupported Mistral option');
+    throw new ProjectError('Unsupported model option');
   }
   const temperature = value.temperature;
   const maxTokens = value.max_tokens;
   if (temperature !== undefined && (typeof temperature !== 'number'
     || !Number.isFinite(temperature) || temperature < 0)) {
-    throw new ProjectError('Invalid Mistral temperature');
+    throw new ProjectError('Invalid model temperature');
   }
   if (maxTokens !== undefined && (typeof maxTokens !== 'number'
     || !Number.isSafeInteger(maxTokens) || maxTokens < 1)) {
-    throw new ProjectError('Invalid Mistral max_tokens');
+    throw new ProjectError('Invalid model max_tokens');
   }
   return { ...(temperature === undefined ? {} : { temperature: temperature as number }),
     ...(maxTokens === undefined ? {} : { maxOutputTokens: maxTokens as number }) };
 }
 
 function modelFor(settings: AgentSettings, model?: LanguageModel): LanguageModel {
-  if (!settings.instructions.trim() || !settings.model.trim() || !settings.apiKey.trim()) {
+  const { provider, apiKey, baseURL } = settings;
+  if (!settings.instructions.trim() || !settings.model.trim() || !apiKey.trim()
+    || (provider === 'openai-compatible') !== (baseURL !== undefined)) {
     throw new ProjectError('Invalid agent configuration');
   }
-  return model ?? createMistral({ apiKey: settings.apiKey })(settings.model);
+  if (model) return model;
+  switch (provider) {
+    case 'mistral': return createMistral({ apiKey })(settings.model);
+    case 'openai': return createOpenAI({ apiKey })(settings.model);
+    case 'anthropic': return createAnthropic({ apiKey })(settings.model);
+    case 'google': return createGoogleGenerativeAI({ apiKey })(settings.model);
+    // Ambrogio needs the reply schema enforced, not just any JSON object.
+    case 'openai-compatible': return createOpenAICompatible({ name: 'openai-compatible', baseURL: baseURL!,
+      apiKey, supportsStructuredOutputs: true })(settings.model);
+  }
 }
 
 /** The stored conversation; only the router sees which agent gave each answer. */

@@ -235,7 +235,7 @@ Quando il server attiva un agente con connettore MCP, deve leggere la configuraz
 
 ### Configurazione del modello per agente
 
-Quando il server attiva un agente, incluso l'orchestratore, deve leggere il file JSON locale dedicato a quell'agente e selezionare l'adapter del provider indicato, fornendogli l'identificativo del modello, la chiave API e soltanto le opzioni specifiche validate.
+Quando il server attiva un agente, incluso l'orchestratore, deve leggere il file JSON locale dedicato a quell'agente e selezionare l'adapter del provider indicato, fornendogli l'identificativo del modello, la chiave API, l'indirizzo dell'endpoint quando il provider lo richiede e soltanto le opzioni specifiche validate.
 
 #### Metadata
   * type: requirement

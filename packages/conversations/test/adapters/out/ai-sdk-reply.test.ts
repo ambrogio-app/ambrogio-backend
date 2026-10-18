@@ -5,8 +5,8 @@ import type { ReplyPart } from '../../../src/application/produce-conversation-re
 import { ProjectError } from '../../../src/project-error.js';
 import { AiSdkKnowledgeAgentReply, AiSdkOrchestratorReply, AiSdkToolAgentReply, aiSdkOptions } from '../../../src/adapters/out/ai-sdk-reply.adapter.js';
 
-const settings = { instructions: 'Use available tools when needed.', model: 'mistral-small-latest',
-  apiKey: 'fake-key' };
+const settings = { provider: 'mistral' as const, instructions: 'Use available tools when needed.',
+  model: 'mistral-small-latest', apiKey: 'fake-key' };
 const history = { id: 'conversation', createdAt: new Date(0), lastActivityAt: new Date(0),
   turns: [{ id: 'turn', acceptedAt: new Date(0), status: 'pending' as const, text: 'Find it' }] };
 const usage = { inputTokens: { total: 1, noCache: 1, cacheRead: undefined, cacheWrite: undefined },
@@ -214,24 +214,30 @@ test('specialist refuses the first MCP call beyond its per-turn limit', async ()
 // Verification: Prova dei nomi degli strumenti MCP
 test('specialist offers accepted MCP names and positional names for the others', async () => {
   const long = 'a'.repeat(65);
-  const discovered = ['HassTurnOff', 'GetLiveContext', 'light.toggle', long, 'mcp_7'].map(name => ({
+  const discovered = ['HassTurnOff', 'GetLiveContext', 'light.toggle', long, 'mcp_7', '_private', '1st-tool',
+    '-dash'].map(name => ({
     name, description: `Tool ${name}`, inputSchema: { type: 'object', properties: { name: { type: 'string' } } } }));
   const called: unknown[] = [];
   const model = scripted(
     { parts: [callPart('GetLiveContext', { name: 'camera' })], reason: 'tool-calls' },
     { parts: [callPart('mcp_2', {}, 'call-2')], reason: 'tool-calls' },
     { parts: [callPart('mcp_4', {}, 'call-3')], reason: 'tool-calls' },
+    { parts: [callPart('mcp_6', {}, 'call-4')], reason: 'tool-calls' },
+    { parts: [callPart('_private', {}, 'call-5')], reason: 'tool-calls' },
     { parts: answer('Fatto.'), reason: 'stop' },
   );
   const reply = new AiSdkToolAgentReply(settings, { tools: discovered, prompts: [] }, { getPrompt,
-    async callTool(name, args) { called.push({ name, args }); return { isError: false, content: [] }; } }, 3, model);
+    async callTool(name, args) { called.push({ name, args }); return { isError: false, content: [] }; } }, 5, model);
   expect(await collect(reply.produce(history, never()))).toEqual([text('Fatto.'), expectation(false)]);
   const offered = model.doStreamCalls[0]?.tools ?? [];
-  expect(offered.map(tool => tool.name)).toEqual(['HassTurnOff', 'GetLiveContext', 'mcp_2', 'mcp_3', 'mcp_4']);
+  // Gemini requires a leading letter or underscore, so digits and dashes there get positional names.
+  expect(offered.map(tool => tool.name)).toEqual(['HassTurnOff', 'GetLiveContext', 'mcp_2', 'mcp_3', 'mcp_4',
+    '_private', 'mcp_6', 'mcp_7']);
   expect(offered[2]).toMatchObject({ description: 'Tool light.toggle',
     inputSchema: { type: 'object', properties: { name: { type: 'string' } } } });
   expect(called).toEqual([{ name: 'GetLiveContext', args: { name: 'camera' } },
-    { name: 'light.toggle', args: {} }, { name: 'mcp_7', args: {} }]);
+    { name: 'light.toggle', args: {} }, { name: 'mcp_7', args: {} }, { name: '1st-tool', args: {} },
+    { name: '_private', args: {} }]);
 });
 
 // Verification: Prova delle istruzioni del server MCP
@@ -268,9 +274,9 @@ test('provider options remain validated and map to AI SDK settings', () => {
   expect(aiSdkOptions({ temperature: 0.2, max_tokens: 128 })).toEqual({
     temperature: 0.2, maxOutputTokens: 128 });
   expect(aiSdkOptions()).toEqual({});
-  expect(() => aiSdkOptions({ top_p: 0.2 })).toThrow('Unsupported Mistral option');
-  expect(() => aiSdkOptions({ temperature: -1 })).toThrow('Invalid Mistral temperature');
-  expect(() => aiSdkOptions({ max_tokens: 0 })).toThrow('Invalid Mistral max_tokens');
+  expect(() => aiSdkOptions({ top_p: 0.2 })).toThrow('Unsupported model option');
+  expect(() => aiSdkOptions({ temperature: -1 })).toThrow('Invalid model temperature');
+  expect(() => aiSdkOptions({ max_tokens: 0 })).toThrow('Invalid model max_tokens');
 });
 
 test('AI SDK Mistral provider sends the selected model and key to its default endpoint', async () => {
@@ -321,4 +327,57 @@ test('the router asks Mistral for a closed agent choice without tools', async ()
     expect(requests[0]!.tools).toBeUndefined();
     expect(JSON.stringify(requests[0]!.response_format)).toContain('"enum":["home"]');
   } finally { vi.unstubAllGlobals(); }
+});
+
+type Seen = { url: string; headers: Headers; body: Record<string, unknown> };
+
+// Verification: Prova della configurazione dell'adapter AI SDK
+test.each([
+  { provider: 'openai' as const, model: 'gpt-model', check: (seen: Seen) => {
+    expect(seen.url).toBe('https://api.openai.com/v1/responses');
+    expect(seen.headers.get('authorization')).toBe('Bearer fake-key');
+  } },
+  { provider: 'anthropic' as const, model: 'claude-sonnet-4-5', check: (seen: Seen) => {
+    expect(seen.url).toBe('https://api.anthropic.com/v1/messages');
+    expect(seen.headers.get('x-api-key')).toBe('fake-key');
+    expect(seen.headers.get('authorization')).toBeNull();
+  } },
+  { provider: 'google' as const, model: 'gemini-model', check: (seen: Seen) => {
+    expect(seen.url).toMatch(/^https:\/\/generativelanguage\.googleapis\.com\/v1beta\/models\/gemini-model:streamGenerateContent/);
+    expect(seen.headers.get('x-goog-api-key')).toBe('fake-key');
+    expect(seen.headers.get('authorization')).toBeNull();
+    expect(seen.body.generationConfig).toMatchObject({ responseMimeType: 'application/json' });
+  } },
+  { provider: 'openai-compatible' as const, model: 'local-model', baseURL: 'https://models.example/v1',
+    check: (seen: Seen) => {
+      expect(seen.url).toBe('https://models.example/v1/chat/completions');
+      expect(seen.headers.get('authorization')).toBe('Bearer fake-key');
+      expect(seen.body.response_format).toMatchObject({ type: 'json_schema' });
+    } },
+])('the $provider provider sends the model, key and reply schema to its endpoint', async ({ check, ...llm }) => {
+  const seen: Seen[] = [];
+  vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+    const request = new Request(input, init);
+    seen.push({ url: request.url, headers: request.headers,
+      body: JSON.parse(await request.text()) as Record<string, unknown> });
+    return new Response('controlled failure', { status: 400 });
+  });
+  try {
+    const reply = new AiSdkKnowledgeAgentReply({ ...settings, ...llm, options: { temperature: 0.2 } });
+    await expect(collect(reply.produce(history, never()))).rejects.toThrow('AI SDK response failed');
+    expect(seen).toHaveLength(1);
+    check(seen[0]!);
+    // Gemini carries the model in the path, the others in the body.
+    expect(seen[0]!.url + JSON.stringify(seen[0]!.body)).toContain(llm.model);
+    // The reply schema reaches the provider, whatever field each API uses for it.
+    expect(JSON.stringify(seen[0]!.body)).toContain('expectsReply');
+  } finally { vi.unstubAllGlobals(); }
+});
+
+// Verification: Prova della configurazione dell'adapter AI SDK
+test('an OpenAI-compatible agent without an endpoint is rejected before any request', () => {
+  expect(() => new AiSdkKnowledgeAgentReply({ ...settings, provider: 'openai-compatible' }))
+    .toThrow('Invalid agent configuration');
+  expect(() => new AiSdkKnowledgeAgentReply({ ...settings, baseURL: 'https://models.example/v1' }))
+    .toThrow('Invalid agent configuration');
 });

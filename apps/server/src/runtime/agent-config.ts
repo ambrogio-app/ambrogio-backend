@@ -1,3 +1,4 @@
+import { llmProviders, type LlmProvider } from '@ambrogio/conversations/adapters/out/ai-sdk-reply';
 import { ProjectError } from '@ambrogio/conversations/application/project-error';
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -12,7 +13,7 @@ export type AgentConfig = Readonly<{
   description?: string;
   maxToolCalls?: number;
   instructions: string;
-  llm: Readonly<{ provider: 'mistral'; model: string; apiKey: string;
+  llm: Readonly<{ provider: LlmProvider; model: string; apiKey: string; baseURL?: string;
     options?: Readonly<Record<string, unknown>> }>;
   mcp?: Readonly<{ url: string; auth?: McpAuth }>;
 }>;
@@ -51,16 +52,23 @@ function parseAuth(value: unknown): McpAuth {
   throw new ProjectError('Invalid agent MCP authentication configuration');
 }
 
+function isProvider(value: unknown): value is LlmProvider {
+  return llmProviders.includes(value as LlmProvider);
+}
+
 function parseAgent(id: string, value: unknown): AgentConfig {
   const fields = record(value);
   const llm = record(fields?.llm);
-  if (!fields || !nonempty(fields.instructions) || !llm || llm.provider !== 'mistral'
+  if (!fields || !nonempty(fields.instructions) || !llm || !isProvider(llm.provider)
     || !nonempty(llm.model) || !nonempty(llm.apiKey)
-    || (llm.options !== undefined && !record(llm.options))) {
+    || (llm.options !== undefined && !record(llm.options))
+    // Only an OpenAI-compatible API needs its address; the others use their provider's endpoint.
+    || (llm.provider === 'openai-compatible' ? !httpUrl(llm.baseURL) : llm.baseURL !== undefined)) {
     throw new ProjectError(`Invalid agent configuration: ${id}`);
   }
   const base: AgentConfig = { id, instructions: fields.instructions, llm: {
-    provider: 'mistral', model: llm.model, apiKey: llm.apiKey,
+    provider: llm.provider, model: llm.model, apiKey: llm.apiKey,
+    ...(llm.baseURL === undefined ? {} : { baseURL: llm.baseURL as string }),
     ...(llm.options === undefined ? {} : { options: llm.options as Record<string, unknown> }),
   } };
   if (id === 'orchestrator') {

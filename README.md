@@ -93,7 +93,7 @@ sequenceDiagram
 
 - Node.js 24 or later; pnpm to build from source
 - Linux, or Docker (the published image is `linux/amd64`)
-- An API key for the LLM provider. Agents currently use [Mistral](https://mistral.ai/) through the [Vercel AI SDK](https://ai-sdk.dev/)
+- An API key for each LLM provider you use. Agents reach Mistral, OpenAI, Anthropic, Google Gemini or any OpenAI-compatible API through the [Vercel AI SDK](https://ai-sdk.dev/). The models must support tool calling and structured JSON output
 - For voice only: a [Vosk](https://alphacephei.com/vosk/models) speech model, such as `vosk-model-small-it-0.22`. The Docker image already contains two Italian Piper voices; see [`voices/README.md`](voices/README.md)
 
 **Main libraries**
@@ -103,7 +103,7 @@ sequenceDiagram
 | HTTP and WebSocket | Fastify, `@fastify/websocket`, `@fastify/helmet`, `@fastify/cors` |
 | Storage | SQLite (`better-sqlite3`) with Kysely |
 | Validation | TypeBox, Ajv |
-| Agents | Vercel AI SDK (`ai`, `@ai-sdk/mistral`), MCP client |
+| Agents | Vercel AI SDK (`ai`, `@ai-sdk/mistral`, `@ai-sdk/openai`, `@ai-sdk/anthropic`, `@ai-sdk/google`, `@ai-sdk/openai-compatible`), MCP client |
 | Speech | `vosk-koffi` (speech-to-text), `sherpa-onnx-node` (text-to-speech) |
 | Logging | Pino, as JSON lines on stdout |
 
@@ -139,6 +139,8 @@ Minimal examples:
   "instructions": "Answer briefly.",
   "llm": { "provider": "mistral", "model": "mistral-medium-latest", "apiKey": "..." } }
 ```
+
+Each agent picks its own `provider`: `mistral`, `openai`, `anthropic`, `google` or `openai-compatible`. With `openai-compatible`, add `baseURL`, the address of the API, for example `"baseURL": "http://localhost:11434/v1"`.
 
 **With Docker**
 

@@ -1,7 +1,7 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { prepareAgents } from '../../src/composition/agents.js';
 
 async function files() {
@@ -53,9 +53,48 @@ test('invalid provider options prevent any MCP connection', async () => {
       connected = true;
       throw new Error('Should not connect');
     })).rejects.toMatchObject({ message: 'Invalid agent options: home',
-      cause: expect.objectContaining({ message: 'Unsupported Mistral option' }) });
+      cause: expect.objectContaining({ message: 'Unsupported model option' }) });
     expect(connected).toBe(false);
   } finally { await fixture.close(); }
+});
+
+// Verification: Prova della selezione del modello per agente
+test('each agent calls the provider, endpoint and key of its own file', async () => {
+  const fixture = await files();
+  const seen: Array<{ url: string; authorization: string | null; apiKey: string | null; model: unknown }> = [];
+  vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+    const request = new Request(input, init);
+    const body = JSON.parse(await request.text()) as { model?: unknown };
+    seen.push({ url: request.url, authorization: request.headers.get('authorization'),
+      apiKey: request.headers.get('x-api-key'), model: body.model });
+    return new Response('controlled failure', { status: 400 });
+  });
+  try {
+    await writeFile(join(fixture.directory, 'local.json'), JSON.stringify({
+      description: 'Local model.', instructions: 'Answer.',
+      llm: { provider: 'openai-compatible', model: 'local-model', apiKey: 'local-key',
+        baseURL: 'https://models.example/v1' } }));
+    await writeFile(join(fixture.directory, 'claude.json'), JSON.stringify({
+      description: 'Claude.', instructions: 'Answer.',
+      llm: { provider: 'anthropic', model: 'claude-model', apiKey: 'claude-key' } }));
+    const agents = await prepareAgents(fixture.directory, async () => { throw new Error('Should not connect'); });
+    const history = { id: 'conversation', createdAt: new Date(0), lastActivityAt: new Date(0),
+      turns: [{ id: 'turn', acceptedAt: new Date(0), status: 'pending' as const, text: 'Ciao' }] };
+    const never = { requested: new Promise<void>(() => { /* never */ }) };
+    for (const agent of agents.specialists) {
+      await expect((async () => { for await (const part of agent.reply.produce(history, never)) void part; })())
+        .rejects.toThrow();
+    }
+    expect(agents.specialists.map((agent) => agent.id)).toEqual(['claude', 'local']);
+    expect(seen).toEqual([
+      { url: 'https://api.anthropic.com/v1/messages', authorization: null, apiKey: 'claude-key', model: 'claude-model' },
+      { url: 'https://models.example/v1/chat/completions', authorization: 'Bearer local-key', apiKey: null,
+        model: 'local-model' },
+    ]);
+  } finally {
+    vi.unstubAllGlobals();
+    await fixture.close();
+  }
 });
 
 test('closes an earlier MCP connection when a later agent cannot start', async () => {

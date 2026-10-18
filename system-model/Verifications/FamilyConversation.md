@@ -132,10 +132,10 @@ La dimostrazione passa se il backend si avvia scoprendo gli strumenti di Home As
 
 ### Prova dei nomi degli strumenti MCP
 
-Preparare un agente specializzato con strumenti scoperti di nome `HassTurnOff`, `GetLiveContext`, `light.toggle`, un nome di 65 caratteri e `mcp_7`, e un modello controllato che registra i nomi offerti e chiama alcuni strumenti con nomi presentati. Osservare i nomi offerti al modello e le chiamate ricevute dal client MCP.
+Preparare un agente specializzato con strumenti scoperti di nome `HassTurnOff`, `GetLiveContext`, `light.toggle`, un nome di 65 caratteri, `mcp_7`, `_private`, `1st-tool` e `-dash`, e un modello controllato che registra i nomi offerti e chiama alcuni strumenti con nomi presentati. Osservare i nomi offerti al modello e le chiamate ricevute dal client MCP.
 
 #### Details
-La prova passa se `HassTurnOff` e `GetLiveContext` sono offerti con il proprio nome, `light.toggle`, il nome di 65 caratteri e `mcp_7` sono offerti come `mcp_<indice>` secondo la posizione nella lista scoperta, descrizioni e schemi restano quelli del server, ogni chiamata del modello raggiunge il client MCP con il nome originale dello strumento corrispondente e il limite `maxToolCalls` continua a valere. Fallisce se un nome ammesso viene sostituito, se un nome non ammesso viene offerto al modello o se una chiamata raggiunge uno strumento diverso.
+La prova passa se `HassTurnOff`, `GetLiveContext` e `_private` sono offerti con il proprio nome, `light.toggle`, il nome di 65 caratteri, `mcp_7`, `1st-tool` e `-dash` sono offerti come `mcp_<indice>` secondo la posizione nella lista scoperta, descrizioni e schemi restano quelli del server, ogni chiamata del modello raggiunge il client MCP con il nome originale dello strumento corrispondente e il limite `maxToolCalls` continua a valere. Fallisce se un nome ammesso viene sostituito, se un nome non ammesso viene offerto al modello o se una chiamata raggiunge uno strumento diverso.
 
 #### Metadata
   * type: test-verification
@@ -919,10 +919,10 @@ La prova passa se l'avvio valido espone il canale conversazionale e i GET, il tu
 
 ### Prova della configurazione dell'adapter AI SDK
 
-Avviare l'ingresso conversazionale con un agente il cui oggetto `llm` indica `provider: "mistral"`, modello e chiave API ma nessun URL. Provare opzioni assenti e opzioni `temperature` e `max_tokens` valide; ripetere con modello o chiave mancanti, opzione sconosciuta e valori invalidi. Con provider e stream controllati, osservare i parametri inviati e la conversione di frammenti testuali e indicazione `expectsReply` alla porta applicativa, per turni testuali e vocali.
+Avviare l'ingresso conversazionale con un agente il cui oggetto `llm` indica `provider: "mistral"`, modello e chiave API ma nessun URL. Provare opzioni assenti e opzioni `temperature` e `max_tokens` valide; ripetere con modello o chiave mancanti, opzione sconosciuta e valori invalidi. Con provider e stream controllati, osservare i parametri inviati e la conversione di frammenti testuali e indicazione `expectsReply` alla porta applicativa, per turni testuali e vocali. Ripetere la richiesta controllata per ciascun altro provider ammesso, `openai`, `anthropic`, `google` e `openai-compatible` con un `baseURL` d'esempio, osservando indirizzo, credenziale e corpo della richiesta.
 
 #### Details
-La prova passa se l'adapter usa il provider Mistral dell'AI SDK senza URL nel JSON, trasmette solo le opzioni configurate e validate e fornisce, con un unico percorso di generazione, gli stessi frammenti e la stessa indicazione strutturata della replica attesa per qualsiasi tipo di contenuto del turno tramite `ProduceConversationReply`. Configurazioni invalide impediscono l'attivazione prima delle richieste; i tipi dell'SDK non attraversano la porta Application. Fallisce se una configurazione invalida raggiunge il provider, se le opzioni assenti vengono forzate o se esistono percorsi di generazione distinti per testo e voce. Verifica aggiornata per il protocollo `ambrogio.v1`, da eseguire.
+La prova passa se l'adapter usa il pacchetto AI SDK del provider indicato, l'endpoint predefinito del provider senza URL nel JSON e, con `openai-compatible`, l'endpoint derivato da `baseURL` con lo schema JSON della risposta in `response_format` di tipo `json_schema`; se la chiave API raggiunge soltanto quell'endpoint nell'intestazione prevista dal provider; se trasmette solo le opzioni configurate e validate e fornisce, con un unico percorso di generazione, gli stessi frammenti e la stessa indicazione strutturata della replica attesa per qualsiasi tipo di contenuto del turno tramite `ProduceConversationReply`. Configurazioni invalide impediscono l'attivazione prima delle richieste; i tipi dell'SDK non attraversano la porta Application. Fallisce se una configurazione invalida raggiunge il provider, se le opzioni assenti vengono forzate, se una richiesta raggiunge un provider diverso da quello configurato o se esistono percorsi di generazione distinti per testo e voce. La prova usa risposte controllate: non dimostra che un modello reale di ciascun provider supporti tool calling e output strutturato.
 
 #### Metadata
   * type: test-verification
@@ -1159,10 +1159,10 @@ La prova passa se la richiesta all'orchestratore non offre strumenti, dichiara c
 
 ### Prova della selezione del modello per agente
 
-Preparare due file JSON di agenti attivi, uno per l'orchestratore e uno per un agente specializzato, con oggetti `llm` distinguibili e i campi `provider`, `model`, `apiKey` e `options`. Avviare il processo con adapter di prova e osservare i valori consegnati a ciascuno; ripetere con `llm` mancante, con uno dei suoi campi richiesti invalido e con opzioni specifiche non valide.
+Preparare due file JSON di agenti attivi, uno per l'orchestratore e uno per un agente specializzato, con oggetti `llm` distinguibili, provider diversi e i campi `provider`, `model`, `apiKey` e `options`; ripetere con un agente `openai-compatible` che indica `baseURL`. Avviare il processo con adapter di prova e osservare i valori consegnati a ciascuno; ripetere con `llm` mancante, con uno dei suoi campi richiesti invalido, con un `provider` non ammesso, con `openai-compatible` senza `baseURL` o con un `baseURL` che non è un URL HTTP o HTTPS assoluto, con `baseURL` per un altro provider e con opzioni specifiche non valide.
 
 #### Details
-La prova passa se ciascun agente usa soltanto provider, modello, chiave e opzioni validate del proprio oggetto `llm` e il processo non attiva un agente con configurazione necessaria mancante o invalida. Fallisce se i valori si mescolano tra agenti, provengono da variabili d'ambiente o una configurazione invalida raggiunge l'adapter. La prova resta da eseguire dopo l'implementazione.
+La prova passa se ciascun agente usa soltanto provider, modello, chiave, `baseURL` quando previsto e opzioni validate del proprio oggetto `llm`, ogni valore ammesso di `provider` viene accettato e il processo non attiva un agente con configurazione necessaria mancante o invalida. Fallisce se i valori si mescolano tra agenti, provengono da variabili d'ambiente, se un provider non ammesso o un `baseURL` mancante, invalido o superfluo vengono accettati o se una configurazione invalida raggiunge l'adapter.
 
 #### Metadata
   * type: test-verification

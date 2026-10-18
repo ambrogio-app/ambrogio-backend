@@ -9,8 +9,9 @@ import { ProjectError } from '@ambrogio/conversations/application/project-error'
 type ToolConnection = Pick<McpToolClient, 'listTools' | 'listPrompts' | 'getPrompt' | 'callTool' | 'close'>;
 
 function settingsFor(config: AgentConfig) {
-  return { instructions: config.instructions,
-    model: config.llm.model, apiKey: config.llm.apiKey, options: config.llm.options };
+  return { provider: config.llm.provider, instructions: config.instructions,
+    model: config.llm.model, apiKey: config.llm.apiKey, options: config.llm.options,
+    ...(config.llm.baseURL === undefined ? {} : { baseURL: config.llm.baseURL }) };
 }
 
 /** Prepare each user-defined agent for the future conversational entrypoint. */

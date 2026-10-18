@@ -114,6 +114,41 @@ test('rejects a tool call limit on an agent without MCP', async () => {
   await expect(loadAgentConfigs(path)).rejects.toThrow('Invalid agent configuration: generic');
 });
 
+// Verification: Prova della selezione del modello per agente
+test('accepts every supported provider and keeps each agent on its own llm', async () => {
+  const path = await directory();
+  const providers = {
+    claude: { provider: 'anthropic', model: 'claude-model', apiKey: 'anthropic-key' },
+    gemini: { provider: 'google', model: 'gemini-model', apiKey: 'google-key', options: { temperature: 0.1 } },
+    gpt: { provider: 'openai', model: 'gpt-model', apiKey: 'openai-key' },
+    local: { provider: 'openai-compatible', model: 'local-model', apiKey: 'local-key',
+      baseURL: 'http://models.example:8080/v1' },
+  };
+  for (const [id, llm] of Object.entries(providers)) {
+    await writeFile(join(path, `${id}.json`), JSON.stringify({
+      description: `${id} agent.`, instructions: 'Answer.', llm }));
+  }
+  const loaded = await loadAgentConfigs(path);
+  expect(loaded.orchestrator.llm).toEqual({ provider: 'mistral', model: 'mistral-small-latest', apiKey: 'key-1' });
+  expect(Object.fromEntries(loaded.specialists.map((agent) => [agent.id, agent.llm]))).toEqual(providers);
+});
+
+// Verification: Prova della selezione del modello per agente
+test.each([
+  { provider: 'cohere', model: 'model', apiKey: 'key' },
+  { provider: 'openai-compatible', model: 'model', apiKey: 'key' },
+  { provider: 'openai-compatible', model: 'model', apiKey: 'key', baseURL: '' },
+  { provider: 'openai-compatible', model: 'model', apiKey: 'key', baseURL: 'file:///models' },
+  { provider: 'openai-compatible', model: 'model', apiKey: 'key', baseURL: 'models.example/v1' },
+  { provider: 'openai', model: 'model', apiKey: 'key', baseURL: 'https://models.example/v1' },
+  { provider: 'mistral', model: 'model', apiKey: 'key', baseURL: 'https://models.example/v1' },
+])('rejects an unsupported provider or a misplaced endpoint: %j', async (llm) => {
+  const path = await directory();
+  await writeFile(join(path, 'specialist.json'), JSON.stringify({
+    description: 'Specialist.', instructions: 'Answer.', llm }));
+  await expect(loadAgentConfigs(path)).rejects.toThrow('Invalid agent configuration: specialist');
+});
+
 // Verification: Prova delle configurazioni degli agenti con e senza MCP
 test('rejects a directory without specialist agents', async () => {
   const path = await directory();

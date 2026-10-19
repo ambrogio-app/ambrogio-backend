@@ -1101,6 +1101,21 @@ Se Ambrogio non ottiene una trascrizione utilizzabile di un turno vocale, non de
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
+### Rifiuto dell'avvio con uno strumento MCP elencato non disponibile
+
+Se un nome dell'elenco degli strumenti MCP ammessi di un agente specializzato non corrisponde a nessuno strumento scoperto all'avvio sul server MCP di quell'agente, allora il server non deve avviarsi e deve indicare nel messaggio diagnostico l'agente interessato.
+
+#### Metadata
+  * type: requirement
+
+#### Contract Bindings
+  * [Elenco degli strumenti MCP ammessi per agente](../Contracts/FamilyConversation.md#elenco-degli-strumenti-mcp-ammessi-per-agente)
+
+#### Relations
+  * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
+  * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
+---
+
 ### Risposta parlata su richiesta del client
 
 Quando un client chiede la risposta in audio e l'interazione vocale è abilitata, Ambrogio deve pronunciare alla famiglia la risposta e ogni messaggio pubblico del turno, trasmettendoli in audio.
@@ -1217,6 +1232,20 @@ Quando conferma il completamento di un turno, il backend deve indicare esplicita
 #### Relations
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Selezione degli strumenti MCP offerti all'agente
+
+Dove il file JSON di un agente specializzato elenca gli strumenti MCP ammessi, Ambrogio deve offrire al modello di quell'agente soltanto gli strumenti elencati fra quelli scoperti sul suo server MCP e non deve inoltrare al server chiamate a strumenti non elencati.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
+  * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
+  * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
 ---
 
 ### Selezione dell'archivio conversazionale all'avvio

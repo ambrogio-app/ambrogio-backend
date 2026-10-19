@@ -240,6 +240,27 @@ test('specialist offers accepted MCP names and positional names for the others',
     { name: '_private', args: {} }]);
 });
 
+// Verification: Prova della selezione degli strumenti MCP
+test('specialist offers only the listed MCP tools with the names of the discovered list', async () => {
+  const discovered = ['alpha', 'light.toggle', 'beta', 'gamma'].map(name => ({
+    name, description: `Tool ${name}`, inputSchema: { type: 'object' } }));
+  const called: string[] = [];
+  const model = scripted(
+    { parts: [callPart('mcp_1', {})], reason: 'tool-calls' },
+    { parts: [callPart('alpha', {}, 'call-2')], reason: 'tool-calls' },
+    { parts: answer('Fatto.'), reason: 'stop' },
+  );
+  const reply = new AiSdkToolAgentReply(settings,
+    { tools: discovered, prompts: [], offered: ['gamma', 'light.toggle'] }, { getPrompt,
+      async callTool(name) { called.push(name); return { isError: false, content: [] }; } }, 5, model);
+  expect(await collect(reply.produce(history, never()))).toEqual([text('Fatto.'), expectation(false)]);
+  const offered = model.doStreamCalls[0]?.tools ?? [];
+  expect(offered.map(tool => tool.name)).toEqual(['mcp_1', 'gamma']);
+  expect(offered[0]).toMatchObject({ description: 'Tool light.toggle', inputSchema: { type: 'object' } });
+  // The model cannot reach a tool that was not offered: only the listed one reaches the client.
+  expect(called).toEqual(['light.toggle']);
+});
+
 // Verification: Prova delle istruzioni del server MCP
 test('specialist reads the server prompts at every turn and puts them before the reply format', async () => {
   const versions = ['Static Context: kitchen light', 'Static Context: kitchen and bedroom lights'];

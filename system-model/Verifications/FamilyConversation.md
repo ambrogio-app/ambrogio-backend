@@ -230,6 +230,25 @@ La prova passa se al primo avvio l'orchestratore può scegliere il primo agente,
   * verify: [Disponibilità degli agenti dai file JSON](../Requirements/FamilyConversation.md#disponibilità-degli-agenti-dai-file-json)
 ---
 
+### Prova della selezione degli strumenti MCP
+
+Preparare agenti specializzati con un server MCP controllato che scopre gli strumenti `alpha`, `light.toggle`, `beta` e `gamma`. Un agente non ha `mcp.tools`; uno ha `mcp.tools: ["gamma", "light.toggle"]`; uno elenca anche `delta`, che il server non offre. Verificare inoltre la validazione di `mcp.tools` non array, vuoto, con un elemento vuoto o non stringa e con un nome ripetuto. Con un modello controllato registrare gli strumenti offerti e far chiamare sia uno strumento offerto sia `alpha`.
+
+#### Details
+La prova passa se l'agente senza `mcp.tools` riceve tutti e quattro gli strumenti; l'agente con l'elenco riceve soltanto `light.toggle`, presentato come `mcp_1`, e `gamma`, in quest'ordine e con descrizioni e schemi del server; la chiamata a uno strumento offerto raggiunge il client MCP con il nome originale mentre quella ad `alpha` non lo raggiunge; le configurazioni invalide sono rifiutate prima dell'attivazione; l'agente che elenca `delta` impedisce l'avvio con il messaggio `Agent MCP tool unavailable: <id>` privo di URL e credenziali. Fallisce se uno strumento non elencato è offerto o invocato, se l'ordine o i nomi presentati cambiano rispetto alla lista scoperta o se l'avvio prosegue con un nome assente.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
+  * satisfiedBy: [agents.test.ts](../../apps/server/test/composition/agents.test.ts)
+  * satisfiedBy: [agent-config.test.ts](../../apps/server/test/runtime/agent-config.test.ts)
+  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
+  * verify: [Rifiuto dell'avvio con uno strumento MCP elencato non disponibile](../Requirements/FamilyConversation.md#rifiuto-dellavvio-con-uno-strumento-mcp-elencato-non-disponibile)
+  * verify: [Selezione degli strumenti MCP offerti all'agente](../Requirements/FamilyConversation.md#selezione-degli-strumenti-mcp-offerti-allagente)
+---
+
 ### Prova delle configurazioni degli agenti con e senza MCP
 
 Caricare la directory degli agenti con un agente con `mcp` e `maxToolCalls` e un agente senza `mcp` e senza `maxToolCalls`. In tentativi separati usare un agente senza `mcp` ma con `maxToolCalls`, un agente con `mcp` senza `maxToolCalls` e una directory con il solo `orchestrator.json`; avviare inoltre il server con la directory priva di agenti specializzati.

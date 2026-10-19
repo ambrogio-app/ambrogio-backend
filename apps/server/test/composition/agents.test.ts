@@ -40,6 +40,38 @@ test('prepares every discovered specialist with an isolated MCP connection and c
   } finally { await fixture.close(); }
 });
 
+// Verification: Prova della selezione degli strumenti MCP
+test('offers only the listed tools and refuses to start when a listed tool is missing', async () => {
+  const fixture = await files();
+  const discovered = ['alpha', 'light.toggle', 'beta', 'gamma'].map((name) => ({ name, inputSchema: { type: 'object' } }));
+  const closed: string[] = [];
+  const connect = async (connection: { url: string }) => ({ listTools: async () => discovered,
+    listPrompts: async () => [], getPrompt: async () => '',
+    callTool: async () => ({ isError: false, content: [] }),
+    close: async () => { closed.push(connection.url); } });
+  try {
+    const base = { description: 'Weather.', maxToolCalls: 3, instructions: 'Use tools.', llm: fixture.llm };
+    await writeFile(join(fixture.directory, 'all.json'), JSON.stringify({ ...base,
+      mcp: { url: 'https://all.example/mcp' } }));
+    await writeFile(join(fixture.directory, 'some.json'), JSON.stringify({ ...base,
+      mcp: { url: 'https://some.example/mcp', auth: { type: 'bearer', token: 'secret-token' },
+        tools: ['gamma', 'light.toggle'] } }));
+    const agents = await prepareAgents(fixture.directory, connect);
+    expect(agents.specialists.map((agent) => agent.tools.map((tool) => tool.name))).toEqual([
+      ['alpha', 'light.toggle', 'beta', 'gamma'], ['light.toggle', 'gamma']]);
+    await agents.close();
+
+    closed.length = 0;
+    await writeFile(join(fixture.directory, 'some.json'), JSON.stringify({ ...base,
+      mcp: { url: 'https://some.example/mcp', auth: { type: 'bearer', token: 'secret-token' },
+        tools: ['gamma', 'delta'] } }));
+    const failure = await prepareAgents(fixture.directory, connect).catch((error: unknown) => error);
+    expect(failure).toMatchObject({ message: 'Agent MCP tool unavailable: some' });
+    expect(JSON.stringify(failure, Object.getOwnPropertyNames(failure))).not.toMatch(/some\.example|secret-token/);
+    expect(closed).toEqual(['https://all.example/mcp', 'https://some.example/mcp']);
+  } finally { await fixture.close(); }
+});
+
 test('invalid provider options prevent any MCP connection', async () => {
   const fixture = await files();
   try {

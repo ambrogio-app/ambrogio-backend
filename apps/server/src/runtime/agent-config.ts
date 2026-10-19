@@ -15,7 +15,7 @@ export type AgentConfig = Readonly<{
   instructions: string;
   llm: Readonly<{ provider: LlmProvider; model: string; apiKey: string; baseURL?: string;
     options?: Readonly<Record<string, unknown>> }>;
-  mcp?: Readonly<{ url: string; auth?: McpAuth }>;
+  mcp?: Readonly<{ url: string; auth?: McpAuth; tools?: readonly string[] }>;
 }>;
 
 const agentId = /^[a-z][a-z0-9-]*$/;
@@ -35,6 +35,16 @@ function httpUrl(value: unknown): value is string {
     const url = new URL(value);
     return (url.protocol === 'http:' || url.protocol === 'https:') && !!url.hostname;
   } catch { return false; }
+}
+
+/** The names of the MCP tools the agent may use, as the server declares them. */
+function parseTools(value: unknown): readonly string[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.length === 0 || !value.every(nonempty)
+    || new Set(value).size !== value.length) {
+    throw new ProjectError('Invalid agent MCP tool list');
+  }
+  return value;
 }
 
 function parseAuth(value: unknown): McpAuth {
@@ -90,9 +100,11 @@ function parseAgent(id: string, value: unknown): AgentConfig {
   if (!mcp || !httpUrl(mcp.url) || mcp.transport !== undefined) {
     throw new ProjectError(`Invalid agent MCP configuration: ${id}`);
   }
+  const tools = parseTools(mcp.tools);
   return { ...base, description: fields.description, maxToolCalls: fields.maxToolCalls as number,
     mcp: { url: mcp.url,
-    ...(mcp.auth === undefined ? {} : { auth: parseAuth(mcp.auth) }) } };
+    ...(mcp.auth === undefined ? {} : { auth: parseAuth(mcp.auth) }),
+    ...(tools === undefined ? {} : { tools }) } };
 }
 
 /** User-owned agent files are discovered once per startup. */

@@ -32,8 +32,12 @@ type ToolClient = {
   getPrompt(name: string, signal?: AbortSignal): Promise<string>;
 };
 
-/** What the agent's MCP server offered at startup: its tools and the prompts without required arguments. */
-export type DiscoveredMcp = Readonly<{ tools: readonly AvailableMcpTool[]; prompts: readonly string[] }>;
+/**
+ * What the agent's MCP server offered at startup: its tools and the prompts without required arguments.
+ * When `offered` is present, only the listed tools reach the model; positional names keep the discovered index.
+ */
+export type DiscoveredMcp = Readonly<{ tools: readonly AvailableMcpTool[]; prompts: readonly string[];
+  offered?: readonly string[] }>;
 
 /** The MCP name when every provider accepts it; otherwise the reserved positional name. */
 function presentedToolName(name: string, index: number): string {
@@ -170,7 +174,9 @@ export class AiSdkToolAgentReply implements ProduceConversationReply {
     // Read at every turn, so changes on the server apply without a restart.
     const prompts: string[] = [];
     for (const name of this.discovered.prompts) prompts.push(await this.mcp.getPrompt(name, signal));
-    const tools = Object.fromEntries(this.discovered.tools.map((available, index) => [
+    const offered = this.discovered.offered;
+    const tools = Object.fromEntries(this.discovered.tools.flatMap((available, index) =>
+      offered && !offered.includes(available.name) ? [] : [[
       presentedToolName(available.name, index), tool({
         description: available.description ?? available.name,
         inputSchema: jsonSchema<Record<string, unknown>>(
@@ -183,7 +189,7 @@ export class AiSdkToolAgentReply implements ProduceConversationReply {
           return this.mcp.callTool(available.name, input, abortSignal ?? signal);
         },
       }),
-    ]));
+    ]]));
     const response = streamText({ model: this.model,
       system: replyInstructions(withServerPrompts(this.settings.instructions, prompts)),
       messages: messagesFor(history), tools, output: replyOutput,

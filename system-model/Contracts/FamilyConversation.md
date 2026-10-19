@@ -164,6 +164,23 @@ Il caso d'uso del turno conversazionale riceve un input Application costruito da
   * define: [Dati Application dei casi d'uso conversazionali](../Requirements/FamilyConversation.md#dati-application-dei-casi-duso-conversazionali)
 ---
 
+### Elenco degli strumenti MCP ammessi per agente
+
+Decisione concordata con la persona il 19 ottobre 2026: un server MCP può esporre molti più strumenti di quelli che servono all'agente, e le loro definizioni entrano nel contesto del modello a ogni passo. Nella prova dell'agente meteo su Open-Meteo, 17 strumenti occupavano circa 106.000 caratteri di definizioni e portavano il turno vicino al tempo massimo di 30 secondi, mentre i due strumenti necessari ne occupavano circa 11.600.
+
+Nel JSON di ogni agente specializzato, `mcp.tools` è facoltativo. Quando è presente è un array non vuoto di stringhe non vuote e distinte, ciascuna uguale al nome di uno strumento come dichiarato dal server MCP, non al nome presentato al modello. Un valore che non è un array, un array vuoto, un elemento che non è una stringa non vuota o un nome ripetuto rendono invalida la configurazione prima dell'attivazione dell'agente.
+
+Quando `mcp.tools` è assente, l'agente riceve tutti gli strumenti scoperti, come prima di questa decisione. Quando è presente, dopo la scoperta all'avvio Ambrogio conserva soltanto gli strumenti scoperti il cui nome compare nell'elenco, nell'ordine della lista scoperta; soltanto questi sono offerti al modello, e i loro nomi presentati e l'indice di `mcp_<indice>` restano quelli definiti per la lista scoperta completa. Una chiamata del modello a un nome che non corrisponde a uno strumento offerto non raggiunge il server MCP. Il filtro non cambia i prompt del server letti a ogni turno né il conteggio di `maxToolCalls`.
+
+Se un nome di `mcp.tools` non corrisponde a nessuno strumento scoperto all'avvio, il server non si avvia, come quando il server MCP dell'agente non è raggiungibile; il messaggio diagnostico è `Agent MCP tool unavailable: <id>`, dove `<id>` è l'identificatore dell'agente, e non contiene URL né credenziali.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Selezione degli strumenti MCP offerti all'agente](../Requirements/FamilyConversation.md#selezione-degli-strumenti-mcp-offerti-allagente)
+---
+
 ### Esclusione dell'audio persistente
 
 L'audio acquisito dalla famiglia e quello generato per la risposta possono essere trattati durante l'interazione, ma non fanno parte dello stato persistente della conversazione. Nessuna registrazione audio del turno o della risposta viene conservata.

@@ -57,6 +57,12 @@ test.each([
     clientId: 'id', clientSecret: 'secret' } },
   { url: 'https://example/mcp', auth: { type: 'oauth_client_credentials',
     clientId: 'id', clientSecret: 'secret', issuer: '' } },
+  // Verification: Prova della selezione degli strumenti MCP
+  { url: 'https://example/mcp', tools: 'geocoding' },
+  { url: 'https://example/mcp', tools: [] },
+  { url: 'https://example/mcp', tools: ['geocoding', ''] },
+  { url: 'https://example/mcp', tools: ['geocoding', 7] },
+  { url: 'https://example/mcp', tools: ['geocoding', 'geocoding'] },
 ])('rejects invalid MCP configuration before activation: %j', async (mcp) => {
   const path = await directory();
   await writeFile(join(path, 'specialist.json'), JSON.stringify({
@@ -64,6 +70,19 @@ test.each([
     llm: { provider: 'mistral', model: 'model', apiKey: 'key' }, mcp,
   }));
   await expect(loadAgentConfigs(path)).rejects.toThrow('Invalid agent configuration: specialist');
+});
+
+// Verification: Prova della selezione degli strumenti MCP
+test('keeps the listed MCP tools and leaves them unset when the list is absent', async () => {
+  const path = await directory();
+  const base = { description: 'Weather.', maxToolCalls: 3, instructions: 'Use tools.',
+    llm: { provider: 'mistral', model: 'model', apiKey: 'key' } };
+  await writeFile(join(path, 'all.json'), JSON.stringify({ ...base, mcp: { url: 'https://all.example/mcp' } }));
+  await writeFile(join(path, 'some.json'), JSON.stringify({ ...base,
+    mcp: { url: 'https://some.example/mcp', tools: ['weather_forecast', 'geocoding'] } }));
+  const loaded = await loadAgentConfigs(path);
+  expect(loaded.specialists[0]?.mcp?.tools).toBeUndefined();
+  expect(loaded.specialists[1]?.mcp?.tools).toEqual(['weather_forecast', 'geocoding']);
 });
 
 test.each([undefined, '', 42])('rejects invalid specialist description: %j', async (description) => {

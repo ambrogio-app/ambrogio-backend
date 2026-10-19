@@ -52,10 +52,16 @@ export async function prepareAgents(
         // Name the agent only: URL and credentials stay out of the diagnostic message.
         throw new ProjectError(`Agent MCP connection failed: ${config.id}`, { cause: error });
       }
-      const reply = new AiSdkToolAgentReply(settingsFor(config), { tools, prompts }, mcp,
-        config.maxToolCalls!);
+      const offered = config.mcp.tools;
+      if (offered && !offered.every((name) => tools.some((available) => available.name === name))) {
+        // Name the agent only, as for a failed connection.
+        throw new ProjectError(`Agent MCP tool unavailable: ${config.id}`);
+      }
+      const reply = new AiSdkToolAgentReply(settingsFor(config),
+        { tools, prompts, ...(offered === undefined ? {} : { offered }) }, mcp, config.maxToolCalls!);
       specialists.push({ id: config.id, description: config.description!,
-        maxToolCalls: config.maxToolCalls!, reply, tools, mcp });
+        maxToolCalls: config.maxToolCalls!, reply, mcp,
+        tools: offered ? tools.filter((available) => offered.includes(available.name)) : tools });
     }
     const orchestrator = new AiSdkOrchestratorReply(settingsFor(configs.orchestrator), specialists);
     return { orchestrator, specialists,

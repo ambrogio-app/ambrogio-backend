@@ -832,6 +832,22 @@ La prova passa se, in tutti i casi, il backend prosegue l'elaborazione dopo la c
   * verify: [Completamento del turno accettato dopo disconnessione](../Requirements/FamilyConversation.md#completamento-del-turno-accettato-dopo-disconnessione)
 ---
 
+### Prova del fuso orario configurato
+
+Caricare il file JSON del componente «Conversazioni» senza `timeZone`, con `timeZone` uguale a `Europe/Rome` e, in tentativi separati, con un numero, con una stringa vuota e con `Mars/Olympus`.
+
+#### Details
+La prova passa se senza il campo il fuso effettivo è `UTC`, con `Europe/Rome` è `Europe/Rome`, e ciascun valore invalido rende invalida la configurazione con il messaggio `Invalid conversation time zone`. Fallisce se un valore invalido viene accettato o se il fuso effettivo differisce da quello atteso.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * satisfiedBy: [conversation-config.test.ts](../../packages/conversations/test/adapters/out/conversation-config.test.ts)
+  * verify: [Configurazione del fuso orario della conversazione](../Requirements/FamilyConversation.md#configurazione-del-fuso-orario-della-conversazione)
+---
+
 ### Prova del rifiuto del turno testuale vuoto
 
 Inviare un turno testuale con testo vuoto e uno composto solo da spazi bianchi, sia per una nuova conversazione sia per una conversazione esistente. Ripetere con testo vuoto e un `conversationId` inesistente. Confrontare lo stato dell'archivio prima e dopo ogni turno.
@@ -1039,6 +1055,23 @@ La prova passa se in entrambi i casi la produzione prosegue fino al proprio esit
   * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
   * satisfiedBy: [exchange-turn.test.ts](../../packages/conversations/test/application/exchange-turn.test.ts)
   * verify: [Continuità del turno dopo un guasto di consegna](../Requirements/FamilyConversation.md#continuità-del-turno-dopo-un-guasto-di-consegna)
+---
+
+### Prova della data corrente per gli agenti
+
+Con un orologio controllato fissato su un istante noto, preparare un agente specializzato con connettore MCP che ha un prompt del server, un agente senza connettore e un orchestratore, tutti con modelli controllati che registrano le istruzioni di sistema ricevute. Elaborare un turno per ciascun agente con fuso `Europe/Rome` e con fuso `UTC`, poi un secondo turno dopo aver spostato l'orologio di un giorno.
+
+#### Details
+La prova passa se entrambi gli agenti specializzati ricevono, subito dopo le proprie istruzioni e prima delle istruzioni del server e delle indicazioni sul formato, la riga `Current date and time: <data e ora> (<fuso>).` con giorno della settimana, data e ora corrette nel fuso indicato, per esempio con l'istante `2026-10-19T07:41:00Z` la riga `Current date and time: Monday, 19 October 2026 at 09:41 (Europe/Rome).` e con `UTC` l'ora `07:41`; il secondo turno riporta il giorno successivo; le istruzioni dell'orchestratore non contengono la riga. Fallisce se la data, il giorno della settimana, l'ora o il fuso sono errati, se la riga manca o è in un'altra posizione, o se resta quella del turno precedente.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * satisfiedBy: [agents.test.ts](../../apps/server/test/composition/agents.test.ts)
+  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
+  * verify: [Data e ora correnti per gli agenti specializzati](../Requirements/FamilyConversation.md#data-e-ora-correnti-per-gli-agenti-specializzati)
 ---
 
 ### Prova della descrizione degli agenti specializzati

@@ -5,8 +5,16 @@ export type ConversationConfig = Readonly<{
   listPageSize: number;
   maxListPageSize: number;
   language: 'en' | 'it';
+  /** IANA name of the family's time zone; UTC when the file does not set one. */
+  timeZone: string;
   archivePath?: string;
 }>;
+
+function validTimeZone(name: string): boolean {
+  if (!name) return false;
+  try { new Intl.DateTimeFormat('en-GB', { timeZone: name }); return true; }
+  catch { return false; }
+}
 
 /** Load the conversation component's JSON before constructing its resources. */
 export async function loadConversationConfig(filename: string): Promise<ConversationConfig> {
@@ -35,6 +43,10 @@ export async function loadConversationConfig(filename: string): Promise<Conversa
     && (typeof fields.archivePath !== 'string' || !fields.archivePath.trim())) {
     throw new ProjectError('Invalid conversation archive path');
   }
-  return { listPageSize, maxListPageSize, language,
+  const timeZone = fields.timeZone === undefined ? 'UTC' : fields.timeZone;
+  if (typeof timeZone !== 'string' || !validTimeZone(timeZone)) {
+    throw new ProjectError('Invalid conversation time zone');
+  }
+  return { listPageSize, maxListPageSize, language, timeZone,
     ...(fields.archivePath === undefined ? {} : { archivePath: fields.archivePath }) };
 }

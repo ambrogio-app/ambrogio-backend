@@ -233,6 +233,18 @@ Quando il server attiva un agente con connettore MCP, deve leggere la configuraz
   * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
 ---
 
+### Configurazione del fuso orario della conversazione
+
+Il server deve leggere il fuso orario della famiglia dal file JSON locale del componente «Conversazioni» e impedire l'avvio quando il valore indicato non è un fuso orario valido.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [conversation-config.ts](../../packages/conversations/src/adapters/out/conversation-config.ts)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
 ### Configurazione del modello per agente
 
 Quando il server attiva un agente, incluso l'orchestratore, deve leggere il file JSON locale dedicato a quell'agente e selezionare l'adapter del provider indicato, fornendogli l'identificativo del modello, la chiave API, l'indirizzo dell'endpoint quando il provider lo richiede e soltanto le opzioni specifiche validate.
@@ -438,6 +450,20 @@ Quando un client invia un turno senza identificativo di conversazione, Ambrogio 
 
 #### Relations
   * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
+### Data e ora correnti per gli agenti specializzati
+
+Quando un agente specializzato formula la risposta di un turno, Ambrogio deve fornirgli la data, il giorno della settimana e l'ora correnti nel fuso orario configurato per il componente «Conversazioni».
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
+  * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 

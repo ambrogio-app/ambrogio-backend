@@ -1,4 +1,5 @@
 import { McpToolClient } from '@ambrogio/conversations/adapters/out/mcp-tool-client';
+import { SystemCurrentTime } from '@ambrogio/conversations/adapters/out/system-current-time';
 import type { AvailableMcpTool, McpConnection } from '@ambrogio/conversations/adapters/out/mcp-tool-client';
 import { aiSdkOptions, AiSdkKnowledgeAgentReply, AiSdkOrchestratorReply, AiSdkToolAgentReply }
   from '@ambrogio/conversations/adapters/out/ai-sdk-reply';
@@ -8,8 +9,11 @@ import { ProjectError } from '@ambrogio/conversations/application/project-error'
 
 type ToolConnection = Pick<McpToolClient, 'listTools' | 'listPrompts' | 'getPrompt' | 'callTool' | 'close'>;
 
-function settingsFor(config: AgentConfig) {
+type CurrentTime = Readonly<{ timeZone: string; clock: Readonly<{ now(): Date }> }>;
+
+function settingsFor(config: AgentConfig, currentTime?: CurrentTime) {
   return { provider: config.llm.provider, instructions: config.instructions,
+    ...(currentTime === undefined ? {} : { currentTime }),
     model: config.llm.model, apiKey: config.llm.apiKey, options: config.llm.options,
     ...(config.llm.baseURL === undefined ? {} : { baseURL: config.llm.baseURL }) };
 }
@@ -18,6 +22,8 @@ function settingsFor(config: AgentConfig) {
 export async function prepareAgents(
   directory = '/etc/ambrogio/agents',
   connect: (connection: McpConnection) => Promise<ToolConnection> = McpToolClient.connect,
+  // Specialists only: the orchestrator chooses the agent and does not need the date.
+  currentTime: CurrentTime = { timeZone: 'UTC', clock: new SystemCurrentTime() },
 ): Promise<Readonly<{
   orchestrator: AiSdkOrchestratorReply;
   specialists: readonly Readonly<{ id: string; description: string; maxToolCalls?: number;
@@ -37,7 +43,7 @@ export async function prepareAgents(
       if (!config.mcp) {
         // An agent without MCP opens no connection and is offered no tools.
         specialists.push({ id: config.id, description: config.description!,
-          reply: new AiSdkKnowledgeAgentReply(settingsFor(config)), tools: [] });
+          reply: new AiSdkKnowledgeAgentReply(settingsFor(config, currentTime)), tools: [] });
         continue;
       }
       let mcp: ToolConnection;
@@ -57,7 +63,7 @@ export async function prepareAgents(
         // Name the agent only, as for a failed connection.
         throw new ProjectError(`Agent MCP tool unavailable: ${config.id}`);
       }
-      const reply = new AiSdkToolAgentReply(settingsFor(config),
+      const reply = new AiSdkToolAgentReply(settingsFor(config, currentTime),
         { tools, prompts, ...(offered === undefined ? {} : { offered }) }, mcp, config.maxToolCalls!);
       specialists.push({ id: config.id, description: config.description!,
         maxToolCalls: config.maxToolCalls!, reply, mcp,

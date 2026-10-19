@@ -21,13 +21,13 @@ afterEach(async () => {
 describe('conversation JSON configuration', () => {
   it('uses defaults for absent fields and accepts explicit page limits', async () => {
     expect(await loadConversationConfig(await configFile('{}'))).toEqual({
-      listPageSize: 20, maxListPageSize: 100, language: 'en',
+      listPageSize: 20, maxListPageSize: 100, language: 'en', timeZone: 'UTC',
     });
     expect(await loadConversationConfig(await configFile('{"listPageSize": 2, "maxListPageSize": 3}'))).toEqual({
-      listPageSize: 2, maxListPageSize: 3, language: 'en',
+      listPageSize: 2, maxListPageSize: 3, language: 'en', timeZone: 'UTC',
     });
     expect(await loadConversationConfig(await configFile('{"listPageSize": 110, "maxListPageSize": 120}'))).toEqual({
-      listPageSize: 110, maxListPageSize: 120, language: 'en',
+      listPageSize: 110, maxListPageSize: 120, language: 'en', timeZone: 'UTC',
     });
   });
 
@@ -35,6 +35,17 @@ describe('conversation JSON configuration', () => {
     expect((await loadConversationConfig(await configFile('{"language":"en"}'))).language).toBe('en');
     expect((await loadConversationConfig(await configFile('{"language":"it"}'))).language).toBe('it');
     expect((await loadConversationConfig(await configFile('{"language":"fr"}'))).language).toBe('en');
+  });
+
+  // Verification: Prova del fuso orario configurato
+  it('uses UTC without timeZone, keeps a valid one and rejects invalid ones', async () => {
+    expect((await loadConversationConfig(await configFile('{}'))).timeZone).toBe('UTC');
+    expect((await loadConversationConfig(await configFile('{"timeZone":"Europe/Rome"}'))).timeZone)
+      .toBe('Europe/Rome');
+    for (const timeZone of [7, '', 'Mars/Olympus']) {
+      await expect(loadConversationConfig(await configFile(JSON.stringify({ timeZone }))))
+        .rejects.toThrow('Invalid conversation time zone');
+    }
   });
 
   it('keeps a supplied archive path and rejects an unusable one', async () => {

@@ -129,6 +129,37 @@ test('each agent calls the provider, endpoint and key of its own file', async ()
   }
 });
 
+// Verification: Prova della data corrente per gli agenti
+test('specialists receive the date line in the given time zone and the orchestrator does not', async () => {
+  const fixture = await files();
+  const systems: string[] = [];
+  vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+    const body = JSON.parse(await new Request(input, init).text()) as { messages?: Array<{ content?: unknown }> };
+    systems.push(String(body.messages?.[0]?.content));
+    return new Response('controlled failure', { status: 400 });
+  });
+  try {
+    await writeFile(join(fixture.directory, 'generic.json'), JSON.stringify({
+      description: 'General questions.', instructions: 'Answer.', llm: fixture.llm }));
+    const clock = { now: () => new Date('2026-10-19T07:41:00Z') };
+    const agents = await prepareAgents(fixture.directory, async () => { throw new Error('Should not connect'); },
+      { timeZone: 'Europe/Rome', clock });
+    const history = { id: 'conversation', createdAt: new Date(0), lastActivityAt: new Date(0),
+      turns: [{ id: 'turn', acceptedAt: new Date(0), status: 'pending' as const, text: 'Ciao' }] };
+    const never = { requested: new Promise<void>(() => { /* never */ }) };
+    for (const reply of [agents.specialists[0]!.reply, agents.orchestrator]) {
+      await expect((async () => { for await (const part of reply.produce(history, never)) void part; })())
+        .rejects.toThrow();
+    }
+    expect(systems[0]).toContain('Answer.\nCurrent date and time: Monday, 19 October 2026 at 09:41 (Europe/Rome).');
+    expect(systems[1]).toContain('Coordinate.');
+    expect(systems[1]).not.toContain('Current date and time');
+  } finally {
+    vi.unstubAllGlobals();
+    await fixture.close();
+  }
+});
+
 test('closes an earlier MCP connection when a later agent cannot start', async () => {
   const fixture = await files();
   const closed: string[] = [];

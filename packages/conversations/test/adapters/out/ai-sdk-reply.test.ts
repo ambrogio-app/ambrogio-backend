@@ -261,6 +261,42 @@ test('specialist offers only the listed MCP tools with the names of the discover
   expect(called).toEqual(['light.toggle']);
 });
 
+// Verification: Prova della data corrente per gli agenti
+test('specialists receive the current date and time in the configured time zone at every turn', async () => {
+  let now = new Date('2026-10-19T07:41:00Z');
+  const clock = { now: () => now };
+  const rome = { ...settings, currentTime: { timeZone: 'Europe/Rome', clock } };
+  const line = (value: string) => `Current date and time: ${value}.`;
+
+  const toolModel = scripted({ parts: answer('Uno.'), reason: 'stop' }, { parts: answer('Due.'), reason: 'stop' });
+  const withTools = new AiSdkToolAgentReply(rome, { tools: [], prompts: ['assist'] },
+    { getPrompt: async () => 'Server context', async callTool() { throw new Error('Unexpected tool call'); } },
+    1, toolModel);
+  await collect(withTools.produce(history, never()));
+  now = new Date('2026-10-20T07:41:00Z');
+  await collect(withTools.produce(history, never()));
+  const [first, second] = toolModel.doStreamCalls.map(call => String(call.prompt[0]?.content));
+  expect(first).toBe(`${settings.instructions}\n${line('Monday, 19 October 2026 at 09:41 (Europe/Rome)')}`
+    + '\n\nInstructions and context from the connected MCP server:\nServer context\nPut the words of your reply in answer. '
+    + 'Set expectsReply to true only when the answer asks the user to reply; otherwise set it to false.');
+  expect(second).toContain(line('Tuesday, 20 October 2026 at 09:41 (Europe/Rome)'));
+
+  now = new Date('2026-10-19T07:41:00Z');
+  const knowledgeModel = scripted({ parts: answer('Tre.'), reason: 'stop' });
+  const knowledge = new AiSdkKnowledgeAgentReply({ ...settings, currentTime: { timeZone: 'UTC', clock } },
+    knowledgeModel);
+  await collect(knowledge.produce(history, never()));
+  expect(String(knowledgeModel.doStreamCalls[0]?.prompt[0]?.content)).toBe(
+    `${settings.instructions}\n${line('Monday, 19 October 2026 at 07:41 (UTC)')}\nPut the words of your reply in answer. `
+    + 'Set expectsReply to true only when the answer asks the user to reply; otherwise set it to false.');
+
+  const router = chooser('{"agent":"home"}');
+  const orchestrator = new AiSdkOrchestratorReply(rome, [recordingAgent('home', 'Control home', [text('Ok.')])],
+    router);
+  await collect(orchestrator.produce(history, never()));
+  expect(String(router.doGenerateCalls[0]?.prompt[0]?.content)).not.toContain('Current date and time');
+});
+
 // Verification: Prova delle istruzioni del server MCP
 test('specialist reads the server prompts at every turn and puts them before the reply format', async () => {
   const versions = ['Static Context: kitchen light', 'Static Context: kitchen and bedroom lights'];

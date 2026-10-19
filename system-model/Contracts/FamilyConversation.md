@@ -65,6 +65,19 @@ Prima di attivare gli ingressi conversazionali, il server confronta lo schema SQ
   * define: [Migrazione automatica dell'archivio delle conversazioni](../Requirements/FamilyConversation.md#migrazione-automatica-dellarchivio-delle-conversazioni)
 ---
 
+### Campo timeZone del componente Conversazioni
+
+Decisione concordata con la persona il 19 ottobre 2026: il fuso orario della famiglia è un campo del file JSON del componente «Conversazioni», non la variabile `TZ` del processo, così resta nella configurazione validata all'avvio.
+
+Il file JSON locale del componente «Conversazioni» ammette il campo facoltativo `timeZone`, una stringa con il nome di un fuso orario IANA accettato dal runtime, per esempio `Europe/Rome`. Quando il campo è assente il fuso effettivo è `UTC`, così le configurazioni esistenti restano valide. Un valore che non è una stringa, una stringa vuota o un nome che il runtime non riconosce come fuso orario rendono invalida la configurazione e impediscono l'avvio con il messaggio `Invalid conversation time zone`.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Configurazione del fuso orario della conversazione](../Requirements/FamilyConversation.md#configurazione-del-fuso-orario-della-conversazione)
+---
+
 ### Causa tecnica dell'errore del turno
 
 Decisione concordata il 17 ottobre 2026, dopo la prova del canale con il backend installato, in cui i guasti della produzione della risposta non lasciavano alcuna diagnostica. Quando il caso d'uso del turno conclude un turno ammesso con l'esito di errore perché la lettura dello storico o la produzione della risposta ha lanciato un guasto o ha violato il contratto della risposta, per esempio senza l'indicazione `expectsReply`, l'esito `failed` restituito all'adapter di ingresso porta anche la causa tecnica originale, senza modificarla. Il caso d'uso non registra log e non conserva la causa: l'esito persistente contiene soltanto il messaggio pubblico. L'adapter del canale conversazionale, che decide l'esito comunicato al client, emette un solo evento `conversation_reply_failed` con `err` normalizzato secondo il contratto di normalizzazione diagnostica e con il `correlationId` della sessione; `turn.failed` e la trasmissione dell'errore mantengono il messaggio pubblico. Un esito `failed` senza causa tecnica non produce questo evento.
@@ -151,6 +164,19 @@ Quando un agente specializzato usa OAuth tra servizi, il suo JSON contiene `mcp.
 
 #### Relations
   * define: [Autenticazione OAuth tra servizi del client MCP](../Requirements/FamilyConversation.md#autenticazione-oauth-tra-servizi-del-client-mcp)
+---
+
+### Data e ora correnti nelle istruzioni degli agenti
+
+Decisione concordata con la persona il 19 ottobre 2026: nella prova dell'agente meteo il modello, senza conoscere la data di oggi, sbagliava i giorni indicati dalla famiglia, per esempio il fine settimana o «giovedì».
+
+A ogni turno delegato a un agente specializzato, con o senza connettore MCP, l'adapter legge l'istante corrente dalla capacità di orologio fornita dalla composition root e aggiunge alle istruzioni di sistema dell'agente, subito dopo le istruzioni del suo file JSON e prima delle istruzioni del server MCP e delle indicazioni sul formato della risposta, la riga `Current date and time: <data e ora> (<fuso>).`. `<data e ora>` è l'istante formattato nel fuso effettivo del componente «Conversazioni» con le convenzioni `en-GB` di `Intl.DateTimeFormat`: giorno della settimana e mese per esteso, giorno, anno, ore e minuti in formato 24 ore, per esempio `Monday, 19 October 2026 at 09:41`. `<fuso>` è il nome del fuso effettivo, per esempio `Europe/Rome` o `UTC`. L'orchestratore non riceve la riga, perché sceglie soltanto l'agente. La riga non viene conservata nello storico della conversazione.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Data e ora correnti per gli agenti specializzati](../Requirements/FamilyConversation.md#data-e-ora-correnti-per-gli-agenti-specializzati)
 ---
 
 ### Dati dei casi d'uso indipendenti dagli ingressi

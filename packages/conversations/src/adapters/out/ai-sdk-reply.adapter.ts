@@ -23,6 +23,8 @@ export type AgentSettings = Readonly<{
   /** Only for `openai-compatible`: the API the agent talks to. */
   baseURL?: string;
   options?: Readonly<Record<string, unknown>>;
+  /** Only for specialists: the clock and time zone of the date line added at every turn. */
+  currentTime?: Readonly<{ timeZone: string; clock: Readonly<{ now(): Date }> }>;
 }>;
 
 type ToolClient = {
@@ -117,6 +119,16 @@ function withServerPrompts(instructions: string, prompts: readonly string[]): st
     : `${instructions}\n\nInstructions and context from the connected MCP server:\n${prompts.join('\n\n')}`;
 }
 
+/** The agent's instructions followed by the current date and time, read at every turn. */
+function withCurrentTime(settings: AgentSettings): string {
+  const current = settings.currentTime;
+  if (!current) return settings.instructions;
+  const formatted = new Intl.DateTimeFormat('en-GB', { timeZone: current.timeZone, weekday: 'long',
+    day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+    .format(current.clock.now());
+  return `${settings.instructions}\nCurrent date and time: ${formatted} (${current.timeZone}).`;
+}
+
 function replyInstructions(instructions: string): string {
   return `${instructions}\nPut the words of your reply in answer. `
     + 'Set expectsReply to true only when the answer asks the user to reply; otherwise set it to false.';
@@ -191,7 +203,7 @@ export class AiSdkToolAgentReply implements ProduceConversationReply {
       }),
     ]]));
     const response = streamText({ model: this.model,
-      system: replyInstructions(withServerPrompts(this.settings.instructions, prompts)),
+      system: replyInstructions(withServerPrompts(withCurrentTime(this.settings), prompts)),
       messages: messagesFor(history), tools, output: replyOutput,
       toolCallConcurrency: 1, stopWhen: stepCountIs(this.maxToolCalls + 1),
       maxRetries: 0, abortSignal: signal, ...this.options });
@@ -214,7 +226,7 @@ export class AiSdkKnowledgeAgentReply implements ProduceConversationReply {
 
   async *produce(history: ConversationHistory, cancellation: ReplyCancellation): AsyncIterable<ReplyPart> {
     const signal = abortSignalFor(cancellation);
-    const response = streamText({ model: this.model, system: replyInstructions(this.settings.instructions),
+    const response = streamText({ model: this.model, system: replyInstructions(withCurrentTime(this.settings)),
       messages: messagesFor(history), output: replyOutput, maxRetries: 0, abortSignal: signal, ...this.options });
     try {
       const emitted = yield* answerParts(response);

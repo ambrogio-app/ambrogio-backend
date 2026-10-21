@@ -1,0 +1,14 @@
+{
+  "languages": {
+    "it": {
+      "voskModelPath": "/opt/ambrogio/models/vosk-model-small-it-0.22",
+      "voiceEngine": "piper",
+      "voiceModelDir": "/opt/ambrogio/voices/vits-piper-it_IT-paola-medium"
+    },
+    "en": {
+      "voskModelPath": "/opt/ambrogio/models/vosk-model-small-en-us-0.15",
+      "voiceEngine": "piper",
+      "voiceModelDir": "/opt/ambrogio/voices/vits-piper-en_US-kristin-medium"
+    }
+  }
+}

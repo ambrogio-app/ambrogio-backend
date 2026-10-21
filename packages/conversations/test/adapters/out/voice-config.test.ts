@@ -41,6 +41,33 @@ it('validates the Vosk model and the voice directory', async () => {
     tokens: join(voice, 'tokens.txt'), dataDir: join(voice, 'espeak-ng-data') });
 });
 
+// Verification: Analisi della selezione vocale per lingua
+it('selects explicit paths for the active language without loading the other profile', async () => {
+  const { directory, vosk, voice, kokoro, config } = await kokoroFixture();
+  const otherItalianVoice = join(directory, 'other-italian-voice');
+  await mkdir(join(otherItalianVoice, 'espeak-ng-data'), { recursive: true });
+  await writeFile(join(otherItalianVoice, 'other.onnx'), 'fixture');
+  await writeFile(join(otherItalianVoice, 'tokens.txt'), 'a 1\n');
+  const englishVosk = join(directory, 'english-vosk');
+  await mkdir(englishVosk);
+  const italian = { voskModelPath: vosk, voiceEngine: 'piper', voiceModelDir: otherItalianVoice };
+  const english = { voskModelPath: englishVosk, voiceEngine: 'kokoro', voiceModelDir: kokoro,
+    voiceSpeaker: 3, voiceLanguage: 'en' };
+  await writeFile(config, JSON.stringify({ languages: { it: italian, en: english } }));
+  expect(await loadVoiceConfig(config, 'it')).toEqual(italian);
+  expect(await loadVoiceConfig(config, 'en')).toEqual(english);
+  // The unselected model paths are not opened until that language is active.
+  await rm(englishVosk, { recursive: true });
+  expect(await loadVoiceConfig(config, 'it')).toEqual(italian);
+  await expect(loadVoiceConfig(config, 'en')).rejects.toThrow('Voice resources are unavailable');
+  // Choosing among Italian voices is by directory path, with no fixed catalogue ID.
+  await writeFile(config, JSON.stringify({ languages: { it: { ...italian, voiceModelDir: voice } } }));
+  expect(await loadVoiceConfig(config, 'it')).toMatchObject({ voiceModelDir: voice });
+  await expect(loadVoiceConfig(config, 'en')).rejects.toThrow('Invalid voice configuration file');
+  await writeFile(config, JSON.stringify({ languages: { it: italian, en: { ...english, voiceEngine: 'unknown' } } }));
+  await expect(loadVoiceConfig(config, 'it')).rejects.toThrow('Invalid voice configuration file');
+});
+
 it('rejects missing, empty and unknown fields, including the former Piper paths', async () => {
   const { vosk, voice, config } = await fixture();
   for (const value of [{ voskModelPath: vosk, voiceEngine: 'piper' },

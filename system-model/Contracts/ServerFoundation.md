@@ -11,9 +11,20 @@ Alla richiesta di arresto ordinato, il server impedisce subito nuove ammissioni 
   * define: [Interruzione dei turni durante l'arresto](../Requirements/ServerFoundation.md#interruzione-dei-turni-durante-larresto)
 ---
 
+### Catalogo bilingue dei modelli vocali nell'immagine backend
+
+Decisione concordata il 21 ottobre 2026: l'immagine runtime include `vosk-model-small-it-0.22` e `vosk-model-small-en-us-0.15`, le voci Piper italiane Riccardo x_low e Paola medium già distribuite, la voce inglese `vits-piper-en_US-kristin-medium` e il modello multilingue `kokoro-multi-lang-v1_0`, con voci italiane e inglesi. La build scarica archivi con versioni fissate, ne verifica SHA-256 e conserva provenienza e licenze. Gli esempi selezionano Piper per le macchine modeste; Kokoro è disponibile senza download aggiuntivo e viene caricato solo se indicato dal profilo attivo. I modelli esterni rimangono configurabili. L'inclusione nell'immagine sostituisce la precedente decisione di richiedere sempre mount esterni per Vosk e Kokoro.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Modelli vocali italiani e inglesi inclusi](../Requirements/ServerFoundation.md#modelli-vocali-italiani-e-inglesi-inclusi)
+---
+
 ### Catalogo delle voci italiane nell'immagine backend
 
-L'immagine backend contiene in `/opt/ambrogio/voices` le directory `vits-piper-it_IT-riccardo-x_low` e `vits-piper-it_IT-paola-medium`, ciascuna con il modello `.onnx`, il JSON originale della voce, `tokens.txt`, `espeak-ng-data/` e la scheda del modello, oltre a una nota di provenienza e licenza. Le directory provengono dagli archivi della release `tts-models` di k2-fsa/sherpa-onnx, scaricati durante la build e verificati con SHA-256 fissati: `7541f75778afa164e44e34baaef63befad7698595df26a95ca944b63ef1a16b4` per Paola medium e `8ad0791558ae2b3e96054fc5756ae3ae2f6457fb1765bc01f43bbab85e0a7021` per Riccardo x_low; un'impronta diversa interrompe la build. Le voci sono rilasciate con licenza MIT da rhasspy/piper-voices e convertite per sherpa-onnx da k2-fsa. Il JSON vocale sceglie una sola voce tramite `voiceEngine` uguale a `piper` e `voiceModelDir`; l'installazione di riferimento seleziona Paola medium. Un mount in sola lettura su `/opt/ambrogio/voices` sostituisce il catalogo incluso e permette di usare voci proprie con la stessa struttura di directory. Il modello Kokoro non fa parte del catalogo incluso: è montato dall'installazione in un percorso distinto. Il modello Vosk rimane esterno e usa un percorso distinto. Non è prevista la scelta della voce durante una conversazione.
+L'immagine backend contiene in `/opt/ambrogio/voices` le directory `vits-piper-it_IT-riccardo-x_low` e `vits-piper-it_IT-paola-medium`, ciascuna con il modello `.onnx`, il JSON originale della voce, `tokens.txt`, `espeak-ng-data/` e la scheda del modello, oltre a una nota di provenienza e licenza. Le directory provengono dagli archivi della release `tts-models` di k2-fsa/sherpa-onnx, scaricati durante la build e verificati con SHA-256 fissati: `7541f75778afa164e44e34baaef63befad7698595df26a95ca944b63ef1a16b4` per Paola medium e `8ad0791558ae2b3e96054fc5756ae3ae2f6457fb1765bc01f43bbab85e0a7021` per Riccardo x_low; un'impronta diversa interrompe la build. Le voci sono rilasciate con licenza MIT da rhasspy/piper-voices e convertite per sherpa-onnx da k2-fsa. Il JSON vocale può scegliere una voce per lingua tramite percorsi espliciti; l'installazione di riferimento seleziona Paola medium per l'italiano. Un mount in sola lettura su `/opt/ambrogio/voices` sostituisce il catalogo incluso e permette di usare voci proprie con la stessa struttura di directory. Il catalogo bilingue comprende ora anche i modelli Vosk e Kokoro inclusi secondo la specifica «Catalogo bilingue dei modelli vocali nell'immagine backend»; i mount restano disponibili per modelli esterni. Non è prevista la scelta della voce durante una conversazione.
 
 #### Metadata
   * type: specification
@@ -56,7 +67,7 @@ Motivazione: Martin Fowler sostiene una politica coerente dei nomi dei ruoli e l
 
 ### Distribuzione dei modelli vocali
 
-Quando la voce è abilitata, Vosk e la sintesi vocale sherpa-onnx sono eseguiti nel processo backend del medesimo container Docker. Le librerie necessarie a Vosk e a sherpa-onnx e le voci italiane Riccardo x_low e Paola medium appartengono all'immagine runtime; l'immagine non contiene un ambiente Python né il binario Piper. Il modello di trascrizione Vosk è fornito tramite una directory esterna montata in sola lettura. Una directory di voci montata in sola lettura al posto di quella inclusa nell'immagine può sostituire il catalogo predefinito senza ricostruire l'immagine. Il componente vocale riceve i percorsi dalla configurazione validata e ne verifica la disponibilità prima di attivare l'ingresso vocale; un modello necessario assente, illeggibile o non caricabile impedisce l'avvio. Quando la voce è disabilitata, i percorsi dei modelli non sono richiesti.
+Quando la voce è abilitata, Vosk e la sintesi vocale sherpa-onnx sono eseguiti nel processo backend del medesimo container Docker. Le librerie necessarie a Vosk e a sherpa-onnx, i modelli Vosk italiani e inglesi, le voci Piper italiane e inglesi e il modello Kokoro multilingue appartengono all'immagine runtime; l'immagine non contiene un ambiente Python né il binario Piper. Una directory di voci montata in sola lettura al posto di quella inclusa nell'immagine può sostituire il catalogo predefinito senza ricostruire l'immagine. Il componente vocale riceve i percorsi dalla configurazione validata e ne verifica la disponibilità prima di attivare l'ingresso vocale; un modello necessario assente, illeggibile o non caricabile impedisce l'avvio. Quando la voce è disabilitata, i percorsi dei modelli non sono richiesti.
 
 #### Metadata
   * type: specification
@@ -281,4 +292,3 @@ Una variante può contenere solo `kind` oppure aggiungere campi propri, tipizzat
 #### Relations
   * define: [Campi specifici dei rifiuti previsti](../Requirements/ServerFoundation.md#campi-specifici-dei-rifiuti-previsti)
 ---
-

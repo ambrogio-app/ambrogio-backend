@@ -631,6 +631,25 @@ Raggruppa i controlli sulla preparazione del server in TypeScript ESM e sulla su
   * type: verification-objective
 ---
 
+### Analisi del catalogo vocale bilingue dell'immagine
+
+Costruire l'immagine e ispezionare gli archivi fissati, le impronte verificate e i file runtime di Vosk italiano e inglese, delle voci Piper italiane e inglesi e del modello Kokoro multilingue. Eseguire una breve trascrizione e una sintesi per ogni lingua e motore disponibile nell'immagine.
+
+#### Details
+L'analisi passa se tutte le risorse sono leggibili dentro il container senza mount, le impronte corrispondono a quelle fissate e Vosk, Piper e Kokoro producono risultati non vuoti in entrambe le lingue.
+
+Eseguita localmente il 21 ottobre 2026: build Docker PASS con verifica SHA-256 dei sei archivi; `scripts/verify-docker-image.mjs` PASS. Piper ha prodotto PCM con Riccardo, Paola e Kristin; Kokoro ha prodotto PCM con speaker italiani e inglesi; Vosk ha trascritto correttamente brevi frasi sintetizzate in italiano e inglese. La prova ha usato i modelli inclusi senza mount per questi casi e un mount in sola lettura per la voce personalizzata. L'immagine non è stata pubblicata.
+
+Sull'installazione di riferimento la stessa immagine non pubblicata ha avviato un container separato con modelli inclusi e un modello Vosk montato. Kokoro ha prodotto audio non vuoto in italiano e inglese sul server di destinazione; il container ha completato turni vocali nelle due lingue. Il servizio esistente è rimasto attivo durante la prova.
+
+#### Metadata
+  * type: analysis-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * verify: [Modelli vocali italiani e inglesi inclusi](../Requirements/ServerFoundation.md#modelli-vocali-italiani-e-inglesi-inclusi)
+---
+
 ### Controllo degli esempi di configurazione
 
 Esaminare tutti gli esempi JSON di configurazione presenti nel repository e i campi in cui potrebbero comparire credenziali.
@@ -922,7 +941,7 @@ La prova passa se gli script eseguono i test backend tramite Vitest e il runner 
 Costruire l'immagine Docker del server a partire dagli artefatti del progetto e avviarla con il solo runtime Docker, fornendo dall'esterno i file di configurazione di prova; verificare l'avvio e una richiesta a un ingresso HTTP presente. Esaminare l'eventuale file Compose per accertare che sia un esempio di avvio e non un prerequisito della build o dell'esecuzione.
 
 #### Details
-La prova passa se il progetto produce un'immagine eseguibile, il server si avvia e risponde usando l'immagine senza Docker Compose e nessuna fase indispensabile richiede Compose. Fallisce se l'immagine manca, non è eseguibile oppure l'avvio dipende da Compose. La prova resta da eseguire quando gli artefatti di distribuzione e l'ingresso HTTP sono implementati.
+La prova passa se il progetto produce un'immagine eseguibile, il server si avvia e risponde usando l'immagine senza Docker Compose e nessuna fase indispensabile richiede Compose. Fallisce se l'immagine manca, non è eseguibile oppure l'avvio dipende da Compose. Eseguita localmente il 21 ottobre 2026 con `scripts/verify-docker-image.mjs`: PASS con JSON esterni, archivio SQLite su mount, voce attiva in italiano e inglese e risposta HTTP 200 per entrambe le lingue, senza Compose.
 
 #### Metadata
   * type: test-verification
@@ -1052,4 +1071,3 @@ Eseguita il 17 ottobre 2026 sulla revisione `7fce83e35ca957829debac2eb81cd27335d
   * satisfiedBy: [verify-docker-image.mjs](../../scripts/verify-docker-image.mjs)
   * verify: [Voci italiane incluse nell'immagine](../Requirements/ServerFoundation.md#voci-italiane-incluse-nellimmagine)
 ---
-

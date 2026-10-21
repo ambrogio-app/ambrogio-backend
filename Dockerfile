@@ -1,7 +1,7 @@
 FROM node:24-bookworm-slim AS build
 
 WORKDIR /workspace
-RUN apt-get update && apt-get install -y --no-install-recommends bzip2 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends bzip2 unzip && rm -rf /var/lib/apt/lists/*
 RUN npm install --global pnpm@12.11.2
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
@@ -12,8 +12,8 @@ RUN pnpm install --frozen-lockfile
 COPY apps/server/src/ apps/server/src/
 COPY packages/conversations/src/ packages/conversations/src/
 RUN pnpm build
-COPY scripts/fetch-voices.mjs /tmp/fetch-voices.mjs
-RUN node /tmp/fetch-voices.mjs /opt/ambrogio/voices
+COPY scripts/fetch-speech-models.mjs /tmp/fetch-speech-models.mjs
+RUN node /tmp/fetch-speech-models.mjs /opt/ambrogio/voices /opt/ambrogio/models /opt/ambrogio/kokoro
 
 FROM node:24-bookworm-slim
 
@@ -22,6 +22,8 @@ LABEL org.opencontainers.image.source="https://github.com/ambrogio-app/ambrogio-
       org.opencontainers.image.licenses="MIT"
 RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 && rm -rf /var/lib/apt/lists/*
 COPY --from=build /opt/ambrogio/voices/ /opt/ambrogio/voices/
+COPY --from=build /opt/ambrogio/models/ /opt/ambrogio/models/
+COPY --from=build /opt/ambrogio/kokoro/ /opt/ambrogio/kokoro/
 COPY voices/README.md /opt/ambrogio/voices/README.md
 COPY --from=build /workspace/package.json ./
 COPY protocol/ protocol/

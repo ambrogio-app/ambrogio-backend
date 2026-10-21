@@ -25,6 +25,8 @@ export type AgentSettings = Readonly<{
   options?: Readonly<Record<string, unknown>>;
   /** Only for specialists: the clock and time zone of the date line added at every turn. */
   currentTime?: Readonly<{ timeZone: string; clock: Readonly<{ now(): Date }> }>;
+  /** Only for specialists: the language selected by the installation. */
+  responseLanguage?: 'en' | 'it';
 }>;
 
 type ToolClient = {
@@ -129,8 +131,10 @@ function withCurrentTime(settings: AgentSettings): string {
   return `${settings.instructions}\nCurrent date and time: ${formatted} (${current.timeZone}).`;
 }
 
-function replyInstructions(instructions: string): string {
-  return `${instructions}\nPut the words of your reply in answer. `
+function replyInstructions(instructions: string, language?: 'en' | 'it'): string {
+  const languageLine = language === undefined ? ''
+    : `\nAnswer in ${language === 'it' ? 'Italian' : 'English'}.`;
+  return `${instructions}${languageLine}\nPut the words of your reply in answer. `
     + 'Set expectsReply to true only when the answer asks the user to reply; otherwise set it to false.';
 }
 
@@ -203,7 +207,8 @@ export class AiSdkToolAgentReply implements ProduceConversationReply {
       }),
     ]]));
     const response = streamText({ model: this.model,
-      system: replyInstructions(withServerPrompts(withCurrentTime(this.settings), prompts)),
+      system: replyInstructions(withServerPrompts(withCurrentTime(this.settings), prompts),
+        this.settings.responseLanguage),
       messages: messagesFor(history), tools, output: replyOutput,
       toolCallConcurrency: 1, stopWhen: stepCountIs(this.maxToolCalls + 1),
       maxRetries: 0, abortSignal: signal, ...this.options });
@@ -226,7 +231,8 @@ export class AiSdkKnowledgeAgentReply implements ProduceConversationReply {
 
   async *produce(history: ConversationHistory, cancellation: ReplyCancellation): AsyncIterable<ReplyPart> {
     const signal = abortSignalFor(cancellation);
-    const response = streamText({ model: this.model, system: replyInstructions(withCurrentTime(this.settings)),
+    const response = streamText({ model: this.model,
+      system: replyInstructions(withCurrentTime(this.settings), this.settings.responseLanguage),
       messages: messagesFor(history), output: replyOutput, maxRetries: 0, abortSignal: signal, ...this.options });
     try {
       const emitted = yield* answerParts(response);

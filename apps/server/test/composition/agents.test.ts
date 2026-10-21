@@ -160,6 +160,51 @@ test('specialists receive the date line in the given time zone and the orchestra
   }
 });
 
+// Verification: Analisi della lingua nelle istruzioni degli agenti
+test('applies the configured response language to specialists but not the orchestrator', async () => {
+  const fixture = await files();
+  const systems: string[] = [];
+  vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+    const body = JSON.parse(await new Request(input, init).text()) as { messages?: Array<{ content?: unknown }> };
+    systems.push(String(body.messages?.[0]?.content));
+    return new Response('controlled failure', { status: 400 });
+  });
+  try {
+    await writeFile(join(fixture.directory, 'generic.json'), JSON.stringify({
+      description: 'General questions.', instructions: 'Answer briefly.', llm: fixture.llm }));
+    await writeFile(join(fixture.directory, 'weather.json'), JSON.stringify({
+      description: 'Weather.', instructions: 'Use the forecast.', llm: fixture.llm, maxToolCalls: 1,
+      mcp: { url: 'https://weather.example/mcp' } }));
+    const connect = async () => ({
+      listTools: async () => [], listPrompts: async () => ['context'],
+      getPrompt: async () => 'Weather context.', callTool: async () => ({ isError: false, content: [] }),
+      close: async () => {},
+    });
+    const history = { id: 'conversation', createdAt: new Date(0), lastActivityAt: new Date(0),
+      turns: [{ id: 'turn', acceptedAt: new Date(0), status: 'pending' as const, text: 'Hello' }] };
+    const never = { requested: new Promise<void>(() => { /* never */ }) };
+    for (const language of ['it', 'en'] as const) {
+      const agents = await prepareAgents(fixture.directory, connect, undefined, language);
+      try {
+        for (const reply of [...agents.specialists.map(agent => agent.reply), agents.orchestrator]) {
+          await expect((async () => { for await (const part of reply.produce(history, never)) void part; })())
+            .rejects.toThrow();
+        }
+      } finally { await agents.close(); }
+    }
+    expect(systems).toHaveLength(6);
+    for (const [offset, language] of [[0, 'Italian'], [3, 'English']] as const) {
+      expect(systems[offset]).toContain(`Answer in ${language}.`);
+      expect(systems[offset + 1]).toContain(`Weather context.\nAnswer in ${language}.`);
+      expect(systems[offset + 2]).not.toContain('Answer in Italian.');
+      expect(systems[offset + 2]).not.toContain('Answer in English.');
+    }
+  } finally {
+    vi.unstubAllGlobals();
+    await fixture.close();
+  }
+});
+
 test('closes an earlier MCP connection when a later agent cannot start', async () => {
   const fixture = await files();
   const closed: string[] = [];

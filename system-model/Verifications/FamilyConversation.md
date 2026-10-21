@@ -311,6 +311,25 @@ Raggruppa le verifiche della trascrizione, della risposta parlata, della conserv
   * type: verification-objective
 ---
 
+### Analisi della selezione vocale per lingua
+
+Preparare un file con profili italiani e inglesi che indicano percorsi espliciti alle directory incluse e a directory esterne montate, scegliendo tra più voci della stessa lingua, Piper e Kokoro. Provare la lingua effettiva italiana e inglese, il profilo attivo mancante, i campi invalidi nell'altro profilo, il formato precedente a profilo singolo e la voce disabilitata. Osservare risorse caricate, lingua Vosk, voce e lingua di fonetizzazione Kokoro.
+
+#### Details
+L'analisi passa se ciascuna lingua seleziona esattamente i percorsi indicati, anche quando provengono da un mount o quando esistono più voci della stessa lingua; il profilo mancante o strutturalmente invalido rende il file invalido, l'altro profilo non carica i modelli, il formato precedente funziona e la voce disabilitata non carica modelli.
+
+Eseguita localmente il 21 ottobre 2026: `vitest run` PASS (337 test, 2 saltati); la prova di `voice-config.test.ts` seleziona percorsi diversi per lingua, cambia tra due voci italiane e controlla profilo mancante, profilo non attivo invalido e risorse non attive non caricate. `scripts/verify-docker-image.mjs` PASS sull'immagine locale: seleziona i due profili con i modelli inclusi, seleziona una seconda voce italiana tramite mount in sola lettura e avvia il server con la voce attiva sia in italiano sia in inglese. I test esistenti coprono il formato a profilo singolo e l'ingresso testuale senza voce.
+
+Eseguita anche sull'installazione di riferimento il 21 ottobre 2026 senza pubblicazione: l'immagine locale è stata trasferita direttamente e avviata in un container separato, con configurazione e archivio temporanei. Il profilo inglese ha risposto in inglese a una domanda testuale italiana con audio non vuoto; il profilo italiano ha risposto in italiano alla stessa domanda. Nei turni audio completi Vosk ha trascritto una frase italiana tramite modello montato e una frase inglese tramite modello incluso; gli agenti hanno risposto nelle rispettive lingue e Piper ha prodotto audio. La prova non ha reindirizzato il satellite fisico.
+
+#### Metadata
+  * type: analysis-verification
+
+#### Relations
+  * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
+  * verify: [Selezione dei modelli vocali inclusi per lingua](../Requirements/FamilyConversation.md#selezione-dei-modelli-vocali-inclusi-per-lingua)
+---
+
 ### Prova degli ingressi testuali senza voce
 
 Avviare un'installazione con la configurazione e le risorse vocali assenti, mantenendo configurati i soli componenti necessari alla chat testuale. Eseguire un turno tramite la chat testuale.
@@ -751,6 +770,21 @@ Raggruppa le verifiche della risposta testuale, dello storico degli scambi e del
   * type: verification-objective
 ---
 
+### Analisi della lingua nelle istruzioni degli agenti
+
+Con modelli controllati, preparare agenti specializzati con e senza MCP e un orchestratore. Ripetere con lingua italiana e inglese, osservando le istruzioni inviate ai modelli.
+
+#### Details
+L'analisi passa se ogni specialista riceve la direttiva della lingua effettiva e l'orchestratore non la riceve e continua a produrre solo un identificativo. Resta da eseguire dopo l'implementazione.
+
+#### Metadata
+  * type: analysis-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * verify: [Lingua configurata nelle risposte degli agenti](../Requirements/FamilyConversation.md#lingua-configurata-nelle-risposte-degli-agenti)
+---
+
 ### Analisi della proprietà dei controlli conversazionali
 
 Esaminare il percorso di un turno dall'adapter del canale conversazionale al caso d'uso Application, al Domain e all'archivio SQLite. Confrontare i controlli implementati con i contratti del turno vuoto, della conversazione richiesta, degli stati del turno e dell'ammissione concorrente; osservare anche dove il flusso si arresta dopo ciascun rifiuto.
@@ -780,6 +814,21 @@ Il controllo passa se lo stato persistente delle conversazioni è in SQLite e le
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * verify: [Disponibilità dello storico dopo riavvio](../Requirements/FamilyConversation.md#disponibilità-dello-storico-dopo-riavvio)
+---
+
+### Ispezione degli esempi inglesi degli agenti
+
+Esaminare tutti gli esempi distribuiti di generic.json, orchestrator.json e agenti specializzati, incluse istruzioni e descrizioni.
+
+#### Details
+L'ispezione passa se i testi sono in inglese, generic.json non prescrive una lingua fissa per la risposta e l'orchestratore è descritto soltanto come selettore dell'agente. Resta da eseguire dopo l'aggiornamento degli esempi.
+
+#### Metadata
+  * type: inspection-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * verify: [Esempi degli agenti in inglese](../Requirements/FamilyConversation.md#esempi-degli-agenti-in-inglese)
 ---
 
 ### Prova degli identificativi del turno ammesso
@@ -1571,4 +1620,3 @@ La prova passa se le migrazioni pendenti sono applicate automaticamente prima ch
   * satisfiedBy: [sqlite-archive-startup.test.ts](../../packages/conversations/test/adapters/out/sqlite-archive-startup.test.ts)
   * verify: [Migrazione automatica dell'archivio delle conversazioni](../Requirements/FamilyConversation.md#migrazione-automatica-dellarchivio-delle-conversazioni)
 ---
-

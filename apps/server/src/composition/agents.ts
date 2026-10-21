@@ -11,9 +11,10 @@ type ToolConnection = Pick<McpToolClient, 'listTools' | 'listPrompts' | 'getProm
 
 type CurrentTime = Readonly<{ timeZone: string; clock: Readonly<{ now(): Date }> }>;
 
-function settingsFor(config: AgentConfig, currentTime?: CurrentTime) {
+function settingsFor(config: AgentConfig, currentTime?: CurrentTime, responseLanguage?: 'en' | 'it') {
   return { provider: config.llm.provider, instructions: config.instructions,
     ...(currentTime === undefined ? {} : { currentTime }),
+    ...(responseLanguage === undefined ? {} : { responseLanguage }),
     model: config.llm.model, apiKey: config.llm.apiKey, options: config.llm.options,
     ...(config.llm.baseURL === undefined ? {} : { baseURL: config.llm.baseURL }) };
 }
@@ -24,6 +25,7 @@ export async function prepareAgents(
   connect: (connection: McpConnection) => Promise<ToolConnection> = McpToolClient.connect,
   // Specialists only: the orchestrator chooses the agent and does not need the date.
   currentTime: CurrentTime = { timeZone: 'UTC', clock: new SystemCurrentTime() },
+  responseLanguage: 'en' | 'it' = 'en',
 ): Promise<Readonly<{
   orchestrator: AiSdkOrchestratorReply;
   specialists: readonly Readonly<{ id: string; description: string; maxToolCalls?: number;
@@ -43,7 +45,7 @@ export async function prepareAgents(
       if (!config.mcp) {
         // An agent without MCP opens no connection and is offered no tools.
         specialists.push({ id: config.id, description: config.description!,
-          reply: new AiSdkKnowledgeAgentReply(settingsFor(config, currentTime)), tools: [] });
+          reply: new AiSdkKnowledgeAgentReply(settingsFor(config, currentTime, responseLanguage)), tools: [] });
         continue;
       }
       let mcp: ToolConnection;
@@ -63,7 +65,7 @@ export async function prepareAgents(
         // Name the agent only, as for a failed connection.
         throw new ProjectError(`Agent MCP tool unavailable: ${config.id}`);
       }
-      const reply = new AiSdkToolAgentReply(settingsFor(config, currentTime),
+      const reply = new AiSdkToolAgentReply(settingsFor(config, currentTime, responseLanguage),
         { tools, prompts, ...(offered === undefined ? {} : { offered }) }, mcp, config.maxToolCalls!);
       specialists.push({ id: config.id, description: config.description!,
         maxToolCalls: config.maxToolCalls!, reply, mcp,

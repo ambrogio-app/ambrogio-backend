@@ -1,16 +1,27 @@
-# Italian voices for sherpa-onnx
+# Speech models bundled in the backend image
 
-The Docker image contains the Piper voices **Riccardo x_low** and **Paola medium** in the format used by [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx), the library that synthesises speech inside the backend process. Each voice is a folder with the `.onnx` model, the voice's original JSON, `tokens.txt`, the pronunciation data `espeak-ng-data/` and the `MODEL_CARD`.
+The Docker image includes recognition and synthesis models for Italian and English.
+The build downloads the following fixed archives and checks their SHA-256 hashes in
+`scripts/fetch-speech-models.mjs` before extraction. The models are separate from
+the Ambrogio source code and retain their own licenses.
 
-The build downloads the archives `vits-piper-it_IT-riccardo-x_low.tar.bz2` and `vits-piper-it_IT-paola-medium.tar.bz2` from the k2-fsa/sherpa-onnx [`tts-models`](https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models) release and checks their SHA-256 hashes in `scripts/fetch-voices.mjs`:
+| Model | Source | SHA-256 |
+|---|---|---|
+| `vosk-model-small-it-0.22.zip` | [Vosk models](https://alphacephei.com/vosk/models) | `9ec65e75861d1c6c2e457cccd932705340dcdf233f5b239f00733b4de0bf3267` |
+| `vosk-model-small-en-us-0.15.zip` | [Vosk models](https://alphacephei.com/vosk/models) | `30f26242c4eb449f948e42cb302dd7a686cb29a3423a8367f99ff41780942498` |
+| `vits-piper-it_IT-riccardo-x_low.tar.bz2` | [sherpa-onnx TTS models](https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models) | `8ad0791558ae2b3e96054fc5756ae3ae2f6457fb1765bc01f43bbab85e0a7021` |
+| `vits-piper-it_IT-paola-medium.tar.bz2` | [sherpa-onnx TTS models](https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models) | `7541f75778afa164e44e34baaef63befad7698595df26a95ca944b63ef1a16b4` |
+| `vits-piper-en_US-kristin-medium.tar.bz2` | [sherpa-onnx TTS models](https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models) | `c2206f572df2956c50b1ae3367eebce3853c663e890cba8048cd62b1e4dbe6c7` |
+| `kokoro-multi-lang-v1_0.tar.bz2` | [sherpa-onnx TTS models](https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models) | `c5f7e2d2caf082bc1d20fb70334a61d99d20b484500aad32e7cf84c128ea3298` |
 
-| Archive | SHA-256 |
-|---|---|
-| `vits-piper-it_IT-riccardo-x_low.tar.bz2` | `8ad0791558ae2b3e96054fc5756ae3ae2f6457fb1765bc01f43bbab85e0a7021` |
-| `vits-piper-it_IT-paola-medium.tar.bz2` | `7541f75778afa164e44e34baaef63befad7698595df26a95ca944b63ef1a16b4` |
+Vosk models are under Apache-2.0 according to the [Vosk catalogue](https://alphacephei.com/vosk/models).
+The Piper voice folders contain their `MODEL_CARD` files; the source voices
+come from the [Piper catalogue](https://huggingface.co/rhasspy/piper-voices)
+under MIT. The bundled Kokoro archive contains its Apache-2.0 `LICENSE` file.
 
-The voices come from the [Piper Voices catalogue](https://huggingface.co/rhasspy/piper-voices), which releases them under the MIT license; k2-fsa converted them for sherpa-onnx, adding the model metadata, `tokens.txt` and `espeak-ng-data`. The model cards name the training datasets (M-AILABS for Riccardo and Voice-Dataset-Italian for Paola). These models are separate from the Ambrogio code.
-
-In the image the voices are in `/opt/ambrogio/voices`. The backend's voice file selects a voice with `voiceEngine: "piper"` and `voiceModelDir`, for example `/opt/ambrogio/voices/vits-piper-it_IT-paola-medium` or `/opt/ambrogio/voices/vits-piper-it_IT-riccardo-x_low`. The folder must contain exactly one `.onnx` file, `tokens.txt` and `espeak-ng-data/`. The voice is loaded once at startup: the choice applies to every connected satellite and needs a backend restart. To use other voices, for example in another language, mount a read-only folder on `/opt/ambrogio/voices`; the mount replaces the bundled folders and must contain the selected folder with the same structure. The Vosk model for speech recognition stays on a separate volume.
-
-Kokoro models, selected with `voiceEngine: "kokoro"`, `voiceSpeaker` (the number of the voice in the model) and `voiceLanguage` (an espeak-ng language code), are not included in the image: download them from the same release and mount them on a path other than `/opt/ambrogio/voices`, so that the bundled voices are not replaced. For `kokoro-multi-lang-v1_0` the SHA-256 of the archive is `c5f7e2d2caf082bc1d20fb70334a61d99d20b484500aad32e7cf84c128ea3298`.
+The image paths are `/opt/ambrogio/models/<vosk-model>`,
+`/opt/ambrogio/voices/<piper-voice>`, and
+`/opt/ambrogio/kokoro/kokoro-multi-lang-v1_0`. A read-only mount can
+replace a bundled directory to use other models. Piper is the practical
+default on modest CPUs. Kokoro is loaded only when the installation selects
+it; on a 4-core Celeron N5095 it produces audio more slowly than playback.

@@ -610,6 +610,19 @@ Quando un mapping del server deve gestire tutte le varianti di un'unione di rifi
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
+### Modelli vocali italiani e inglesi inclusi
+
+Quando il progetto distribuisce l'immagine Docker del backend, deve includere modelli Vosk per italiano e inglese, almeno una voce Piper per ciascuna lingua e un modello Kokoro multilingue con voci utilizzabili in entrambe le lingue, verificando provenienza e integrità degli archivi durante la build.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [Dockerfile](../../Dockerfile)
+  * satisfiedBy: [fetch-speech-models.mjs](../../scripts/fetch-speech-models.mjs)
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
 ### Nessun log automatico per esiti previsti
 
 Quando il server gestisce un rifiuto previsto di Domain o Application, un errore di protocollo previsto o un guasto tecnico tradotto in un esito previsto, non deve emettere automaticamente un log dedicato di livello `warn` o `error` per il solo verificarsi di tale esito.
@@ -946,7 +959,7 @@ Quando il progetto distribuisce l'immagine Docker del backend, deve includere le
 
 #### Relations
   * satisfiedBy: [Dockerfile](../../Dockerfile)
-  * satisfiedBy: [fetch-voices.mjs](../../scripts/fetch-voices.mjs)
+  * satisfiedBy: [fetch-speech-models.mjs](../../scripts/fetch-speech-models.mjs)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 

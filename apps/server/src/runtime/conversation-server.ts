@@ -14,9 +14,9 @@ import { startupPhase } from './startup-failure.js';
 /** Start the executable conversation ingress with the configured orchestrator. */
 export async function startConversationServer(environment: NodeJS.ProcessEnv = process.env,
   agentDirectory = '/etc/ambrogio/agents',
-  prepare: (directory: string, timeZone: string) => Promise<Readonly<{
-    orchestrator: ProduceConversationReply; close(): Promise<void> }>> = (directory, timeZone) =>
-    prepareAgents(directory, undefined, { timeZone, clock: new SystemCurrentTime() })) {
+  prepare: (directory: string, timeZone: string, language: 'en' | 'it') => Promise<Readonly<{
+    orchestrator: ProduceConversationReply; close(): Promise<void> }>> = (directory, timeZone, language) =>
+    prepareAgents(directory, undefined, { timeZone, clock: new SystemCurrentTime() }, language)) {
   const [http, conversations] = await Promise.all([
     loadHttpConfig(httpConfigPath(environment)),
     loadConversationConfig(conversationConfigPath(environment)),
@@ -25,8 +25,8 @@ export async function startConversationServer(environment: NodeJS.ProcessEnv = p
   if (voicePath !== undefined && !voicePath.trim()) {
     throw new ProjectError('Invalid voice configuration path');
   }
-  const voice = voicePath === undefined ? undefined : await loadVoiceConfig(voicePath);
-  const agents = await prepare(agentDirectory, conversations.timeZone);
+  const voice = voicePath === undefined ? undefined : await loadVoiceConfig(voicePath, conversations.language);
+  const agents = await prepare(agentDirectory, conversations.timeZone, conversations.language);
   let prepared: Awaited<ReturnType<typeof prepareConfiguredConversations>> | undefined;
   let built: Awaited<ReturnType<typeof buildConversationServer>> | undefined;
   try {

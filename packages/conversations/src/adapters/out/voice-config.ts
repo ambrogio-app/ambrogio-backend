@@ -76,14 +76,15 @@ function selection(fields: Record<string, unknown>, voiceModelDir: string): Voic
   return undefined;
 }
 
-export async function loadVoiceConfig(filename: string): Promise<VoiceConfig> {
-  let raw: unknown;
-  try { raw = JSON.parse(await readFile(filename, 'utf8')); }
-  catch { throw new ProjectError('Invalid voice configuration file'); }
+function fieldsOf(raw: unknown): Record<string, unknown> {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     throw new ProjectError('Invalid voice configuration file');
   }
-  const fields = raw as Record<string, unknown>;
+  return raw as Record<string, unknown>;
+}
+
+function parseVoiceConfig(raw: unknown): VoiceConfig {
+  const fields = fieldsOf(raw);
   if (Object.keys(fields).some(name => !fieldNames.includes(name))) {
     throw new ProjectError('Invalid voice configuration file');
   }
@@ -94,7 +95,25 @@ export async function loadVoiceConfig(filename: string): Promise<VoiceConfig> {
   }
   const voice = selection(fields, fields.voiceModelDir as string);
   if (!voice) throw new ProjectError('Invalid voice configuration file');
-  const config: VoiceConfig = { voskModelPath: fields.voskModelPath as string, ...voice };
+  return { voskModelPath: fields.voskModelPath as string, ...voice };
+}
+
+export async function loadVoiceConfig(filename: string, language: 'en' | 'it' = 'en'): Promise<VoiceConfig> {
+  let raw: unknown;
+  try { raw = JSON.parse(await readFile(filename, 'utf8')); }
+  catch { throw new ProjectError('Invalid voice configuration file'); }
+  const root = fieldsOf(raw);
+  let config: VoiceConfig;
+  if (Object.hasOwn(root, 'languages')) {
+    if (Object.keys(root).length !== 1) throw new ProjectError('Invalid voice configuration file');
+    const languages = fieldsOf(root.languages);
+    if (Object.keys(languages).some(name => name !== 'it' && name !== 'en') ||
+      !Object.hasOwn(languages, language)) throw new ProjectError('Invalid voice configuration file');
+    for (const profile of Object.values(languages)) parseVoiceConfig(profile);
+    config = parseVoiceConfig(languages[language]);
+  } else {
+    config = parseVoiceConfig(root);
+  }
   try {
     if (!(await stat(config.voskModelPath)).isDirectory()) throw new Error('not a directory');
     await access(config.voskModelPath, constants.R_OK);

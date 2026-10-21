@@ -95,7 +95,7 @@ sequenceDiagram
 - Node.js 24 or later; pnpm to build from source
 - Linux, or Docker (the published image is `linux/amd64`)
 - An API key for each LLM provider you use. Agents reach Mistral, OpenAI, Anthropic, Google Gemini or any OpenAI-compatible API through the [Vercel AI SDK](https://ai-sdk.dev/). The models must support tool calling and structured JSON output
-- For voice only: a [Vosk](https://alphacephei.com/vosk/models) speech model, such as `vosk-model-small-en-us-0.15`, and a voice for the same language. The Docker image already contains two Italian Piper voices; see [`voices/README.md`](voices/README.md)
+- For voice only when running from source: a [Vosk](https://alphacephei.com/vosk/models) speech model and a voice for the same language. The Docker image includes Italian and English Vosk, Piper and Kokoro models; see [`voices/README.md`](voices/README.md)
 
 **Main libraries**
 
@@ -132,14 +132,18 @@ Minimal examples:
 { "archivePath": "/data/conversations.sqlite", "language": "en" }
 
 // agents/orchestrator.json
-{ "instructions": "You are Ambrogio, the family assistant.",
+{ "instructions": "Choose the agent that should answer the family's latest message.",
   "llm": { "provider": "mistral", "model": "mistral-medium-latest", "apiKey": "..." } }
 
 // agents/generic.json
-{ "description": "Answers general questions.",
+{ "description": "Answers general questions and makes conversation.",
   "instructions": "Answer briefly.",
   "llm": { "provider": "mistral", "model": "mistral-medium-latest", "apiKey": "..." } }
 ```
+
+The [agent examples](examples/agents/) use English instructions. The backend
+adds the selected response language to each specialist's instructions; the
+orchestrator only chooses an agent.
 
 Each agent picks its own `provider`: `mistral`, `openai`, `anthropic`, `google` or `openai-compatible`. With `openai-compatible`, add `baseURL`, the address of the API, for example `"baseURL": "http://localhost:11434/v1"`.
 
@@ -166,7 +170,7 @@ AMBROGIO_CONVERSATIONS_CONFIG_PATH=/etc/ambrogio/conversations.json \
 node apps/server/dist/main.js
 ```
 
-To enable voice, set `AMBROGIO_VOICE_CONFIG_PATH` to a JSON file that contains `voskModelPath`, `voiceEngine` (`piper` or `kokoro`) and `voiceModelDir`, plus, with Kokoro, `voiceSpeaker` (the numeric ID of the voice in the model) and `voiceLanguage` (an espeak-ng language code such as `it`, `en` or `pt-br`). Any Kokoro model from the sherpa-onnx `tts-models` release can be used; none is bundled, and Kokoro needs a faster CPU than the Piper voices.
+To enable voice, copy [`examples/voice.json`](examples/voice.json) into the mounted configuration directory and set `AMBROGIO_VOICE_CONFIG_PATH` to that file. It names the Vosk model and Piper voice for each language. [`examples/voice-kokoro.json`](examples/voice-kokoro.json) selects the included Kokoro model instead. `conversations.json.language` chooses the active profile. Every model is selected by its path inside the container, so you can mount your own models and change the corresponding paths without rebuilding the image. The earlier single-profile `voice.json` format remains supported. Kokoro needs a faster CPU than Piper.
 
 If the server cannot start, it writes one JSON line with `"event":"server_startup_failed"` to stdout, whose `err.message` names the cause (for example `Invalid agent configuration: general` or `Agent MCP connection failed: home-assistant`), then prints `Unable to start HTTP server.` to stderr and exits with code 1.
 
@@ -181,7 +185,7 @@ apps/server/              runnable server: runtime, composition, entry point
 packages/conversations/   "Conversations" business module (domain, application, adapters)
 protocol/                 JSON schema of the ambrogio.v1 protocol
 examples/                 ready configuration files, with placeholder credentials
-voices/                   provenance of the bundled Piper voices
+voices/                   provenance of the bundled Vosk, Piper and Kokoro models
 system-model/             engineering model (requirements, contracts, verifications)
 ```
 

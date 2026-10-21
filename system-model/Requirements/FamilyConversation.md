@@ -613,6 +613,19 @@ Quando la famiglia consulta l'elenco delle conversazioni conservate, Ambrogio de
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
+### Esempi degli agenti in inglese
+
+Quando il progetto distribuisce esempi di configurazione per generic.json, orchestrator.json o altri agenti specializzati, deve scrivere in inglese le istruzioni e le descrizioni degli agenti, senza fissare nelle istruzioni una lingua diversa da quella selezionata dall'installazione.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [generic.json](../../examples/agents/generic.json)
+  * satisfiedBy: [orchestrator.json](../../examples/agents/orchestrator.json)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+---
+
 ### Forma TypeScript dei contratti Application
 
 Quando Application del modulo «Conversazioni» dichiara una porta outbound a oggetto con metodi nominati, deve usare `interface`; quando dichiara dati, unioni o contratti callable, deve usare `type`.
@@ -837,6 +850,20 @@ Quando un agente specializzato usa gli strumenti del proprio connettore MCP per 
 #### Relations
   * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
   * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
+---
+
+### Lingua configurata nelle risposte degli agenti
+
+Quando un agente specializzato produce una risposta per la famiglia, il backend deve aggiungere alle sue istruzioni la lingua effettiva configurata per la conversazione, italiana o inglese. La regola deve applicarsi agli agenti con e senza MCP e non deve cambiare il ruolo dell'orchestratore, che seleziona soltanto l'agente.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
+  * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
 ### Localizzazione dell'errore conversazionale inatteso
@@ -1272,6 +1299,21 @@ Dove il file JSON di un agente specializzato elenca gli strumenti MCP ammessi, A
   * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
   * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
   * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
+---
+
+### Selezione dei modelli vocali inclusi per lingua
+
+Quando la voce è abilitata con profili vocali per lingua, Ambrogio deve selezionare il modello Vosk e la voce Piper o Kokoro indicati dai percorsi del profilo della lingua effettiva della conversazione, accettando sia modelli inclusi nell'immagine sia modelli montati dall'installazione. Deve conservare la compatibilità con il file vocale a profilo singolo e non deve caricare modelli vocali quando la voce è disabilitata.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
+  * satisfiedBy: [voice.json](../../examples/voice.json)
+  * satisfiedBy: [voice-config.ts](../../packages/conversations/src/adapters/out/voice-config.ts)
+  * satisfiedBy: [voice-config.test.ts](../../packages/conversations/test/adapters/out/voice-config.test.ts)
+  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
 ### Selezione dell'archivio conversazionale all'avvio

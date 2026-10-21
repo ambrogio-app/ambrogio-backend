@@ -102,7 +102,7 @@ La composition root del server costruisce e possiede una risorsa SQLite/Kysely c
 
 ### Configurazione facoltativa dell'interazione vocale
 
-Un'installazione può non abilitare l'ingresso vocale. L'assenza della variabile di percorso `AMBROGIO_VOICE_CONFIG_PATH` lo disabilita: la composition root non legge file vocali e non costruisce né avvia Vosk o la sintesi vocale. I turni testuali del canale conversazionale restano utilizzabili con le proprie dipendenze, e i turni che trasmettono audio o chiedono la risposta in audio ricevono il rifiuto previsto. Quando il percorso è presente, il file JSON vocale contiene `voskModelPath` (directory del modello Vosk), `voiceEngine` (motore di sintesi, `piper` oppure `kokoro`), `voiceModelDir` (directory della voce o del modello di sintesi) e, soltanto con `kokoro`, `voiceSpeaker` (identificativo numerico della voce nel modello Kokoro, un intero non negativo) e `voiceLanguage` (codice di lingua espeak-ng per la fonetizzazione, una stringa non vuota). Rendono il file invalido un campo sconosciuto, compresi i precedenti `piperModelPath` e `piperBinaryPath`, l'assenza di `voiceEngine` o un suo valore diverso da `piper` e `kokoro`, la presenza di `voiceSpeaker` o `voiceLanguage` con `piper`, l'assenza di uno dei due con `kokoro`, un `voiceSpeaker` che non è un intero non negativo, compresi i nomi di voce accettati dalla prima versione, e un `voiceLanguage` vuoto o non stringa. L'intervallo di inattività della replica è configurato dal satellite. All'avvio la directory Vosk deve essere leggibile. Con `piper` la directory della voce deve contenere esattamente un file `.onnx`, il file `tokens.txt` e la directory `espeak-ng-data/`; con `kokoro` deve contenere esattamente un file `.onnx`, il file `voices.bin`, il file `tokens.txt` e la directory `espeak-ng-data/`; tutti devono essere leggibili. Un valore mancante o invalido, una risorsa assente o illeggibile, il fallimento del caricamento della voce o un `voiceSpeaker` fuori dalle voci del modello impediscono l'avvio prima dell'ascolto del server. La configurazione, il modello Vosk e il modello Kokoro restano esterni all'immagine; l'immagine include due voci Piper e consente di sostituirle tramite un mount della directory dedicata.
+Un'installazione può non abilitare l'ingresso vocale. L'assenza della variabile di percorso `AMBROGIO_VOICE_CONFIG_PATH` lo disabilita: la composition root non legge file vocali e non costruisce né avvia Vosk o la sintesi vocale. I turni testuali del canale conversazionale restano utilizzabili con le proprie dipendenze, e i turni che trasmettono audio o chiedono la risposta in audio ricevono il rifiuto previsto. Nel formato a profilo singolo, quando il percorso è presente, il file JSON vocale contiene `voskModelPath` (directory del modello Vosk), `voiceEngine` (motore di sintesi, `piper` oppure `kokoro`), `voiceModelDir` (directory della voce o del modello di sintesi) e, soltanto con `kokoro`, `voiceSpeaker` (identificativo numerico della voce nel modello Kokoro, un intero non negativo) e `voiceLanguage` (codice di lingua espeak-ng per la fonetizzazione, una stringa non vuota). Rendono il file invalido un campo sconosciuto, compresi i precedenti `piperModelPath` e `piperBinaryPath`, l'assenza di `voiceEngine` o un suo valore diverso da `piper` e `kokoro`, la presenza di `voiceSpeaker` o `voiceLanguage` con `piper`, l'assenza di uno dei due con `kokoro`, un `voiceSpeaker` che non è un intero non negativo, compresi i nomi di voce accettati dalla prima versione, e un `voiceLanguage` vuoto o non stringa. L'intervallo di inattività della replica è configurato dal satellite. All'avvio la directory Vosk deve essere leggibile. Con `piper` la directory della voce deve contenere esattamente un file `.onnx`, il file `tokens.txt` e la directory `espeak-ng-data/`; con `kokoro` deve contenere esattamente un file `.onnx`, il file `voices.bin`, il file `tokens.txt` e la directory `espeak-ng-data/`; tutti devono essere leggibili. Un valore mancante o invalido, una risorsa assente o illeggibile, il fallimento del caricamento della voce o un `voiceSpeaker` fuori dalle voci del modello impediscono l'avvio prima dell'ascolto del server. La configurazione resta esterna all'immagine; l'immagine include i modelli Vosk, Piper e Kokoro italiani e inglesi del catalogo bilingue. I percorsi espliciti dei profili possono indicare modelli inclusi o modelli esterni montati. Il profilo per lingua basato su percorsi è definito dalla specifica «Selezione della voce inclusa dalla lingua conversazionale».
 
 #### Metadata
   * type: specification
@@ -190,6 +190,17 @@ Il caso d'uso del turno conversazionale riceve un input Application costruito da
   * define: [Dati Application dei casi d'uso conversazionali](../Requirements/FamilyConversation.md#dati-application-dei-casi-duso-conversazionali)
 ---
 
+### Direttiva di lingua per gli agenti specializzati
+
+Decisione concordata il 21 ottobre 2026: i file degli agenti restano dell'utente e mantengono istruzioni, descrizioni e modello distinti. Il backend consegna a ogni agente specializzato una direttiva esplicita per rispondere nella lingua effettiva, italiana o inglese, scelta nel JSON Conversazioni. La direttiva si applica agli agenti con e senza MCP; l'orchestratore non la riceve perché produce solo l'identificativo dell'agente. La direttiva orienta il modello, senza garantire deterministicamente la lingua del testo generato.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Lingua configurata nelle risposte degli agenti](../Requirements/FamilyConversation.md#lingua-configurata-nelle-risposte-degli-agenti)
+---
+
 ### Elenco degli strumenti MCP ammessi per agente
 
 Decisione concordata con la persona il 19 ottobre 2026: un server MCP può esporre molti più strumenti di quelli che servono all'agente, e le loro definizioni entrano nel contesto del modello a ogni passo. Nella prova dell'agente meteo su Open-Meteo, 17 strumenti occupavano circa 106.000 caratteri di definizioni e portavano il turno vicino al tempo massimo di 30 secondi, mentre i due strumenti necessari ne occupavano circa 11.600.
@@ -216,6 +227,17 @@ L'audio acquisito dalla famiglia e quello generato per la risposta possono esser
 
 #### Relations
   * define: [Conservazione solo testuale della conversazione](../Requirements/FamilyConversation.md#conservazione-solo-testuale-della-conversazione)
+---
+
+### Esempi inglesi delle configurazioni degli agenti
+
+Decisione concordata il 21 ottobre 2026: gli esempi distribuiti di generic.json e orchestrator.json e le descrizioni degli agenti specializzati sono scritti in inglese. Il testo di generic.json non prescrive direttamente italiano o inglese; la direttiva della lingua della risposta è aggiunta dal backend. L'orchestratore resta configurato dall'utente e l'esempio inglese gli chiede soltanto di scegliere un agente, senza fissare la lingua delle risposte.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Esempi degli agenti in inglese](../Requirements/FamilyConversation.md#esempi-degli-agenti-in-inglese)
 ---
 
 ### Esito della trascrizione vocale
@@ -308,7 +330,7 @@ Ogni agente attivo, compreso l'orchestratore, riceve il proprio testo di istruzi
 
 ### Lingua nel JSON conversazionale
 
-Il file JSON locale del componente «Conversazioni», già usato per i limiti della paginazione, ammette il campo opzionale `language`, una stringa con `en` per l'inglese o `it` per l'italiano. Se il campo è assente o contiene una lingua non supportata, la lingua effettiva è `en`. Un valore non stringa è una struttura incompatibile e impedisce l'attivazione dell'ingresso interessato. La variabile d'ambiente indica solo il percorso del file e non sostituisce `language`.
+Il file JSON locale del componente «Conversazioni», già usato per i limiti della paginazione, ammette il campo opzionale `language`, una stringa con `en` per l'inglese o `it` per l'italiano. Se il campo è assente o contiene una lingua non supportata, la lingua effettiva è `en`. Un valore non stringa è una struttura incompatibile e impedisce l'attivazione dell'ingresso interessato. La variabile d'ambiente indica solo il percorso del file e non sostituisce `language`. La lingua effettiva guida anche la selezione dei modelli vocali inclusi e la direttiva di lingua consegnata agli agenti specializzati, secondo le rispettive specifiche.
 
 #### Metadata
   * type: specification
@@ -607,6 +629,17 @@ Lo schema controlla la forma del protocollo. L'adapter converte esplicitamente l
   * define: [Validazione strutturale delle richieste conversazionali HTTP](../Requirements/FamilyConversation.md#validazione-strutturale-delle-richieste-conversazionali-http)
 ---
 
+### Selezione della voce inclusa dalla lingua conversazionale
+
+Decisione concordata il 21 ottobre 2026 e precisata con la persona: la lingua effettiva del componente Conversazioni è la sorgente comune per messaggi pubblici, trascrizione Vosk e sintesi. Il file vocale può avere `languages`, un oggetto con profili `it` ed `en`; ciascun profilo usa gli stessi campi del file vocale esistente: `voskModelPath`, `voiceEngine`, `voiceModelDir` e, con Kokoro, `voiceSpeaker` e `voiceLanguage`. I percorsi sono quelli visibili nel container: possono puntare alle directory incluse nell'immagine oppure a directory fornite da mount Docker Compose, senza ID di catalogo o tabella fissa di modelli. All'avvio viene richiesto e validato il profilo della lingua effettiva in `conversations.json`; l'altro profilo è facoltativo e viene validato strutturalmente, senza caricarne i modelli. Restano validi i file vocali precedenti con un singolo profilo alla radice, per non interrompere le installazioni esistenti. La voce resta disabilitata quando manca `AMBROGIO_VOICE_CONFIG_PATH`.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Selezione dei modelli vocali inclusi per lingua](../Requirements/FamilyConversation.md#selezione-dei-modelli-vocali-inclusi-per-lingua)
+---
+
 ### Semantica locale delle porte verso servizi esterni
 
 Ogni porta outbound di Application descrive una capacità coerente richiesta da uno o più casi d'uso del modulo «Conversazioni». Nomi delle operazioni, input, output e rifiuti descrivono il significato per il modulo, senza riprodurre automaticamente metodi, payload o tipi di SDK, protocollo o API del fornitore. L'adapter realizza la porta e converte richieste, risposte e rifiuti fra le due rappresentazioni. La granularità delle porte segue le capacità effettivamente richieste, senza imporre un numero di operazioni per porta.
@@ -641,7 +674,7 @@ Misure del 18 ottobre 2026 con 4 thread e sei frasi italiane, comprese frasi con
 
 Con `voiceEngine` uguale a `kokoro` il backend passa a `OfflineTts.createAsync` la sezione `kokoro` con l'unico file `.onnx`, `voices.bin`, `tokens.txt` ed `espeak-ng-data/` della directory `voiceModelDir` e con `lang` uguale a `voiceLanguage`, e usa `voiceSpeaker` come `sid` di ogni generazione. Dopo il caricamento, un `voiceSpeaker` non inferiore al numero di voci dichiarato dal modello (`numSpeakers`) impedisce l'avvio. Il backend non controlla il codice di lingua contro l'elenco di espeak-ng. Con `voiceEngine` uguale a `piper` il backend passa la sezione `vits` e usa `sid` 0. Caricamento unico, generazione asincrona, sintesi delle frasi una alla volta, formato PCM16 alla frequenza del modello caricato (24 kHz per i modelli Kokoro multilingue), interruzione e arresto seguono la sintesi sherpa-onnx esistente.
 
-Il modello Kokoro non è incluso nell'immagine backend. L'installazione scarica l'archivio scelto, ne verifica l'impronta quando la release la pubblica e monta la directory estratta in sola lettura in un percorso distinto da `/opt/ambrogio/voices`, così le voci incluse restano disponibili.
+L'immagine backend include un modello Kokoro multilingue per italiano e inglese, selezionabile senza mount. Un modello Kokoro esterno resta utilizzabile montando la directory estratta in sola lettura in un percorso distinto da `/opt/ambrogio/voices`.
 
 #### Metadata
   * type: specification
@@ -710,4 +743,3 @@ Il percorso del file è indicato dalla variabile d'ambiente `AMBROGIO_CONVERSATI
 #### Relations
   * define: [Configurazione della paginazione conversazionale](../Requirements/FamilyConversation.md#configurazione-della-paginazione-conversazionale)
 ---
-

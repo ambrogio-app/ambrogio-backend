@@ -194,10 +194,13 @@ Quando un `catch` del server aggiunge un contesto operativo concreto a un guasto
 
 ### Controlli CI delle modifiche funzionali del server
 
-Quando viene inviato un commit su `main`, viene aperta o aggiornata una pull request, viene richiesta un'esecuzione manuale oppure un altro workflow del repository richiama la CI, la CI deve eseguire la validazione e il lint del modello Reqvire, la compilazione TypeScript del server e la suite backend con Vitest, comprendente prove degli adapter di persistenza su SQLite reale quando tali adapter esistono. L'integrazione deve essere impedita se uno di questi controlli fallisce.
+Quando viene inviato un commit su `main`, viene aperta o aggiornata una pull request, viene richiesta un'esecuzione manuale oppure un altro workflow del repository richiama la CI, la CI deve eseguire la validazione e il lint del modello Reqvire, la compilazione TypeScript del server e la suite backend con Vitest, comprendente prove degli adapter di persistenza su SQLite reale quando tali adapter esistono e la prova dell'hook dei segreti con lo scanner installato e verificato. L'integrazione deve essere impedita se uno di questi controlli fallisce.
 
 #### Metadata
   * type: requirement
+
+#### Contract References
+  * [Profilo di scansione dei segreti con gitleaks](../Contracts/ServerFoundation.md#profilo-di-scansione-dei-segreti-con-gitleaks)
 
 #### Relations
   * satisfiedBy: [ci.yml](../../.github/workflows/ci.yml)
@@ -1013,4 +1016,3 @@ Quando la suite automatica del backend esegue le verifiche implementate nei pack
 #### Relations
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
-

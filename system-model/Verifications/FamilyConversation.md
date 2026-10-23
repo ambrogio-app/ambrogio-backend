@@ -495,7 +495,7 @@ Analizzare il grafo degli import del codice TypeScript di produzione del modulo 
 #### Details
 L'analisi passa se ogni import originato da Domain punta a Domain dello stesso modulo e ogni import originato da Application punta a Domain o Application dello stesso modulo. Fallisce se è presente anche un solo collegamento verso un componente o modulo non ammesso, compresi quelli che importano soltanto tipi.
 
-Non automatizzabile: il progetto non ha un analizzatore del grafo degli import; la regola è esprimibile con un'analisi statica.
+Non automatizzabile: Domain e Application importano `src/project-error.ts`, esterno alle cartelle dei layer, e attribuirlo a un componente secondo la responsabilità richiede giudizio umano.
 
 #### Metadata
   * type: analysis-verification
@@ -573,23 +573,6 @@ Non automatizzabile: individuare dove avviene la scelta delle implementazioni ri
 #### Relations
   * derivedFrom: [Verifica dell'organizzazione delle conversazioni](#verifica-dellorganizzazione-delle-conversazioni)
   * verify: [Assemblaggio delle porte nella composition root](../Requirements/FamilyConversation.md#assemblaggio-delle-porte-nella-composition-root)
----
-
-### Controllo dell'indipendenza tecnica di Domain e Application
-
-Esaminare il codice di produzione e il grafo delle dipendenze dei componenti Domain e Application del modulo «Conversazioni».
-
-#### Details
-Il controllo passa se i due componenti usano soltanto API standard ECMAScript indipendenti dall'ambiente e non dipendono da API Node.js o package npm usati a runtime. Fallisce se uno dei due componenti usa un'API Node.js o importa una dipendenza npm runtime.
-
-Non automatizzabile: l'uso di API globali specifiche dell'ambiente richiede di leggere il codice; il progetto non ha un analizzatore degli import che vieti moduli Node.js e package npm.
-
-#### Metadata
-  * type: inspection-verification
-
-#### Relations
-  * derivedFrom: [Verifica dell'organizzazione delle conversazioni](#verifica-dellorganizzazione-delle-conversazioni)
-  * verify: [Indipendenza tecnica di Domain e Application](../Requirements/FamilyConversation.md#indipendenza-tecnica-di-domain-e-application)
 ---
 
 ### Controllo delle cartelle del modulo Conversazioni
@@ -676,6 +659,22 @@ Non automatizzabile: distinguere un adapter di ingresso da uno che implementa un
 #### Relations
   * derivedFrom: [Verifica dell'organizzazione delle conversazioni](#verifica-dellorganizzazione-delle-conversazioni)
   * verify: [Separazione degli adapter di ingresso e uscita](../Requirements/FamilyConversation.md#separazione-degli-adapter-di-ingresso-e-uscita)
+---
+
+### Prova dell'indipendenza tecnica di Domain e Application
+
+Con l'API del compilatore TypeScript, compilare senza emissione i file di `src/domain/` e `src/application/` del package «Conversazioni», con le sole librerie standard ECMAScript (`lib` uguale a `ESNext`) e senza dichiarazioni di tipo dell'ambiente (`types` vuoto); leggere inoltre gli import, gli `import type`, le riesportazioni e gli import dinamici dei file compilati.
+
+#### Details
+La prova passa se la compilazione non produce diagnostiche e se ogni import dei file compilati è un percorso relativo che resta in `src/` del package. Fallisce se un file usa un'API Node.js o un'altra API globale dell'ambiente, come `process`, `Buffer` o `setTimeout`, oppure se importa un modulo Node.js o un package npm, anche soltanto per i tipi. Fallisce anche se, in un file d'esempio compilato con le stesse opzioni, l'uso di `process` e `setTimeout` non produce diagnostiche.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dell'organizzazione delle conversazioni](#verifica-dellorganizzazione-delle-conversazioni)
+  * satisfiedBy: [domain-application-independence.test.ts](../../test/repository/domain-application-independence.test.ts)
+  * verify: [Indipendenza tecnica di Domain e Application](../Requirements/FamilyConversation.md#indipendenza-tecnica-di-domain-e-application)
 ---
 
 ### Verifica della concorrenza dei turni
@@ -793,23 +792,6 @@ Raggruppa le verifiche della risposta testuale, dello storico degli scambi e del
 
 #### Metadata
   * type: verification-objective
----
-
-### Analisi della lingua nelle istruzioni degli agenti
-
-Con modelli controllati, preparare agenti specializzati con e senza MCP e un orchestratore. Ripetere con lingua italiana e inglese, osservando le istruzioni inviate ai modelli.
-
-#### Details
-L'analisi passa se ogni specialista riceve la direttiva della lingua effettiva e l'orchestratore non la riceve e continua a produrre solo un identificativo.
-
-Non automatizzabile: il progetto non ha una prova Vitest che osservi con modelli controllati le istruzioni inviate; l'osservazione è oggi manuale.
-
-#### Metadata
-  * type: analysis-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * verify: [Lingua configurata nelle risposte degli agenti](../Requirements/FamilyConversation.md#lingua-configurata-nelle-risposte-degli-agenti)
 ---
 
 ### Analisi della proprietà dei controlli conversazionali
@@ -1238,6 +1220,22 @@ La prova passa se la risposta `200` è JSON senza cache, conserva identità, tes
   * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
   * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
   * verify: [Lettura HTTP dello storico conversazionale](../Requirements/FamilyConversation.md#lettura-http-dello-storico-conversazionale)
+---
+
+### Prova della lingua nelle istruzioni degli agenti
+
+Con modelli controllati che registrano le richieste inviate al fornitore, preparare un agente specializzato senza MCP, uno con MCP e l'orchestratore; ripetere con lingua italiana e inglese e confrontare le istruzioni di sistema inviate a ciascun modello.
+
+#### Details
+La prova passa se ogni specialista, con e senza MCP, riceve la direttiva della lingua effettiva, «Answer in Italian.» oppure «Answer in English.», e se l'orchestratore non riceve alcuna direttiva di lingua e riceve istruzioni identiche nelle due lingue. Fallisce se uno specialista non riceve la direttiva della lingua configurata o ne riceve un'altra, oppure se le istruzioni dell'orchestratore contengono una direttiva di lingua o cambiano con la lingua.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * satisfiedBy: [agents.test.ts](../../apps/server/test/composition/agents.test.ts)
+  * verify: [Lingua configurata nelle risposte degli agenti](../Requirements/FamilyConversation.md#lingua-configurata-nelle-risposte-degli-agenti)
 ---
 
 ### Prova della ricerca delle configurazioni degli agenti

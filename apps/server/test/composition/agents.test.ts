@@ -161,7 +161,7 @@ test('specialists receive the date line in the given time zone and the orchestra
   }
 });
 
-// Verification: Analisi della lingua nelle istruzioni degli agenti
+// Verification: Prova della lingua nelle istruzioni degli agenti
 test('applies the configured response language to specialists but not the orchestrator', async () => {
   const fixture = await files();
   const systems: string[] = [];
@@ -200,6 +200,8 @@ test('applies the configured response language to specialists but not the orches
       expect(systems[offset + 2]).not.toContain('Answer in Italian.');
       expect(systems[offset + 2]).not.toContain('Answer in English.');
     }
+    // The language leaves the orchestrator's role untouched: it receives the same instructions in both languages.
+    expect(systems[5]).toBe(systems[2]);
   } finally {
     vi.unstubAllGlobals();
     await fixture.close();

@@ -549,10 +549,10 @@ La prova passa se il messaggio pubblico non contiene nessuno dei marcatori tecni
 
 ### Prova delle definizioni locali di Result
 
-Con l'API del compilatore TypeScript, esaminare tutti i file TypeScript sotto `src/` di ogni package in `packages/`: le dichiarazioni chiamate `Result`, i riferimenti di tipo a `Result` e gli import e le riesportazioni che portano il nome `Result`.
+Leggendo come testo tutti i file TypeScript sotto `src/` di ogni package in `packages/`, tolti i commenti e i letterali stringa, individuare le dichiarazioni chiamate `Result`, i riferimenti a `Result` e gli import, le riesportazioni, gli import di namespace e gli import dinamici che portano il nome `Result`.
 
 #### Details
-La prova passa se ogni package che riferisce `Result` lo dichiara nel proprio `src/` come alias di tipo con i parametri `T` ed `E` il cui testo, a meno degli spazi, è `Readonly<{ ok: true; value: T }> | Readonly<{ ok: false; error: E }>`, se non esistono altre dichiarazioni chiamate `Result` e se ogni import o riesportazione del nome `Result` usa un percorso relativo verso un file dello stesso package che lo dichiara. Fallisce se il tipo è importato da un altro package o tramite un nome di package, se un ramo è mutabile, se discriminanti o campi differiscono dalla specifica o se un package riferisce `Result` senza dichiararlo.
+La prova passa se ogni package che riferisce `Result` lo dichiara nel proprio `src/` come alias di tipo con i parametri `T` ed `E` il cui testo, a meno degli spazi, è `Readonly<{ ok: true; value: T }> | Readonly<{ ok: false; error: E }>`, se non esistono altre dichiarazioni chiamate `Result` e se ogni import o riesportazione del nome `Result` usa un percorso relativo verso un file dello stesso package che lo dichiara. Fallisce se il tipo è importato da un altro package o tramite un nome di package, se un ramo è mutabile, se discriminanti o campi differiscono dalla specifica o se un package riferisce `Result` senza dichiararlo. Fallisce anche se la lettura non riconosce, in un testo d'esempio, le dichiarazioni valide e non valide e ogni forma di import del nome.
 
 #### Metadata
   * type: test-verification

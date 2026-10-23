@@ -232,10 +232,10 @@ Non automatizzabile: attribuire le responsabilità del codice a runtime, composi
 
 ### Prova degli import dei test Domain e Application
 
-Con l'API del compilatore TypeScript, leggere gli import, gli `import type`, le riesportazioni e gli import dinamici dei file di prova in `test/domain/` e `test/application/` di ogni package sotto `packages/`, seguendo anche gli import verso i file locali di test. Sono codice di produzione i file sotto `src/` di un package o di un'applicazione e i package del workspace importati per nome.
+Leggendo come testo i sorgenti, tolti i commenti, estrarre con un'espressione regolare gli specificatori di `import … from`, `export … from`, degli import di soli effetti `import '…'` e degli import dinamici letterali `import('…')`, compresi `import type` ed `export type`, dei file di prova in `test/domain/` e `test/application/` di ogni package sotto `packages/`, seguendo anche gli import verso i file locali di test. Sono codice di produzione i file sotto `src/` di un package o di un'applicazione e i package del workspace importati per nome.
 
 #### Details
-La prova passa se i test Domain raggiungono codice di produzione soltanto in `src/domain/` del proprio package e i test Application soltanto in `src/application/` o `src/domain/` del proprio package. Fallisce se un test, direttamente o tramite un file locale di test, raggiunge altro codice di produzione, anche tramite un import di soli tipi, oppure se un file di prova di un package non risiede in `test/domain/`, `test/application/`, `test/adapters/in/` o `test/adapters/out/` e quindi non è classificabile. Runner, assertion, moduli Node.js, dipendenze npm e file locali di test non sono codice di produzione. Fallisce anche se l'estrazione degli import non riconosce, in un file d'esempio, import di valori, `import type`, riesportazioni, import con `require` e import dinamici.
+La prova passa se i test Domain raggiungono codice di produzione soltanto in `src/domain/` del proprio package e i test Application soltanto in `src/application/` o `src/domain/` del proprio package. Fallisce se un test, direttamente o tramite un file locale di test, raggiunge altro codice di produzione, anche tramite un import di soli tipi, oppure se un file di prova di un package non risiede in `test/domain/`, `test/application/`, `test/adapters/in/` o `test/adapters/out/` e quindi non è classificabile. Runner, assertion, moduli Node.js, dipendenze npm e file locali di test non sono codice di produzione. Fallisce anche se l'estrazione non riconosce, in un file d'esempio, import di valori, `import type`, import su più righe, import di soli effetti, riesportazioni e import dinamici, o se riconosce come import un testo in un commento o in una stringa.
 
 #### Metadata
   * type: test-verification
@@ -249,10 +249,10 @@ La prova passa se i test Domain raggiungono codice di produzione soltanto in `sr
 
 ### Prova degli import delle API pubbliche nelle applicazioni
 
-Con l'API del compilatore TypeScript, leggere gli import, gli `import type`, le riesportazioni e gli import dinamici di tutti i file TypeScript sotto `apps/`, inclusi i test, e confrontarli con il nome e il campo `exports` del `package.json` di ogni package sotto `packages/`.
+Leggendo come testo i sorgenti, tolti i commenti, estrarre con un'espressione regolare gli specificatori di `import … from`, `export … from`, degli import di soli effetti `import '…'` e degli import dinamici letterali `import('…')`, compresi `import type` ed `export type`, di tutti i file TypeScript sotto `apps/`, inclusi i test, e confrontarli con il nome e il campo `exports` del `package.json` di ogni package sotto `packages/`.
 
 #### Details
-La prova passa se ogni import che nomina un package business usa il nome del package seguito da un subpath dichiarato nel suo campo `exports` e se ogni import relativo resta nella directory della propria applicazione. Fallisce se un'applicazione raggiunge un file di un package mediante un percorso relativo, usa un subpath non dichiarato o la radice del package, usa un alias di import con `#` oppure se un `tsconfig*.json` del repository dichiara `paths`. Fallisce anche se l'estrazione degli import non riconosce, in un file d'esempio, import di valori, `import type`, riesportazioni, import con `require` e import dinamici.
+La prova passa se ogni import che nomina un package business usa il nome del package seguito da un subpath dichiarato nel suo campo `exports` e se ogni import relativo resta nella directory della propria applicazione. Fallisce se un'applicazione raggiunge un file di un package mediante un percorso relativo, usa un subpath non dichiarato o la radice del package, usa un alias di import con `#` oppure se un `tsconfig*.json` del repository dichiara `paths`. Fallisce anche se l'estrazione non riconosce, in un file d'esempio, import di valori, `import type`, import su più righe, import di soli effetti, riesportazioni e import dinamici, o se riconosce come import un testo in un commento o in una stringa.
 
 #### Metadata
   * type: test-verification
@@ -265,10 +265,10 @@ La prova passa se ogni import che nomina un package business usa il nome del pac
 
 ### Prova degli import tra package business e applicazioni
 
-Con l'API del compilatore TypeScript, leggere gli import, gli `import type`, le riesportazioni e gli import dinamici di tutti i file TypeScript dei package sotto `packages/`, compresi i test ed esclusi `dist/` e `node_modules/`.
+Leggendo come testo i sorgenti, tolti i commenti, estrarre con un'espressione regolare gli specificatori di `import … from`, `export … from`, degli import di soli effetti `import '…'` e degli import dinamici letterali `import('…')`, compresi `import type` ed `export type`, di tutti i file TypeScript dei package sotto `packages/`, compresi i test ed esclusi `dist/` e `node_modules/`.
 
 #### Details
-La prova passa se ogni import relativo di un package resta nella directory del package e nessun import nomina un altro package del workspace. Fallisce se compare anche un solo import verso un altro package o un'applicazione, compresi quelli che importano soltanto tipi. Fallisce anche se l'estrazione degli import non riconosce, in un file d'esempio, import di valori, `import type`, riesportazioni, import con `require` e import dinamici.
+La prova passa se ogni import relativo di un package resta nella directory del package e nessun import nomina un altro package del workspace. Fallisce se compare anche un solo import verso un altro package o un'applicazione, compresi quelli che importano soltanto tipi. Fallisce anche se l'estrazione non riconosce, in un file d'esempio, import di valori, `import type`, import su più righe, import di soli effetti, riesportazioni e import dinamici, o se riconosce come import un testo in un commento o in una stringa.
 
 #### Metadata
   * type: test-verification
@@ -284,7 +284,7 @@ La prova passa se ogni import relativo di un package resta nella directory del p
 Con la stessa lettura degli import della prova degli import tra package business e applicazioni, considerare come destinazione vietata ogni package del workspace diverso da quello che importa, senza distinguere fra package business e package tecnici.
 
 #### Details
-La prova passa se nessun import originato da un package sotto `packages/` nomina un altro package del workspace o raggiunge con un percorso relativo un'altra directory del workspace; così nessun package tecnico condiviso è raggiungibile, qualunque sia il suo nome. Fallisce se compare anche un solo collegamento di questo tipo, inclusi quelli che importano soltanto tipi. Fallisce anche se l'estrazione degli import non riconosce, in un file d'esempio, import di valori, `import type`, riesportazioni, import con `require` e import dinamici.
+La prova passa se nessun import originato da un package sotto `packages/` nomina un altro package del workspace o raggiunge con un percorso relativo un'altra directory del workspace; così nessun package tecnico condiviso è raggiungibile, qualunque sia il suo nome. Fallisce se compare anche un solo collegamento di questo tipo, inclusi quelli che importano soltanto tipi. Fallisce anche se l'estrazione non riconosce, in un file d'esempio, import di valori, `import type`, import su più righe, import di soli effetti, riesportazioni e import dinamici, o se riconosce come import un testo in un commento o in una stringa.
 
 #### Metadata
   * type: test-verification

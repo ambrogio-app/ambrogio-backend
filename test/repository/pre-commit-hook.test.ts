@@ -4,7 +4,7 @@ import { copyFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, test } from 'vitest';
-import { repositoryRoot } from './typescript-program.js';
+import { repositoryRoot } from './source-imports.js';
 
 let directory: string;
 let repository: string;

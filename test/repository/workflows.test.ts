@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test } from 'vitest';
-import { repositoryRoot } from './typescript-program.js';
+import { repositoryRoot } from './source-imports.js';
 import { parseYaml, readWorkflow } from './workflow-yaml.js';
 
 // «Profilo di irrobustimento dei workflow GitHub Actions» and «Profilo di scansione dei segreti con gitleaks»

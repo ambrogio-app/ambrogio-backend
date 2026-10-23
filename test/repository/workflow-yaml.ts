@@ -2,7 +2,7 @@
 // block sequences, flow sequences, quoted and plain scalars, block scalars and comments.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { repositoryRoot } from './typescript-program.js';
+import { repositoryRoot } from './source-imports.js';
 
 export type Yaml = string | Yaml[] | { [key: string]: Yaml };
 

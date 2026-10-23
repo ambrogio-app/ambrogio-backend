@@ -663,10 +663,10 @@ Non automatizzabile: distinguere un adapter di ingresso da uno che implementa un
 
 ### Prova dell'indipendenza tecnica di Domain e Application
 
-Con l'API del compilatore TypeScript, compilare senza emissione i file di `src/domain/` e `src/application/` del package «Conversazioni», con le sole librerie standard ECMAScript (`lib` uguale a `ESNext`) e senza dichiarazioni di tipo dell'ambiente (`types` vuoto); leggere inoltre gli import, gli `import type`, le riesportazioni e gli import dinamici dei file compilati.
+Eseguire il comando `tsc` della dipendenza `typescript` del repository su un `tsconfig` temporaneo che compila senza emissione i file di `src/domain/` e `src/application/` del package «Conversazioni», con le sole librerie standard ECMAScript (`lib` uguale a `ESNext`) e senza dichiarazioni di tipo dell'ambiente (`types` vuoto); leggere inoltre come testo, tolti i commenti, gli specificatori di `import … from`, `export … from`, `import '…'` e `import('…')` di quei file e dei file che importano.
 
 #### Details
-La prova passa se la compilazione non produce diagnostiche e se ogni import dei file compilati è un percorso relativo che resta in `src/` del package. Fallisce se un file usa un'API Node.js o un'altra API globale dell'ambiente, come `process`, `Buffer` o `setTimeout`, oppure se importa un modulo Node.js o un package npm, anche soltanto per i tipi. Fallisce anche se, in un file d'esempio compilato con le stesse opzioni, l'uso di `process` e `setTimeout` non produce diagnostiche.
+La prova passa se `tsc` termina con stato 0 senza diagnostiche e se ogni import letto è un percorso relativo verso un file esistente in `src/` del package. Fallisce se un file usa un'API Node.js o un'altra API globale dell'ambiente, come `process`, `Buffer` o `setTimeout`, oppure se importa un modulo Node.js o un package npm, anche soltanto per i tipi. Fallisce anche se, in un file d'esempio compilato con le stesse opzioni, l'uso di `process` e `setTimeout` non produce diagnostiche.
 
 #### Metadata
   * type: test-verification

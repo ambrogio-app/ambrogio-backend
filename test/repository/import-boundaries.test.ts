@@ -2,11 +2,11 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test } from 'vitest';
 import {
-  importFormsExample, importFormsSpecifiers, namedUnit, parseProject, parseWorkspace, repositoryRoot,
-  resolveSpecifier, workspaceUnits, type ParsedFile,
-} from './typescript-program.js';
+  extractSpecifiers, importFormsExample, importFormsSpecifiers, namedUnit, repositoryRoot, resolveSpecifier,
+  workspaceSources, workspaceUnits, type SourceFile,
+} from './source-imports.js';
 
-const workspace = parseWorkspace();
+const workspace = { files: workspaceSources() };
 const units = workspaceUnits();
 const packages = units.filter((unit) => unit.directory.startsWith('packages/'));
 const apps = units.filter((unit) => unit.directory.startsWith('apps/'));
@@ -14,12 +14,8 @@ const inside = (path: string, directory: string) => path.startsWith(`${directory
 const unitOf = (path: string) => units.find((unit) => inside(path, unit.directory));
 const filesIn = (directory: string) => workspace.files.filter((file) => inside(file.path, directory));
 
-test('the import extraction sees every form of import', () => {
-  const example = 'test/repository/fixtures/import-forms.ts';
-  const parsed = parseProject('test/repository/fixtures/tsconfig.json', { files: ['import-forms.ts'] },
-    { [example]: importFormsExample });
-  const file = parsed.files.find((candidate) => candidate.path === example);
-  expect([...new Set(file!.specifiers)].sort()).toEqual([...importFormsSpecifiers].sort());
+test('the import extraction sees every form of import and ignores comments and strings', () => {
+  expect([...extractSpecifiers(importFormsExample)].sort()).toEqual([...importFormsSpecifiers].sort());
 });
 
 test('the analysis covers the sources and tests of every application and package', () => {
@@ -80,10 +76,10 @@ test('no TypeScript configuration declares path aliases', () => {
 const testKinds = ['test/domain/', 'test/application/', 'test/adapters/in/', 'test/adapters/out/'];
 
 /** Production code reached by a test file, directly or through local test files. */
-function productionReached(file: ParsedFile, testDirectory: string): string[] {
+function productionReached(file: SourceFile, testDirectory: string): string[] {
   const reached: string[] = [];
   const seen = new Set<string>();
-  const visit = (current: ParsedFile) => {
+  const visit = (current: SourceFile) => {
     if (seen.has(current.path)) return;
     seen.add(current.path);
     for (const specifier of current.specifiers) {

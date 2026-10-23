@@ -1,8 +1,19 @@
+import { readdirSync } from 'node:fs';
 import { availableParallelism } from 'node:os';
+import { join } from 'node:path';
 import { expect, it } from 'vitest';
 import { takeSentences } from '../../../src/adapters/in/session/sentences.js';
 import { SherpaSynthesizer, pcm16, type SherpaTtsConfig } from '../../../src/adapters/in/session/sherpa-synthesizer.js';
-import { voiceModel, type VoiceModel } from '../../../src/adapters/out/voice-config.js';
+
+/** The voice the synthesizer loads, as its own signature describes it. */
+type VoiceModel = Parameters<typeof SherpaSynthesizer.load>[0];
+
+/** The files of a real sherpa-onnx voice directory: its only `.onnx` model, `tokens.txt` and `espeak-ng-data/`. */
+function voiceDirectoryFiles(directory: string) {
+  const models = readdirSync(directory).filter(name => name.endsWith('.onnx'));
+  expect(models).toHaveLength(1);
+  return { model: join(directory, models[0]!), tokens: join(directory, 'tokens.txt'), dataDir: join(directory, 'espeak-ng-data') };
+}
 
 const files = { model: '/voice/it.onnx', tokens: '/voice/tokens.txt', dataDir: '/voice/espeak-ng-data' };
 const piper: VoiceModel = { engine: 'piper', files };
@@ -215,7 +226,7 @@ const realKokoro = process.env.AMBROGIO_TEST_KOKORO_MODEL_DIR;
 
 // Verification: Prova della sintesi vocale nel processo backend
 it.skipIf(!realVoice)('synthesizes Italian speech with a real voice directory', async () => {
-  const synthesizer = await SherpaSynthesizer.load(await voiceModel({ voiceEngine: 'piper', voiceModelDir: realVoice! }));
+  const synthesizer = await SherpaSynthesizer.load({ engine: 'piper', files: voiceDirectoryFiles(realVoice!) });
   try {
     expect([16_000, 22_050]).toContain(synthesizer.sampleRate);
     let ticks = 0;
@@ -234,8 +245,9 @@ it.skipIf(!realVoice)('synthesizes Italian speech with a real voice directory', 
 it.skipIf(!realKokoro)('synthesizes Italian and English speech with a real Kokoro model', async () => {
   for (const [voiceSpeaker, voiceLanguage, text] of [[35, 'it', 'Ciao, sono Ambrogio.'],
     [36, 'it', 'Ciao, sono Ambrogio.'], [0, 'en', 'Hello, I am Ambrogio.']] as const) {
-    const synthesizer = await SherpaSynthesizer.load(await voiceModel({ voiceEngine: 'kokoro',
-      voiceModelDir: realKokoro!, voiceSpeaker, voiceLanguage }));
+    const synthesizer = await SherpaSynthesizer.load({ engine: 'kokoro',
+      files: { ...voiceDirectoryFiles(realKokoro!), voices: join(realKokoro!, 'voices.bin') },
+      speaker: voiceSpeaker, language: voiceLanguage });
     try {
       expect(synthesizer.sampleRate).toBe(24_000);
       const audio = await collect(synthesizer.synthesize(pieces(text), new AbortController().signal));

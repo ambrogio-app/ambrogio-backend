@@ -90,24 +90,6 @@ Raggruppa i controlli sulla collocazione delle applicazioni eseguibili e dei mod
   * type: verification-objective
 ---
 
-### Analisi degli import dei test Domain e Application
-
-Analizzare il grafo degli import dei test Domain e Application di ogni modulo business, compresi `import type` e riesportazioni, distinguendo il codice di produzione dalle dipendenze di test e dai fake locali.
-
-#### Details
-L'analisi passa se i test Domain importano codice di produzione solo dal Domain del proprio modulo e i test Application solo dall'Application o dal Domain dello stesso modulo. Fallisce se un test importa codice di produzione da un altro layer o modulo, anche tramite un import di soli tipi. Runner, assertion e fake locali non sono classificati come codice di produzione.
-
-Non automatizzabile: il progetto non ha un analizzatore del grafo degli import; la regola, compresa la distinzione dei fake locali, è esprimibile con un'analisi statica.
-
-#### Metadata
-  * type: analysis-verification
-
-#### Relations
-  * derivedFrom: [Verifica della struttura del monorepo](#verifica-della-struttura-del-monorepo)
-  * verify: [Import del codice di produzione nei test Application](../Requirements/Workspace.md#import-del-codice-di-produzione-nei-test-application)
-  * verify: [Import del codice di produzione nei test Domain](../Requirements/Workspace.md#import-del-codice-di-produzione-nei-test-domain)
----
-
 ### Analisi degli import dei test degli adapter
 
 Analizzare il grafo degli import dei test degli adapter inbound e outbound di ogni modulo business, compresi `import type` e riesportazioni, distinguendo il codice di produzione da runner, assertion, tecnologie degli adapter e fake locali.
@@ -115,7 +97,7 @@ Analizzare il grafo degli import dei test degli adapter inbound e outbound di og
 #### Details
 L'analisi passa se i test inbound importano codice di produzione solo dal proprio adapter inbound e dall'Application del modulo, senza Domain, e i test outbound solo dal proprio adapter outbound, dall'Application e dal Domain del modulo, senza adapter inbound. Fallisce se un test raggiunge altro codice di produzione, anche tramite un import di soli tipi. Runner, assertion, tecnologie degli adapter e fake locali non sono classificati come codice di produzione del modulo.
 
-Non automatizzabile: il progetto non ha un analizzatore del grafo degli import; la regola è esprimibile con un'analisi statica.
+Non automatizzabile: diversi test degli adapter importano `src/project-error.ts`, che si trova fuori dalle cartelle dei layer; è una deviazione nota in attesa di una decisione sulla collocazione di `ProjectError`, e finché quella decisione manca un controllo automatico fallirebbe su quegli import.
 
 #### Metadata
   * type: analysis-verification
@@ -124,57 +106,6 @@ Non automatizzabile: il progetto non ha un analizzatore del grafo degli import; 
   * derivedFrom: [Verifica della struttura del monorepo](#verifica-della-struttura-del-monorepo)
   * verify: [Import del codice di produzione nei test degli adapter inbound](../Requirements/Workspace.md#import-del-codice-di-produzione-nei-test-degli-adapter-inbound)
   * verify: [Import del codice di produzione nei test degli adapter outbound](../Requirements/Workspace.md#import-del-codice-di-produzione-nei-test-degli-adapter-outbound)
----
-
-### Analisi degli import delle API pubbliche nelle applicazioni
-
-Analizzare gli import e le riesportazioni dei file TypeScript delle applicazioni che puntano ai package business del monorepo, inclusi i test e gli `import type`.
-
-#### Details
-L'analisi passa se ciascun riferimento a un package business usa il nome del package e un subpath dichiarato nel relativo campo `exports`. Fallisce se un'applicazione raggiunge file interni mediante percorsi relativi, alias o subpath non dichiarati.
-
-Non automatizzabile: il progetto non ha un analizzatore del grafo degli import; il confronto con i subpath di `exports` è esprimibile con un'analisi statica.
-
-#### Metadata
-  * type: analysis-verification
-
-#### Relations
-  * derivedFrom: [Verifica della struttura del monorepo](#verifica-della-struttura-del-monorepo)
-  * verify: [Import delle API pubbliche dei package business](../Requirements/Workspace.md#import-delle-api-pubbliche-dei-package-business)
----
-
-### Analisi degli import tra package business e applicazioni
-
-Analizzare il grafo degli import di tutti i file TypeScript dei package business, compresi test, `import type` e riesportazioni.
-
-#### Details
-L'analisi passa se nessun import originato da un package business punta al codice di un altro package business o di un'applicazione. Fallisce se compare anche un solo collegamento vietato, inclusi quelli che importano soltanto tipi.
-
-Non automatizzabile: il progetto non ha un analizzatore del grafo degli import; la regola è esprimibile con un'analisi statica.
-
-#### Metadata
-  * type: analysis-verification
-
-#### Relations
-  * derivedFrom: [Verifica della struttura del monorepo](#verifica-della-struttura-del-monorepo)
-  * verify: [Isolamento degli import dei package business](../Requirements/Workspace.md#isolamento-degli-import-dei-package-business)
----
-
-### Analisi degli import verso package tecnici condivisi
-
-Analizzare il grafo degli import di tutti i file TypeScript dei package business, compresi test, `import type` e riesportazioni, e individuare i package tecnici condivisi del workspace.
-
-#### Details
-L'analisi passa se nessun import originato da un package business punta al codice di un package tecnico condiviso del workspace. Fallisce se compare anche un solo collegamento vietato, inclusi quelli che importano soltanto tipi.
-
-Non automatizzabile: riconoscere un package tecnico condiviso richiede giudizio umano; il progetto non ha un analizzatore del grafo degli import.
-
-#### Metadata
-  * type: analysis-verification
-
-#### Relations
-  * derivedFrom: [Verifica della struttura del monorepo](#verifica-della-struttura-del-monorepo)
-  * verify: [Isolamento dei package business dai package tecnici condivisi](../Requirements/Workspace.md#isolamento-dei-package-business-dai-package-tecnici-condivisi)
 ---
 
 ### Controllo degli adapter tra moduli business
@@ -297,4 +228,69 @@ Non automatizzabile: attribuire le responsabilità del codice a runtime, composi
   * verify: [Assemblaggio dei componenti nelle app](../Requirements/Workspace.md#assemblaggio-dei-componenti-nelle-app)
   * verify: [Coordinamento dell'esecuzione negli entrypoint](../Requirements/Workspace.md#coordinamento-dellesecuzione-negli-entrypoint)
   * verify: [Meccanismi tecnici del processo nelle app](../Requirements/Workspace.md#meccanismi-tecnici-del-processo-nelle-app)
+---
+
+### Prova degli import dei test Domain e Application
+
+Leggendo come testo i sorgenti, tolti i commenti, estrarre con un'espressione regolare gli specificatori di `import … from`, `export … from`, degli import di soli effetti `import '…'` e degli import dinamici letterali `import('…')`, compresi `import type` ed `export type`, dei file di prova in `test/domain/` e `test/application/` di ogni package sotto `packages/`, seguendo anche gli import verso i file locali di test. Sono codice di produzione i file sotto `src/` di un package o di un'applicazione e i package del workspace importati per nome.
+
+#### Details
+La prova passa se i test Domain raggiungono codice di produzione soltanto in `src/domain/` del proprio package e i test Application soltanto in `src/application/` o `src/domain/` del proprio package. Fallisce se un test, direttamente o tramite un file locale di test, raggiunge altro codice di produzione, anche tramite un import di soli tipi, oppure se un file di prova di un package non risiede in `test/domain/`, `test/application/`, `test/adapters/in/` o `test/adapters/out/` e quindi non è classificabile. Runner, assertion, moduli Node.js, dipendenze npm e file locali di test non sono codice di produzione. Fallisce anche se l'estrazione non riconosce, in un file d'esempio, import di valori, `import type`, import su più righe, import di soli effetti, riesportazioni e import dinamici, o se riconosce come import un testo in un commento o in una stringa.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della struttura del monorepo](#verifica-della-struttura-del-monorepo)
+  * satisfiedBy: [import-boundaries.test.ts](../../test/repository/import-boundaries.test.ts)
+  * verify: [Import del codice di produzione nei test Application](../Requirements/Workspace.md#import-del-codice-di-produzione-nei-test-application)
+  * verify: [Import del codice di produzione nei test Domain](../Requirements/Workspace.md#import-del-codice-di-produzione-nei-test-domain)
+---
+
+### Prova degli import delle API pubbliche nelle applicazioni
+
+Leggendo come testo i sorgenti, tolti i commenti, estrarre con un'espressione regolare gli specificatori di `import … from`, `export … from`, degli import di soli effetti `import '…'` e degli import dinamici letterali `import('…')`, compresi `import type` ed `export type`, di tutti i file TypeScript sotto `apps/`, inclusi i test, e confrontarli con il nome e il campo `exports` del `package.json` di ogni package sotto `packages/`.
+
+#### Details
+La prova passa se ogni import che nomina un package business usa il nome del package seguito da un subpath dichiarato nel suo campo `exports` e se ogni import relativo resta nella directory della propria applicazione. Fallisce se un'applicazione raggiunge un file di un package mediante un percorso relativo, usa un subpath non dichiarato o la radice del package, usa un alias di import con `#` oppure se un `tsconfig*.json` del repository dichiara `paths`. Fallisce anche se l'estrazione non riconosce, in un file d'esempio, import di valori, `import type`, import su più righe, import di soli effetti, riesportazioni e import dinamici, o se riconosce come import un testo in un commento o in una stringa.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della struttura del monorepo](#verifica-della-struttura-del-monorepo)
+  * satisfiedBy: [import-boundaries.test.ts](../../test/repository/import-boundaries.test.ts)
+  * verify: [Import delle API pubbliche dei package business](../Requirements/Workspace.md#import-delle-api-pubbliche-dei-package-business)
+---
+
+### Prova degli import tra package business e applicazioni
+
+Leggendo come testo i sorgenti, tolti i commenti, estrarre con un'espressione regolare gli specificatori di `import … from`, `export … from`, degli import di soli effetti `import '…'` e degli import dinamici letterali `import('…')`, compresi `import type` ed `export type`, di tutti i file TypeScript dei package sotto `packages/`, compresi i test ed esclusi `dist/` e `node_modules/`.
+
+#### Details
+La prova passa se ogni import relativo di un package resta nella directory del package e nessun import nomina un altro package del workspace. Fallisce se compare anche un solo import verso un altro package o un'applicazione, compresi quelli che importano soltanto tipi. Fallisce anche se l'estrazione non riconosce, in un file d'esempio, import di valori, `import type`, import su più righe, import di soli effetti, riesportazioni e import dinamici, o se riconosce come import un testo in un commento o in una stringa.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della struttura del monorepo](#verifica-della-struttura-del-monorepo)
+  * satisfiedBy: [import-boundaries.test.ts](../../test/repository/import-boundaries.test.ts)
+  * verify: [Isolamento degli import dei package business](../Requirements/Workspace.md#isolamento-degli-import-dei-package-business)
+---
+
+### Prova degli import verso package tecnici condivisi
+
+Con la stessa lettura degli import della prova degli import tra package business e applicazioni, considerare come destinazione vietata ogni package del workspace diverso da quello che importa, senza distinguere fra package business e package tecnici.
+
+#### Details
+La prova passa se nessun import originato da un package sotto `packages/` nomina un altro package del workspace o raggiunge con un percorso relativo un'altra directory del workspace; così nessun package tecnico condiviso è raggiungibile, qualunque sia il suo nome. Fallisce se compare anche un solo collegamento di questo tipo, inclusi quelli che importano soltanto tipi. Fallisce anche se l'estrazione non riconosce, in un file d'esempio, import di valori, `import type`, import su più righe, import di soli effetti, riesportazioni e import dinamici, o se riconosce come import un testo in un commento o in una stringa.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della struttura del monorepo](#verifica-della-struttura-del-monorepo)
+  * satisfiedBy: [import-boundaries.test.ts](../../test/repository/import-boundaries.test.ts)
+  * verify: [Isolamento dei package business dai package tecnici condivisi](../Requirements/Workspace.md#isolamento-dei-package-business-dai-package-tecnici-condivisi)
 ---

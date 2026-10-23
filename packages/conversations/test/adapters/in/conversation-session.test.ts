@@ -4,8 +4,13 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { WebSocket } from 'ws';
 import { ProjectError } from '../../../src/project-error.js';
-import { Turn } from '../../../src/domain/turn.js';
 import { createExchangeTurn, type ExchangeTurn } from '../../../src/application/exchange-turn.use-case.js';
+import type { ConversationHistory } from '../../../src/application/conversation-history-read.js';
+
+type HistoryTurn = ConversationHistory['turns'][number];
+
+/** The pending turn the fake archive returns, as the Application history port describes it. */
+const pendingTurn = (text: string): HistoryTurn => ({ id: 'turn-1', text, acceptedAt: new Date(0), status: 'pending' });
 
 // A deadline that never elapses in these session tests.
 const deadlines = { start: () => ({ elapsed: new Promise<void>(() => { /* never */ }), cancel() {} }) };
@@ -90,10 +95,10 @@ function harness(exchange: ExchangeTurn, speech?: SpeechComponents) {
 /** The real exchange use case over an in-memory archive that records stored outcomes. */
 function recordingExchange(parts: readonly ReplyPart[]) {
   const outcomes: unknown[] = [];
-  let pending: ReturnType<Turn['snapshot']> | undefined;
+  let pending: HistoryTurn | undefined;
   const exchange = createExchangeTurn({ deadlines,
     begin: async ({ text }) => {
-      pending = Turn.accept({ id: 'turn-1', text, acceptedAt: new Date(0) }).snapshot();
+      pending = pendingTurn(text);
       return { ok: true, value: { conversationId: 'conversation-1', turnId: 'turn-1', acceptedAt: new Date(0) } };
     },
     history: { async find(id) {
@@ -239,10 +244,10 @@ describe('conversation session diagnostics', () => {
       ? { async *[Symbol.asyncIterator]() { yield { kind: 'text', text: 'parziale' } as ReplyPart; throw marker; } }
       : (async function* () { yield* parts; })();
     const outcomes: unknown[] = [];
-    let pending: ReturnType<Turn['snapshot']> | undefined;
+    let pending: HistoryTurn | undefined;
     const exchange = createExchangeTurn({ deadlines,
       begin: async ({ text }) => {
-        pending = Turn.accept({ id: 'turn-1', text, acceptedAt: new Date(0) }).snapshot();
+        pending = pendingTurn(text);
         return { ok: true, value: { conversationId: 'conversation-1', turnId: 'turn-1', acceptedAt: new Date(0) } };
       },
       history: { async find(id) {

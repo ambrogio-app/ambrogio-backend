@@ -140,24 +140,6 @@ Non automatizzabile: riconoscere quale rifiuto del caso d'uso deriva da una port
   * verify: [Tipi distinti per i rifiuti di porte e casi d'uso](../Requirements/ServerFoundation.md#tipi-distinti-per-i-rifiuti-di-porte-e-casi-duso)
 ---
 
-### Analisi delle definizioni locali di Result
-
-Per ogni modulo business del server che usa `Result<T, E>`, esaminare la dichiarazione TypeScript del tipo e gli import dei file che lo usano; confrontare la dichiarazione con la specifica «Forma del tipo Result».
-
-#### Details
-L'analisi passa se ogni modulo definisce `Result<T, E>` nel proprio package, senza importarlo da altri package, e se il tipo coincide con `Readonly<{ ok: true; value: T }> | Readonly<{ ok: false; error: E }>`. Fallisce se il tipo è condiviso tra package, se un ramo è mutabile o se discriminanti e campi differiscono dalla specifica.
-
-Non automatizzabile: il progetto non ha un controllo automatico che confronti la dichiarazione di `Result` con la specifica e ne vieti l'import fra package; il controllo è esprimibile con un'analisi statica.
-
-#### Metadata
-  * type: analysis-verification
-
-#### Relations
-  * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * verify: [Definizione locale del tipo Result](../Requirements/ServerFoundation.md#definizione-locale-del-tipo-result)
-  * verify: [Struttura del tipo Result](../Requirements/ServerFoundation.md#struttura-del-tipo-result)
----
-
 ### Analisi delle firme Result di casi d'uso e porte
 
 Esaminare le firme TypeScript di ogni caso d'uso e porta Application del server che dichiara rifiuti previsti e confrontare il tipo `E` con le varianti del rispettivo contratto; includere funzioni sincrone e asincrone.
@@ -565,6 +547,23 @@ La prova passa se il messaggio pubblico non contiene nessuno dei marcatori tecni
   * verify: [Separazione del messaggio pubblico dalla diagnosi tecnica](../Requirements/ServerFoundation.md#separazione-del-messaggio-pubblico-dalla-diagnosi-tecnica)
 ---
 
+### Prova delle definizioni locali di Result
+
+Leggendo come testo tutti i file TypeScript sotto `src/` di ogni package in `packages/`, tolti i commenti e i letterali stringa, individuare le dichiarazioni chiamate `Result`, i riferimenti a `Result` e gli import, le riesportazioni, gli import di namespace e gli import dinamici che portano il nome `Result`.
+
+#### Details
+La prova passa se ogni package che riferisce `Result` lo dichiara nel proprio `src/` come alias di tipo con i parametri `T` ed `E` il cui testo, a meno degli spazi, è `Readonly<{ ok: true; value: T }> | Readonly<{ ok: false; error: E }>`, se non esistono altre dichiarazioni chiamate `Result` e se ogni import o riesportazione del nome `Result` usa un percorso relativo verso un file dello stesso package che lo dichiara. Fallisce se il tipo è importato da un altro package o tramite un nome di package, se un ramo è mutabile, se discriminanti o campi differiscono dalla specifica o se un package riferisce `Result` senza dichiararlo. Fallisce anche se la lettura non riconosce, in un testo d'esempio, le dichiarazioni valide e non valide e ogni forma di import del nome.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
+  * satisfiedBy: [result-type.test.ts](../../test/repository/result-type.test.ts)
+  * verify: [Definizione locale del tipo Result](../Requirements/ServerFoundation.md#definizione-locale-del-tipo-result)
+  * verify: [Struttura del tipo Result](../Requirements/ServerFoundation.md#struttura-del-tipo-result)
+---
+
 ### Verifica della protezione dai segreti
 
 Raggruppa i controlli che impediscono l'ingresso di credenziali nella storia Git del backend, in CI e nei commit locali.
@@ -573,38 +572,36 @@ Raggruppa i controlli che impediscono l'ingresso di credenziali nella storia Git
   * type: verification-objective
 ---
 
-### Controllo della scansione dei segreti in CI
+### Prova dell'hook pre-commit dei segreti
 
-Esaminare `.github/workflows/secret-scan.yml` e `.github/workflows/publish-image.yml`: eventi che avviano la scansione, profondità del checkout, versione e impronta SHA-256 dell'archivio gitleaks, comando eseguito e dipendenza del job di pubblicazione dall'esito della scansione. Esaminare l'esito di un'esecuzione del workflow su GitHub quando disponibile.
+In un repository Git temporaneo che contiene l'hook `.githooks/pre-commit` del repository, con `core.hooksPath` impostato a `.githooks`, mettere in staging un file con un token fittizio nel formato dei token di accesso personali GitHub, costruito durante la prova, e tentare il commit; ripetere con un file privo di segreti; ripetere con un `PATH` che contiene soltanto `git`.
 
 #### Details
-Il controllo passa se la scansione parte a ogni push su qualunque branch e a ogni pull request, esegue il checkout dell'intera storia senza conservare le credenziali, scarica gitleaks v8.30.1 e interrompe il workflow se l'impronta non coincide con quella del contratto, esegue `gitleaks git` su tutta la storia con valori oscurati e uscita non riuscita in caso di ritrovamento, e se il job di pubblicazione dell'immagine non può partire senza l'esito positivo della scansione. Fallisce se un evento previsto non avvia la scansione, se la storia è troncata, se il binario non è verificato o se un'immagine può essere pubblicata dopo una scansione fallita o non eseguita.
-
-Non automatizzabile: l'esito vincolante dipende dall'esecuzione su GitHub Actions e dalle impostazioni del repository su GitHub, che non sono riproducibili localmente.
+La prova passa se il commit con il token è impedito e l'output non mostra il valore, se il commit senza segreti riesce e se, senza `gitleaks` nel `PATH`, il commit è impedito con un messaggio che nomina gitleaks e indica dove ottenerlo. Fallisce se viene creato un commit con il token, se il valore compare nell'output, se il commit senza segreti è impedito, se l'assenza dello scanner lascia passare il commit oppure se `gitleaks` non è disponibile nel `PATH` della prova. La CI installa lo scanner secondo «Profilo di scansione dei segreti con gitleaks» prima della suite Vitest.
 
 #### Metadata
-  * type: inspection-verification
+  * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della protezione dai segreti](#verifica-della-protezione-dai-segreti)
-  * verify: [Scansione dei segreti nella CI del backend](../Requirements/ServerFoundation.md#scansione-dei-segreti-nella-ci-del-backend)
+  * satisfiedBy: [pre-commit-hook.test.ts](../../test/repository/pre-commit-hook.test.ts)
+  * verify: [Blocco locale dei commit con segreti](../Requirements/ServerFoundation.md#blocco-locale-dei-commit-con-segreti)
 ---
 
-### Dimostrazione dell'hook pre-commit dei segreti
+### Prova della configurazione della scansione dei segreti in CI
 
-In un clone con `core.hooksPath` impostato a `.githooks`, mettere in staging un file che contiene un segreto fittizio riconosciuto dalle regole predefinite di gitleaks e tentare il commit; ripetere con modifiche prive di segreti; ripetere con `gitleaks` assente dal `PATH`.
+Leggere come testo `.github/workflows/secret-scan.yml` e `.github/workflows/publish-image.yml` e confrontarli con «Profilo di scansione dei segreti con gitleaks».
 
 #### Details
-La dimostrazione passa se il commit con il segreto fittizio è impedito e l'output non mostra il valore, il commit senza segreti riesce e, senza `gitleaks` nel `PATH`, il commit è impedito con un messaggio che indica come installare lo scanner. Fallisce se un commit con il segreto viene creato, se il valore compare in chiaro o se l'assenza dello scanner lascia passare il commit.
-
-Non automatizzabile: la CI non prepara un clone con `core.hooksPath` configurato né l'assenza controllata di gitleaks dal `PATH`; uno script con un repository Git temporaneo potrebbe automatizzarla.
+La prova passa se la scansione parte a ogni push su qualunque branch (`'**'`), a ogni pull request, su richiesta manuale e con `workflow_call`; se il checkout dichiara `fetch-depth: 0` e `persist-credentials: false`; se il workflow fissa la versione 8.30.1 e l'impronta SHA-256 del contratto, scarica `gitleaks_8.30.1_linux_x64.tar.gz` dalla release ufficiale e lo verifica con `sha256sum --check --strict` prima di estrarlo; se il job `Scan history for secrets` esegue `gitleaks git --redact --no-banner --exit-code 1 .`; e se il job `publish` dichiara `needs` sul job che richiama `secret-scan.yml`. Fallisce se un evento manca, se la storia è troncata, se versione o impronta differiscono dal contratto, se l'archivio è estratto senza verifica, se il comando differisce o se la pubblicazione non dipende dalla scansione. Che una scansione fallita impedisca l'integrazione è verificato da «Ispezione della protezione del merge».
 
 #### Metadata
-  * type: demonstration-verification
+  * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della protezione dai segreti](#verifica-della-protezione-dai-segreti)
-  * verify: [Blocco locale dei commit con segreti](../Requirements/ServerFoundation.md#blocco-locale-dei-commit-con-segreti)
+  * satisfiedBy: [workflows.test.ts](../../test/repository/workflows.test.ts)
+  * verify: [Scansione dei segreti nella CI del backend](../Requirements/ServerFoundation.md#scansione-dei-segreti-nella-ci-del-backend)
 ---
 
 ### Verifica della pubblicazione dell'immagine Docker del server
@@ -697,23 +694,6 @@ Non automatizzabile: individuare i componenti configurabili e il modulo letto da
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
   * verify: [File TypeScript separato per componente configurabile](../Requirements/ServerFoundation.md#file-typescript-separato-per-componente-configurabile)
----
-
-### Controllo del percorso CI del server
-
-Esaminare la configurazione CI e le invocazioni effettive per le modifiche funzionali del server. Verificare che esegua Reqvire validate e lint, la compilazione TypeScript e la suite backend Vitest, incluse prove degli adapter di persistenza contro un database SQLite reale preparato per i test quando gli adapter esistono. Accertare che ogni comando richiesto abbia un esito vincolante per l'integrazione.
-
-#### Details
-Il controllo passa se tutte le fasi richieste vengono eseguite e un loro fallimento impedisce l'integrazione; le prove SQLite devono usare il database reale e non un sostituto in memoria della porta. Fallisce se manca una fase, le prove dell'adapter non raggiungono SQLite reale oppure un controllo fallito non blocca l'integrazione.
-
-Non automatizzabile: che un controllo fallito impedisca l'integrazione dipende dall'esecuzione su GitHub Actions e dalle regole di protezione del branch configurate su GitHub, fuori dal repository.
-
-#### Metadata
-  * type: inspection-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * verify: [Controlli CI delle modifiche funzionali del server](../Requirements/ServerFoundation.md#controlli-ci-delle-modifiche-funzionali-del-server)
 ---
 
 ### Controllo del perimetro iniziale di osservabilità
@@ -820,36 +800,21 @@ Non automatizzabile: richiede di stabilire quali rotte accettano un corpo; le ro
   * verify: [Limite dei corpi delle richieste HTTP](../Requirements/ServerFoundation.md#limite-dei-corpi-delle-richieste-http)
 ---
 
-### Ispezione dell'irrobustimento dei workflow
-
-Esaminare `.github/workflows/ci.yml`, `.github/workflows/secret-scan.yml` e `.github/workflows/publish-image.yml` e confrontare permessi, riferimenti delle action, runner, `timeout-minutes`, opzioni di checkout e richiami `workflow_call` con «Profilo di irrobustimento dei workflow GitHub Actions». Esaminare l'esito di un'esecuzione dei workflow su GitHub quando disponibile.
-
-#### Details
-L'ispezione passa se ogni valore coincide con il profilo: permessi `contents: read` a livello di workflow e `packages: write` soltanto nel job `publish`, ogni action esterna fissata a un'impronta SHA completa, runner `ubuntu-24.04` e `timeout-minutes` in ogni job, `persist-credentials: false` in ogni checkout e pubblicazione che richiama CI e scansione dei segreti con `workflow_call`. Fallisce se un job riceve permessi non necessari, un'action è indicata con un tag o un branch, un job non ha limite di durata, un checkout conserva le credenziali o la pubblicazione duplica i controlli invece di richiamarli.
-
-Non automatizzabile: l'effetto di permessi, limiti di durata e credenziali si osserva soltanto nell'esecuzione su GitHub Actions, fuori dal repository; il confronto dei valori nei file sarebbe automatizzabile con un controllo dei workflow che il progetto non ha.
-
-#### Metadata
-  * type: inspection-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * verify: [Irrobustimento dei workflow GitHub Actions](../Requirements/ServerFoundation.md#irrobustimento-dei-workflow-github-actions)
----
-
 ### Ispezione della protezione del merge
 
 Leggere con `gh api repos/<proprietario>/<repository>/rulesets` e con il dettaglio del ruleset `main` le regole attive sul branch principale.
 
 #### Details
-L'ispezione passa se il ruleset corrisponde al contratto: applicazione attiva sul branch predefinito, nessun attore escluso, integrazione solo tramite pull request, controlli richiesti con i nomi del contratto, riscrittura forzata e cancellazione vietate; e se un push diretto sul branch principale viene rifiutato. Fallisce se il ruleset manca, è disattivato, ha attori esclusi o differisce dal contratto. Non automatizzabile: il ruleset è un'impostazione del repository GitHub e non un file del repository, e leggerlo richiede credenziali con accesso amministrativo che la CI non possiede.
+L'ispezione passa se il ruleset corrisponde al contratto: applicazione attiva sul branch predefinito, nessun attore escluso, integrazione solo tramite pull request, controlli richiesti con i nomi del contratto, riscrittura forzata e cancellazione vietate; e se un push diretto sul branch principale viene rifiutato. Fallisce se il ruleset manca, è disattivato, ha attori esclusi o differisce dal contratto. I controlli richiesti `Backend checks` e `Scan history for secrets` sono i job verificati da «Prova della configurazione della CI del server» e da «Prova della configurazione della scansione dei segreti in CI»: l'ispezione stabilisce che un loro fallimento impedisce l'integrazione. Non automatizzabile: il ruleset è un'impostazione del repository GitHub e non un file del repository, e leggerlo richiede credenziali con accesso amministrativo che la CI non possiede.
 
 #### Metadata
   * type: inspection-verification
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * verify: [Controlli CI delle modifiche funzionali del server](../Requirements/ServerFoundation.md#controlli-ci-delle-modifiche-funzionali-del-server)
   * verify: [Controlli obbligatori prima del merge](../Requirements/ServerFoundation.md#controlli-obbligatori-prima-del-merge)
+  * verify: [Scansione dei segreti nella CI del backend](../Requirements/ServerFoundation.md#scansione-dei-segreti-nella-ci-del-backend)
 ---
 
 ### Prova degli header di cache conversazionali
@@ -975,6 +940,22 @@ La prova passa se il progetto produce un'immagine eseguibile, il server si avvia
   * verify: [Esecuzione del server senza Docker Compose](../Requirements/ServerFoundation.md#esecuzione-del-server-senza-docker-compose)
 ---
 
+### Prova dell'irrobustimento dei workflow
+
+Leggere come testo `.github/workflows/ci.yml`, `.github/workflows/secret-scan.yml` e `.github/workflows/publish-image.yml` e confrontare permessi, riferimenti delle action, runner, `timeout-minutes`, opzioni di checkout, uso del `GITHUB_TOKEN`, installazione dello scanner dei segreti e richiami `workflow_call` con «Profilo di irrobustimento dei workflow GitHub Actions».
+
+#### Details
+La prova passa se ogni workflow dichiara `permissions` con il solo `contents: read`; se soltanto il job `publish` dichiara permessi propri, `contents: read` e `packages: write`; se ogni `uses` di un passo indica un'action esterna con un'impronta di 40 caratteri esadecimali seguita dal commento della versione e `actions/checkout` e `actions/setup-node` usano le impronte del contratto; se ogni job con passi usa `ubuntu-24.04` e dichiara `timeout-minutes` 20 per `checks`, 10 per `gitleaks` e 60 per `publish`; se ogni passo `actions/checkout` imposta `persist-credentials: false`; se `secrets.GITHUB_TOKEN` compare soltanto nell'`env` del passo di login al registro; se i job `checks` e `gitleaks` installano gitleaks con la stessa versione e la stessa impronta verificata; e se `ci.yml` e `secret-scan.yml` dichiarano `workflow_call` e `publish-image.yml` li richiama come job `checks` e `secret-scan`, da cui il job `publish` dipende con `needs`. Fallisce se un job riceve permessi non previsti, se un'action è indicata con un tag o un branch, se un job non ha il limite di durata del contratto, se un checkout conserva le credenziali o se la pubblicazione duplica i controlli invece di richiamarli.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * satisfiedBy: [workflows.test.ts](../../test/repository/workflows.test.ts)
+  * verify: [Irrobustimento dei workflow GitHub Actions](../Requirements/ServerFoundation.md#irrobustimento-dei-workflow-github-actions)
+---
+
 ### Prova dell'origine delle credenziali API
 
 Per ogni componente del server che usa un'API esterna, predisporre un modulo TypeScript locale di prova con credenziali fittizie distinguibili, avviare il componente con un client API controllato e osservare le credenziali fornite al client. Esaminare il percorso di caricamento della configurazione.
@@ -1042,6 +1023,22 @@ La prova passa se HSTS è assente quando la configurazione pubblica è HTTP o no
   * verify: [HSTS legato all'HTTPS pubblico](../Requirements/ServerFoundation.md#hsts-legato-allhttps-pubblico)
 ---
 
+### Prova della configurazione della CI del server
+
+Leggere come testo `.github/workflows/ci.yml` e i file di prova dei package sotto `packages/`.
+
+#### Details
+La prova passa se il workflow parte a ogni push su `main`, a ogni pull request, su richiesta manuale e con `workflow_call`; se il job `Backend checks` esegue `pnpm install --frozen-lockfile`, `validate` di Reqvire 1.3.2, `lint --json` di Reqvire 1.3.2 con il controllo `jq -e` che le liste `auto_fixable` e `needs_manual_review` siano vuote, `node scripts/check-model.mjs`, `pnpm typecheck`, `pnpm build` e `pnpm test`, con l'installazione dipendenze per prima e con `pnpm build` e l'installazione verificata di gitleaks prima di `pnpm test`; se nessun passo o job dichiara `continue-on-error`; e se ogni file di prova che importa un adapter di persistenza di `src/adapters/out/sqlite/` importa anche `better-sqlite3`, così da esercitare un database SQLite reale. Fallisce se manca un evento o una fase, se l'ordine richiesto non è rispettato, se un fallimento è tollerato o se una prova di un adapter SQLite non usa il driver reale. Che un controllo fallito impedisca l'integrazione è verificato da «Ispezione della protezione del merge».
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * satisfiedBy: [workflows.test.ts](../../test/repository/workflows.test.ts)
+  * verify: [Controlli CI delle modifiche funzionali del server](../Requirements/ServerFoundation.md#controlli-ci-delle-modifiche-funzionali-del-server)
+---
+
 ### Prova della configurazione esplicita del listener HTTP
 
 Fornire al processo modulo TypeScript HTTP con `host` e `port` validi, poi omettere separatamente ciascun campo e provare valori di tipo o intervallo invalidi; provare anche variabile di percorso mancante, file assente e modulo TypeScript non importabile. Verificare l'indirizzo e la porta effettivamente ascoltati nel caso valido e l'assenza di listener nei casi invalidi.
@@ -1090,4 +1087,3 @@ La prova passa se ogni directory contiene un solo modello `.onnx`, `tokens.txt`,
   * satisfiedBy: [verify-docker-image.mjs](../../scripts/verify-docker-image.mjs)
   * verify: [Directory delle voci sostituibile nell'immagine](../Requirements/ServerFoundation.md#directory-delle-voci-sostituibile-nellimmagine)
 ---
-

@@ -4,7 +4,6 @@ import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, test, vi } from 'vitest';
-import { startConsultationServer } from '../../src/runtime/consultation-server.js';
 import { startConversationServer } from '../../src/runtime/conversation-server.js';
 import { closeAllClients, ProtocolClient, rejectedUpgradeStatus, takeSchemaViolations } from './protocol-client.js';
 
@@ -16,6 +15,11 @@ afterEach(async () => {
   await Promise.all(directories.splice(0).map(directory =>
     rm(directory, { recursive: true, force: true })));
 });
+
+const controlledAgents = async () => ({ orchestrator: { async *produce() {
+  yield { kind: 'text' as const, text: 'ok' };
+  yield { kind: 'reply_expectation' as const, expectsReply: false };
+} }, async close() {} });
 
 async function freePort(): Promise<number> {
   const probe = createServer();
@@ -41,13 +45,12 @@ test('loads the active component TypeScript once and retains validated values af
   await writeConfigFile(conversations, JSON.stringify({ archivePath: archive,
     language: 'it', listPageSize: 2, maxListPageSize: 3 }));
 
-  const runtime = await startConsultationServer({
+  const runtime = await startConversationServer({
     AMBROGIO_HTTP_CONFIG_PATH: http,
     AMBROGIO_CONVERSATIONS_CONFIG_PATH: conversations,
-    AMBROGIO_VOICE_CONFIG_PATH: join(directory, 'absent-voice.ts'),
     HOST: '0.0.0.0', PORT: String(port + 1),
     AMBROGIO_LANGUAGE: 'en',
-  });
+  }, directory, controlledAgents);
   try {
     const request = () => fetch(`http://127.0.0.1:${port}/api/conversations`, {
       headers: { origin: 'https://allowed.example' },
@@ -82,8 +85,8 @@ test('rejects a secret-bearing invalid component TypeScript before opening its a
 
   let failure: unknown;
   try {
-    await startConsultationServer({ AMBROGIO_HTTP_CONFIG_PATH: http,
-      AMBROGIO_CONVERSATIONS_CONFIG_PATH: conversations });
+    await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: http,
+      AMBROGIO_CONVERSATIONS_CONFIG_PATH: conversations }, directory, controlledAgents);
   } catch (error) { failure = error; }
   expect(failure).toBeInstanceOf(Error);
   expect((failure as Error).message).toBe('Invalid conversation archive path');

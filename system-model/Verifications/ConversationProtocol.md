@@ -2,7 +2,7 @@
 
 ### Verifica del protocollo conversazionale
 
-Raggruppa le verifiche del canale WebSocket `ambrogio.v1` comune a testo e voce: apertura della sessione, trasmissioni in ingresso e in uscita, esiti, rifiuti, errori di protocollo e controllo dell'origine. Le verifiche sono definite il 17 ottobre 2026 prima dell'implementazione; le evidenze dei precedenti trasporti SSE e Micdrop non dimostrano il nuovo protocollo.
+Raggruppa le verifiche del canale WebSocket `ambrogio.v1` comune a testo e voce: apertura della sessione, trasmissioni in ingresso e in uscita, esiti, rifiuti, errori di protocollo e controllo dell'origine.
 
 #### Metadata
   * type: verification-objective
@@ -14,6 +14,8 @@ Esaminare schema JSON, adapter del canale e casi d'uso seguendo un turno testual
 
 #### Details
 L'analisi passa se testo e voce usano gli stessi messaggi di sessione, trasmissione ed esito e lo stesso caso d'uso, differendo soltanto per il `content` dichiarato e per il contenuto dei frame; se rifiuti ed esiti hanno gli stessi motivi e lo stesso ordine; se non esistono rotte o percorsi di turno dedicati a un solo canale; e se il server non dipende più da `@micdrop/server`, `@micdrop/piper` o dal formato UI Message Stream di `ai` per il trasporto. Fallisce se un canale ha messaggi, regole di rifiuto o conferme di successo proprie, o se resta un trasporto dei turni alternativo.
+
+Non automatizzabile: giudicare che testo e voce non abbiano regole proprie richiede di confrontare schema, adapter e casi d'uso.
 
 #### Metadata
   * type: analysis-verification
@@ -115,7 +117,7 @@ La prova passa se ogni riga diagnostica della sessione contiene `correlationId` 
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](#verifica-del-protocollo-conversazionale)
-  * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
+  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
   * verify: [Correlazione diagnostica della sessione conversazionale](../Requirements/ConversationProtocol.md#correlazione-diagnostica-della-sessione-conversazionale)
 ---
 
@@ -134,4 +136,3 @@ La prova passa se il server non avvia l'ammissione prima di `input.end`, il test
   * satisfiedBy: [session-turns.test.ts](../../apps/server/test/runtime/session-turns.test.ts)
   * verify: [Trasmissione della richiesta del turno](../Requirements/ConversationProtocol.md#trasmissione-della-richiesta-del-turno)
 ---
-

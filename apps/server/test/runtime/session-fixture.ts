@@ -6,7 +6,7 @@ import type { ConversationHistory } from '@ambrogio/conversations/application/co
 import type { ProduceConversationReply, ReplyPart } from '@ambrogio/conversations/application/produce-conversation-reply';
 import type { SpeechComponents, SpeechComponentsFactory } from '@ambrogio/conversations/adapters/in/session/speech-components';
 import { prepareConfiguredConversations } from '../../src/composition/conversations.js';
-import { buildConversationServer } from '../../src/runtime/consultation-server.js';
+import { buildConversationServer } from '../../src/runtime/http-server.js';
 
 export type Language = 'en' | 'it';
 export type Reason = 'invalid' | 'conversation_not_found' | 'occupied' | 'unavailable' | 'too_large'

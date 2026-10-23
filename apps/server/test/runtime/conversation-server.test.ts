@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createServer as createHttpServer } from 'node:http';
 import { createServer, type AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { afterEach, expect, test, vi } from 'vitest';
 import WebSocket from 'ws';
@@ -18,7 +18,7 @@ import { McpToolClient } from '@ambrogio/conversations/adapters/out/mcp-tool-cli
 import { AiSdkOrchestratorReply, AiSdkToolAgentReply } from '@ambrogio/conversations/adapters/out/ai-sdk-reply';
 import { prepareConfiguredConversations } from '../../src/composition/conversations.js';
 import { loadAgentConfigs } from '../../src/runtime/agent-config.js';
-import { buildConversationServer } from '../../src/runtime/consultation-server.js';
+import { buildConversationServer } from '../../src/runtime/http-server.js';
 import { startConversationServer } from '../../src/runtime/conversation-server.js';
 import { closeAllClients, ProtocolClient, takeSchemaViolations } from './protocol-client.js';
 
@@ -923,4 +923,89 @@ test('a directory without specialist agents prevents the conversation listener',
     probe.listen(port, '127.0.0.1', resolve);
   });
   await new Promise<void>((resolve) => probe.close(() => resolve()));
+});
+
+async function expectPortAvailable(port: number): Promise<void> {
+  const probe = createServer();
+  await new Promise<void>((resolve, reject) => {
+    probe.once('error', reject);
+    probe.listen(port, '127.0.0.1', resolve);
+  });
+  await new Promise<void>((resolve) => probe.close(() => resolve()));
+}
+
+const controlledAgents = async () => ({ orchestrator: { async *produce() {
+  yield text('ok'); yield expectation();
+} }, async close() {} });
+
+// Verification: Prova della configurazione esplicita del listener HTTP
+// Verification: Prova dell'archivio configurato all'avvio
+test('does not open a listener when the HTTP or archive configuration is missing or invalid', async () => {
+  const files = await fixture();
+  const port = await freePort();
+  await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
+  const environment = { AMBROGIO_HTTP_CONFIG_PATH: files.http,
+    AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations, PORT: String(port), HOST: '0.0.0.0' };
+  const start = (env: NodeJS.ProcessEnv) => startConversationServer(env, files.directory, controlledAgents);
+  await expect(start({ AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }))
+    .rejects.toThrow('Missing HTTP configuration path');
+  await expect(start(environment)).rejects.toThrow('Invalid HTTP configuration file');
+  await writeConfigFile(files.http, '{');
+  await expect(start(environment)).rejects.toThrow('Invalid HTTP configuration file');
+  for (const invalid of [{ port }, { host: '127.0.0.1' },
+    { host: '127.0.0.1', port: 0 }, { host: '127.0.0.1', port: '3000' }]) {
+    await writeConfigFile(files.http, JSON.stringify(invalid));
+    await expect(start(environment)).rejects.toThrow('Invalid HTTP listener configuration');
+    await expectPortAvailable(port);
+  }
+  await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
+  await writeConfigFile(files.conversations, '{}');
+  await expect(start(environment)).rejects.toThrow('Missing conversation archive path');
+  await expectPortAvailable(port);
+  await writeConfigFile(files.conversations, JSON.stringify({ archivePath:
+    join(dirname(files.archive), 'missing', 'archive.sqlite') }));
+  await expect(start(environment)).rejects.toThrow();
+  await expectPortAvailable(port);
+});
+
+// Verification: Prova della configurazione esplicita del listener HTTP
+// Verification: Prova dell'archivio configurato all'avvio
+test('listens on the configured address and serves the configured archive after recovering pending turns', async () => {
+  const files = await fixture();
+  const archive = await openConversationArchive(files.archive, new Date(1000));
+  await archive.db.insertInto('conversations').values({ id: 'conversation', created_at: 100,
+    last_activity_at: 100 }).execute();
+  await archive.db.insertInto('turns').values({ id: 'turn', conversation_id: 'conversation',
+    ordinal: 1, text: 'hello', accepted_at: 100, status: 'pending', answer: null,
+    error: null, finished_at: null }).execute();
+  await archive.db.updateTable('conversations').set({ active_turn_id: 'turn' })
+    .where('id', '=', 'conversation').execute();
+  await archive.close();
+  const destroy = vi.spyOn(Object.getPrototypeOf(archive.db) as { destroy: () => Promise<void> }, 'destroy');
+
+  const port = await freePort();
+  await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
+  await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
+  const runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
+    AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory, controlledAgents);
+  const address = runtime.server.server.address();
+  expect(address && typeof address !== 'string' && address.address).toBe('127.0.0.1');
+  expect(address && typeof address !== 'string' && address.port).toBe(port);
+  try {
+    const origin = `http://127.0.0.1:${port}`;
+    const list = await fetch(`${origin}/api/conversations`);
+    expect(list.status).toBe(200);
+    expect((await list.json() as { items: { id: string }[] }).items).toEqual([
+      { id: 'conversation', lastActivityAt: new Date(100).toISOString() },
+    ]);
+    const history = await fetch(`${origin}/api/conversations/conversation`);
+    expect(history.status).toBe(200);
+    expect((await history.json() as { turns: { status: string }[] }).turns[0]?.status).toBe('interrupted');
+  } finally {
+    await runtime.close();
+    expect(destroy).toHaveBeenCalledTimes(1);
+    destroy.mockRestore();
+    expect(runtime.server.server.listening).toBe(false);
+    await expectPortAvailable(port);
+  }
 });

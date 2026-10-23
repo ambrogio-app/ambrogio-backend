@@ -1,14 +1,12 @@
 import { writeConfigFile } from '../support/config-fixture.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { createServer } from 'node:net';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
-import { openConversationArchive } from '@ambrogio/conversations/adapters/out/sqlite/archive';
+import { join } from 'node:path';
 import { ProjectError } from '@ambrogio/conversations/application/project-error';
+import type { ProduceConversationReply } from '@ambrogio/conversations/application/produce-conversation-reply';
 import { prepareConfiguredConversations } from '../../src/composition/conversations.js';
-import { buildConsultationServer, buildConversationServer,
-  startConsultationServer } from '../../src/runtime/consultation-server.js';
+import { buildConversationServer } from '../../src/runtime/http-server.js';
 import { loadHttpConfig, type HttpConfig } from '../../src/runtime/http-config.js';
 import { closeAllClients, ProtocolClient, takeSchemaViolations } from './protocol-client.js';
 import type { AddressInfo } from 'node:net';
@@ -23,25 +21,15 @@ async function fixture() {
     archive: join(directory, 'archive.sqlite') };
 }
 
-async function freePort(): Promise<number> {
-  const probe = createServer();
-  await new Promise<void>((resolve, reject) => {
-    probe.once('error', reject);
-    probe.listen(0, '127.0.0.1', resolve);
-  });
-  const address = probe.address();
-  if (!address || typeof address === 'string') throw new Error('No test port');
-  await new Promise<void>(resolve => probe.close(() => resolve()));
-  return address.port;
-}
+const producer: ProduceConversationReply = { async *produce() {
+  yield { kind: 'text', text: 'ok' };
+  yield { kind: 'reply_expectation', expectsReply: false };
+} };
 
-async function expectPortAvailable(port: number): Promise<void> {
-  const probe = createServer();
-  await new Promise<void>((resolve, reject) => {
-    probe.once('error', reject);
-    probe.listen(port, '127.0.0.1', resolve);
-  });
-  await new Promise<void>(resolve => probe.close(() => resolve()));
+/** Build the conversation HTTP server with a controlled reply producer. */
+async function buildServer(config: HttpConfig,
+  prepared: Awaited<ReturnType<typeof prepareConfiguredConversations>>) {
+  return (await buildConversationServer(config, prepared, producer)).server;
 }
 
 afterEach(async () => {
@@ -50,7 +38,7 @@ afterEach(async () => {
   await Promise.all(directories.splice(0).map(directory => rm(directory, { recursive: true, force: true })));
 });
 
-describe('consultation HTTP runtime', () => {
+describe('conversation HTTP server', () => {
   it('requires explicit host and port and validates CORS and HSTS settings', async () => {
     const files = await fixture();
     await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port: 3030 }));
@@ -67,42 +55,13 @@ describe('consultation HTTP runtime', () => {
     }
     await writeConfigFile(files.http, '{');
     await expect(loadHttpConfig(files.http)).rejects.toThrow('Invalid HTTP configuration file');
-    await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port: 3030 }));
-    await writeConfigFile(files.conversations, '{}');
-    await expect(startConsultationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
-      AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }))
-      .rejects.toThrow('Missing conversation archive path');
-  });
-
-  it('does not open a listener when the HTTP path, file or listener fields are invalid', async () => {
-    const files = await fixture();
-    const port = await freePort();
-    await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
-    const environment = { AMBROGIO_HTTP_CONFIG_PATH: files.http,
-      AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations, PORT: String(port), HOST: '0.0.0.0' };
-    await expect(startConsultationServer({ AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }))
-      .rejects.toThrow('Missing HTTP configuration path');
-    await expect(startConsultationServer(environment)).rejects.toThrow('Invalid HTTP configuration file');
-    await writeConfigFile(files.http, '{');
-    await expect(startConsultationServer(environment)).rejects.toThrow('Invalid HTTP configuration file');
-    for (const invalid of [{ port }, { host: '127.0.0.1' },
-      { host: '127.0.0.1', port: 0 }, { host: '127.0.0.1', port: '3000' }]) {
-      await writeConfigFile(files.http, JSON.stringify(invalid));
-      await expect(startConsultationServer(environment)).rejects.toThrow('Invalid HTTP listener configuration');
-      await expectPortAvailable(port);
-    }
-    await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-    await writeConfigFile(files.conversations, JSON.stringify({ archivePath:
-      join(dirname(files.archive), 'missing', 'archive.sqlite') }));
-    await expect(startConsultationServer(environment)).rejects.toThrow();
-    await expectPortAvailable(port);
   });
 
   it('applies global security headers, exact CORS origins and distinct request IDs', async () => {
     const files = await fixture();
     const prepared = await prepareConfiguredConversations({ archivePath: files.archive,
       listPageSize: 20, maxListPageSize: 100, language: 'en' }, new Date());
-    const server = await buildConsultationServer({ ...base, allowedOrigins: ['https://client.test'],
+    const server = await buildServer({ ...base, allowedOrigins: ['https://client.test'],
       publicHttps: true, hstsMaxAgeSeconds: 600 }, prepared);
     server.get('/test-fallback', async () => { throw new Error('private diagnostic marker'); });
     try {
@@ -150,7 +109,7 @@ describe('consultation HTTP runtime', () => {
 
     const other = await prepareConfiguredConversations({ archivePath: files.archive,
       listPageSize: 20, maxListPageSize: 100, language: 'en' }, new Date());
-    const defaultServer = await buildConsultationServer(base, other);
+    const defaultServer = await buildServer(base, other);
     try {
       const response = await defaultServer.inject({ method: 'GET', url: '/api/conversations',
         headers: { origin: 'https://client.test', 'x-forwarded-proto': 'https' } });
@@ -170,7 +129,7 @@ describe('consultation HTTP runtime', () => {
     }
   });
 
-  it('correlates diagnostic events and error responses for both consultation routes', async () => {
+  it('correlates diagnostic events and error responses for both conversation GET routes', async () => {
     const files = await fixture();
     const prepared = await prepareConfiguredConversations({ archivePath: files.archive,
       listPageSize: 20, maxListPageSize: 100, language: 'en' }, new Date());
@@ -184,7 +143,7 @@ describe('consultation HTTP runtime', () => {
       errorOutput.push(String(chunk));
       return true;
     });
-    const server = await buildConsultationServer(base, prepared);
+    const server = await buildServer(base, prepared);
     server.get('/test-fallback', async request => {
       throw Object.assign(new Error('private diagnostic marker'),
         { sourceContext: request.headers['x-context-marker'] });
@@ -288,7 +247,7 @@ describe('consultation HTTP runtime', () => {
       output.push(String(chunk));
       return true;
     });
-    const server = await buildConsultationServer(base, prepared);
+    const server = await buildServer(base, prepared);
     const logged: { err: Error; event: string }[] = [];
     const warnings: unknown[][] = [];
     server.get('/test-project', async () => { throw project; });
@@ -462,46 +421,6 @@ describe('consultation HTTP runtime', () => {
       await turnIngress.closeSessions();
       await server.close();
       await prepared.archive.close();
-    }
-  });
-
-  it('listens on the configured address, recovers pending turns and exposes only the two GETs', async () => {
-    const files = await fixture();
-    const archive = await openConversationArchive(files.archive, new Date(1000));
-    await archive.db.insertInto('conversations').values({ id: 'conversation', created_at: 100,
-      last_activity_at: 100 }).execute();
-    await archive.db.insertInto('turns').values({ id: 'turn', conversation_id: 'conversation',
-      ordinal: 1, text: 'hello', accepted_at: 100, status: 'pending', answer: null,
-      error: null, finished_at: null }).execute();
-    await archive.db.updateTable('conversations').set({ active_turn_id: 'turn' }).where('id', '=', 'conversation').execute();
-    await archive.close();
-    const destroy = vi.spyOn(Object.getPrototypeOf(archive.db) as { destroy: () => Promise<void> }, 'destroy');
-
-    const port = await freePort();
-    await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-    await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
-    const runtime = await startConsultationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
-      AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations });
-    const address = runtime.server.server.address();
-    expect(address && typeof address !== 'string' && address.address).toBe('127.0.0.1');
-    expect(address && typeof address !== 'string' && address.port).toBe(port);
-    try {
-      const origin = `http://127.0.0.1:${port}`;
-      const list = await fetch(`${origin}/api/conversations`);
-      expect(list.status).toBe(200);
-      expect((await list.json() as { items: { id: string }[] }).items).toEqual([
-        { id: 'conversation', lastActivityAt: new Date(100).toISOString() },
-      ]);
-      const history = await fetch(`${origin}/api/conversations/conversation`);
-      expect(history.status).toBe(200);
-      expect((await history.json() as { turns: { status: string }[] }).turns[0]?.status).toBe('interrupted');
-      expect((await fetch(`${origin}/api/conversations/turns`, { method: 'POST' })).status).toBe(404);
-    } finally {
-      await runtime.close();
-      expect(destroy).toHaveBeenCalledTimes(1);
-      destroy.mockRestore();
-      expect(runtime.server.server.listening).toBe(false);
-      await expectPortAvailable(port);
     }
   });
 });

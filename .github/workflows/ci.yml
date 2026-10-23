@@ -45,6 +45,9 @@ jobs:
           cat "$report"
           jq -e '.auto_fixable == [] and .needs_manual_review == []' "$report"
 
+      - name: Check model integrity
+        run: node scripts/check-model.mjs
+
       - name: Check TypeScript
         run: pnpm typecheck
 

@@ -3,7 +3,6 @@ import { ProjectError } from '@ambrogio/conversations/application/project-error'
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import websocket from '@fastify/websocket';
-import { loadConversationConfig } from '@ambrogio/conversations/adapters/out/conversation-config';
 import { httpAjvOptions } from '@ambrogio/conversations/adapters/in/http/http-validation';
 import type { VoiceConfig } from '@ambrogio/conversations/adapters/out/voice-config';
 import type { SpeechComponents, SpeechComponentsFactory } from '@ambrogio/conversations/adapters/in/session/speech-components';
@@ -11,8 +10,7 @@ import type { ProduceConversationReply } from '@ambrogio/conversations/applicati
 import Fastify, { LogController, type FastifyInstance } from 'fastify';
 import { loadProtocolSchema, prepareConfiguredConversations, registerConversationHistoryRoute,
   registerConversationListRoute, registerConversationSessionRoute } from '../composition/conversations.js';
-import { conversationConfigPath } from './conversation-config-path.js';
-import { httpConfigPath, loadHttpConfig, type HttpConfig } from './http-config.js';
+import type { HttpConfig } from './http-config.js';
 import { startupPhase } from './startup-failure.js';
 
 type Prepared = Awaited<ReturnType<typeof prepareConfiguredConversations>>;
@@ -30,14 +28,15 @@ function serializeDiagnosticError(value: unknown): Readonly<{ type: string; mess
     : { type: 'Error', message: 'Unexpected HTTP failure', stack: '[redacted]' };
 }
 
-async function buildHttpServer(config: HttpConfig, prepared: Prepared,
-  replyProducer?: ProduceConversationReply, voice?: VoiceConfig,
+/** Build the HTTP server of the conversation ingress: session channel plus list and history routes. */
+export async function buildConversationServer(config: HttpConfig, prepared: Prepared,
+  replyProducer: ProduceConversationReply, voice?: VoiceConfig,
   speechFactory?: SpeechComponentsFactory, options: ConversationServerOptions = {}): Promise<Readonly<{
-    server: FastifyInstance; turnIngress?: ConversationIngress;
+    server: FastifyInstance; turnIngress: ConversationIngress;
   }>> {
   const server = Fastify({
     ajv: { customOptions: httpAjvOptions },
-    ...(replyProducer ? { forceCloseConnections: true } : {}),
+    forceCloseConnections: true,
     logger: { level: 'warn', serializers: {
       err: serializeDiagnosticError,
     } },
@@ -61,14 +60,13 @@ async function buildHttpServer(config: HttpConfig, prepared: Prepared,
       ? 'Internal server error.' : 'Invalid HTTP request.' });
   });
   try {
-    if (replyProducer) await server.register(websocket);
+    await server.register(websocket);
     await server.register(helmet, { global: true, hsts: config.publicHttps
       ? { maxAge: config.hstsMaxAgeSeconds!, includeSubDomains: false, preload: false } : false });
     await server.register(cors, { origin: config.allowedOrigins.length ? [...config.allowedOrigins] : false,
       methods: ['GET'], exposedHeaders: ['X-Request-Id'] });
     registerConversationListRoute(server, prepared);
     registerConversationHistoryRoute(server, prepared);
-    if (!replyProducer) return { server };
     const schema = await loadProtocolSchema();
     let speech: SpeechComponents | undefined;
     if (voice) {
@@ -89,34 +87,4 @@ async function buildHttpServer(config: HttpConfig, prepared: Prepared,
     await server.close();
     throw error;
   }
-}
-
-export async function buildConsultationServer(config: HttpConfig, prepared: Prepared): Promise<FastifyInstance> {
-  return (await buildHttpServer(config, prepared)).server;
-}
-
-export async function buildConversationServer(config: HttpConfig, prepared: Prepared,
-  replyProducer: ProduceConversationReply, voice?: VoiceConfig,
-  speechFactory?: SpeechComponentsFactory, options: ConversationServerOptions = {}) {
-  const built = await buildHttpServer(config, prepared, replyProducer, voice, speechFactory, options);
-  return { server: built.server, turnIngress: built.turnIngress! };
-}
-
-export async function startConsultationServer(environment: NodeJS.ProcessEnv = process.env) {
-  const [http, conversations] = await Promise.all([
-    loadHttpConfig(httpConfigPath(environment)),
-    loadConversationConfig(conversationConfigPath(environment)),
-  ]);
-  const prepared = await prepareConfiguredConversations(conversations, new Date());
-  let server: FastifyInstance | undefined;
-  try {
-    server = await buildConsultationServer(http, prepared);
-    await server.listen({ host: http.host, port: http.port });
-  } catch (error) {
-    try { if (server) await server.close(); } finally { await prepared.archive.close(); }
-    throw error;
-  }
-  return { server, async close() {
-    try { await server.close(); } finally { await prepared.archive.close(); }
-  } };
 }

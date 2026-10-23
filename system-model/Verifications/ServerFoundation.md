@@ -13,7 +13,7 @@ Raggruppa le prove dell'interruzione dei turni attivi all'arresto ordinato e del
 Avviare un turno con elaborazione controllata che resterebbe in corso, richiedere l'arresto del server e tentare un nuovo turno. Osservare la richiesta di interruzione, lo stato persistente del turno, l'ordine di chiusura delle risorse e i messaggi ricevuti dalla sessione del client.
 
 #### Details
-La prova passa se il server rifiuta i nuovi turni con `unavailable`, richiede subito l'interruzione di quello attivo senza attendere il completamento della risposta, conserva il turno senza esito come «Interrotto» prima di chiudere l'archivio, invia `turn.interrupted` alla sessione ancora aperta e poi chiude sessioni e risorse. Nessun turno interrotto riceve un esito riuscito o viene riavviato automaticamente. Fallisce se l'arresto attende la risposta controllata, accetta altri turni, perde il turno interrotto o chiude l'archivio prima di registrarlo. Verifica aggiornata per il protocollo `ambrogio.v1`, da eseguire.
+La prova passa se il server rifiuta i nuovi turni con `unavailable`, richiede subito l'interruzione di quello attivo senza attendere il completamento della risposta, conserva il turno senza esito come «Interrotto» prima di chiudere l'archivio, invia `turn.interrupted` alla sessione ancora aperta e poi chiude sessioni e risorse. Nessun turno interrotto riceve un esito riuscito o viene riavviato automaticamente. Fallisce se l'arresto attende la risposta controllata, accetta altri turni, perde il turno interrotto o chiude l'archivio prima di registrarlo.
 
 #### Metadata
   * type: test-verification
@@ -59,6 +59,8 @@ Per ogni adapter inbound del server che rappresenta gli esiti di un caso d'uso, 
 #### Details
 L'analisi passa se l'adapter usa solo le varianti pubbliche del caso d'uso, gestisce ogni variante della loro unione e non importa né riconosce tipi di rifiuto interni delle porte o del Domain. Fallisce se manca una variante, compare un tipo interno anche in un import di soli tipi oppure la rappresentazione dell'esito dipende da un rifiuto interno.
 
+Non automatizzabile: confrontare le varianti pubbliche con i rami di rappresentazione richiede di leggere adapter e API Application; il compilatore controlla soltanto i mapping che usano già `assertNever`.
+
 #### Metadata
   * type: analysis-verification
 
@@ -76,6 +78,8 @@ Esaminare le dichiarazioni e gli usi delle varianti di rifiuto previsto di Domai
 #### Details
 L'analisi passa se ogni campo aggiuntivo è tipizzato, specifico della variante, stabile nel significato e usato dal chiamante, e se nessun tipo o schema comune impone a tutte le varianti campi generici come `message`, `cause`, `metadata`, `statusCode` o codici di uscita. Fallisce se un campo aggiuntivo non soddisfa questi criteri o se uno schema comune rende obbligatorio uno di tali campi generici.
 
+Non automatizzabile: giudicare se un campo è stabile nel significato e necessario al chiamante richiede giudizio umano.
+
 #### Metadata
   * type: analysis-verification
 
@@ -91,6 +95,8 @@ Per ogni mapping che deve coprire tutte le varianti di un'unione di rifiuti prev
 #### Details
 L'analisi passa se lo `switch` usa `kind`, contiene un ramo per ogni variante e il `default` chiama `assertNever` passando il valore completo della variante. Fallisce se manca un ramo, se la discriminazione usa un altro meccanismo o se `assertNever` riceve soltanto `kind` o un valore diverso dalla variante completa.
 
+Non automatizzabile: individuare i mapping che devono coprire tutte le varianti richiede di leggere il codice; il compilatore controlla `assertNever` solo dove è già usato.
+
 #### Metadata
   * type: analysis-verification
 
@@ -105,6 +111,8 @@ Esaminare il codice Domain e i casi d'uso Application dei moduli business del se
 
 #### Details
 L'analisi passa se Domain e casi d'uso non dipendono da un logger e la diagnostica dei guasti inattesi è gestita dai componenti tecnici che trattano tali guasti. Fallisce se un logger entra nelle dipendenze o nel codice dei due layer, oppure se la responsabilità diagnostica è spostata da un componente tecnico a Domain o a un caso d'uso.
+
+Non automatizzabile: seguire i percorsi dei guasti fino al componente che li gestisce richiede di leggere il codice.
 
 #### Metadata
   * type: analysis-verification
@@ -122,6 +130,8 @@ Per ogni caso d'uso Application che espone un rifiuto originato da una porta, es
 #### Details
 L'analisi passa se il rifiuto esposto dal caso d'uso ha un tipo nominato distinto da quello della porta, la firma e il contratto del caso d'uso usano soltanto il tipo proprio e il mapping è esplicito. Fallisce se il tipo della porta è riutilizzato, riesportato o inserito direttamente nell'unione dei rifiuti del caso d'uso.
 
+Non automatizzabile: riconoscere quale rifiuto del caso d'uso deriva da una porta richiede di leggere il mapping.
+
 #### Metadata
   * type: analysis-verification
 
@@ -136,6 +146,8 @@ Per ogni modulo business del server che usa `Result<T, E>`, esaminare la dichiar
 
 #### Details
 L'analisi passa se ogni modulo definisce `Result<T, E>` nel proprio package, senza importarlo da altri package, e se il tipo coincide con `Readonly<{ ok: true; value: T }> | Readonly<{ ok: false; error: E }>`. Fallisce se il tipo è condiviso tra package, se un ramo è mutabile o se discriminanti e campi differiscono dalla specifica.
+
+Non automatizzabile: il progetto non ha un controllo automatico che confronti la dichiarazione di `Result` con la specifica e ne vieti l'import fra package; il controllo è esprimibile con un'analisi statica.
 
 #### Metadata
   * type: analysis-verification
@@ -153,6 +165,8 @@ Esaminare le firme TypeScript di ogni caso d'uso e porta Application del server 
 #### Details
 L'analisi passa se ogni firma restituisce `Result<T, E>` oppure `Promise<Result<T, E>>` e se `E` è l'unione chiusa delle sole varianti dichiarate nel contratto di quell'operazione. Fallisce se la firma usa un altro tipo di esito, se `E` è aperto o se contiene varianti mancanti o estranee al contratto del caso d'uso o della porta.
 
+Non automatizzabile: confrontare `E` con le varianti dichiarate nel contratto di ogni operazione richiede di leggere contratto e firma.
+
 #### Metadata
   * type: analysis-verification
 
@@ -168,6 +182,8 @@ Esaminare le dichiarazioni TypeScript e i punti in cui il server distingue le va
 
 #### Details
 L'analisi passa se ogni variante è un tipo nominato indipendente rappresentato da un oggetto `Readonly`, possiede un `kind` letterale univoco nella propria unione e non è una classe né viene distinta tramite `instanceof`. Fallisce se manca una di queste proprietà o se due varianti della stessa unione condividono il medesimo `kind`.
+
+Non automatizzabile: individuare le unioni che rappresentano rifiuti previsti richiede di leggerne il significato.
 
 #### Metadata
   * type: analysis-verification
@@ -186,6 +202,8 @@ Esaminare il contratto Application e l'interfaccia di ciascun caso d'uso del ser
 #### Details
 Il controllo passa se ogni caso d'uso dichiara nel proprio contratto un insieme chiuso dei soli rifiuti osservabili dal chiamante e se non esiste un catalogo globale condiviso dei rifiuti dei casi d'uso. Fallisce se l'insieme è aperto, omette un rifiuto osservabile, include rifiuti interni non osservabili o dipende da un catalogo globale condiviso.
 
+Non automatizzabile: stabilire quali rifiuti sono osservabili dal chiamante e se un tipo funge da catalogo globale richiede di leggere contratti e codice.
+
 #### Metadata
   * type: inspection-verification
 
@@ -200,7 +218,9 @@ Il controllo passa se ogni caso d'uso dichiara nel proprio contratto un insieme 
 Esaminare la configurazione del runtime HTTP e seguire le chiamate che emettono eventi diagnostici tecnici.
 
 #### Details
-Il controllo passa se entrambi gli ingressi usano Pino per emettere tali eventi. Fallisce se un ingresso usa un logger alternativo per gli eventi tecnici. La verifica per un ingresso non ancora presente resta da eseguire quando viene introdotto.
+Il controllo passa se il server usa Pino per emettere tali eventi. Fallisce se un componente del server usa un logger alternativo per gli eventi tecnici.
+
+Non automatizzabile: riconoscere gli eventi diagnostici tecnici fra le scritture del processo richiede di leggere il codice; il progetto non ha un controllo automatico degli import di logger alternativi.
 
 #### Metadata
   * type: inspection-verification
@@ -215,7 +235,9 @@ Il controllo passa se entrambi gli ingressi usano Pino per emettere tali eventi.
 Esaminare l'ingresso HTTP, la configurazione di Pino e le configurazioni di deployment presenti per identificare dove vengono definiti l'inoltro e il backend di raccolta dei log.
 
 #### Details
-Il controllo passa se il codice applicativo emette eventi verso i flussi standard senza integrare direttamente un backend specifico e se ogni inoltro centralizzato presente è configurato nel deployment. Fallisce se il codice applicativo contiene un'integrazione diretta con un backend di log per questo inoltro. Il controllo della configurazione di raccolta resta da eseguire quando un deployment che la richiede viene introdotto.
+Il controllo passa se il codice applicativo emette eventi verso i flussi standard senza integrare direttamente un backend specifico e se ogni inoltro centralizzato presente è configurato nel deployment. Fallisce se il codice applicativo contiene un'integrazione diretta con un backend di log per questo inoltro.
+
+Non automatizzabile: le configurazioni di deployment che inoltrano i log appartengono alle installazioni e non sono nel repository.
 
 #### Metadata
   * type: inspection-verification
@@ -232,6 +254,8 @@ Per ogni caso d'uso Application del server che espone rifiuti previsti, individu
 #### Details
 Il controllo passa se tutte e tre le dichiarazioni appartengono allo stesso file `<use-case>.use-case.ts` del caso d'uso. Fallisce se una dichiarazione manca, si trova in un file diverso o il nome del file non segue lo schema previsto.
 
+Non automatizzabile: riconoscere quali dichiarazioni sono la firma callable, la factory e l'unione dei rifiuti osservabili richiede di leggere il codice.
+
 #### Metadata
   * type: inspection-verification
 
@@ -247,6 +271,8 @@ Esaminare i punti in cui il codice TypeScript del server costruisce e lancia ecc
 #### Details
 Il controllo passa se ogni eccezione costruita dal progetto in questi casi è un oggetto `Error`. Fallisce se il server costruisce e lancia una stringa, un oggetto non `Error` o un altro valore come nuova eccezione per tali guasti.
 
+Non automatizzabile: distinguere i guasti tecnici non tradotti e i bug dagli altri lanci richiede di leggere il codice.
+
 #### Metadata
   * type: inspection-verification
 
@@ -260,14 +286,14 @@ Il controllo passa se ogni eccezione costruita dal progetto in questi casi è un
 Per eventi diagnostici HTTP presenti, predisporre oggetti di ingresso, uscita e contesto con campi marcatori non selezionati; produrre gli eventi e confrontare le chiavi e i valori delle righe JSON con i campi dichiarati nel punto di emissione e nella configurazione del logger.
 
 #### Details
-La prova passa se tutti i campi della riga appartengono alla selezione esplicita e nessun marcatore non selezionato compare nel log. Fallisce se il logger serializza automaticamente un oggetto intero o aggiunge un campo di origine non dichiarato. La prova per un ingresso o evento non ancora presente resta da eseguire quando viene introdotto.
+La prova passa se tutti i campi della riga appartengono alla selezione esplicita e nessun marcatore non selezionato compare nel log. Fallisce se il logger serializza automaticamente un oggetto intero o aggiunge un campo di origine non dichiarato.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
+  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
   * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
   * verify: [Selezione esplicita dei campi diagnostici](../Requirements/ServerFoundation.md#selezione-esplicita-dei-campi-diagnostici)
 ---
@@ -277,14 +303,14 @@ La prova passa se tutti i campi della riga appartengono alla selezione esplicita
 Avviare il server HTTP con i flussi standard intercettati, indurre un evento diagnostico tecnico e acquisire `stdout` e `stderr` separatamente.
 
 #### Details
-La prova passa se ogni evento Pino occupa una sola riga JSON strutturata, il processo HTTP la emette per impostazione predefinita su `stdout`. Fallisce se un evento è spezzato su più righe, non è JSON valido o compare sul flusso predefinito errato. La prova per un ingresso non ancora presente resta da eseguire quando viene introdotto.
+La prova passa se ogni evento Pino occupa una sola riga JSON strutturata, il processo HTTP la emette per impostazione predefinita su `stdout`. Fallisce se un evento è spezzato su più righe, non è JSON valido o compare sul flusso predefinito errato.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
+  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
   * verify: [Formato e flussi dei log tecnici](../Requirements/ServerFoundation.md#formato-e-flussi-dei-log-tecnici)
 ---
 
@@ -293,14 +319,14 @@ La prova passa se ogni evento Pino occupa una sola riga JSON strutturata, il pro
 Per ogni punto di emissione diagnostica HTTP presente, individuare il nome `event` dichiarato nel codice ed emettere lo stesso evento con dati di esecuzione differenti; acquisire le righe JSON.
 
 #### Details
-La prova passa se ogni riga contiene `event`, il suo valore corrisponde al nome dichiarato nel punto di emissione e resta uguale nelle esecuzioni dello stesso evento nonostante varino i dati. Fallisce se il campo manca, è ricavato da dati della singola esecuzione o cambia per lo stesso evento. La prova per un punto di emissione non ancora presente resta da eseguire quando viene introdotto.
+La prova passa se ogni riga contiene `event`, il suo valore corrisponde al nome dichiarato nel punto di emissione e resta uguale nelle esecuzioni dello stesso evento nonostante varino i dati. Fallisce se il campo manca, è ricavato da dati della singola esecuzione o cambia per lo stesso evento.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
+  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
   * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
   * verify: [Nome stabile degli eventi diagnostici](../Requirements/ServerFoundation.md#nome-stabile-degli-eventi-diagnostici)
 ---
@@ -330,14 +356,14 @@ La prova passa se ogni rifiuto è restituito come valore distinguibile dal succe
 Nei fallback HTTP presenti, indurre separatamente un `Error` costruito dal progetto con catena `cause`, errori esterni con marcatori distinti in messaggio, stack e proprietà aggiuntive, e valori lanciati sconosciuti; intercettare l'argomento del logger e le righe JSON emesse. Prima della serializzazione acquisire riferimenti e proprietà proprie dell'`Error` originale e degli oggetti della sua catena `cause`, poi confrontarli dopo l'emissione. Confrontare le chiavi serializzate con i campi ammessi esplicitamente dal serializzatore.
 
 #### Details
-La prova passa se per l'`Error` del progetto il campo strutturato `err` conserva in memoria la catena `cause`, i riferimenti e le proprietà degli oggetti originali restano invariati, e la vista JSON include lo stack diagnostico; se ogni vista contiene soltanto campi ammessi; e se errori esterni e valori sconosciuti producono una descrizione costante sicura senza riportare messaggio, stack o proprietà aggiuntive di origine. Fallisce se la serializzazione modifica l'`Error` originale o un oggetto della sua catena `cause`, se l'argomento in memoria perde la catena delle cause, se la riga omette `err` o lo stack previsto, se compaiono campi non ammessi o se la descrizione esterna dipende dal valore originale. La prova per un ingresso non ancora presente resta da eseguire quando viene introdotto.
+La prova passa se per l'`Error` del progetto il campo strutturato `err` conserva in memoria la catena `cause`, i riferimenti e le proprietà degli oggetti originali restano invariati, e la vista JSON include lo stack diagnostico; se ogni vista contiene soltanto campi ammessi; e se errori esterni e valori sconosciuti producono una descrizione costante sicura senza riportare messaggio, stack o proprietà aggiuntive di origine. Fallisce se la serializzazione modifica l'`Error` originale o un oggetto della sua catena `cause`, se l'argomento in memoria perde la catena delle cause, se la riga omette `err` o lo stack previsto, se compaiono campi non ammessi o se la descrizione esterna dipende dal valore originale.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
+  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
   * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
   * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
   * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
@@ -351,14 +377,14 @@ La prova passa se per l'`Error` del progetto il campo strutturato `err` conserva
 Per ogni fallback pubblico HTTP presente nel server, rendere disponibile un logger di prova e indurre separatamente un guasto tecnico inatteso, un bug e un valore lanciato sconosciuto; osservare gli eventi prodotti dal confine che decide l'esito esterno.
 
 #### Details
-La prova passa se, per ciascun caso e ciascun ingresso presente, il confine emette esattamente un log diagnostico definitivo di livello `error` relativo al guasto. Fallisce se il log manca, ha un livello diverso, è emesso da un componente intermedio o compare più volte. La prova per un ingresso non ancora presente resta da eseguire quando viene introdotto.
+La prova passa se, per ciascun caso e ciascun ingresso presente, il confine emette esattamente un log diagnostico definitivo di livello `error` relativo al guasto. Fallisce se il log manca, ha un livello diverso, è emesso da un componente intermedio o compare più volte.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
+  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
   * verify: [Log error del fallback pubblico](../Requirements/ServerFoundation.md#log-error-del-fallback-pubblico)
 ---
 
@@ -374,7 +400,7 @@ La prova passa se la ricezione della richiesta e l'invio della risposta non gene
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
+  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
   * verify: [Assenza dei log HTTP automatici](../Requirements/ServerFoundation.md#assenza-dei-log-http-automatici)
 ---
 
@@ -399,14 +425,14 @@ La prova passa se nessuno dei quattro esiti causa automaticamente un log dedicat
 Nell'ingresso HTTP presente, inserire marcatori distinti in testi delle conversazioni, corpi e header HTTP, input e output dei casi d'uso e credenziali di prova; generare eventi diagnostici ordinari e di guasto e acquisire le righe JSON. Esaminare anche la configurazione del logger e le integrazioni degli ingressi per individuare serializzazioni automatiche delle sorgenti indicate.
 
 #### Details
-La prova passa se nessuno dei marcatori viene acquisito automaticamente dagli eventi e se la configurazione non abilita la registrazione automatica delle sorgenti elencate. Fallisce se un'integrazione o un serializer copia automaticamente una di tali sorgenti nei log. La prova per un ingresso o una sorgente non ancora presente resta da eseguire quando viene introdotto.
+La prova passa se nessuno dei marcatori viene acquisito automaticamente dagli eventi e se la configurazione non abilita la registrazione automatica delle sorgenti elencate. Fallisce se un'integrazione o un serializer copia automaticamente una di tali sorgenti nei log.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
+  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
   * verify: [Esclusione della raccolta automatica di dati nei log](../Requirements/ServerFoundation.md#esclusione-della-raccolta-automatica-di-dati-nei-log)
 ---
 
@@ -422,7 +448,7 @@ La prova passa se per il guasto esiste al massimo un log diagnostico definitivo,
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
+  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
   * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
   * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
   * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
@@ -435,14 +461,14 @@ La prova passa se per il guasto esiste al massimo un log diagnostico definitivo,
 Per ogni ingresso HTTP presente, effettuare almeno due richieste distinte e provocare sia un esito ordinario sia una risposta di errore gestita; raccogliere gli eventi diagnostici relativi a ciascuna richiesta e l'header `X-Request-Id` delle risposte.
 
 #### Details
-La prova passa se ogni richiesta riceve un `correlationId` UUID v4 distinto, tutti i suoi eventi diagnostici riportano lo stesso ID e ogni risposta gestita riporta in `X-Request-Id` proprio quell'ID, anche in errore. Fallisce se un ID manca, non è UUID v4, è riutilizzato tra richieste o differisce tra log e risposta. La prova per un ingresso non ancora presente resta da eseguire quando viene introdotto.
+La prova passa se ogni richiesta riceve un `correlationId` UUID v4 distinto, tutti i suoi eventi diagnostici riportano lo stesso ID e ogni risposta gestita riporta in `X-Request-Id` proprio quell'ID, anche in errore. Fallisce se un ID manca, non è UUID v4, è riutilizzato tra richieste o differisce tra log e risposta.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
+  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
   * verify: [Identificativo di correlazione delle richieste HTTP](../Requirements/ServerFoundation.md#identificativo-di-correlazione-delle-richieste-http)
   * verify: [Identificativo di richiesta nelle risposte HTTP](../Requirements/ServerFoundation.md#identificativo-di-richiesta-nelle-risposte-http)
 ---
@@ -470,14 +496,14 @@ La prova passa se il caso d'uso gestisce esplicitamente ogni variante e, quando 
 Nei fallback HTTP presenti, iniettare separatamente un'istanza `Error` con `cause` e più valori lanciati che non sono `Error`, distinguibili tra loro. Intercettare il valore strutturato `err` passato al logger definitivo e osservare il percorso dai componenti intermedi al confine che decide l'esito esterno.
 
 #### Details
-La prova passa se la normalizzazione avviene una sola volta nel confine definitivo: per l'`Error`, `err` è la stessa istanza catturata; per ogni altro valore, `err` è un nuovo `Error` con messaggio diagnostico fisso uguale nei casi provati e `cause` identica al valore catturato. Il valore originale resta invariato e non viene convertito in stringa. Fallisce se un componente intermedio normalizza il guasto, se sono creati wrapper ulteriori, se cambia l'identità dell'`Error` originale o della `cause`, o se il messaggio dipende dal valore catturato. La prova per un ingresso non ancora presente resta da eseguire quando viene introdotto.
+La prova passa se la normalizzazione avviene una sola volta nel confine definitivo: per l'`Error`, `err` è la stessa istanza catturata; per ogni altro valore, `err` è un nuovo `Error` con messaggio diagnostico fisso uguale nei casi provati e `cause` identica al valore catturato. Il valore originale resta invariato e non viene convertito in stringa. Fallisce se un componente intermedio normalizza il guasto, se sono creati wrapper ulteriori, se cambia l'identità dell'`Error` originale o della `cause`, o se il messaggio dipende dal valore catturato.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
+  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
   * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
   * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
   * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
@@ -531,7 +557,7 @@ La prova passa se il messaggio pubblico non contiene nessuno dei marcatori tecni
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
+  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
   * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
   * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
   * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
@@ -554,6 +580,8 @@ Esaminare `.github/workflows/secret-scan.yml` e `.github/workflows/publish-image
 #### Details
 Il controllo passa se la scansione parte a ogni push su qualunque branch e a ogni pull request, esegue il checkout dell'intera storia senza conservare le credenziali, scarica gitleaks v8.30.1 e interrompe il workflow se l'impronta non coincide con quella del contratto, esegue `gitleaks git` su tutta la storia con valori oscurati e uscita non riuscita in caso di ritrovamento, e se il job di pubblicazione dell'immagine non può partire senza l'esito positivo della scansione. Fallisce se un evento previsto non avvia la scansione, se la storia è troncata, se il binario non è verificato o se un'immagine può essere pubblicata dopo una scansione fallita o non eseguita.
 
+Non automatizzabile: l'esito vincolante dipende dall'esecuzione su GitHub Actions e dalle impostazioni del repository su GitHub, che non sono riproducibili localmente.
+
 #### Metadata
   * type: inspection-verification
 
@@ -568,6 +596,8 @@ In un clone con `core.hooksPath` impostato a `.githooks`, mettere in staging un 
 
 #### Details
 La dimostrazione passa se il commit con il segreto fittizio è impedito e l'output non mostra il valore, il commit senza segreti riesce e, senza `gitleaks` nel `PATH`, il commit è impedito con un messaggio che indica come installare lo scanner. Fallisce se un commit con il segreto viene creato, se il valore compare in chiaro o se l'assenza dello scanner lascia passare il commit.
+
+Non automatizzabile: la CI non prepara un clone con `core.hooksPath` configurato né l'assenza controllata di gitleaks dal `PATH`; uno script con un repository Git temporaneo potrebbe automatizzarla.
 
 #### Metadata
   * type: demonstration-verification
@@ -592,6 +622,8 @@ Su una release del backend, osservare l'esecuzione del workflow GitHub Actions e
 #### Details
 La verifica passa se il tag Git `vMAJOR.MINOR.PATCH` corrisponde alla versione del package server, il workflow verifica l'immagine prima del push e pubblica `ghcr.io/ambrogio-app/ambrogio-backend:<tag Git>` per `linux/amd64`. Con credenziali di lettura, il digest pubblicato deve essere scaricabile e avviare il server con configurazione e archivio SQLite esterni, senza Compose. Un tag diverso non deve pubblicare l'immagine. La prova finale richiede una release effettivamente pubblicata.
 
+Non automatizzabile: richiede la creazione di un tag di release, l'esecuzione su GitHub Actions e il download dal registro GHCR.
+
 #### Metadata
   * type: demonstration-verification
 
@@ -615,6 +647,8 @@ Esaminare le operazioni dei moduli business, lo schema persistente e le integraz
 #### Details
 Il controllo passa se nessun modulo conserva eventi di dominio per una consegna successiva e se non esistono outbox, code o processi di pubblicazione differita di tali eventi. Fallisce se un evento di dominio viene registrato in attesa di essere consegnato o ritentato. La verifica non riguarda i normali scambi testuali conservati nello storico delle conversazioni.
 
+Non automatizzabile: riconoscere un evento di dominio conservato per una consegna successiva richiede di leggere operazioni e schema.
+
 #### Metadata
   * type: inspection-verification
 
@@ -631,31 +665,14 @@ Raggruppa i controlli sulla preparazione del server in TypeScript ESM e sulla su
   * type: verification-objective
 ---
 
-### Analisi del catalogo vocale bilingue dell'immagine
-
-Costruire l'immagine e ispezionare gli archivi fissati, le impronte verificate e i file runtime di Vosk italiano e inglese, delle voci Piper italiane e inglesi e del modello Kokoro multilingue. Eseguire una breve trascrizione e una sintesi per ogni lingua e motore disponibile nell'immagine.
-
-#### Details
-L'analisi passa se tutte le risorse sono leggibili dentro il container senza mount, le impronte corrispondono a quelle fissate e Vosk, Piper e Kokoro producono risultati non vuoti in entrambe le lingue.
-
-Eseguita localmente il 21 ottobre 2026: build Docker PASS con verifica SHA-256 dei sei archivi; `scripts/verify-docker-image.mjs` PASS. Piper ha prodotto PCM con Riccardo, Paola e Kristin; Kokoro ha prodotto PCM con speaker italiani e inglesi; Vosk ha trascritto correttamente brevi frasi sintetizzate in italiano e inglese. La prova ha usato i modelli inclusi senza mount per questi casi e un mount in sola lettura per la voce personalizzata. L'immagine non è stata pubblicata.
-
-Sull'installazione di riferimento la stessa immagine non pubblicata ha avviato un container separato con modelli inclusi e un modello Vosk montato. Kokoro ha prodotto audio non vuoto in italiano e inglese sul server di destinazione; il container ha completato turni vocali nelle due lingue. Il servizio esistente è rimasto attivo durante la prova.
-
-#### Metadata
-  * type: analysis-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * verify: [Modelli vocali italiani e inglesi inclusi](../Requirements/ServerFoundation.md#modelli-vocali-italiani-e-inglesi-inclusi)
----
-
 ### Controllo degli esempi di configurazione
 
 Esaminare tutti i moduli TypeScript di configurazione d'esempio presenti nel repository e i campi in cui potrebbero comparire credenziali.
 
 #### Details
-Il controllo passa se gli esempi non contengono credenziali effettive; eventuali campi dedicati usano soltanto valori dimostrativi non utilizzabili. Fallisce se un esempio contiene una credenziale effettiva. Il controllo degli esempi resta da eseguire quando vengono aggiunti.
+Il controllo passa se gli esempi non contengono credenziali effettive; eventuali campi dedicati usano soltanto valori dimostrativi non utilizzabili. Fallisce se un esempio contiene una credenziale effettiva.
+
+Non automatizzabile: stabilire che un valore non è una credenziale effettiva richiede giudizio umano; gitleaks riconosce soltanto i formati previsti dalle sue regole.
 
 #### Metadata
   * type: inspection-verification
@@ -670,7 +687,9 @@ Il controllo passa se gli esempi non contengono credenziali effettive; eventuali
 Per ogni componente configurabile presente nel server, individuare il file da cui viene caricata la configurazione locale; esaminare il formato e confrontare i percorsi usati dai diversi componenti.
 
 #### Details
-Il controllo passa se ogni componente legge un proprio modulo TypeScript e nessun file è condiviso come configurazione locale di componenti distinti. Fallisce se un componente usa un formato diverso da TypeScript o condivide il proprio file di configurazione con un altro componente. Il controllo per un componente non ancora presente resta da eseguire quando viene introdotto.
+Il controllo passa se ogni componente legge un proprio modulo TypeScript e nessun file è condiviso come configurazione locale di componenti distinti. Fallisce se un componente usa un formato diverso da TypeScript o condivide il proprio file di configurazione con un altro componente.
+
+Non automatizzabile: individuare i componenti configurabili e il modulo letto da ciascuno richiede di leggere la composition root.
 
 #### Metadata
   * type: inspection-verification
@@ -685,7 +704,9 @@ Il controllo passa se ogni componente legge un proprio modulo TypeScript e nessu
 Esaminare la configurazione CI e le invocazioni effettive per le modifiche funzionali del server. Verificare che esegua Reqvire validate e lint, la compilazione TypeScript e la suite backend Vitest, incluse prove degli adapter di persistenza contro un database SQLite reale preparato per i test quando gli adapter esistono. Accertare che ogni comando richiesto abbia un esito vincolante per l'integrazione.
 
 #### Details
-Il controllo passa se tutte le fasi richieste vengono eseguite e un loro fallimento impedisce l'integrazione; le prove SQLite devono usare il database reale e non un sostituto in memoria della porta. Fallisce se manca una fase, le prove dell'adapter non raggiungono SQLite reale oppure un controllo fallito non blocca l'integrazione. Il controllo resta da eseguire quando esistono codice applicativo e configurazione CI.
+Il controllo passa se tutte le fasi richieste vengono eseguite e un loro fallimento impedisce l'integrazione; le prove SQLite devono usare il database reale e non un sostituto in memoria della porta. Fallisce se manca una fase, le prove dell'adapter non raggiungono SQLite reale oppure un controllo fallito non blocca l'integrazione.
+
+Non automatizzabile: che un controllo fallito impedisca l'integrazione dipende dall'esecuzione su GitHub Actions e dalle regole di protezione del branch configurate su GitHub, fuori dal repository.
 
 #### Metadata
   * type: inspection-verification
@@ -700,7 +721,9 @@ Il controllo passa se tutte le fasi richieste vengono eseguite e un loro fallime
 Esaminare runtime HTTP, dipendenze, configurazioni, endpoint e documentazione operativa della prima versione. Confrontare i segnali presenti con i contratti dei log strutturati e degli identificativi di correlazione; cercare raccoglitori o API distinti per metriche, tracing distribuito e audit.
 
 #### Details
-Il controllo passa se i runtime forniscono i log e i `correlationId` già previsti, senza attivare nella prima versione metriche, tracing o audit separati, e se nessun `correlationId` o log ordinario è presentato come traccia distribuita o registro di audit. Fallisce se viene introdotto un segnale separato senza una decisione e una verifica proprie, se i log sono descritti come audit garantito o se manca il profilo diagnostico previsto. I controlli funzionali dei log e della correlazione restano nelle rispettive verifiche. Il controllo è da svolgere quando il runtime esiste.
+Il controllo passa se i runtime forniscono i log e i `correlationId` già previsti, senza attivare nella prima versione metriche, tracing o audit separati, e se nessun `correlationId` o log ordinario è presentato come traccia distribuita o registro di audit. Fallisce se viene introdotto un segnale separato senza una decisione e una verifica proprie, se i log sono descritti come audit garantito o se manca il profilo diagnostico previsto. I controlli funzionali dei log e della correlazione restano nelle rispettive verifiche.
+
+Non automatizzabile: richiede di esaminare la documentazione operativa e di giudicare se un segnale è presentato come traccia distribuita o audit.
 
 #### Metadata
   * type: inspection-verification
@@ -715,7 +738,9 @@ Il controllo passa se i runtime forniscono i log e i `correlationId` già previs
 Esaminare l'ingresso HTTP presente, le dipendenze runtime e i modelli persistenti del server per individuare gestione di account, credenziali utente, login e controlli di autenticazione applicativa.
 
 #### Details
-Il controllo passa se l'MVP non implementa account utente né autenticazione applicativa nei propri ingressi. Fallisce se sono presenti meccanismi applicativi di account o autenticazione. Il controllo per un ingresso non ancora presente resta da eseguire quando viene introdotto.
+Il controllo passa se l'MVP non implementa account utente né autenticazione applicativa nei propri ingressi. Fallisce se sono presenti meccanismi applicativi di account o autenticazione.
+
+Non automatizzabile: riconoscere meccanismi di account o autenticazione richiede di leggere ingressi, dipendenze e modelli persistenti.
 
 #### Metadata
   * type: inspection-verification
@@ -730,7 +755,9 @@ Il controllo passa se l'MVP non implementa account utente né autenticazione app
 Per ciascun file di configurazione locale effettivo presente, esaminare i file tracciati da Git, le regole di esclusione e il contenuto dell'immagine container costruita per il server.
 
 #### Details
-Il controllo passa se nessun file effettivo è tracciato in Git o incluso nell'immagine e il deployment lo fornisce dall'esterno. Fallisce se un file effettivo è presente nei file versionati o nell'immagine. Il controllo dell'immagine resta da eseguire quando la distribuzione container viene introdotta.
+Il controllo passa se nessun file effettivo è tracciato in Git o incluso nell'immagine e il deployment lo fornisce dall'esterno. Fallisce se un file effettivo è presente nei file versionati o nell'immagine.
+
+Non automatizzabile: i file effettivi appartengono alle installazioni e non sono nel repository; `scripts/verify-docker-image.mjs` controlla soltanto l'assenza dei percorsi noti nell'immagine.
 
 #### Metadata
   * type: inspection-verification
@@ -747,6 +774,8 @@ Esaminare l'avvio del server e la registrazione degli endpoint dell'API HTTP.
 #### Details
 Il controllo passa se il server crea un'istanza Fastify, vi registra gli endpoint dell'API HTTP e la usa per gestire le richieste. Fallisce se gli endpoint sono serviti da un altro framework o da un gestore HTTP applicativo che aggira Fastify.
 
+Non automatizzabile: riconoscere un gestore HTTP che aggira Fastify richiede di leggere l'avvio del server.
+
 #### Metadata
   * type: inspection-verification
 
@@ -762,72 +791,9 @@ Partire dall'elenco completo dei file di produzione, dalle porte Application e d
 
 L'ispezione passa se tutti i casi d'uso hanno il suffisso `.use-case.ts`, tutti gli adapter di ingresso e di uscita hanno il suffisso `.adapter.ts` e i file di supporto non sono classificati come adapter soltanto per la cartella che li contiene. Considerare anche le implementazioni strutturali di porte a oggetto o callable; non affidarsi al solo `implements`. I ruoli ambigui devono essere risolti con motivazione documentata. L'ispezione fallisce se manca un suffisso richiesto o se un suffisso descrive un ruolo non realizzato.
 
-Per ogni rinomina controllare import, export pubblici, riferimenti nei test e collegamenti Reqvire. La compilazione e i test pertinenti devono continuare a passare. Registrare revisione Git esaminata, elenco dei file classificati, difetti ed esito; la presenza di una relazione `satisfiedBy` e il successo di `validate` o `lint` non sostituiscono questa ispezione.
+Per ogni rinomina controllare import, export pubblici, riferimenti nei test e collegamenti Reqvire. La compilazione e i test pertinenti devono continuare a passare. L'elenco dei file classificati, i difetti e l'esito si riportano nel messaggio del commit o nella pull request che svolge l'ispezione; la presenza di una relazione `satisfiedBy` e il successo di `validate` o `lint` non sostituiscono questa ispezione.
 
-#### Esito dell'ispezione del 17 ottobre 2026
-Esito: PASS sulla revisione `5e34707cad5778133e6577606e0103a8d0d86448`, che introduce l'orchestratore selettore, l'agente che ha risposto, gli agenti senza MCP e il tempo massimo della produzione della risposta. Inventario di 47 file TypeScript di produzione: rispetto alla revisione `7fce83e35ca957829debac2eb81cd27335d0c95a`, già ispezionata nella sua interezza, `git diff --name-status` riporta un solo file aggiunto, `system-deadlines.adapter.ts`, nessun file rinominato o rimosso e 17 file modificati; i 17 file modificati e quello aggiunto sono stati riesaminati per responsabilità e porte, gli altri 29 sono identici alla revisione già ispezionata. Nessuna non conformità di naming nel perimetro esaminato. Sostituisce l'esito precedente dello stesso giorno sulla revisione `7fce83e35ca957829debac2eb81cd27335d0c95a`, quello sulla revisione `caf2a90570c89a02917f618147968f0e289b851d` e quello del 16 ottobre 2026 sulla revisione base `512317c9e93b4e6ab7a1e32dd9c210436b7b5c06`.
-
-Identificazione riproducibile dei sorgenti esaminati: SHA-256 `aae90d67994319586b6b3d19d70ac4e5b63585e01927e6d2b09b0f579cb1c829`, calcolato concatenando, in ordine lessicografico, percorso relativo UTF-8, byte NUL, contenuto del file, byte NUL, per tutti i file dell'inventario. Il risultato riguarda questo stato del worktree, non attesta modifiche successive.
-
-Classificazioni dei file introdotti: `conversation-session.adapter.ts` traduce i messaggi del protocollo in invocazioni del caso d'uso `exchange-turn` ed è un adapter di ingresso; `session-route.adapter.ts` accetta l'upgrade WebSocket con il controllo di sottoprotocollo e origine e consegna il socket all'adapter di sessione, nel server che possiede il plugin Fastify WebSocket. `vosk-transcriber.ts` e `sherpa-synthesizer.ts` realizzano le interfacce `Transcriber` e `Synthesizer` dichiarate da `speech-components.ts` per l'adapter di sessione: non sono porte Application, quindi sono driver tecnici senza suffisso; `local-speech-components.ts` li costruisce dalla configurazione validata. `sentences.ts` contiene la regola di separazione delle frasi e la pulizia della marcatura usate dal driver di sintesi. `system-deadlines.adapter.ts` realizza la porta Application `Deadlines`, dichiarata in `turn-capabilities.ts`, con il timer della piattaforma ed è quindi un adapter di uscita con il suffisso richiesto. `ai-sdk-reply.adapter.ts` realizza `ProduceConversationReply` per l'orchestratore selettore, per gli agenti con MCP e per quelli senza MCP; resta un unico adapter di uscita. `protocol-decoder.ts` è un validatore dello schema del protocollo. Rimossi `piper-synthesizer.ts`, `start-voice-conversation.use-case.ts`, `turn-route.adapter.ts`, gli adapter Micdrop, `vosk-streaming-stt.ts`, `voice-route.adapter.ts` e `composition/voice.ts`.
-
-#### Inventario completo
-Il percorso in tabella è anche il nome atteso. Classificazione basata su responsabilità, porte e chiamate esaminate; la cartella non determina il ruolo.
-
-| File di produzione e nome atteso | Responsabilità e classificazione | Controllo |
-| --- | --- | --- |
-| `apps/server/src/adapters/in/session-route.adapter.ts` | Adapter inbound: upgrade WebSocket `/api/session` con controllo di sottoprotocollo e origine → sessione conversazionale. | Suffisso richiesto presente |
-| `apps/server/src/composition/agents.ts` | Composition root: costruisce e collega risorse, casi d'uso e adapter. | Nome descrittivo, nessun suffisso richiesto |
-| `apps/server/src/composition/conversations.ts` | Composition root: costruisce e collega risorse, casi d'uso e adapter. | Nome descrittivo, nessun suffisso richiesto |
-| `apps/server/src/main.ts` | Bootstrap del processo e arresto delle risorse. | Nome descrittivo, nessun suffisso richiesto |
-| `apps/server/src/runtime/agent-config.ts` | Supporto bootstrap: caricamento e validazione configurazione. | Nome descrittivo, nessun suffisso richiesto |
-| `apps/server/src/runtime/consultation-server.ts` | Runtime: avvio, gestione listener e arresto risorse. | Nome descrittivo, nessun suffisso richiesto |
-| `apps/server/src/runtime/conversation-config-path.ts` | Supporto bootstrap: caricamento e validazione configurazione. | Nome descrittivo, nessun suffisso richiesto |
-| `apps/server/src/runtime/conversation-server.ts` | Runtime: avvio, gestione listener e arresto risorse. | Nome descrittivo, nessun suffisso richiesto |
-| `apps/server/src/runtime/http-config.ts` | Supporto bootstrap: caricamento e validazione configurazione. | Nome descrittivo, nessun suffisso richiesto |
-| `packages/conversations/src/adapters/in/http/history-route.adapter.ts` | Adapter inbound: GET storico → get-conversation. | Suffisso richiesto presente |
-| `packages/conversations/src/adapters/in/http/http-validation.ts` | Supporto HTTP: validazione e mapping degli errori. | Nome descrittivo, nessun suffisso richiesto |
-| `packages/conversations/src/adapters/in/http/list-route.adapter.ts` | Adapter inbound: GET elenco → list-conversations. | Suffisso richiesto presente |
-| `packages/conversations/src/adapters/in/session/conversation-session.adapter.ts` | Adapter inbound: messaggi `ambrogio.v1` → exchange-turn; trasmissioni, rifiuti ed esiti. | Suffisso richiesto presente |
-| `packages/conversations/src/adapters/in/session/local-speech-components.ts` | Supporto: costruzione di Vosk e sherpa-onnx dalla configurazione vocale. | Nome descrittivo, nessun suffisso richiesto |
-| `packages/conversations/src/adapters/in/session/protocol-decoder.ts` | Supporto: validazione Ajv dei messaggi del protocollo. | Nome descrittivo, nessun suffisso richiesto |
-| `packages/conversations/src/adapters/in/session/sentences.ts` | Supporto: separazione del testo in frasi e pulizia della marcatura per la sintesi. | Nome descrittivo, nessun suffisso richiesto |
-| `packages/conversations/src/adapters/in/session/sherpa-synthesizer.ts` | Driver di sintesi sherpa-onnx usato dall'adapter di sessione; non implementa una porta Application. | Nome descrittivo, nessun suffisso richiesto |
-| `packages/conversations/src/adapters/in/session/speech-components.ts` | Tipi dei componenti vocali dell'adapter di sessione; non sono porte Application. | Nome descrittivo, nessun suffisso richiesto |
-| `packages/conversations/src/adapters/in/session/vosk-transcriber.ts` | Driver di trascrizione Vosk usato dall'adapter di sessione; non implementa una porta Application. | Nome descrittivo, nessun suffisso richiesto |
-| `packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts` | Adapter outbound: implementa ProduceConversationReply con AI SDK (orchestratore selettore, agenti con e senza MCP). | Suffisso richiesto presente |
-| `packages/conversations/src/adapters/out/conversation-config.ts` | Supporto bootstrap: caricamento e validazione configurazione. | Nome descrittivo, nessun suffisso richiesto |
-| `packages/conversations/src/adapters/out/mcp-tool-client.ts` | Client tecnico MCP usato dall'adapter AI; non implementa una porta Application. | Nome descrittivo, nessun suffisso richiesto |
-| `packages/conversations/src/adapters/out/sqlite/conversation-archive.ts` | Supporto: apertura e ciclo di vita archivio SQLite. | Nome descrittivo, nessun suffisso richiesto |
-| `packages/conversations/src/adapters/out/sqlite/migrations.ts` | Supporto: migrazioni del database. | Nome descrittivo, nessun suffisso richiesto |
-| `packages/conversations/src/adapters/out/sqlite/recover-pending-turns.ts` | Supporto di startup SQLite: recupero dei turni pendenti. | Nome descrittivo, nessun suffisso richiesto |
-| `packages/conversations/src/adapters/out/sqlite/schema.ts` | Supporto: schema e tipi delle tabelle. | Nome descrittivo, nessun suffisso richiesto |
-| `packages/conversations/src/adapters/out/sqlite/sqlite-conversation-history-read.adapter.ts` | Adapter outbound: implementa ConversationHistoryRead. | Suffisso richiesto presente |
-| `packages/conversations/src/adapters/out/sqlite/sqlite-conversation-list-read.adapter.ts` | Adapter outbound: implementa ConversationListRead. | Suffisso richiesto presente |
-| `packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts` | Adapter outbound: implementa ConversationWrite. | Suffisso richiesto presente |
-| `packages/conversations/src/adapters/out/sqlite/sqlite-transaction.ts` | Supporto: transazioni SQLite. | Nome descrittivo, nessun suffisso richiesto |
-| `packages/conversations/src/adapters/out/sqlite/sqlite-turn-mapper.ts` | Supporto: mapping righe SQLite ed entità. | Nome descrittivo, nessun suffisso richiesto |
-| `packages/conversations/src/adapters/out/system-current-time.adapter.ts` | Adapter outbound: implementa CurrentTime. | Suffisso richiesto presente |
-| `packages/conversations/src/adapters/out/system-deadlines.adapter.ts` | Adapter outbound: implementa Deadlines con il timer della piattaforma. | Suffisso richiesto presente |
-| `packages/conversations/src/adapters/out/uuid-identifiers.adapter.ts` | Adapter outbound: implementa NewIdentifier. | Suffisso richiesto presente |
-| `packages/conversations/src/adapters/out/voice-config.ts` | Supporto bootstrap: caricamento e validazione configurazione. | Nome descrittivo, nessun suffisso richiesto |
-| `packages/conversations/src/application/begin-turn.use-case.ts` | Caso d'uso: ammissione turno; porte archivio, identificatori e orologio. | Suffisso richiesto presente |
-| `packages/conversations/src/application/complete-turn.use-case.ts` | Caso d'uso: completamento turno; porte archivio e orologio. | Suffisso richiesto presente |
-| `packages/conversations/src/application/conversation-history-read.ts` | Porta Application e DTO dello storico. | Nome descrittivo, nessun suffisso richiesto |
-| `packages/conversations/src/application/conversation-list-read.ts` | Porta Application e DTO della paginazione. | Nome descrittivo, nessun suffisso richiesto |
-| `packages/conversations/src/application/conversation-write.ts` | Porta Application e valori di ammissione/completamento. | Nome descrittivo, nessun suffisso richiesto |
-| `packages/conversations/src/application/exchange-turn.use-case.ts` | Caso d'uso: scambio turno; coordina ammissione, risposta e completamento. | Suffisso richiesto presente |
-| `packages/conversations/src/application/get-conversation.use-case.ts` | Caso d'uso: lettura storico; ConversationHistoryRead. | Suffisso richiesto presente |
-| `packages/conversations/src/application/list-conversations.use-case.ts` | Caso d'uso: elenco paginato; ConversationListRead. | Suffisso richiesto presente |
-| `packages/conversations/src/application/produce-conversation-reply.ts` | Porta Application per la produzione della risposta. | Nome descrittivo, nessun suffisso richiesto |
-| `packages/conversations/src/application/turn-capabilities.ts` | Porte Application CurrentTime, NewIdentifier e Deadlines. | Nome descrittivo, nessun suffisso richiesto |
-| `packages/conversations/src/domain/turn.ts` | Domain: entità e invarianti del turno. | Nome descrittivo, nessun suffisso richiesto |
-| `packages/conversations/src/project-error.ts` | Tipo comune dei guasti e delle cause. | Nome descrittivo, nessun suffisso richiesto |
-
-#### Evidenze eseguite
-Sulla revisione `5e34707cad5778133e6577606e0103a8d0d86448`: build e `tsc --noEmit`: PASS. `vitest run` con apertura delle porte locali consentita: 30 file di test, 286 test PASS e 1 saltato (la prova con voce reale, attiva solo con `AMBROGIO_TEST_VOICE_MODEL_DIR`). `node scripts/verify-server-startup.mjs` e la prova Docker `scripts/verify-docker-image.mjs` sull'immagine `ambrogio-server:router-test` (`sha256:63581a4bc70fd2f7269a10ecb4ea1940fa688bd9fc1ad6f98424625754df9991`), con un agente senza MCP: PASS. Non sono state eseguite prove con Vosk reale, con Mistral reale né su hardware.
-
-Riesaminati import relativi, export dei subpath del package, compreso il nuovo `./adapters/out/system-deadlines`, riferimenti dei test e collegamenti del modello. Questa ispezione attesta la convenzione dei nomi e la regressione software pertinente; non sostituisce le dimostrazioni su hardware o la validazione generale del prodotto.
+Non automatizzabile: la classificazione dei file per responsabilità richiede giudizio umano, come prescrive la convenzione dei nomi.
 
 #### Metadata
   * type: inspection-verification
@@ -844,12 +810,31 @@ Esaminare le rotte HTTP registrate dal server e la configurazione del limite dei
 #### Details
 L'ispezione passa se nessuna rotta HTTP accetta un corpo senza un limite positivo esplicito e se le rotte attuali di elenco e storico non accettano corpo. Per una futura rotta con corpo, i corpi oltre il limite ricevono `413` con JSON `error` sicuro e non avviano l'operazione. I limiti dei turni appartengono al protocollo conversazionale e sono verificati separatamente. Fallisce se una rotta accetta un corpo senza limite o se il limite dipende solo da `Content-Length`.
 
+Non automatizzabile: richiede di stabilire quali rotte accettano un corpo; le rotte attuali non ne accettano, quindi non esiste un corpo da inviare in una prova automatica.
+
 #### Metadata
   * type: inspection-verification
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
   * verify: [Limite dei corpi delle richieste HTTP](../Requirements/ServerFoundation.md#limite-dei-corpi-delle-richieste-http)
+---
+
+### Ispezione dell'irrobustimento dei workflow
+
+Esaminare `.github/workflows/ci.yml`, `.github/workflows/secret-scan.yml` e `.github/workflows/publish-image.yml` e confrontare permessi, riferimenti delle action, runner, `timeout-minutes`, opzioni di checkout e richiami `workflow_call` con «Profilo di irrobustimento dei workflow GitHub Actions». Esaminare l'esito di un'esecuzione dei workflow su GitHub quando disponibile.
+
+#### Details
+L'ispezione passa se ogni valore coincide con il profilo: permessi `contents: read` a livello di workflow e `packages: write` soltanto nel job `publish`, ogni action esterna fissata a un'impronta SHA completa, runner `ubuntu-24.04` e `timeout-minutes` in ogni job, `persist-credentials: false` in ogni checkout e pubblicazione che richiama CI e scansione dei segreti con `workflow_call`. Fallisce se un job riceve permessi non necessari, un'action è indicata con un tag o un branch, un job non ha limite di durata, un checkout conserva le credenziali o la pubblicazione duplica i controlli invece di richiamarli.
+
+Non automatizzabile: l'effetto di permessi, limiti di durata e credenziali si osserva soltanto nell'esecuzione su GitHub Actions, fuori dal repository; il confronto dei valori nei file sarebbe automatizzabile con un controllo dei workflow che il progetto non ha.
+
+#### Metadata
+  * type: inspection-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * verify: [Irrobustimento dei workflow GitHub Actions](../Requirements/ServerFoundation.md#irrobustimento-dei-workflow-github-actions)
 ---
 
 ### Prova degli header di cache conversazionali
@@ -890,12 +875,33 @@ La prova passa se ciascun processo importa una volta all'avvio solo i moduli nec
   * verify: [Validazione preventiva della configurazione attiva](../Requirements/ServerFoundation.md#validazione-preventiva-della-configurazione-attiva)
 ---
 
+### Prova del catalogo vocale bilingue dell'immagine
+
+Costruire l'immagine e ispezionare gli archivi fissati, le impronte verificate e i file runtime di Vosk italiano e inglese, delle voci Piper italiane e inglesi e del modello Kokoro multilingue. Eseguire una breve trascrizione e una sintesi per ogni lingua e motore disponibile nell'immagine.
+
+#### Details
+La prova passa se tutte le risorse sono leggibili dentro il container senza mount, le impronte corrispondono a quelle fissate e Vosk, Piper e Kokoro producono risultati non vuoti in entrambe le lingue. Fallisce se una risorsa manca o richiede un mount, se un'impronta non corrisponde o se un motore produce un risultato vuoto in una lingua.
+
+La build dell'immagine verifica le impronte degli archivi con `scripts/fetch-speech-models.mjs`; `scripts/verify-docker-image.mjs` esegue gli altri controlli nel job di pubblicazione, perché richiedono la build Docker con il download dei modelli.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * satisfiedBy: [fetch-speech-models.mjs](../../scripts/fetch-speech-models.mjs)
+  * satisfiedBy: [verify-docker-image.mjs](../../scripts/verify-docker-image.mjs)
+  * verify: [Modelli vocali italiani e inglesi inclusi](../Requirements/ServerFoundation.md#modelli-vocali-italiani-e-inglesi-inclusi)
+---
+
 ### Prova del controllo di accesso dell'installazione
 
 Per ogni installazione dell'MVP da verificare, ispezionare la configurazione di rete e dell'eventuale reverse proxy; tentare l'accesso agli ingressi del server da un client ammesso e da un client non ammesso dall'installatore.
 
 #### Details
-La prova passa se il client ammesso può raggiungere l'ingresso previsto e il client non ammesso non può raggiungere l'applicazione attraverso la rete o il proxy. Fallisce se un client non ammesso può usare l'ingresso. La prova richiede l'installazione concreta: la validazione del repository non certifica le configurazioni degli installatori. Il 18 ottobre 2026 la verifica è stata riclassificata da test a dimostrazione, perché si svolge su un'installazione reale e non può avere un test automatico nel repository; non è ancora stata eseguita.
+La prova passa se il client ammesso può raggiungere l'ingresso previsto e il client non ammesso non può raggiungere l'applicazione attraverso la rete o il proxy. Fallisce se un client non ammesso può usare l'ingresso. La prova richiede l'installazione concreta: la validazione del repository non certifica le configurazioni degli installatori.
+
+Non automatizzabile: si svolge su un'installazione reale, con la rete e l'eventuale reverse proxy scelti dall'installatore, che il repository non contiene.
 
 #### Metadata
   * type: demonstration-verification
@@ -910,14 +916,14 @@ La prova passa se il client ammesso può raggiungere l'ingresso previsto e il cl
 Avviare l'API con il plugin registrato sulla radice e richiedere una risposta conversazionale riuscita, un errore gestito e una rotta inesistente. Ispezionare configurazione del plugin e header delle risposte.
 
 #### Details
-La prova passa se `@fastify/helmet` è registrato globalmente e le tre risposte portano gli header applicabili del profilo adottato, salvo differenze motivate e dichiarate. Fallisce se il plugin è limitato a un sottoinsieme di rotte, se un errore o un `404` non riceve il profilo, oppure se una deroga non è motivata. Da eseguire quando l'API HTTP è implementata.
+La prova passa se `@fastify/helmet` è registrato globalmente e le tre risposte portano gli header applicabili del profilo adottato, salvo differenze motivate e dichiarate. Fallisce se il plugin è limitato a un sottoinsieme di rotte, se un errore o un `404` non riceve il profilo, oppure se una deroga non è motivata.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
+  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
   * verify: [Header di sicurezza sulle risposte HTTP](../Requirements/ServerFoundation.md#header-di-sicurezza-sulle-risposte-http)
 ---
 
@@ -926,7 +932,7 @@ La prova passa se `@fastify/helmet` è registrato globalmente e le tre risposte 
 Esaminare gli script dei package e dell'app server che eseguono la suite automatica del backend; avviarli con il runner configurato e acquisire il report delle verifiche disponibili.
 
 #### Details
-La prova passa se gli script eseguono i test backend tramite Vitest e il runner produce un report dei test avviati. Fallisce se la suite backend usa un runner diverso o non può essere avviata tramite Vitest. La prova resta da eseguire quando esistono test implementati.
+La prova passa se gli script eseguono i test backend tramite Vitest e il runner produce un report dei test avviati. Fallisce se la suite backend usa un runner diverso o non può essere avviata tramite Vitest.
 
 #### Metadata
   * type: test-verification
@@ -942,7 +948,7 @@ La prova passa se gli script eseguono i test backend tramite Vitest e il runner 
 Costruire l'immagine Docker del server a partire dagli artefatti del progetto e avviarla con il solo runtime Docker, fornendo dall'esterno i file di configurazione di prova; verificare l'avvio e una richiesta a un ingresso HTTP presente. Esaminare l'eventuale file Compose per accertare che sia un esempio di avvio e non un prerequisito della build o dell'esecuzione.
 
 #### Details
-La prova passa se il progetto produce un'immagine eseguibile, il server si avvia e risponde usando l'immagine senza Docker Compose e nessuna fase indispensabile richiede Compose. Fallisce se l'immagine manca, non è eseguibile oppure l'avvio dipende da Compose. Eseguita localmente il 21 ottobre 2026 con `scripts/verify-docker-image.mjs`: PASS con JSON esterni, archivio SQLite su mount, voce attiva in italiano e inglese e risposta HTTP 200 per entrambe le lingue, senza Compose.
+La prova passa se il progetto produce un'immagine eseguibile, il server si avvia e risponde usando l'immagine senza Docker Compose e nessuna fase indispensabile richiede Compose. Fallisce se l'immagine manca, non è eseguibile oppure l'avvio dipende da Compose.
 
 #### Metadata
   * type: test-verification
@@ -959,7 +965,7 @@ La prova passa se il progetto produce un'immagine eseguibile, il server si avvia
 Per ogni componente del server che usa un'API esterna, predisporre un modulo TypeScript locale di prova con credenziali fittizie distinguibili, avviare il componente con un client API controllato e osservare le credenziali fornite al client. Esaminare il percorso di caricamento della configurazione.
 
 #### Details
-La prova passa se le credenziali fornite al client corrispondono a quelle del modulo TypeScript dedicato al componente e il codice le ottiene da quel file. Fallisce se il componente usa credenziali incorporate nel codice o ricavate da un'altra sorgente al posto del proprio modulo TypeScript. La prova per un componente non ancora presente resta da eseguire quando viene introdotto.
+La prova passa se le credenziali fornite al client corrispondono a quelle del modulo TypeScript dedicato al componente e il codice le ottiene da quel file. Fallisce se il componente usa credenziali incorporate nel codice o ricavate da un'altra sorgente al posto del proprio modulo TypeScript.
 
 #### Metadata
   * type: test-verification
@@ -1010,14 +1016,14 @@ La prova passa se l'opzione effettiva `strict` è abilitata per ogni progetto Ty
 Avviare l'API con origine pubblica HTTP e con origine pubblica dichiarata HTTPS, mantenendo in entrambi i casi una connessione interna HTTP e variando `X-Forwarded-Proto`. Osservare le risposte riuscite e di errore.
 
 #### Details
-La prova passa se HSTS è assente quando la configurazione pubblica è HTTP o non dichiarata ed è presente con durata positiva quando è HTTPS, indipendentemente dal protocollo interno o dal valore di `X-Forwarded-Proto`. Fallisce se un header della richiesta attiva HSTS da solo o se la politica è assente in un deployment HTTPS dichiarato. Da eseguire quando l'API HTTP è implementata.
+La prova passa se HSTS è assente quando la configurazione pubblica è HTTP o non dichiarata ed è presente con durata positiva quando è HTTPS, indipendentemente dal protocollo interno o dal valore di `X-Forwarded-Proto`. Fallisce se un header della richiesta attiva HSTS da solo o se la politica è assente in un deployment HTTPS dichiarato.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
+  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
   * verify: [HSTS legato all'HTTPS pubblico](../Requirements/ServerFoundation.md#hsts-legato-allhttps-pubblico)
 ---
 
@@ -1033,7 +1039,8 @@ La prova passa se il processo ascolta solo all'indirizzo e alla porta espliciti 
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
+  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
+  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
   * verify: [Configurazione esplicita dell'ascolto HTTP](../Requirements/ServerFoundation.md#configurazione-esplicita-dellascolto-http)
 ---
 
@@ -1042,27 +1049,23 @@ La prova passa se il processo ascolta solo all'indirizzo e alla porta espliciti 
 Avviare l'API con elenco di origini assente, poi con un'origine esplicitamente ammessa. Inviare richieste ordinarie e preflight da origine ammessa e non ammessa.
 
 #### Details
-La prova passa se, senza elenco, nessuna risposta autorizza CORS; con l'elenco, solo l'origine ammessa riceve gli header di autorizzazione pertinenti e nessuna risposta usa wildcard o riflette l'origine non ammessa. Fallisce se una delle richieste non ammesse ottiene autorizzazione CORS. Da eseguire quando l'API HTTP è implementata.
+La prova passa se, senza elenco, nessuna risposta autorizza CORS; con l'elenco, solo l'origine ammessa riceve gli header di autorizzazione pertinenti e nessuna risposta usa wildcard o riflette l'origine non ammessa. Fallisce se una delle richieste non ammesse ottiene autorizzazione CORS.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
+  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
   * verify: [Origini CORS esplicite dell'API HTTP](../Requirements/ServerFoundation.md#origini-cors-esplicite-dellapi-http)
 ---
 
 ### Prova delle voci incluse e sostituibili
 
-Costruire l'immagine backend, ispezionare le directory delle voci Riccardo x_low e Paola medium e sintetizzare una breve frase italiana con ciascuna usando sherpa-onnx nel Node dell'immagine. Verificare che l'immagine non contenga l'ambiente Python né il binario Piper. Avviare inoltre un container con una directory di prova montata in sola lettura su `/opt/ambrogio/voices` e osservare che il mount sostituisce il contenuto incluso.
+Con `scripts/verify-docker-image.mjs`, costruire l'immagine backend oppure usare quella indicata da `AMBROGIO_DOCKER_IMAGE`, ispezionare le directory delle voci Piper incluse `vits-piper-it_IT-riccardo-x_low`, `vits-piper-it_IT-paola-medium` e `vits-piper-en_US-kristin-medium` e sintetizzare una breve frase con ciascuna usando il codice di sintesi dell'immagine. Verificare che l'immagine non contenga `python3` né `/opt/piper`. Avviare un container con una directory di prova montata in sola lettura su `/opt/ambrogio/voices` e osservare che il mount sostituisce il contenuto incluso; selezionare inoltre una voce italiana montata in un percorso distinto tramite un profilo vocale.
 
 #### Details
-La prova passa se entrambe le directory contengono modello, `tokens.txt`, `espeak-ng-data/` e note di provenienza, sherpa-onnx produce audio non vuoto alla frequenza del modello per entrambe le voci, l'immagine non contiene `/opt/piper` e il mount presenta i file esterni al posto delle voci incluse senza una nuova build. Fallisce se manca una voce, la sintesi fallisce o il mount non sostituisce la directory. La prova non sostituisce l'ascolto umano della qualità delle voci.
-
-Il 17 ottobre 2026, con la precedente sintesi Piper, l'immagine `ambrogio-server:paola-20261017` è stata distribuita sul server dell'installazione di riferimento con Paola medium selezionata e la persona ha confermato il funzionamento della prova vocale con il satellite. Le esecuzioni della prova con sherpa-onnx sono registrate di seguito.
-
-Eseguita il 17 ottobre 2026 sulla revisione `7fce83e35ca957829debac2eb81cd27335d0c95a` con `docker build --tag ambrogio-server:sherpa-test .` e `AMBROGIO_DOCKER_IMAGE=ambrogio-server:sherpa-test node scripts/verify-docker-image.mjs`: impronte SHA-256 degli archivi verificate durante la build, immagine `sha256:f1d39028d6b565d6f52d10540e8bcfdcd400e1e616489ce38f5bc232c1d20927` senza `/opt/piper` né `python3`, sintesi con il codice dell'immagine di 38028 byte a 16000 Hz per Riccardo x_low e 57344 byte a 22050 Hz per Paola medium, mount sostitutivo e HTTP `200`. Non è stata eseguita una prova vocale con Vosk reale e satellite su questa immagine, che non è stata distribuita.
+La prova passa se ogni directory contiene un solo modello `.onnx`, `tokens.txt`, `espeak-ng-data/` e `MODEL_CARD`, `/opt/ambrogio/voices/README.md` è presente, la sintesi produce audio non vuoto alla frequenza del modello per ogni voce, l'immagine non contiene `python3` né `/opt/piper`, il mount su `/opt/ambrogio/voices` presenta i file esterni al posto delle voci incluse senza una nuova build e la voce montata in un percorso distinto viene selezionata e caricata. Fallisce se manca una voce, la sintesi fallisce o il mount non sostituisce la directory. La prova non sostituisce l'ascolto umano della qualità delle voci.
 
 #### Metadata
   * type: test-verification
@@ -1070,5 +1073,5 @@ Eseguita il 17 ottobre 2026 sulla revisione `7fce83e35ca957829debac2eb81cd27335d
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
   * satisfiedBy: [verify-docker-image.mjs](../../scripts/verify-docker-image.mjs)
-  * verify: [Voci italiane incluse nell'immagine](../Requirements/ServerFoundation.md#voci-italiane-incluse-nellimmagine)
+  * verify: [Directory delle voci sostituibile nell'immagine](../Requirements/ServerFoundation.md#directory-delle-voci-sostituibile-nellimmagine)
 ---

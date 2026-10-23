@@ -24,7 +24,7 @@ Quando il runtime HTTP del server abilita il logger di Fastify, non deve emetter
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -113,15 +113,18 @@ Le varianti di rifiuto previsto di Domain, Application e delle porte del server 
 
 ### Caricamento iniziale delle configurazioni TypeScript
 
-Quando un processo del server avvia un ingresso, deve caricare una volta i moduli TypeScript locali dei componenti necessari prima di attivarli. I moduli devono poter leggere i valori dalle variabili d'ambiente fornite dal deployment.
+Quando un processo del server avvia un ingresso, deve caricare una volta i moduli TypeScript locali dei componenti necessari prima di attivarli. I moduli devono ammettere valori letti dalle variabili d'ambiente fornite dal deployment.
 
 #### Metadata
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
   * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
   * satisfiedBy: [http-config.ts](../../apps/server/src/runtime/http-config.ts)
+  * satisfiedBy: [compose.example.yaml](../../compose.example.yaml)
   * satisfiedBy: [conversation-config.ts](../../packages/conversations/src/adapters/out/conversation-config.ts)
+  * satisfiedBy: [voice-config.ts](../../packages/conversations/src/adapters/out/voice-config.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -160,8 +163,8 @@ Quando il processo avvia l'ingresso HTTP, deve usare un indirizzo host e una por
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
   * satisfiedBy: [http-config.ts](../../apps/server/src/runtime/http-config.ts)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -173,7 +176,7 @@ Quando il logger del server serializza il campo `err` di un log diagnostico defi
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -191,7 +194,7 @@ Quando un `catch` del server aggiunge un contesto operativo concreto a un guasto
 
 ### Controlli CI delle modifiche funzionali del server
 
-Quando il server contiene codice applicativo e una modifica funzionale viene proposta per l'integrazione, la CI deve eseguire la validazione e il lint del modello Reqvire, la compilazione TypeScript del server e la suite backend con Vitest, comprendente prove degli adapter di persistenza su SQLite reale quando tali adapter esistono. L'integrazione deve essere impedita se uno di questi controlli fallisce.
+Quando viene inviato un commit su `main`, viene aperta o aggiornata una pull request, viene richiesta un'esecuzione manuale oppure un altro workflow del repository richiama la CI, la CI deve eseguire la validazione e il lint del modello Reqvire, la compilazione TypeScript del server e la suite backend con Vitest, comprendente prove degli adapter di persistenza su SQLite reale quando tali adapter esistono. L'integrazione deve essere impedita se uno di questi controlli fallisce.
 
 #### Metadata
   * type: requirement
@@ -214,10 +217,13 @@ Quando l'MVP è installato senza autenticazione applicativa, il deployment deve 
 
 ### Credenziali API nel modulo TypeScript del componente
 
-Quando un componente del server usa credenziali per un'API esterna, deve riceverle dal proprio modulo TypeScript di configurazione, che può leggerle dall'ambiente del processo.
+Quando un componente del server usa credenziali per un'API esterna, deve riceverle dal proprio modulo TypeScript di configurazione; il modulo ammette di leggerle dall'ambiente del processo.
 
 #### Metadata
   * type: requirement
+
+#### Contract References
+  * [Profilo di bootstrap delle configurazioni TypeScript](../Contracts/ServerFoundation.md#profilo-di-bootstrap-delle-configurazioni-typescript)
 
 #### Relations
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
@@ -255,8 +261,8 @@ Se la preparazione del processo server fallisce prima che il server sia in ascol
 #### Relations
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
   * satisfiedBy: [main.ts](../../apps/server/src/main.ts)
-  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
   * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * satisfiedBy: [startup-failure.ts](../../apps/server/src/runtime/startup-failure.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
@@ -272,6 +278,21 @@ Quando un caso d'uso Application del server espone rifiuti previsti, la sua firm
   * [Convenzione dei nomi di casi d'uso e adapter](../Contracts/ServerFoundation.md#convenzione-dei-nomi-di-casi-duso-e-adapter)
 
 #### Relations
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
+### Directory delle voci sostituibile nell'immagine
+
+Quando l'installazione monta in sola lettura una propria directory di voci al posto di quella inclusa nell'immagine Docker del backend, il container deve usare le voci della directory montata al posto di quelle incluse, senza ricostruire l'immagine.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Catalogo bilingue dei modelli vocali nell'immagine backend](../Contracts/ServerFoundation.md#catalogo-bilingue-dei-modelli-vocali-nellimmagine-backend)
+
+#### Relations
+  * satisfiedBy: [Dockerfile](../../Dockerfile)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -303,6 +324,9 @@ Quando il progetto distribuisce il server, deve fornire un'immagine Docker esegu
 
 #### Metadata
   * type: requirement
+
+#### Contract References
+  * [Catalogo bilingue dei modelli vocali nell'immagine backend](../Contracts/ServerFoundation.md#catalogo-bilingue-dei-modelli-vocali-nellimmagine-backend)
 
 #### Relations
   * satisfiedBy: [Dockerfile](../../Dockerfile)
@@ -353,7 +377,7 @@ Quando un confine del server comunica alla famiglia un messaggio per un guasto, 
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
   * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
@@ -369,6 +393,7 @@ Quando il server usa file di configurazione locali effettivi, tali file devono r
 
 #### Relations
   * satisfiedBy: [.dockerignore](../../.dockerignore)
+  * satisfiedBy: [.gitignore](../../.gitignore)
   * satisfiedBy: [Dockerfile](../../Dockerfile)
   * satisfiedBy: [verify-docker-image.mjs](../../scripts/verify-docker-image.mjs)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
@@ -428,7 +453,7 @@ Quando un componente del server richiede configurazione locale, la sua configura
 
 ### Firma Result dei casi d'uso con rifiuti previsti
 
-Quando un caso d'uso Application del server prevede rifiuti, la sua firma TypeScript deve restituire `Result<T, E>`, eventualmente racchiuso in `Promise`, con `E` pari all'unione chiusa delle varianti dichiarate nel contratto del caso d'uso.
+Quando un caso d'uso Application del server prevede rifiuti, la sua firma TypeScript deve restituire `Result<T, E>` oppure `Promise<Result<T, E>>`, con `E` pari all'unione chiusa delle varianti dichiarate nel contratto del caso d'uso.
 
 #### Metadata
   * type: requirement
@@ -439,7 +464,7 @@ Quando un caso d'uso Application del server prevede rifiuti, la sua firma TypeSc
 
 ### Firma Result delle porte con rifiuti previsti
 
-Quando una porta Application del server prevede rifiuti, la sua firma TypeScript deve restituire `Result<T, E>`, eventualmente racchiuso in `Promise`, con `E` pari all'unione chiusa delle varianti dichiarate nel contratto della porta.
+Quando una porta Application del server prevede rifiuti, la sua firma TypeScript deve restituire `Result<T, E>` oppure `Promise<Result<T, E>>`, con `E` pari all'unione chiusa delle varianti dichiarate nel contratto della porta.
 
 #### Metadata
   * type: requirement
@@ -456,7 +481,7 @@ Quando il runtime del server HTTP emette un evento diagnostico tecnico, deve scr
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -492,8 +517,8 @@ Quando il deployment dichiara che l'origine pubblica dell'API HTTP usa HTTPS, il
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
   * satisfiedBy: [http-config.ts](../../apps/server/src/runtime/http-config.ts)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -505,7 +530,7 @@ Quando il server HTTP emette una risposta, incluse risposte di errore e rotte no
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -517,7 +542,7 @@ Quando il server riceve una richiesta HTTP, il confine HTTP deve generare per qu
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -529,7 +554,7 @@ Quando il server emette una risposta HTTP gestita, inclusa una risposta di error
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -541,7 +566,7 @@ L'API HTTP del server deve essere implementata con Fastify.
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -567,6 +592,23 @@ Quando il server riceve una richiesta di arresto ordinato, deve interrompere i t
   * satisfiedBy: [main.ts](../../apps/server/src/main.ts)
   * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
+### Irrobustimento dei workflow GitHub Actions
+
+I workflow GitHub Actions del backend devono concedere a ogni job soltanto i permessi del token necessari, eseguire le action esterne fissate al commit, limitare la durata di ogni job su un runner fissato e non conservare le credenziali del checkout.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Profilo di scansione dei segreti con gitleaks](../Contracts/ServerFoundation.md#profilo-di-scansione-dei-segreti-con-gitleaks)
+
+#### Relations
+  * satisfiedBy: [ci.yml](../../.github/workflows/ci.yml)
+  * satisfiedBy: [publish-image.yml](../../.github/workflows/publish-image.yml)
+  * satisfiedBy: [secret-scan.yml](../../.github/workflows/secret-scan.yml)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -672,7 +714,7 @@ Quando il confine tecnico HTTP del server gestisce definitivamente un guasto ina
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
   * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
@@ -687,7 +729,7 @@ Quando il confine HTTP del server chiama il logger per un log diagnostico defini
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -699,8 +741,8 @@ Quando l'API HTTP riceve una richiesta con un'origine cross-origin, deve autoriz
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
   * satisfiedBy: [http-config.ts](../../apps/server/src/runtime/http-config.ts)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -771,7 +813,7 @@ Quando un componente del server decide definitivamente l'esito esterno di un gua
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
   * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
@@ -784,6 +826,10 @@ Quando viene creato un tag di release `v*` del backend, il progetto deve pubblic
 
 #### Metadata
   * type: requirement
+
+#### Contract References
+  * [Profilo dell'immagine Docker del server](../Contracts/ServerFoundation.md#profilo-dellimmagine-docker-del-server)
+  * [Profilo di scansione dei segreti con gitleaks](../Contracts/ServerFoundation.md#profilo-di-scansione-dei-segreti-con-gitleaks)
 
 #### Relations
   * satisfiedBy: [publish-image.yml](../../.github/workflows/publish-image.yml)
@@ -799,7 +845,7 @@ Quando il logger del server emette la riga JSON di un log diagnostico definitivo
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * satisfiedBy: [project-error.ts](../../packages/conversations/src/project-error.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
@@ -833,7 +879,7 @@ Quando un'operazione Domain, un caso d'uso Application o una porta Application d
 
 ### Scansione dei segreti nella CI del backend
 
-Quando una modifica viene inviata al repository remoto o proposta per l'integrazione, e prima della pubblicazione di un'immagine di release, la CI deve scansionare l'intera storia Git del repository alla ricerca di segreti e impedire integrazione e pubblicazione se la scansione rileva un segreto o non può essere completata.
+Quando una modifica viene inviata al repository remoto o proposta per l'integrazione, e prima della pubblicazione di un'immagine di release, la CI deve scansionare l'intera storia Git del repository alla ricerca di segreti e impedire integrazione e pubblicazione se la scansione rileva un segreto o non si completa.
 
 #### Metadata
   * type: requirement
@@ -852,7 +898,7 @@ Quando il runtime HTTP del server emette un evento diagnostico applicativo, la r
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
   * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
@@ -866,7 +912,7 @@ Quando un confine del server produce per lo stesso guasto un messaggio per la fa
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
   * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
@@ -953,17 +999,3 @@ Quando la suite automatica del backend esegue le verifiche implementate nei pack
 #### Relations
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
-
-### Voci italiane incluse nell'immagine
-
-Quando il progetto distribuisce l'immagine Docker del backend, deve includere le voci italiane Riccardo x_low e Paola medium nel formato sherpa-onnx, ciascuna come directory con modello, `tokens.txt`, `espeak-ng-data/` e informazioni di provenienza, permettendo all'installazione di sostituire la directory delle voci senza ricostruire l'immagine.
-
-#### Metadata
-  * type: requirement
-
-#### Relations
-  * satisfiedBy: [Dockerfile](../../Dockerfile)
-  * satisfiedBy: [fetch-speech-models.mjs](../../scripts/fetch-speech-models.mjs)
-  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
----
-

@@ -44,12 +44,93 @@ Il backend Ambrogio deve essere sviluppato e versionato in `ambrogio-backend`, c
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
+### Controllo automatico dell'integrità del modello
+
+Quando la CI del repository esegue la validazione e il lint del modello Reqvire, deve eseguire anche lo script di integrità del modello e deve fallire se lo script segnala una violazione o non riesce a eseguire.
+
+#### Details
+Il controllo copre le regole di integrità verificabili sul testo e sui file; `validate` e `lint` di Reqvire non le controllano.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [ci.yml](../../.github/workflows/ci.yml)
+  * satisfiedBy: [check-model.mjs](../../scripts/check-model.mjs)
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
 ### Coordinamento dell'esecuzione negli entrypoint
 
 Gli entrypoint delle applicazioni eseguibili del monorepo devono coordinare l'esecuzione dei componenti assemblati.
 
 #### Metadata
   * type: requirement
+
+#### Relations
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
+### Decisioni sostituite rimosse nella stessa modifica
+
+Quando una decisione ne sostituisce un'altra, la modifica che registra la nuova decisione deve aggiornare o rimuovere ogni requisito, contratto e verifica che afferma la decisione sostituita, e i testi di requisiti, contratti e verifiche non devono riportare date, storia delle decisioni o esiti di esecuzioni.
+
+#### Details
+Il modello descrive gli obblighi validi oggi e come verificarli; la storia è conservata da Git. Decisioni datate accumulate nei contratti convivono con elementi che affermano ancora le decisioni sostituite. Gli esiti dei test sono dati dalla CI; l'esito di una verifica manuale si registra nel messaggio del commit o nella pull request che la esegue, non nel modello.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Script di integrità del modello](../Contracts/ServerFoundation.md#script-di-integrità-del-modello)
+
+#### Relations
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
+### Dipendenze fra contratti dichiarate come riferimenti
+
+Quando il contenuto di un contratto dipende da un contratto posseduto da un altro requisito, il requisito proprietario del contratto dipendente deve dichiarare una Contract Reference al contratto da cui dipende, e il contratto dipendente non deve ripetere il contenuto di quel contratto.
+
+#### Details
+Le Contract References propagano l'analisi di impatto: una modifica del contratto riferito segnala il contratto dipendente per la revisione. Un contratto che ripete un fatto posseduto da un altro requisito resta invariato quando quel fatto cambia, e il modello finisce per contraddirsi senza che l'analisi di impatto lo segnali.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
+### File di governo collegati al modello
+
+Ogni workflow di CI, hook Git, file di build del container, esempio Compose, file di esclusione, configurazione del gestore di pacchetti, del compilatore o del runner di test e script del repository deve essere riferito da almeno un requisito o una verifica del modello.
+
+#### Details
+Un file che codifica decisioni ingegneristiche senza un collegamento al modello cambia senza che alcun obbligo lo segnali, e le decisioni presenti solo nei file divergono fra file simili, per esempio fra i workflow di controllo e quello di pubblicazione.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Script di integrità del modello](../Contracts/ServerFoundation.md#script-di-integrità-del-modello)
+
+#### Relations
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
+### Formulazione normativa degli obblighi
+
+Gli enunciati dei requisiti e i testi dei contratti devono esprimere gli obblighi con «deve» o «devono» e non devono usare `può`, `possono`, `potrebbe`, `potrebbero`, `dovrebbe`, `dovrebbero` o `eventualmente`; un'opzione lasciata a una parte deve essere espressa nominando la parte che sceglie.
+
+#### Details
+Il testo in code span, i messaggi citati e i nomi di elementi tra «» non sono formulazione dell'obbligo. Le sezioni Details dei requisiti sono indicazioni e non vengono controllate. Una formula permissiva rende ambiguo se il comportamento è obbligatorio, facoltativo o scelto da qualcuno, e il codice e il modello finiscono per darne letture diverse.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Script di integrità del modello](../Contracts/ServerFoundation.md#script-di-integrità-del-modello)
 
 #### Relations
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
@@ -63,6 +144,7 @@ Il repository backend deve dichiarare alla radice un workspace pnpm che comprend
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [pnpm-workspace.yaml](../../pnpm-workspace.yaml)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -199,3 +281,19 @@ I test di ciascun modulo business del monorepo devono risiedere nel package del 
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
+### Verifiche manuali giustificate
+
+Ogni verifica di ispezione, analisi o dimostrazione deve indicare il motivo per cui non è automatizzabile, in una frase che inizia con «Non automatizzabile:».
+
+#### Details
+Una verifica automatizzabile è una verifica di test. Reqvire registra che una verifica esiste, non che sia stata eseguita: una verifica manuale non ripetuta dopo una modifica lascia passare una violazione del requisito.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Script di integrità del modello](../Contracts/ServerFoundation.md#script-di-integrità-del-modello)
+
+#### Relations
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---

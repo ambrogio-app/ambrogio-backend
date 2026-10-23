@@ -42,7 +42,7 @@ it('validates the Vosk model and the voice directory', async () => {
     tokens: join(voice, 'tokens.txt'), dataDir: join(voice, 'espeak-ng-data') });
 });
 
-// Verification: Analisi della selezione vocale per lingua
+// Verification: Prova della selezione vocale per lingua
 it('selects explicit paths for the active language without loading the other profile', async () => {
   const { directory, vosk, voice, kokoro, config } = await kokoroFixture();
   const otherItalianVoice = join(directory, 'other-italian-voice');

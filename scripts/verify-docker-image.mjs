@@ -27,7 +27,7 @@ try {
     host: '0.0.0.0', port, allowedOrigins: [], publicHttps: false,
   });
   writeConfig(join(config, 'conversations.ts'), {
-    archivePath: '/var/lib/ambrogio/conversations.sqlite', language: 'it',
+    archivePath: '/data/conversations.sqlite', language: 'it',
   });
   writeFileSync(join(config, 'voice.ts'), readFileSync('examples/voice.ts'));
   writeFileSync(join(config, 'voice-kokoro.ts'), readFileSync('examples/voice-kokoro.ts'));
@@ -43,7 +43,7 @@ try {
 
   if (!existingImage) docker('build', '--tag', image, '.');
   docker('run', '--rm', '--entrypoint', '/bin/sh', image, '-c',
-    'test ! -e /etc/ambrogio/http.ts && test ! -e /etc/ambrogio/conversations.ts && test ! -e /var/lib/ambrogio/conversations.sqlite && ' +
+    'test ! -e /etc/ambrogio/http.ts && test ! -e /etc/ambrogio/conversations.ts && test ! -e /data/conversations.sqlite && ' +
     'test ! -e /opt/piper && ! command -v python3 >/dev/null && cd /workspace/packages/conversations && node -e "require(\'vosk-koffi\')"');
   // Each bundled voice is loaded and spoken with the image's own synthesizer code.
   const synthesis = [
@@ -146,12 +146,12 @@ try {
     image, '-c', 'test -f /opt/ambrogio/voices/custom-voice.marker && test ! -e /opt/ambrogio/voices/vits-piper-it_IT-riccardo-x_low');
   for (const language of ['it', 'en']) {
     writeConfig(join(config, 'conversations.ts'), {
-      archivePath: '/var/lib/ambrogio/conversations.sqlite', language,
+      archivePath: '/data/conversations.sqlite', language,
     });
     container = docker('run', '--detach', '--rm',
       '--publish', `127.0.0.1::${port}`,
       '--mount', `type=bind,src=${config},dst=/etc/ambrogio,readonly`,
-      '--mount', `type=bind,src=${data},dst=/var/lib/ambrogio`,
+      '--mount', `type=bind,src=${data},dst=/data`,
       '--env', 'AMBROGIO_HTTP_CONFIG_PATH=/etc/ambrogio/http.ts',
       '--env', 'AMBROGIO_CONVERSATIONS_CONFIG_PATH=/etc/ambrogio/conversations.ts',
       '--env', 'AMBROGIO_VOICE_CONFIG_PATH=/etc/ambrogio/voice.ts',

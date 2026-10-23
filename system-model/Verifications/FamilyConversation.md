@@ -5,7 +5,7 @@
 Con `language` impostato separatamente a `en` e `it`, provocare ciascun rifiuto prima dell'ammissione: testo vuoto, conversazione inesistente, conversazione occupata, archivio temporaneamente occupato, server in arresto, ingressi disabilitati dopo una conclusione non conservata e guasto tecnico controllato prima dell'ammissione. Ripetere i casi con `reply: "text"` e con `reply: "audio"` a voce abilitata. Confrontare lo stato dell'archivio prima e dopo.
 
 #### Details
-La prova passa se ogni caso riceve una trasmissione del messaggio pubblico nel tipo di contenuto richiesto, seguita da `turn.rejected` con il `reason` previsto (`invalid`, `conversation_not_found`, `occupied`, `unavailable`, `failure`) e lo stesso `message`, che corrisponde esattamente al testo definito per la lingua configurata. Non compaiono `turn.accepted` né nuovi turni o conversazioni, e il guasto tecnico non espone dettagli diagnostici. Fallisce se un rifiuto viene comunicato con un messaggio diverso, se manca la trasmissione del messaggio, se viene creato un effetto persistente o se trapelano dettagli tecnici. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
+La prova passa se ogni caso riceve una trasmissione del messaggio pubblico nel tipo di contenuto richiesto, seguita da `turn.rejected` con il `reason` previsto (`invalid`, `conversation_not_found`, `occupied`, `unavailable`, `failure`) e lo stesso `message`, che corrisponde esattamente al testo definito per la lingua configurata. Non compaiono `turn.accepted` né nuovi turni o conversazioni, e il guasto tecnico non espone dettagli diagnostici. Fallisce se un rifiuto viene comunicato con un messaggio diverso, se manca la trasmissione del messaggio, se viene creato un effetto persistente o se trapelano dettagli tecnici. Verifica definita per il protocollo `ambrogio.v1`.
 
 #### Metadata
   * type: test-verification
@@ -21,7 +21,7 @@ La prova passa se ogni caso riceve una trasmissione del messaggio pubblico nel t
 Aprire due sessioni di client distinti; tenere attiva la prima mentre la seconda avvia e completa un turno. Chiudere una sessione dopo un turno concluso, durante una trasmissione audio in ingresso non conclusa, durante una risposta audio in corso e durante un turno ammesso. Inviare turni senza identificativo di conversazione e osservare quando nasce la conversazione, anche per un turno rifiutato.
 
 #### Details
-La prova passa se la chiusura di una sessione rilascia soltanto le sue risorse: la trasmissione in ingresso non conclusa viene scartata senza creare turni, la sintesi in corso viene interrotta, il turno già ammesso prosegue fino all'esito conservato e l'altra sessione continua senza effetti. Una nuova conversazione nasce soltanto con l'ammissione del turno che la crea; un turno rifiutato non crea conversazioni. Il backend non attende né richiede conferme di fine riproduzione dal client. Fallisce se la chiusura interrompe altre sessioni o turni ammessi, se resta una sintesi attiva per una sessione chiusa o se un turno rifiutato lascia una conversazione. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
+La prova passa se la chiusura di una sessione rilascia soltanto le sue risorse: la trasmissione in ingresso non conclusa viene scartata senza creare turni, la sintesi in corso viene interrotta, il turno già ammesso prosegue fino all'esito conservato e l'altra sessione continua senza effetti. Una nuova conversazione nasce soltanto con l'ammissione del turno che la crea; un turno rifiutato non crea conversazioni. Il backend non attende né richiede conferme di fine riproduzione dal client. Fallisce se la chiusura interrompe altre sessioni o turni ammessi, se resta una sintesi attiva per una sessione chiusa o se un turno rifiutato lascia una conversazione. Verifica definita per il protocollo `ambrogio.v1`.
 
 #### Metadata
   * type: test-verification
@@ -38,7 +38,7 @@ La prova passa se la chiusura di una sessione rilascia soltanto le sue risorse: 
 Eseguire un turno con almeno due frammenti, prima con risposta in testo e poi in audio. Ritardare il commit del completamento dopo l'ultimo frammento, quindi consentirlo; ripetere facendolo fallire. Chiudere la sessione del client dopo `output.end` ma prima del commit.
 
 #### Details
-La prova passa se `turn.completed` arriva una sola volta come ultimo messaggio del turno, dopo `output.end` e dopo il commit riuscito, con `turnId` ed `expectsReply` booleano. Finché il commit è bloccato non arriva; se il commit fallisce non viene inviato e il guasto segue la politica di indisponibilità degli ingressi. La fine della generazione, `output.end` e la chiusura della sessione non sono trattate come successo. Fallisce se viene confermato un esito non conservato, se la conferma precede l'ultima trasmissione o se manca `expectsReply`. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
+La prova passa se `turn.completed` arriva una sola volta come ultimo messaggio del turno, dopo `output.end` e dopo il commit riuscito, con `turnId` ed `expectsReply` booleano. Finché il commit è bloccato non arriva; se il commit fallisce non viene inviato e il guasto segue la politica di indisponibilità degli ingressi. La fine della generazione, `output.end` e la chiusura della sessione non sono trattate come successo. Fallisce se viene confermato un esito non conservato, se la conferma precede l'ultima trasmissione o se manca `expectsReply`. Verifica definita per il protocollo `ambrogio.v1`.
 
 #### Metadata
   * type: test-verification
@@ -54,7 +54,7 @@ La prova passa se `turn.completed` arriva una sola volta come ultimo messaggio d
 Con un produttore controllato, eseguire turni testuali e vocali in cui la risposta chiede una replica e turni in cui conclude lo scambio. Ripetere con un produttore che non fornisce l'indicazione o la fornisce con tipo invalido. Osservare le chiamate al modello.
 
 #### Details
-La prova passa se l'agente produce il booleano strutturato `expectsReply` durante la stessa generazione della risposta, senza una seconda chiamata dedicata alla classificazione, e `turn.completed` porta il valore corretto per turni testuali e vocali, indipendentemente dal tipo di contenuto della risposta. Un'indicazione mancante o invalida produce l'esito di errore del turno e non `expectsReply: false`. Turni rifiutati, falliti o interrotti non portano `expectsReply`. Fallisce se il valore è dedotto dal testo, se differisce per canale o se un valore mancante viene presentato come `false`. Il comportamento dei client che usano l'indicazione è verificato nei rispettivi modelli. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
+La prova passa se l'agente produce il booleano strutturato `expectsReply` durante la stessa generazione della risposta, senza una seconda chiamata dedicata alla classificazione, e `turn.completed` porta il valore corretto per turni testuali e vocali, indipendentemente dal tipo di contenuto della risposta. Un'indicazione mancante o invalida produce l'esito di errore del turno e non `expectsReply: false`. Turni rifiutati, falliti o interrotti non portano `expectsReply`. Fallisce se il valore è dedotto dal testo, se differisce per canale o se un valore mancante viene presentato come `false`. Il comportamento dei client che usano l'indicazione è verificato nei rispettivi modelli. Verifica definita per il protocollo `ambrogio.v1`.
 
 #### Metadata
   * type: test-verification
@@ -72,7 +72,7 @@ La prova passa se l'agente produce il booleano strutturato `expectsReply` durant
 In una sessione pronta inviare un nuovo turno e poi continuare una conversazione conservata, prima con `reply: "text"` e poi con `reply: "audio"` usando un sintetizzatore controllato. Produrre almeno due frammenti controllati, inclusi Unicode e ritorni a capo, mantenendo la generazione aperta dopo il primo. Ritardare la consegna di una notifica all'adapter e osservare l'ordine delle successive.
 
 #### Details
-La prova passa se, dopo `turn.accepted`, il server apre una trasmissione con `output.start` contenente `requestId`, `turnId`, un `stream` non in uso e il `content` richiesto; per il testo ogni `output.chunk` contiene soltanto il nuovo frammento e la concatenazione ricostruisce il testo esatto; per l'audio i frame binari portano il numero `stream` della trasmissione e campioni PCM16 alla frequenza dichiarata della voce configurata. Il primo contenuto arriva prima della fine della generazione. `output.end` chiude la trasmissione prima dell'esito del turno. Le notifiche applicative sono consegnate in ordine. Fallisce se la risposta viene accumulata fino alla fine, se i frammenti si ripetono o si mescolano tra trasmissioni, se il contenuto non è nel tipo richiesto o se espone dati interni dei tool o credenziali. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
+La prova passa se, dopo `turn.accepted`, il server apre una trasmissione con `output.start` contenente `requestId`, `turnId`, un `stream` non in uso e il `content` richiesto; per il testo ogni `output.chunk` contiene soltanto il nuovo frammento e la concatenazione ricostruisce il testo esatto; per l'audio i frame binari portano il numero `stream` della trasmissione e campioni PCM16 alla frequenza dichiarata della voce configurata. Il primo contenuto arriva prima della fine della generazione. `output.end` chiude la trasmissione prima dell'esito del turno. Le notifiche applicative sono consegnate in ordine. Fallisce se la risposta viene accumulata fino alla fine, se i frammenti si ripetono o si mescolano tra trasmissioni, se il contenuto non è nel tipo richiesto o se espone dati interni dei tool o credenziali. Verifica definita per il protocollo `ambrogio.v1`.
 
 #### Metadata
   * type: test-verification
@@ -120,7 +120,9 @@ Raggruppa le prove di connessione, scoperta e invocazione dei tool tramite il cl
 Su un'installazione Home Assistant reale abilitare l'integrazione «Model Context Protocol Server», esporre ad Assist almeno due luci in aree diverse e un sensore, creare un token di accesso di lunga durata e installare `examples/agents/home-assistant.ts` completato con indirizzo, token e chiave API. Avviare il backend e chiedere in conversazione lo stato del sensore, se una luce di un'area è accesa, poi di accendere e spegnere quella luce e di spegnere tutte le luci; chiedere infine di comandare un'entità non esposta. Ripetere l'avvio con un token errato.
 
 #### Details
-La dimostrazione passa se il backend si avvia scoprendo gli strumenti di Home Assistant, la risposta riporta lo stato effettivo del sensore, la domanda sullo stato della luce riceve lo stato effettivo senza che alcun dispositivo cambi stato, la luce cambia stato in Home Assistant e la risposta lo dichiara solo dopo la conferma dello strumento, la richiesta di spegnere tutte le luci spegne tutte le luci esposte, l'entità non esposta non viene comandata e, con il token errato, l'avvio fallisce con l'evento `server_startup_failed` che indica `Agent MCP connection failed: home-assistant` senza mostrare il token. Fallisce se uno di questi esiti non si verifica. La dimostrazione è affidata alla persona su un'installazione reale e non è ancora stata eseguita.
+La dimostrazione passa se il backend si avvia scoprendo gli strumenti di Home Assistant, la risposta riporta lo stato effettivo del sensore, la domanda sullo stato della luce riceve lo stato effettivo senza che alcun dispositivo cambi stato, la luce cambia stato in Home Assistant e la risposta lo dichiara solo dopo la conferma dello strumento, la richiesta di spegnere tutte le luci spegne tutte le luci esposte, l'entità non esposta non viene comandata e, con il token errato, l'avvio fallisce con l'evento `server_startup_failed` che indica `Agent MCP connection failed: home-assistant` senza mostrare il token. Fallisce se uno di questi esiti non si verifica.
+
+Non automatizzabile: richiede un'istanza reale di Home Assistant con entità esposte ad Assist, un token di accesso di lunga durata e un modello linguistico reale.
 
 #### Metadata
   * type: demonstration-verification
@@ -151,7 +153,7 @@ La prova passa se `HassTurnOff`, `GetLiveContext` e `_private` sono offerti con 
 Configurare due agenti con `mcp.url` verso endpoint MCP Streamable HTTP di prova e token Bearer distinti in `mcp.auth: { "type": "bearer", "token": "…" }`. Far inizializzare i client, scoprire i tool e invocare un tool per agente; osservare gli header ricevuti dai due server e i log del processo. Ripetere con un token errato per uno degli agenti. Configurare un terzo endpoint senza `mcp.auth` e ripetere inizializzazione e invocazione. Provare anche un tipo di autenticazione non supportato e un token assente o vuoto.
 
 #### Details
-La prova passa se ogni richiesta MCP dell'agente autenticato invia `Authorization: Bearer <token>` soltanto al proprio endpoint, l'agente senza `mcp.auth` non invia `Authorization`, i token non si mescolano tra agenti e non compaiono nei log o nei messaggi rivolti al modello. Con il token errato il server di prova rifiuta l'accesso e il client non presenta i tool come disponibili. Un tipo non supportato o un token mancante o vuoto impedisce l'attivazione dell'agente prima della connessione. Fallisce se una richiesta omette il token configurato, lo invia al server dell'altro agente o ne divulga il valore. La prova resta da eseguire dopo l'implementazione.
+La prova passa se ogni richiesta MCP dell'agente autenticato invia `Authorization: Bearer <token>` soltanto al proprio endpoint, l'agente senza `mcp.auth` non invia `Authorization`, i token non si mescolano tra agenti e non compaiono nei log o nei messaggi rivolti al modello. Con il token errato il server di prova rifiuta l'accesso e il client non presenta i tool come disponibili. Un tipo non supportato o un token mancante o vuoto impedisce l'attivazione dell'agente prima della connessione. Fallisce se una richiesta omette il token configurato, lo invia al server dell'altro agente o ne divulga il valore.
 
 #### Metadata
   * type: test-verification
@@ -167,9 +169,7 @@ La prova passa se ogni richiesta MCP dell'agente autenticato invia `Authorizatio
 Configurare due agenti specializzati in modulo TypeScript distinti, ciascuno con `mcp.url` di un server MCP di prova che usa Streamable HTTP ed espone tool con nomi e schemi diversi. Le configurazioni non contengono un campo `transport`. Avviare gli agenti tramite la stessa implementazione client, completare l'inizializzazione MCP via HTTP, scoprire i rispettivi tool e invocarne uno con argomenti validi. Ripetere con `mcp.url` assente e con un URL non HTTP o HTTPS.
 
 #### Details
-La prova passa se ogni agente riceve soltanto l'endpoint MCP definito nel proprio file, entrambe le connessioni usano il client comune e Streamable HTTP, ciascuna espone i tool del proprio server e le invocazioni raggiungono il server corretto senza un campo `transport`. Una configurazione invalida impedisce l'attivazione dell'agente interessato prima di contattare un server. Fallisce se serve un client specifico per un server, se le connessioni o i tool si confondono tra agenti oppure se la configurazione invalida raggiunge un server. La prova resta da eseguire dopo l'implementazione.
-
-Evidenza operativa parziale del 17 ottobre 2026: sul backend v0.1.1 è stato aggiunto il file utente `home-assistant.ts` con endpoint Home Assistant `/api/mcp` e autenticazione Bearer, poi il container è stato riavviato. Il client MCP del container ha completato la connessione, scoperto 18 tool e invocato `GetLiveContext` senza errore e senza modificare dispositivi. Un turno HTTP di sola lettura sulle luci è terminato con `finishReason: stop` e `turnStatus: answered`; la persona ha inoltre confermato il funzionamento del connettore sia dalla chat sia dalla voce. La prova completa con due agenti e i casi di configurazione invalida resta aperta. Credenziali e configurazione dell'utente non sono versionate.
+La prova passa se ogni agente riceve soltanto l'endpoint MCP definito nel proprio file, entrambe le connessioni usano il client comune e Streamable HTTP, ciascuna espone i tool del proprio server e le invocazioni raggiungono il server corretto senza un campo `transport`. Una configurazione invalida impedisce l'attivazione dell'agente interessato prima di contattare un server. Fallisce se serve un client specifico per un server, se le connessioni o i tool si confondono tra agenti oppure se la configurazione invalida raggiunge un server.
 
 #### Metadata
   * type: test-verification
@@ -219,7 +219,7 @@ La prova passa se il file è accettato senza modifiche come agente specializzato
 Avviare il server con `orchestrator.ts` e un file specializzato valido in `/etc/ambrogio/agents`, usando agenti di prova osservabili dall'orchestratore. Aggiungere un secondo file `<id>.ts` valido e riavviare; rimuovere il primo file e riavviare ancora, senza modificare altri elenchi di abilitazione.
 
 #### Details
-La prova passa se al primo avvio l'orchestratore può scegliere il primo agente, al secondo entrambi e al terzo soltanto il secondo. Fallisce se un file presente richiede registrazione altrove, se un agente rimosso resta disponibile dopo il riavvio o se un file viene associato all'identificativo sbagliato. La prova resta da eseguire dopo l'implementazione.
+La prova passa se al primo avvio l'orchestratore può scegliere il primo agente, al secondo entrambi e al terzo soltanto il secondo. Fallisce se un file presente richiede registrazione altrove, se un agente rimosso resta disponibile dopo il riavvio o se un file viene associato all'identificativo sbagliato.
 
 #### Metadata
   * type: test-verification
@@ -311,31 +311,12 @@ Raggruppa le verifiche della trascrizione, della risposta parlata, della conserv
   * type: verification-objective
 ---
 
-### Analisi della selezione vocale per lingua
-
-Preparare un file con profili italiani e inglesi che indicano percorsi espliciti alle directory incluse e a directory esterne montate, scegliendo tra più voci della stessa lingua, Piper e Kokoro. Provare la lingua effettiva italiana e inglese, il profilo attivo mancante, i campi invalidi nell'altro profilo, il formato precedente a profilo singolo e la voce disabilitata. Osservare risorse caricate, lingua Vosk, voce e lingua di fonetizzazione Kokoro.
-
-#### Details
-L'analisi passa se ciascuna lingua seleziona esattamente i percorsi indicati, anche quando provengono da un mount o quando esistono più voci della stessa lingua; il profilo mancante o strutturalmente invalido rende il file invalido, l'altro profilo non carica i modelli, il formato precedente funziona e la voce disabilitata non carica modelli.
-
-Eseguita localmente il 21 ottobre 2026: `vitest run` PASS (337 test, 2 saltati); la prova di `voice-config.test.ts` seleziona percorsi diversi per lingua, cambia tra due voci italiane e controlla profilo mancante, profilo non attivo invalido e risorse non attive non caricate. `scripts/verify-docker-image.mjs` PASS sull'immagine locale: seleziona i due profili con i modelli inclusi, seleziona una seconda voce italiana tramite mount in sola lettura e avvia il server con la voce attiva sia in italiano sia in inglese. I test esistenti coprono il formato a profilo singolo e l'ingresso testuale senza voce.
-
-Eseguita anche sull'installazione di riferimento il 21 ottobre 2026 senza pubblicazione: l'immagine locale è stata trasferita direttamente e avviata in un container separato, con configurazione e archivio temporanei. Il profilo inglese ha risposto in inglese a una domanda testuale italiana con audio non vuoto; il profilo italiano ha risposto in italiano alla stessa domanda. Nei turni audio completi Vosk ha trascritto una frase italiana tramite modello montato e una frase inglese tramite modello incluso; gli agenti hanno risposto nelle rispettive lingue e Piper ha prodotto audio. La prova non ha reindirizzato il satellite fisico.
-
-#### Metadata
-  * type: analysis-verification
-
-#### Relations
-  * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
-  * verify: [Selezione dei modelli vocali inclusi per lingua](../Requirements/FamilyConversation.md#selezione-dei-modelli-vocali-inclusi-per-lingua)
----
-
 ### Prova degli ingressi testuali senza voce
 
 Avviare un'installazione con la configurazione e le risorse vocali assenti, mantenendo configurati i soli componenti necessari alla chat testuale. Eseguire un turno tramite la chat testuale.
 
 #### Details
-La prova passa se entrambi gli ingressi testuali si avviano e completano un turno senza caricare configurazione vocale né costruire componenti vocali. Fallisce se uno dei due richiede un file o una risorsa solo vocale o non può conversare. La prova resta da eseguire quando gli ingressi sono implementati.
+La prova passa se l'ingresso conversazionale si avvia e completa un turno testuale senza caricare configurazione vocale né costruire componenti vocali. Fallisce se l'ingresso richiede un file o una risorsa solo vocale o non può conversare.
 
 #### Metadata
   * type: test-verification
@@ -369,8 +350,6 @@ Caricare file vocali di prova con directory di voce fittizie per entrambi i moto
 #### Details
 La prova passa se i file validi sono accettati con il motore, la voce e la lingua indicati; ogni caso invalido rende il file vocale invalido oppure la directory della voce non disponibile prima della costruzione del sintetizzatore; con `piper` la configurazione contiene la sola sezione `vits` con i file della directory e ogni generazione usa `sid` 0; con `kokoro` la configurazione contiene la sola sezione `kokoro` con l'unico file `.onnx`, `voices.bin`, `tokens.txt`, `espeak-ng-data/` e `lang` uguale a `voiceLanguage`, e ogni generazione usa `sid` uguale a `voiceSpeaker`; un `voiceSpeaker` non inferiore a `numSpeakers` impedisce la costruzione del sintetizzatore; caricamento unico, `numThreads` e formato dell'audio restano quelli della prova della sintesi nel processo backend. Con il modello Kokoro reale la prova passa se l'audio di ogni voce provata è non vuoto alla frequenza del modello. Fallisce se un file invalido è accettato, se il motore, la voce o la lingua usati differiscono da quelli configurati, se la lingua o la voce sono imposte dal backend o se una voce fuori intervallo raggiunge la sintesi.
 
-Eseguita il 18 ottobre 2026 sulla revisione `ff8da68f6c4974974a14adb65e73e016d754b141`, pubblicata come `v0.3.0`, per la prima versione del contratto con le sole voci italiane: `vitest run` PASS, comprese le prove con Paola medium e con il modello `kokoro-multi-lang-v1_0` reali indicati dalle variabili d'ambiente; nell'immagine costruita da quella revisione, con il modello Kokoro montato in sola lettura su `/opt/ambrogio/kokoro`, `if_sara` e `im_nicola` producono audio non vuoto a 24 kHz. Sull'installazione di riferimento l'immagine `v0.3.0` si avvia con il file vocale esistente integrato da `voiceEngine` uguale a `piper` e sintetizza con Paola medium a 22050 Hz. La prova va ripetuta per la configurazione con `voiceSpeaker` numerico e `voiceLanguage`.
-
 #### Metadata
   * type: test-verification
 
@@ -379,6 +358,26 @@ Eseguita il 18 ottobre 2026 sulla revisione `ff8da68f6c4974974a14adb65e73e016d75
   * satisfiedBy: [sherpa-synthesizer.test.ts](../../packages/conversations/test/adapters/in/sherpa-synthesizer.test.ts)
   * satisfiedBy: [voice-config.test.ts](../../packages/conversations/test/adapters/out/voice-config.test.ts)
   * verify: [Scelta del motore di sintesi vocale](../Requirements/FamilyConversation.md#scelta-del-motore-di-sintesi-vocale)
+---
+
+### Prova della selezione vocale per lingua
+
+Preparare un file con profili italiani e inglesi che indicano percorsi espliciti alle directory incluse e a directory esterne montate, scegliendo tra più voci della stessa lingua, Piper e Kokoro. Provare la lingua effettiva italiana e inglese, il profilo attivo mancante, i campi invalidi nell'altro profilo, il formato precedente a profilo singolo e la voce disabilitata. Osservare risorse caricate, lingua Vosk, voce e lingua di fonetizzazione Kokoro.
+
+#### Details
+La prova passa se ciascuna lingua seleziona esattamente i percorsi indicati, anche quando provengono da un mount o quando esistono più voci della stessa lingua; il profilo mancante o strutturalmente invalido rende il file invalido, l'altro profilo non carica i modelli, il formato precedente funziona e la voce disabilitata non carica modelli. Fallisce se una lingua carica percorsi diversi da quelli indicati, se un profilo mancante o invalido è accettato o se vengono caricati modelli di un profilo non attivo o della voce disabilitata.
+
+I casi di configurazione sono provati da `voice-config.test.ts`, la selezione dei profili e della voce montata con i modelli dell'immagine da `scripts/verify-docker-image.mjs` e l'avvio senza voce da `config-bootstrap.test.ts`.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
+  * satisfiedBy: [config-bootstrap.test.ts](../../apps/server/test/runtime/config-bootstrap.test.ts)
+  * satisfiedBy: [voice-config.test.ts](../../packages/conversations/test/adapters/out/voice-config.test.ts)
+  * satisfiedBy: [verify-docker-image.mjs](../../scripts/verify-docker-image.mjs)
+  * verify: [Selezione dei modelli vocali inclusi per lingua](../Requirements/FamilyConversation.md#selezione-dei-modelli-vocali-inclusi-per-lingua)
 ---
 
 ### Prova della sintesi senza marcatura Markdown
@@ -418,7 +417,7 @@ La prova passa se la voce è caricata una sola volta per tutte le trasmissioni, 
 Inviare un turno audio trascrivibile con testo atteso e `reply: "audio"`, ottenendo una risposta controllata; ripetere con un turno testuale e `reply: "audio"`.
 
 #### Details
-La prova passa se il turno conservato contiene la trascrizione testuale attesa, `turn.accepted` riporta lo stesso testo, la risposta è trasmessa in audio con la frequenza della voce configurata e il suo testo compare nello scambio conservato. Fallisce se manca la trascrizione, se la risposta non viene trasmessa in audio quando richiesto o se lo scambio conserva audio invece di testo. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
+La prova passa se il turno conservato contiene la trascrizione testuale attesa, `turn.accepted` riporta lo stesso testo, la risposta è trasmessa in audio con la frequenza della voce configurata e il suo testo compare nello scambio conservato. Fallisce se manca la trascrizione, se la risposta non viene trasmessa in audio quando richiesto o se lo scambio conserva audio invece di testo. Verifica definita per il protocollo `ambrogio.v1`.
 
 #### Metadata
   * type: test-verification
@@ -436,7 +435,7 @@ La prova passa se il turno conservato contiene la trascrizione testuale attesa, 
 Simulare un errore del servizio di trascrizione e una trascrizione composta solo da spazi, con risposta richiesta in audio.
 
 #### Details
-La prova passa se entrambi i tentativi ricevono la trasmissione del messaggio pubblico e `turn.rejected` con `reason: "transcription_failed"`, senza `turn.accepted`, e nessuno genera uno scambio nello storico. Fallisce se compare un turno o un esito persistente per tali tentativi o se il motivo è diverso. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
+La prova passa se entrambi i tentativi ricevono la trasmissione del messaggio pubblico e `turn.rejected` con `reason: "transcription_failed"`, senza `turn.accepted`, e nessuno genera uno scambio nello storico. Fallisce se compare un turno o un esito persistente per tali tentativi o se il motivo è diverso. Verifica definita per il protocollo `ambrogio.v1`.
 
 #### Metadata
   * type: test-verification
@@ -462,6 +461,8 @@ Esaminare firme e valori scambiati tra Application e l'adapter del canale conver
 #### Details
 L'analisi passa se i dati sono definiti in Application con significato indipendente dal protocollo e l'adapter traduce in entrambe le direzioni. Il coordinamento del turno è unico per testo e voce; un turno ammesso raggiunge l'esito previsto anche se la sessione viene chiusa. Un callback tecnico invoca Application senza farle ricevere oggetti SDK. Fallisce se Application riceve messaggi del protocollo, oggetti HTTP o audio, produce direttamente messaggi del protocollo, espone oggetti Domain o se testo e voce implementano due autorità incompatibili per la stessa intenzione.
 
+Non automatizzabile: giudicare il significato dei dati scambiati e l'unicità del coordinamento richiede di leggere firme e flusso.
+
 #### Metadata
   * type: analysis-verification
 
@@ -477,6 +478,8 @@ Per ciascuna porta outbound di «Conversazioni», confrontare il bisogno del cas
 #### Details
 L'analisi passa se ogni porta rappresenta una capacità richiesta dal modulo e l'adapter traduce le differenze rispetto al fornitore. Il contesto della produzione deriva dallo storico applicativo; frammenti, conclusione ed errori hanno significato applicativo, con ordine di consegna preservato. La firma può evolvere senza essere vincolata a `AsyncIterable<string>` e senza copiare ogni evento SDK. Fallisce se Application importa tipi del fornitore, se una porta espone `UIMessage`, writer o risultati SDK, se replica senza bisogno la loro API o se perde dati necessari alla persistenza e alla voce. La revisione deve motivare le astrazioni aggiunte o rimosse rispetto ai bisogni dei casi d'uso.
 
+Non automatizzabile: confrontare il bisogno del caso d'uso con l'API del fornitore richiede giudizio umano.
+
 #### Metadata
   * type: analysis-verification
 
@@ -491,6 +494,8 @@ Analizzare il grafo degli import del codice TypeScript di produzione del modulo 
 
 #### Details
 L'analisi passa se ogni import originato da Domain punta a Domain dello stesso modulo e ogni import originato da Application punta a Domain o Application dello stesso modulo. Fallisce se è presente anche un solo collegamento verso un componente o modulo non ammesso, compresi quelli che importano soltanto tipi.
+
+Non automatizzabile: il progetto non ha un analizzatore del grafo degli import; la regola è esprimibile con un'analisi statica.
 
 #### Metadata
   * type: analysis-verification
@@ -508,6 +513,8 @@ Esaminare gli ingressi e le implementazioni delle porte Application del modulo �
 #### Details
 Il controllo passa se ciascun adapter di ingresso di questo tipo risiede in `src/adapters/in/` del package «Conversazioni» e ciascun adapter che implementa una porta risiede in `src/adapters/out/` dello stesso package. Fallisce se uno di questi adapter è collocato nell'applicazione o in un altro package.
 
+Non automatizzabile: stabilire quali componenti integrano tecnologie esterne e quale ruolo realizzano richiede di leggere il codice.
+
 #### Metadata
   * type: inspection-verification
 
@@ -521,7 +528,9 @@ Il controllo passa se ciascun adapter di ingresso di questo tipo risiede in `src
 Esaminare i contratti Application usati per accettare turni, conservare esiti e interruzioni, recuperare lo storico e produrre l'elenco delle conversazioni; seguire i relativi adapter di persistenza.
 
 #### Details
-Il controllo passa se il contratto di scrittura dedicato esprime le transizioni richieste dai casi d'uso, anche tramite il salvataggio coerente dell'aggregato, le letture hanno contratti separati adatti a storico ed elenco e nessuna interfaccia CRUD universale è imposta ai casi d'uso. Fallisce se Application dipende da un repository generico con sole operazioni create/get/update/delete o se le proiezioni di lettura sono accoppiate alle operazioni di scrittura. Il controllo resta da eseguire quando l'archivio è implementato.
+Il controllo passa se il contratto di scrittura dedicato esprime le transizioni richieste dai casi d'uso, anche tramite il salvataggio coerente dell'aggregato, le letture hanno contratti separati adatti a storico ed elenco e nessuna interfaccia CRUD universale è imposta ai casi d'uso. Fallisce se Application dipende da un repository generico con sole operazioni create/get/update/delete o se le proiezioni di lettura sono accoppiate alle operazioni di scrittura.
+
+Non automatizzabile: giudicare se un contratto esprime le transizioni richieste o un'interfaccia CRUD generica richiede giudizio umano.
 
 #### Metadata
   * type: inspection-verification
@@ -539,6 +548,8 @@ Esaminare i flussi applicativi che elaborano i turni testuali e vocali e la loro
 #### Details
 Il controllo passa se entrambi i flussi appartengono allo stesso modulo business denominato «Conversazioni». Fallisce se la logica applicativa della conversazione testuale e quella della conversazione vocale sono distribuite in moduli business distinti.
 
+Non automatizzabile: attribuire la logica applicativa a un modulo business richiede di leggerne la responsabilità.
+
 #### Metadata
   * type: inspection-verification
 
@@ -553,6 +564,8 @@ Esaminare la composition root dell'applicazione server e seguire il collegamento
 
 #### Details
 Il controllo passa se la composition root dell'applicazione sceglie e fornisce a ciascun caso d'uso le implementazioni delle porte richieste. Fallisce se la scelta o il collegamento avvengono nel codice Domain o Application del modulo anziché nella composition root.
+
+Non automatizzabile: individuare dove avviene la scelta delle implementazioni richiede di seguire il collegamento nel codice.
 
 #### Metadata
   * type: inspection-verification
@@ -569,6 +582,8 @@ Esaminare il codice di produzione e il grafo delle dipendenze dei componenti Dom
 #### Details
 Il controllo passa se i due componenti usano soltanto API standard ECMAScript indipendenti dall'ambiente e non dipendono da API Node.js o package npm usati a runtime. Fallisce se uno dei due componenti usa un'API Node.js o importa una dipendenza npm runtime.
 
+Non automatizzabile: l'uso di API globali specifiche dell'ambiente richiede di leggere il codice; il progetto non ha un analizzatore degli import che vieti moduli Node.js e package npm.
+
 #### Metadata
   * type: inspection-verification
 
@@ -584,6 +599,8 @@ Esaminare i file di produzione del package «Conversazioni» e classificare il c
 #### Details
 Il controllo passa se il codice Domain risiede in `src/domain/`, i casi d'uso e le porte Application in `src/application/` e gli adapter in `src/adapters/` del package. Fallisce se codice di una di queste categorie si trova fuori dalla directory corrispondente.
 
+Non automatizzabile: la classificazione del codice in Domain, Application e adapter si basa sulla responsabilità e non sulla cartella.
+
 #### Metadata
   * type: inspection-verification
 
@@ -597,7 +614,9 @@ Il controllo passa se il codice Domain risiede in `src/domain/`, i casi d'uso e 
 Esaminare le dichiarazioni TypeScript delle porte outbound, dei dati, delle unioni e dei contratti callable di Application nel modulo «Conversazioni». Confrontare i nomi delle porte con la capacità richiesta dai casi d'uso e con i nomi delle implementazioni tecniche.
 
 #### Details
-Il controllo passa se le porte a oggetto con metodi nominati sono `interface`, dati, unioni e callable sono `type`, e i nomi delle porte descrivono la capacità dal punto di vista del caso d'uso senza includere prodotto, protocollo o libreria dell'adapter. Fallisce se una dichiarazione usa la forma sbagliata o una porta assume il nome della propria implementazione tecnica. Il controllo resta da eseguire quando le porte sono implementate.
+Il controllo passa se le porte a oggetto con metodi nominati sono `interface`, dati, unioni e callable sono `type`, e i nomi delle porte descrivono la capacità dal punto di vista del caso d'uso senza includere prodotto, protocollo o libreria dell'adapter. Fallisce se una dichiarazione usa la forma sbagliata o una porta assume il nome della propria implementazione tecnica.
+
+Non automatizzabile: giudicare se il nome di una porta descrive la capacità dal punto di vista del caso d'uso richiede giudizio umano.
 
 #### Metadata
   * type: inspection-verification
@@ -615,6 +634,8 @@ Esaminare i casi d'uso del modulo «Conversazioni» che accedono a capacità tec
 #### Details
 Il controllo passa se ogni capacità tecnica esterna richiesta da un caso d'uso è espressa da una porta dichiarata in Application e realizzata da un adapter. Fallisce se un caso d'uso integra direttamente un componente tecnico esterno o se una porta necessaria è definita fuori da Application.
 
+Non automatizzabile: riconoscere una capacità tecnica esterna richiesta da un caso d'uso richiede di leggerne il codice.
+
 #### Metadata
   * type: inspection-verification
 
@@ -629,6 +650,8 @@ Esaminare i componenti del modulo «Conversazioni» e seguire il percorso comple
 
 #### Details
 Il controllo passa se Domain contiene stati e transizioni, Application coordina ammissione ed esito tramite porte e gli adapter possiedono i tipi e i meccanismi di AI SDK, Fastify, WebSocket, Vosk, sherpa-onnx, MCP e SQLite. Un callback SDK può invocare un caso d'uso attraverso dati tradotti; non determina autonomamente una transizione persistente. Verificare anche gli import solo di tipi. Gli adapter contengono conversioni e politiche di integrazione necessarie, senza duplicare un framework agentico o un secondo protocollo dei turni. Fallisce se una dipendenza tecnica raggiunge i layer interni, se un adapter diventa autorità delle regole comuni ai turni o se resta un percorso tecnico parallelo privo di obbligo applicativo.
+
+Non automatizzabile: la classificazione di regole, coordinamento e meccanismi tecnici richiede giudizio umano.
 
 #### Metadata
   * type: inspection-verification
@@ -645,6 +668,8 @@ Esaminare gli adapter contenuti nel package «Conversazioni» e distinguere gli 
 #### Details
 Il controllo passa se ogni adapter d'ingresso del package si trova in `src/adapters/in/` e ogni adapter del package che implementa una porta Application si trova in `src/adapters/out/`. Fallisce se un adapter del package è collocato fuori dalla sottocartella prevista per il suo ruolo.
 
+Non automatizzabile: distinguere un adapter di ingresso da uno che implementa una porta richiede di leggerne la responsabilità.
+
 #### Metadata
   * type: inspection-verification
 
@@ -655,7 +680,7 @@ Il controllo passa se ogni adapter d'ingresso del package si trova in `src/adapt
 
 ### Verifica della concorrenza dei turni
 
-Raggruppa le verifiche sul singolo turno attivo per conversazione, sull'elaborazione parallela di conversazioni diverse e sul rifiuto senza accodamento dei turni in conflitto. Criteri aggiornati il 16 ottobre 2026: le evidenze precedenti sul blocco globale non dimostrano la nuova politica.
+Raggruppa le verifiche sul singolo turno attivo per conversazione, sull'elaborazione parallela di conversazioni diverse e sul rifiuto senza accodamento dei turni in conflitto.
 
 #### Metadata
   * type: verification-objective
@@ -683,7 +708,7 @@ La prova passa se, finché il turno di A non ha un esito conservato, ogni nuovo 
 Preparare una conversazione esistente A e inviare contemporaneamente due turni verso A da sessioni di client diversi, uno testuale e uno audio quando la voce è abilitata. Ritardare la produzione del turno ammesso. Inviare nel frattempo turni verso B e turni che creano conversazioni nuove.
 
 #### Details
-Nella stessa conversazione viene ammesso al massimo un turno; gli altri ricevono la trasmissione del messaggio pubblico nel tipo di contenuto richiesto e `turn.rejected` con `reason: "occupied"`, senza persistenza né coda. Il rifiuto è identico per turni testuali e vocali. B e le conversazioni nuove possono progredire e concludersi mentre A è ancora in elaborazione. Storici, identificativi, frammenti e risultati restano separati. Dopo la conclusione di A si può ammettere un nuovo turno in A. Ripetere dopo errore e dopo interruzione con riavvio; un completamento tardivo non modifica un turno interrotto e non libera l'occupazione di un altro turno. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
+Nella stessa conversazione viene ammesso al massimo un turno; gli altri ricevono la trasmissione del messaggio pubblico nel tipo di contenuto richiesto e `turn.rejected` con `reason: "occupied"`, senza persistenza né coda. Il rifiuto è identico per turni testuali e vocali. B e le conversazioni nuove possono progredire e concludersi mentre A è ancora in elaborazione. Storici, identificativi, frammenti e risultati restano separati. Dopo la conclusione di A si può ammettere un nuovo turno in A. Ripetere dopo errore e dopo interruzione con riavvio; un completamento tardivo non modifica un turno interrotto e non libera l'occupazione di un altro turno. Verifica definita per il protocollo `ambrogio.v1`.
 
 #### Metadata
   * type: test-verification
@@ -701,7 +726,7 @@ Nella stessa conversazione viene ammesso al massimo un turno; gli altri ricevono
 Mantenere occupata una conversazione con un turno e tentare un altro invio verso la stessa conversazione tramite un ingresso diverso. Rendere poi nuovamente possibile l'elaborazione senza ripetere la seconda richiesta.
 
 #### Details
-La prova passa se il secondo turno è rifiutato subito, non viene conservato e non parte successivamente da solo. Un turno di un'altra conversazione può invece essere ammesso senza attendere il primo. Ripetere durante l'arresto, che impedisce nuove ammissioni globalmente. Verifica aggiornata da eseguire; i collegamenti esistenti non attestano il superamento dei nuovi criteri.
+La prova passa se il secondo turno è rifiutato subito, non viene conservato e non parte successivamente da solo. Un turno di un'altra conversazione può invece essere ammesso senza attendere il primo. Ripetere durante l'arresto, che impedisce nuove ammissioni globalmente.
 
 #### Metadata
   * type: test-verification
@@ -718,7 +743,7 @@ La prova passa se il secondo turno è rifiutato subito, non viene conservato e n
 Su un archivio SQLite reale preparato con le migrazioni dell'applicazione, esercitare l'adapter di scrittura con un'ammissione concorrente, una mutazione che non modifica righe perché il turno è già interrotto, una condizione di vincolo non dichiarata come rifiuto della porta e un errore di scrittura o commit. Ispezionare separatamente l'esito osservato dal chiamante e lo stato persistente finale.
 
 #### Details
-La prova passa se solo l'ammissione concorrente accertata produce il rifiuto previsto corrispondente, il turno interrotto resta interrotto senza falso successo, e vincoli non traducibili, esiti ambigui ed errori tecnici si propagano come guasti senza confermare modifiche parziali. Il messaggio tecnico SQLite non diventa un rifiuto pubblico e nessun caso viene ritentato automaticamente. Fallisce se zero righe sono sempre trattate come assenza o successo, se un guasto diventa rifiuto previsto oppure se l'esito dichiarato contraddice lo stato persistente. La prova resta da eseguire quando l'adapter esiste.
+La prova passa se solo l'ammissione concorrente accertata produce il rifiuto previsto corrispondente, il turno interrotto resta interrotto senza falso successo, e vincoli non traducibili, esiti ambigui ed errori tecnici si propagano come guasti senza confermare modifiche parziali. Il messaggio tecnico SQLite non diventa un rifiuto pubblico e nessun caso viene ritentato automaticamente. Fallisce se zero righe sono sempre trattate come assenza o successo, se un guasto diventa rifiuto previsto oppure se l'esito dichiarato contraddice lo stato persistente.
 
 #### Metadata
   * type: test-verification
@@ -775,7 +800,9 @@ Raggruppa le verifiche della risposta testuale, dello storico degli scambi e del
 Con modelli controllati, preparare agenti specializzati con e senza MCP e un orchestratore. Ripetere con lingua italiana e inglese, osservando le istruzioni inviate ai modelli.
 
 #### Details
-L'analisi passa se ogni specialista riceve la direttiva della lingua effettiva e l'orchestratore non la riceve e continua a produrre solo un identificativo. Resta da eseguire dopo l'implementazione.
+L'analisi passa se ogni specialista riceve la direttiva della lingua effettiva e l'orchestratore non la riceve e continua a produrre solo un identificativo.
+
+Non automatizzabile: il progetto non ha una prova Vitest che osservi con modelli controllati le istruzioni inviate; l'osservazione è oggi manuale.
 
 #### Metadata
   * type: analysis-verification
@@ -790,7 +817,9 @@ L'analisi passa se ogni specialista riceve la direttiva della lingua effettiva e
 Esaminare il percorso di un turno dall'adapter del canale conversazionale al caso d'uso Application, al Domain e all'archivio SQLite. Confrontare i controlli implementati con i contratti del turno vuoto, della conversazione richiesta, degli stati del turno e dell'ammissione concorrente; osservare anche dove il flusso si arresta dopo ciascun rifiuto.
 
 #### Details
-L'analisi passa se l'adapter ferma forma e decodifica non valide prima del caso d'uso senza contenere regole di stato, Application coordina le precondizioni contestuali e i rifiuti tramite porte senza dipendere dal protocollo, Domain resta l'autorità per stati e transizioni, e SQLite mantiene l'ammissione atomica anche quando esiste un controllo preliminare. Fallisce se un ingresso decide un invariante Domain, se il caso d'uso riceve input non decodificato, se un rifiuto permette effetti successivi, se Domain legge il protocollo o se un controllo preliminare sostituisce la garanzia atomica. L'analisi resta da svolgere quando il codice è implementato.
+L'analisi passa se l'adapter ferma forma e decodifica non valide prima del caso d'uso senza contenere regole di stato, Application coordina le precondizioni contestuali e i rifiuti tramite porte senza dipendere dal protocollo, Domain resta l'autorità per stati e transizioni, e SQLite mantiene l'ammissione atomica anche quando esiste un controllo preliminare. Fallisce se un ingresso decide un invariante Domain, se il caso d'uso riceve input non decodificato, se un rifiuto permette effetti successivi, se Domain legge il protocollo o se un controllo preliminare sostituisce la garanzia atomica.
+
+Non automatizzabile: attribuire ogni controllo al livello che ne è autorità richiede giudizio umano.
 
 #### Metadata
   * type: analysis-verification
@@ -808,6 +837,8 @@ Esaminare l'implementazione dell'archivio delle conversazioni e le dipendenze ef
 #### Details
 Il controllo passa se lo stato persistente delle conversazioni è in SQLite e le operazioni applicative di lettura e scrittura dell'archivio passano tramite Kysely. Fallisce se è usato un altro archivio per le conversazioni o se un percorso applicativo legge o scrive l'archivio senza Kysely.
 
+Non automatizzabile: stabilire che ogni percorso applicativo dell'archivio passa da Kysely richiede di seguire le chiamate nel codice.
+
 #### Metadata
   * type: inspection-verification
 
@@ -821,7 +852,9 @@ Il controllo passa se lo stato persistente delle conversazioni è in SQLite e le
 Esaminare tutti gli esempi distribuiti di generic.ts, orchestrator.ts e agenti specializzati, incluse istruzioni e descrizioni.
 
 #### Details
-L'ispezione passa se i testi sono in inglese, generic.ts non prescrive una lingua fissa per la risposta e l'orchestratore è descritto soltanto come selettore dell'agente. Resta da eseguire dopo l'aggiornamento degli esempi.
+L'ispezione passa se i testi sono in inglese, generic.ts non prescrive una lingua fissa per la risposta e l'orchestratore è descritto soltanto come selettore dell'agente.
+
+Non automatizzabile: giudicare la lingua dei testi e il ruolo descritto per l'orchestratore richiede la lettura umana.
 
 #### Metadata
   * type: inspection-verification
@@ -836,7 +869,7 @@ L'ispezione passa se i testi sono in inglese, generic.ts non prescrive una lingu
 Inviare un turno testuale che crea una conversazione, uno che la continua e un turno audio che crea una conversazione. Acquisire i messaggi nell'ordine di ricezione e confrontare gli identificativi con l'archivio. Ripetere con un rifiuto prima dell'ammissione.
 
 #### Details
-La prova passa se `turn.accepted` arriva prima di qualsiasi trasmissione della risposta e contiene `requestId`, `conversationId`, `turnId` e `text` coerenti con l'archivio, anche nella continuazione; per il turno audio `text` è la trascrizione conservata. Gli identificativi restano gli stessi nei messaggi successivi del turno. I rifiuti prima dell'ammissione non producono `turn.accepted` né nuove identità persistenti. Fallisce se l'identità è assente, cambia durante il turno, identifica un altro turno o arriva dopo la risposta. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
+La prova passa se `turn.accepted` arriva prima di qualsiasi trasmissione della risposta e contiene `requestId`, `conversationId`, `turnId` e `text` coerenti con l'archivio, anche nella continuazione; per il turno audio `text` è la trascrizione conservata. Gli identificativi restano gli stessi nei messaggi successivi del turno. I rifiuti prima dell'ammissione non producono `turn.accepted` né nuove identità persistenti. Fallisce se l'identità è assente, cambia durante il turno, identifica un altro turno o arriva dopo la risposta. Verifica definita per il protocollo `ambrogio.v1`.
 
 #### Metadata
   * type: test-verification
@@ -870,7 +903,7 @@ La prova passa se gli schemi TypeBox sono applicati da Fastify/Ajv prima dei ges
 Avviare un turno la cui risposta sia controllabile e produca almeno un frammento; dopo aver ricevuto il primo frammento, chiudere la sessione del client e lasciare completare l'elaborazione. Aprire una nuova sessione e leggere lo storico tramite HTTP. Ripetere con un guasto controllato che produca un errore dopo il primo frammento e con risposta in audio.
 
 #### Details
-La prova passa se, in tutti i casi, il backend prosegue l'elaborazione dopo la chiusura senza dipendere dalla consegna alla sessione chiusa e conserva un solo scambio per il turno ammesso nella conversazione corretta. Nel caso riuscito lo scambio contiene l'intera risposta; nel caso di errore contiene l'esito di errore e il messaggio pubblico, senza trattare i frammenti precedenti come risposta completa. I messaggi non consegnati non vengono ripetuti nella nuova sessione. Fallisce se il turno viene annullato per la sola chiusura, se l'esito manca o resta incompleto, se compare più di uno scambio o se un errore di consegna sostituisce l'esito del turno. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
+La prova passa se, in tutti i casi, il backend prosegue l'elaborazione dopo la chiusura senza dipendere dalla consegna alla sessione chiusa e conserva un solo scambio per il turno ammesso nella conversazione corretta. Nel caso riuscito lo scambio contiene l'intera risposta; nel caso di errore contiene l'esito di errore e il messaggio pubblico, senza trattare i frammenti precedenti come risposta completa. I messaggi non consegnati non vengono ripetuti nella nuova sessione. Fallisce se il turno viene annullato per la sola chiusura, se l'esito manca o resta incompleto, se compare più di uno scambio o se un errore di consegna sostituisce l'esito del turno. Verifica definita per il protocollo `ambrogio.v1`.
 
 #### Metadata
   * type: test-verification
@@ -902,7 +935,7 @@ La prova passa se senza il campo il fuso effettivo è `UTC`, con `Europe/Rome` �
 Inviare un turno testuale con testo vuoto e uno composto solo da spazi bianchi, sia per una nuova conversazione sia per una conversazione esistente. Ripetere con testo vuoto e un `conversationId` inesistente. Confrontare lo stato dell'archivio prima e dopo ogni turno.
 
 #### Details
-La prova passa se ogni turno riceve la trasmissione del messaggio pubblico e `turn.rejected` con `reason: "invalid"`, senza `turn.accepted`, senza creare una conversazione né aggiungere uno scambio. Il caso con identificativo inesistente riceve comunque `invalid` per la precedenza della verifica del testo. Fallisce se il turno viene ammesso, se il motivo è diverso o se l'archivio cambia. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
+La prova passa se ogni turno riceve la trasmissione del messaggio pubblico e `turn.rejected` con `reason: "invalid"`, senza `turn.accepted`, senza creare una conversazione né aggiungere uno scambio. Il caso con identificativo inesistente riceve comunque `invalid` per la precedenza della verifica del testo. Fallisce se il turno viene ammesso, se il motivo è diverso o se l'archivio cambia. Verifica definita per il protocollo `ambrogio.v1`.
 
 #### Metadata
   * type: test-verification
@@ -955,7 +988,7 @@ La prova passa se l'agente senza MCP viene attivato senza aprire connessioni MCP
 Inviare al canale conversazionale un JSON malformato, un `input.start` ben formato con tipi errati o campi aggiuntivi e un `input.chunk` con `text` non stringa. Strumentare il caso d'uso e l'archivio per osservare eventuali chiamate ed effetti. Verificare che lo schema `protocol/ambrogio-v1.schema.json` descriva i messaggi di entrambe le direzioni.
 
 #### Details
-La prova passa se l'adapter rifiuta ciascun messaggio al proprio confine con `session.error` prima di invocare il caso d'uso, senza creare conversazioni o turni né tentare scritture, e se la validazione segue lo schema senza coercizione dei tipi, valori predefiniti o rimozione dei campi. I messaggi inviati dal server nelle prove del protocollo sono conformi allo schema. Fallisce se un input non decodificato arriva ad Application, se il rifiuto avviene soltanto nel Domain o nell'archivio, se resta un effetto persistente o se lo schema manca o non corrisponde ai messaggi scambiati. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
+La prova passa se l'adapter rifiuta ciascun messaggio al proprio confine con `session.error` prima di invocare il caso d'uso, senza creare conversazioni o turni né tentare scritture, e se la validazione segue lo schema senza coercizione dei tipi, valori predefiniti o rimozione dei campi. I messaggi inviati dal server nelle prove del protocollo sono conformi allo schema. Fallisce se un input non decodificato arriva ad Application, se il rifiuto avviene soltanto nel Domain o nell'archivio, se resta un effetto persistente o se lo schema manca o non corrisponde ai messaggi scambiati. Verifica definita per il protocollo `ambrogio.v1`.
 
 #### Metadata
   * type: test-verification
@@ -972,7 +1005,7 @@ La prova passa se l'adapter rifiuta ciascun messaggio al proprio confine con `se
 Avviare un turno in una conversazione conservata con un produttore che emette un frammento e poi fallisce con dettagli diagnostici riconoscibili, prima con risposta in testo e poi in audio. Acquisire i messaggi della sessione e riaprire lo storico.
 
 #### Details
-La prova passa se il server chiude la trasmissione in corso con `output.end`, apre una nuova trasmissione con il messaggio pubblico sicuro nel tipo di contenuto richiesto e conclude con `turn.failed` con lo stesso `message`, senza `turn.completed`; lo storico contiene l'esito di errore con quel messaggio, senza conservare il frammento come risposta completata. Fallisce se manca la trasmissione del messaggio di errore, se viene inviata una conferma di completamento, se le due trasmissioni si sovrappongono, se sono esposti dettagli tecnici o se lo storico conserva una risposta riuscita. Il guasto di commit è verificato separatamente dalla prova delle transizioni atomiche. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
+La prova passa se il server chiude la trasmissione in corso con `output.end`, apre una nuova trasmissione con il messaggio pubblico sicuro nel tipo di contenuto richiesto e conclude con `turn.failed` con lo stesso `message`, senza `turn.completed`; lo storico contiene l'esito di errore con quel messaggio, senza conservare il frammento come risposta completata. Fallisce se manca la trasmissione del messaggio di errore, se viene inviata una conferma di completamento, se le due trasmissioni si sovrappongono, se sono esposti dettagli tecnici o se lo storico conserva una risposta riuscita. Il guasto di commit è verificato separatamente dalla prova delle transizioni atomiche. Verifica definita per il protocollo `ambrogio.v1`.
 
 #### Metadata
   * type: test-verification
@@ -989,7 +1022,7 @@ La prova passa se il server chiude la trasmissione in corso con `output.end`, ap
 Avviare il processo con i moduli TypeScript HTTP, Conversazioni, orchestratore e almeno un agente specializzato validi, usando un provider e un connettore MCP controllati. Aprire una sessione su `/api/session`, inviare un turno e leggere trasmissioni, esito e storico; richiedere anche i due GET. Ripetere con un modulo agente invalido e con un connettore non disponibile prima dell'ascolto.
 
 #### Details
-La prova passa se l'avvio valido espone il canale conversazionale e i GET, il turno usa il produttore orchestratore e produce trasmissioni, esito e storico previsti; l'avvio invalido non apre il listener e chiude le risorse già preparate. Le risposte GET conservano gli header di sicurezza, `Cache-Control: no-store` e l'identificativo di correlazione. Fallisce se il canale manca, usa un produttore diverso, espone dettagli segreti o lascia risorse aperte. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
+La prova passa se l'avvio valido espone il canale conversazionale e i GET, il turno usa il produttore orchestratore e produce trasmissioni, esito e storico previsti; l'avvio invalido non apre il listener e chiude le risorse già preparate. Le risposte GET conservano gli header di sicurezza, `Cache-Control: no-store` e l'identificativo di correlazione. Fallisce se il canale manca, usa un produttore diverso, espone dettagli segreti o lascia risorse aperte. Verifica definita per il protocollo `ambrogio.v1`.
 
 #### Metadata
   * type: test-verification
@@ -1040,7 +1073,7 @@ La prova passa se ogni turno accettato compare nello storico con il testo identi
 Registrare le conversazioni conservate, poi inviare un turno testuale valido e un turno audio trascrivibile con un `conversationId` che non corrisponde ad alcuna di esse. Confrontare lo stato dell'archivio prima e dopo i tentativi.
 
 #### Details
-La prova passa se entrambi i turni ricevono la trasmissione del messaggio pubblico e `turn.rejected` con `reason: "conversation_not_found"`, senza `turn.accepted`, e se non viene creata alcuna nuova conversazione. Fallisce se viene creata una conversazione sostitutiva, se il motivo è diverso o se sono esposti dettagli tecnici. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
+La prova passa se entrambi i turni ricevono la trasmissione del messaggio pubblico e `turn.rejected` con `reason: "conversation_not_found"`, senza `turn.accepted`, e se non viene creata alcuna nuova conversazione. Fallisce se viene creata una conversazione sostitutiva, se il motivo è diverso o se sono esposti dettagli tecnici. Verifica definita per il protocollo `ambrogio.v1`.
 
 #### Metadata
   * type: test-verification
@@ -1057,7 +1090,7 @@ La prova passa se entrambi i turni ricevono la trasmissione del messaggio pubbli
 Creare e conservare separatamente una conversazione con un turno testuale e una con un turno audio, ciascuna con scambi distintivi, da due client diversi. Continuare ciascuna conversazione sia con un turno testuale sia con un turno audio, inviando il solo identificativo della conversazione senza gli scambi precedenti. Osservare l'accesso del backend all'archivio e il contesto usato per elaborare il turno.
 
 #### Details
-La prova passa se, per ogni origine e per ogni tipo di contenuto, il backend recupera dall'archivio lo storico della conversazione identificata, lo usa per elaborare il nuovo turno e aggiunge lo scambio alla medesima conversazione mantenendo identificativo e ordine. Un turno senza identificativo crea invece una conversazione distinta. Fallisce se il backend dipende dallo storico inviato dal client, recupera lo storico di un'altra conversazione, crea una copia o una nuova conversazione per il turno aggiunto, o rifiuta la continuazione per il solo tipo di contenuto. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
+La prova passa se, per ogni origine e per ogni tipo di contenuto, il backend recupera dall'archivio lo storico della conversazione identificata, lo usa per elaborare il nuovo turno e aggiunge lo scambio alla medesima conversazione mantenendo identificativo e ordine. Un turno senza identificativo crea invece una conversazione distinta. Fallisce se il backend dipende dallo storico inviato dal client, recupera lo storico di un'altra conversazione, crea una copia o una nuova conversazione per il turno aggiunto, o rifiuta la continuazione per il solo tipo di contenuto. Verifica definita per il protocollo `ambrogio.v1`.
 
 #### Metadata
   * type: test-verification
@@ -1212,7 +1245,7 @@ La prova passa se la risposta `200` è JSON senza cache, conserva identità, tes
 Preparare in `/etc/ambrogio/agents` `orchestrator.ts`, `memory.ts` e `home-assistant.ts` con valori distinguibili. Per la prova isolata usare un filesystem controllato che rappresenti lo stesso percorso visto dal processo. Osservare i file scoperti e le associazioni; verificare separatamente nomi di file con identificativo invalido, come `Home.ts` e `home_assistant.ts`, e l'assenza di `orchestrator.ts`.
 
 #### Details
-La prova passa se il server cerca nel percorso previsto, riconosce `orchestrator.ts` come orchestratore e ricava `memory` e `home-assistant` dai rispettivi file. Nomi che non rispettano `^[a-z][a-z0-9-]*$` non identificano agenti specializzati. Senza `orchestrator.ts` l'orchestratore non viene attivato e l'avvio interessato segnala l'errore secondo il contratto di configurazione. Fallisce se un file è associato all'agente sbagliato o se un nome invalido è accettato come identificativo. La prova resta da eseguire dopo l'implementazione.
+La prova passa se il server cerca nel percorso previsto, riconosce `orchestrator.ts` come orchestratore e ricava `memory` e `home-assistant` dai rispettivi file. Nomi che non rispettano `^[a-z][a-z0-9-]*$` non identificano agenti specializzati. Senza `orchestrator.ts` l'orchestratore non viene attivato e l'avvio interessato segnala l'errore secondo il contratto di configurazione. Fallisce se un file è associato all'agente sbagliato o se un nome invalido è accettato come identificativo.
 
 #### Metadata
   * type: test-verification
@@ -1280,7 +1313,7 @@ La prova passa se ciascun agente usa soltanto provider, modello, chiave, `baseUR
 Preparare due moduli TypeScript locali dell'utente con istruzioni riconoscibili e diverse, uno per l'orchestratore e uno per un agente specializzato. Attivare entrambi con modelli di prova e osservare le istruzioni consegnate a ciascuno durante un turno delegato; modificare poi le istruzioni di uno solo dei file e ripetere.
 
 #### Details
-La prova passa se ogni modello riceve le istruzioni del proprio file e la modifica di un file cambia soltanto le istruzioni dell'agente corrispondente. Fallisce se le istruzioni sono scambiate, condivise tra agenti o ignorate. La prova resta da eseguire dopo l'implementazione.
+La prova passa se ogni modello riceve le istruzioni del proprio file e la modifica di un file cambia soltanto le istruzioni dell'agente corrispondente. Fallisce se le istruzioni sono scambiate, condivise tra agenti o ignorate.
 
 #### Metadata
   * type: test-verification
@@ -1305,6 +1338,8 @@ Esaminare le composition root dei processi che usano l'archivio, gli adapter che
 
 #### Details
 Il controllo passa se ogni processo ha un solo proprietario della risorsa SQLite/Kysely per l'archivio delle conversazioni, gli adapter ricevono solo l'accesso necessario senza possedere la chiusura e Domain/Application non espongono handle SQLite o Kysely. Fallisce se ciascun adapter crea o chiude la propria risorsa, se più proprietari indipendenti sono creati per lo stesso archivio nello stesso processo o se il core dipende da handle tecnici.
+
+Non automatizzabile: individuare il proprietario della risorsa e la responsabilità della chiusura richiede di leggere composition root e adapter.
 
 #### Metadata
   * type: inspection-verification
@@ -1346,6 +1381,8 @@ Esaminare gli adapter SQLite/Kysely, i contratti Application di scrittura e lett
 #### Details
 Il controllo passa se ogni percorso di scrittura e lettura traduce esplicitamente le rappresentazioni delle righe nei valori del contratto pertinente e nessuna firma Domain o Application espone righe, tipi o handle Kysely. Fallisce se righe del database sono usate direttamente come modelli Domain o proiezioni Application, oppure se la conversione è demandata a un ingresso HTTP.
 
+Non automatizzabile: riconoscere dove le righe sono tradotte nei valori del contratto richiede di leggere gli adapter.
+
 #### Metadata
   * type: inspection-verification
 
@@ -1359,7 +1396,7 @@ Il controllo passa se ogni percorso di scrittura e lettura traduce esplicitament
 Con un archivio SQLite reale, salvare e rileggere turni e ultime attività con istanti `Date` prima e dopo l'epoca Unix, compreso un valore con millisecondi non nulli. Ispezionare i valori grezzi delle colonne e ripetere la lettura con valori persistenti invalidi quando lo schema consente di prepararli.
 
 #### Details
-La prova passa se le colonne contengono interi pari ai rispettivi `getTime()`, la ricostruzione restituisce `Date` validi con gli stessi millisecondi e valori assenti, non interi, di tipo incompatibile o fuori dall'intervallo rappresentabile non diventano istanti validi né sono corretti silenziosamente. Fallisce se le conversioni arrotondano, applicano un fuso orario, usano l'ora corrente al caricamento o accettano dati temporali invalidi. La prova resta da eseguire quando l'adapter e lo schema sono implementati.
+La prova passa se le colonne contengono interi pari ai rispettivi `getTime()`, la ricostruzione restituisce `Date` validi con gli stessi millisecondi e valori assenti, non interi, di tipo incompatibile o fuori dall'intervallo rappresentabile non diventano istanti validi né sono corretti silenziosamente. Fallisce se le conversioni arrotondano, applicano un fuso orario, usano l'ora corrente al caricamento o accettano dati temporali invalidi.
 
 #### Metadata
   * type: test-verification
@@ -1403,6 +1440,8 @@ Esaminare i casi d'uso Application che creano conversazioni o turni, la porta di
 #### Details
 Il controllo passa se Application ottiene i nuovi valori dal generatore fornito dalla composition root e li passa al Domain prima della creazione dello stato, mentre Domain e persistenza non generano nuovi identificativi. Fallisce se Domain invoca una fonte ambientale di UUID, se l'adapter assegna l'identità iniziale o se il caso d'uso crea lo stato prima di conoscere l'identificativo.
 
+Non automatizzabile: seguire l'origine degli identificativi dal generatore al Domain richiede di leggere casi d'uso e adapter.
+
 #### Metadata
   * type: inspection-verification
 
@@ -1442,6 +1481,8 @@ Esaminare i casi d'uso che assegnano o confrontano istanti conversazionali, la c
 
 #### Details
 Il controllo passa se tali casi d'uso ricevono un orologio dalla composition root e passano al Domain istanti espliciti, mentre Domain non legge l'ora di sistema. Fallisce se Domain invoca direttamente un orologio ambientale o se un adapter di persistenza sostituisce gli istanti decisi dal caso d'uso.
+
+Non automatizzabile: seguire l'origine degli istanti dall'orologio al Domain richiede di leggere casi d'uso, composition root e adapter.
 
 #### Metadata
   * type: inspection-verification
@@ -1488,7 +1529,7 @@ La prova passa se la risposta non viene prodotta, una conclusione riuscita conse
 Accettare turni con elaborazione controllata dalla chat testuale e dalla voce trascritta quando abilitata; terminare bruscamente il processo prima di conservarne l'esito e riavviare Ambrogio. Ripetere dopo un arresto ordinato che interrompe un turno attivo, con un turno concluso normalmente e con una semplice disconnessione del client. Predisporre inoltre più turni pendenti nell’archivio di prova e verificare che siano recuperati tutti prima di abilitare gli ingressi.
 
 #### Details
-La prova passa se ciascun turno accettato è persistito con il suo testo prima dell'elaborazione e, a ogni avvio, tutti i turni rimasti «In elaborazione» compaiono come «Interrotti» prima dell'attivazione degli ingressi, senza risposta o errore concluso e senza nuova elaborazione o chiamata ai connettori. Una conclusione tardiva non sostituisce «Interrotto». Un turno già concluso conserva il suo esito; la sola disconnessione del client lascia proseguire Ambrogio e non produce «Interrotto». Fallisce se un turno pendente sparisce, resta «In elaborazione», viene ripetuto o viene presentato falsamente come concluso. La prova completa resta da eseguire quando gli ingressi sono implementati.
+La prova passa se ciascun turno accettato è persistito con il suo testo prima dell'elaborazione e, a ogni avvio, tutti i turni rimasti «In elaborazione» compaiono come «Interrotti» prima dell'attivazione degli ingressi, senza risposta o errore concluso e senza nuova elaborazione o chiamata ai connettori. Una conclusione tardiva non sostituisce «Interrotto». Un turno già concluso conserva il suo esito; la sola disconnessione del client lascia proseguire Ambrogio e non produce «Interrotto». Fallisce se un turno pendente sparisce, resta «In elaborazione», viene ripetuto o viene presentato falsamente come concluso.
 
 #### Metadata
   * type: test-verification
@@ -1502,12 +1543,29 @@ La prova passa se ciascun turno accettato è persistito con il suo testo prima d
   * verify: [Riconoscimento del turno interrotto dopo riavvio](../Requirements/FamilyConversation.md#riconoscimento-del-turno-interrotto-dopo-riavvio)
 ---
 
+### Prova dell'archivio configurato all'avvio
+
+Avviare l'ingresso conversazionale con moduli TypeScript HTTP e Conversazioni validi e con `archivePath` diretto a un archivio SQLite di prova che contiene un turno pendente; richiedere l'elenco e lo storico della conversazione, poi arrestare il processo. Ripetere con `archivePath` assente, non stringa e diretto a una directory inesistente.
+
+#### Details
+La prova passa se il processo ascolta all'indirizzo configurato, i due GET rispondono secondo i rispettivi contratti usando l'archivio configurato, il turno pendente è già «Interrotto» alla prima risposta, ogni avvio invalido non apre il listener né crea l'archivio e l'arresto chiude listener e archivio. Fallisce se legge un altro archivio, risponde prima del recupero o lascia risorse aperte.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
+  * satisfiedBy: [config-bootstrap.test.ts](../../apps/server/test/runtime/config-bootstrap.test.ts)
+  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
+  * verify: [Selezione dell'archivio conversazionale all'avvio](../Requirements/FamilyConversation.md#selezione-dellarchivio-conversazionale-allavvio)
+---
+
 ### Prova dell'elenco paginato per ultima attività
 
 Creare più conversazioni di quante ne contenga una pagina, da chat testuale e voce quando abilitata; aggiungere un turno a una conversazione meno recente e consultare tutte le pagine senza mutare ulteriormente l'archivio. Includere almeno due conversazioni con la stessa ultima attività.
 
 #### Details
-La prova passa se l'elenco è diviso in pagine limitate, la conversazione aggiornata compare prima di quelle con attività più vecchia, l'ordine è deterministico anche a parità di ultima attività e la consultazione di tutte le pagine restituisce ciascuna conversazione una sola volta senza omissioni. Fallisce se l'intero elenco è restituito in una sola risposta, l'ordine dipende implicitamente dal database o una conversazione compare due volte o manca. La parte relativa all'ingresso vocale resta da eseguire quando è implementato.
+La prova passa se l'elenco è diviso in pagine limitate, la conversazione aggiornata compare prima di quelle con attività più vecchia, l'ordine è deterministico anche a parità di ultima attività e la consultazione di tutte le pagine restituisce ciascuna conversazione una sola volta senza omissioni. Fallisce se l'intero elenco è restituito in una sola risposta, l'ordine dipende implicitamente dal database o una conversazione compare due volte o manca.
 
 #### Metadata
   * type: test-verification
@@ -1518,23 +1576,6 @@ La prova passa se l'elenco è diviso in pagine limitate, la conversazione aggior
   * satisfiedBy: [sqlite-list.test.ts](../../packages/conversations/test/adapters/out/sqlite-list.test.ts)
   * verify: [Elenco paginato delle conversazioni](../Requirements/FamilyConversation.md#elenco-paginato-delle-conversazioni)
   * verify: [Ordinamento delle conversazioni per ultima attività](../Requirements/FamilyConversation.md#ordinamento-delle-conversazioni-per-ultima-attività)
----
-
-### Prova dell'ingresso consultivo e dell'archivio configurato
-
-Avviare il processo con JSON HTTP e Conversazioni validi e con `archivePath` diretto a un archivio SQLite di prova; richiedere l'elenco e lo storico di una conversazione. Ripetere con `archivePath` assente o invalido, e con un turno pendente nell'archivio al riavvio. Richiedere anche la rotta POST dei turni e arrestare il processo.
-
-#### Details
-La prova passa se i due GET rispondono secondo i contratti esistenti usando l'archivio configurato, il turno pendente è recuperato prima delle risposte, il POST non è registrato, l'avvio invalido non apre il listener e l'arresto chiude listener e archivio. Fallisce se legge un altro archivio, espone il POST senza produttore delle risposte, risponde prima del recupero o lascia risorse aperte.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [consultation-server.test.ts](../../apps/server/test/runtime/consultation-server.test.ts)
-  * verify: [Avvio consultivo dell'API conversazioni](../Requirements/FamilyConversation.md#avvio-consultivo-dellapi-conversazioni)
-  * verify: [Selezione dell'archivio conversazionale all'avvio](../Requirements/FamilyConversation.md#selezione-dellarchivio-conversazionale-allavvio)
 ---
 
 ### Prova della configurazione della paginazione
@@ -1576,7 +1617,7 @@ La prova passa se le risposte `200` JSON senza cache contengono solo `items` ord
 Nel JSON di «Conversazioni» configurare separatamente `language: "en"` e `language: "it"`, poi omettere il campo, scegliere una lingua stringa non supportata e usare un valore non stringa. Nei casi validi ammettere un turno e provocare un guasto inatteso dopo l'ammissione. Osservare il messaggio restituito dal caso d'uso, quello conservato nell'archivio e quello comunicato al client quando l'ingresso è disponibile.
 
 #### Details
-La prova passa se l'inglese produce «I can't complete the response.», l'italiano produce «Non riesco a completare la risposta.», l'omissione e la lingua stringa non supportata producono la formulazione inglese, un valore non stringa impedisce la preparazione, nessun messaggio contiene dettagli tecnici e il testo coincide esattamente nell'esito conservato e nella comunicazione al client. Fallisce se la lingua configurata viene ignorata, se i due testi differiscono o se il messaggio espone il guasto tecnico. La prova dell'ingresso resta da eseguire quando l'ingresso server è implementato.
+La prova passa se l'inglese produce «I can't complete the response.», l'italiano produce «Non riesco a completare la risposta.», l'omissione e la lingua stringa non supportata producono la formulazione inglese, un valore non stringa impedisce la preparazione, nessun messaggio contiene dettagli tecnici e il testo coincide esattamente nell'esito conservato e nella comunicazione al client. Fallisce se la lingua configurata viene ignorata, se i due testi differiscono o se il messaggio espone il guasto tecnico.
 
 #### Metadata
   * type: test-verification
@@ -1593,7 +1634,7 @@ La prova passa se l'inglese produce «I can't complete the response.», l'italia
 Creare e ricostruire oggetti Domain della conversazione con istanti `Date` validi e invalidi; dopo la creazione, modificare il `Date` passato in ingresso e quelli restituiti dagli accessori. Confrontare gli istanti interni prima e dopo le mutazioni tramite `getTime()`.
 
 #### Details
-La prova passa se gli istanti validi conservano il valore temporale fornito, quelli invalidi sono rifiutati e nessuna mutazione di un `Date` in ingresso o in uscita modifica lo stato Domain. Fallisce se un istante è accettato con `getTime()` non finito, se lo stato condivide un riferimento mutabile con il chiamante o se la ricostruzione sostituisce l'istante storico. La prova resta da eseguire quando gli oggetti Domain sono implementati.
+La prova passa se gli istanti validi conservano il valore temporale fornito, quelli invalidi sono rifiutati e nessuna mutazione di un `Date` in ingresso o in uscita modifica lo stato Domain. Fallisce se un istante è accettato con `getTime()` non finito, se lo stato condivide un riferimento mutabile con il chiamante o se la ricostruzione sostituisce l'istante storico.
 
 #### Metadata
   * type: test-verification
@@ -1609,7 +1650,7 @@ La prova passa se gli istanti validi conservano il valore temporale fornito, que
 Avviare la versione nuova del server contro un archivio SQLite con schema della versione precedente e dati di conversazione distintivi; ripetere provocando un errore controllato in una migrazione.
 
 #### Details
-La prova passa se le migrazioni pendenti sono applicate automaticamente prima che gli ingressi accettino turni, lo storico preesistente resta consultabile e un errore di migrazione impedisce l'accettazione di turni e rende osservabile il guasto tecnico. Fallisce se occorre un comando manuale, gli ingressi si attivano prima della migrazione, i dati preesistenti sono persi o un errore lascia il server operativo. La prova resta da eseguire quando archivio e server sono implementati.
+La prova passa se le migrazioni pendenti sono applicate automaticamente prima che gli ingressi accettino turni, lo storico preesistente resta consultabile e un errore di migrazione impedisce l'accettazione di turni e rende osservabile il guasto tecnico. Fallisce se occorre un comando manuale, gli ingressi si attivano prima della migrazione, i dati preesistenti sono persi o un errore lascia il server operativo.
 
 #### Metadata
   * type: test-verification

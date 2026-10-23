@@ -44,7 +44,7 @@ Quando l'applicazione server assembla il modulo «Conversazioni», deve sceglier
 
 ### Assenza di accodamento dei turni
 
-Quando Ambrogio non può avviare l'elaborazione di un nuovo turno al momento della richiesta, deve rifiutarlo come esito previsto senza accettarlo né conservarlo per eseguirlo in seguito.
+Quando Ambrogio non è in grado di avviare l'elaborazione di un nuovo turno al momento della richiesta, deve rifiutarlo come esito previsto senza accettarlo né conservarlo per eseguirlo in seguito.
 
 #### Metadata
   * type: requirement
@@ -81,20 +81,6 @@ Quando la configurazione TypeScript di un agente specializzato richiede OAuth `c
   * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
 ---
 
-### Avvio consultivo dell'API conversazioni
-
-Quando il processo avvia l'ingresso HTTP di consultazione delle conversazioni, deve rendere disponibili le rotte di elenco e storico dopo aver validato le configurazioni attive e preparato l'archivio.
-
-#### Metadata
-  * type: requirement
-
-#### Relations
-  * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
-  * satisfiedBy: [main.ts](../../apps/server/src/main.ts)
-  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
----
-
 ### Avvio dell'ingresso dei turni conversazionali
 
 Quando il server avvia la conversazione con agenti configurati, deve rendere disponibile il canale conversazionale insieme alle rotte HTTP di elenco e storico, dopo aver validato i file degli agenti e preparato i loro connettori.
@@ -104,7 +90,7 @@ Quando il server avvia la conversazione con agenti configurati, deve rendere dis
 
 #### Relations
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
-  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -417,7 +403,7 @@ Quando Application del modulo «Conversazioni» consulta lo storico o l'elenco d
 
 ### Contratto di scrittura dell'archivio conversazioni
 
-Quando Application del modulo «Conversazioni» conserva turni o esiti, deve usare un contratto di persistenza dedicato al modello di scrittura della conversazione, con semantica sufficiente alle transizioni richieste dai casi d'uso. Il contratto può esporre il salvataggio dell'aggregato oppure operazioni di transizione esplicite; non deve imporre un'interfaccia CRUD universale ai casi d'uso.
+Quando Application del modulo «Conversazioni» conserva turni o esiti, deve usare un contratto di persistenza dedicato al modello di scrittura della conversazione, con semantica sufficiente alle transizioni richieste dai casi d'uso. Il contratto espone il salvataggio dell'aggregato oppure operazioni di transizione esplicite; non deve imporre un'interfaccia CRUD universale ai casi d'uso.
 
 #### Metadata
   * type: requirement
@@ -1078,7 +1064,7 @@ Quando una conversazione ha un turno accettato il cui esito non è ancora conser
 
 ### Rifiuto del turno prima dell'ammissione
 
-Quando un turno non può essere ammesso, il backend deve comunicare al client il rifiuto con il motivo previsto e trasmettere il messaggio pubblico sicuro nella lingua configurata, senza conservare il turno; se l'archivio rifiuta temporaneamente l'ammissione, il server sta arrestandosi o gli ingressi sono disabilitati dopo una conclusione non conservata deve usare il motivo `unavailable`, e se un guasto tecnico inatteso avviene prima dell'ammissione deve usare il motivo `failure` con il messaggio standard nella lingua configurata.
+Quando un turno non è ammesso, il backend deve comunicare al client il rifiuto con il motivo previsto e trasmettere il messaggio pubblico sicuro nella lingua configurata, senza conservare il turno; se l'archivio rifiuta temporaneamente l'ammissione, il server sta arrestandosi o gli ingressi sono disabilitati dopo una conclusione non conservata deve usare il motivo `unavailable`, e se un guasto tecnico inatteso avviene prima dell'ammissione deve usare il motivo `failure` con il messaggio standard nella lingua configurata.
 
 #### Metadata
   * type: requirement
@@ -1178,6 +1164,7 @@ Quando un client chiede la risposta in audio e l'interazione vocale è abilitata
 
 #### Contract Bindings
   * [Esclusione dell'audio persistente](../Contracts/FamilyConversation.md#esclusione-dellaudio-persistente)
+  * [Catalogo bilingue dei modelli vocali nell'immagine backend](../Contracts/ServerFoundation.md#catalogo-bilingue-dei-modelli-vocali-nellimmagine-backend)
 
 #### Relations
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
@@ -1318,14 +1305,14 @@ Quando la voce è abilitata con profili vocali per lingua, Ambrogio deve selezio
 
 ### Selezione dell'archivio conversazionale all'avvio
 
-Quando il processo prepara l'ingresso HTTP di consultazione, deve aprire l'archivio SQLite al percorso dichiarato nel configurazione locale del componente «Conversazioni» e impedire l'avvio se il percorso manca o è invalido.
+Quando il server prepara l'ingresso conversazionale, deve aprire l'archivio SQLite al percorso dichiarato nella configurazione locale del componente «Conversazioni» e impedire l'avvio se il percorso manca o è invalido.
 
 #### Metadata
   * type: requirement
 
 #### Relations
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
-  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * satisfiedBy: [conversation-config.ts](../../packages/conversations/src/adapters/out/conversation-config.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
@@ -1445,9 +1432,8 @@ Quando un ingresso HTTP riceve una richiesta per le operazioni conversazionali, 
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [consultation-server.ts](../../apps/server/src/runtime/consultation-server.ts)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
   * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
-

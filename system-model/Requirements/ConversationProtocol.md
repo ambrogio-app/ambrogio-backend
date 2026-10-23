@@ -107,4 +107,3 @@ Quando un client invia un turno, il backend deve riceverlo come una trasmissione
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
-

@@ -837,6 +837,21 @@ Non automatizzabile: l'effetto di permessi, limiti di durata e credenziali si os
   * verify: [Irrobustimento dei workflow GitHub Actions](../Requirements/ServerFoundation.md#irrobustimento-dei-workflow-github-actions)
 ---
 
+### Ispezione della protezione del merge
+
+Leggere con `gh api repos/<proprietario>/<repository>/rulesets` e con il dettaglio del ruleset `main` le regole attive sul branch principale.
+
+#### Details
+L'ispezione passa se il ruleset corrisponde al contratto: applicazione attiva sul branch predefinito, nessun attore escluso, integrazione solo tramite pull request, controlli richiesti con i nomi del contratto, riscrittura forzata e cancellazione vietate; e se un push diretto sul branch principale viene rifiutato. Fallisce se il ruleset manca, è disattivato, ha attori esclusi o differisce dal contratto. Non automatizzabile: il ruleset è un'impostazione del repository GitHub e non un file del repository, e leggerlo richiede credenziali con accesso amministrativo che la CI non possiede.
+
+#### Metadata
+  * type: inspection-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * verify: [Controlli obbligatori prima del merge](../Requirements/ServerFoundation.md#controlli-obbligatori-prima-del-merge)
+---
+
 ### Prova degli header di cache conversazionali
 
 Richiedere elenco e storico, anche in casi di errore; osservare gli header delle risposte.
@@ -1075,3 +1090,4 @@ La prova passa se ogni directory contiene un solo modello `.onnx`, `tokens.txt`,
   * satisfiedBy: [verify-docker-image.mjs](../../scripts/verify-docker-image.mjs)
   * verify: [Directory delle voci sostituibile nell'immagine](../Requirements/ServerFoundation.md#directory-delle-voci-sostituibile-nellimmagine)
 ---
+

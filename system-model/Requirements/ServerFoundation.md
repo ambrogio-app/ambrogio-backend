@@ -204,6 +204,20 @@ Quando viene inviato un commit su `main`, viene aperta o aggiornata una pull req
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
+### Controlli obbligatori prima del merge
+
+Quando una modifica viene integrata nel branch principale, il repository GitHub deve accettarla soltanto tramite una pull request i cui controlli della CI e scansione dei segreti sono superati, e deve rifiutare il push diretto, la riscrittura forzata e la cancellazione del branch principale.
+
+#### Details
+La regola vale per chiunque, amministratori compresi: ogni modifica passa da un branch e da una pull request, così che CI e scansione dei segreti precedano sempre l'integrazione.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
+---
+
 ### Controllo dell'accesso nell'installazione
 
 Quando l'MVP è installato senza autenticazione applicativa, il deployment deve limitare la raggiungibilità degli ingressi del server ai client ammessi dall'installatore tramite controlli di rete e, se presente, reverse proxy.
@@ -999,3 +1013,4 @@ Quando la suite automatica del backend esegue le verifiche implementate nei pack
 #### Relations
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
+

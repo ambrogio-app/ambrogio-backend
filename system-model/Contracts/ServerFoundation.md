@@ -276,6 +276,22 @@ Il segnale diagnostico della prima versione è costituito dai log JSON struttura
   * define: [Perimetro iniziale dei segnali di osservabilità](../Requirements/ServerFoundation.md#perimetro-iniziale-dei-segnali-di-osservabilità)
 ---
 
+### Ruleset del branch principale
+
+Il repository GitHub ha un ruleset di branch chiamato `main`, con applicazione `active`, che ha come destinazione il branch predefinito, nessun attore escluso e le regole:
+
+- `pull_request`, che ammette l'integrazione solo tramite pull request, con `required_approving_review_count` uguale a 0;
+- `required_status_checks`, con i controlli `Backend checks` e `Scan history for secrets` prodotti da GitHub Actions e `strict_required_status_checks_policy` uguale a `false`;
+- `non_fast_forward`, che vieta la riscrittura forzata;
+- `deletion`, che vieta la cancellazione del branch.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Controlli obbligatori prima del merge](../Requirements/ServerFoundation.md#controlli-obbligatori-prima-del-merge)
+---
+
 ### Script di integrità del modello
 
 Lo script `scripts/check-model.mjs` legge il modello con Reqvire 1.3.2 (`search --filter-type <tipo> --json` e `resources`) e i file tracciati con `git ls-files`, e segnala:
@@ -326,3 +342,4 @@ Una variante contiene solo `kind` oppure aggiunge campi propri, tipizzati, che a
 #### Relations
   * define: [Campi specifici dei rifiuti previsti](../Requirements/ServerFoundation.md#campi-specifici-dei-rifiuti-previsti)
 ---
+

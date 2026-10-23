@@ -1,3 +1,4 @@
+import { writeConfigFile } from '../support/config-fixture.js';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -34,10 +35,10 @@ afterEach(async () => {
 async function fixture(port: number) {
   const directory = await mkdtemp(join(tmpdir(), 'ambrogio-resource-lifecycle-'));
   directories.push(directory);
-  const http = join(directory, 'http.json');
-  const conversations = join(directory, 'conversations.json');
-  await writeFile(http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeFile(conversations, JSON.stringify({ archivePath: join(directory, 'archive.sqlite') }));
+  const http = join(directory, 'http.ts');
+  const conversations = join(directory, 'conversations.ts');
+  await writeConfigFile(http, JSON.stringify({ host: '127.0.0.1', port }));
+  await writeConfigFile(conversations, JSON.stringify({ archivePath: join(directory, 'archive.sqlite') }));
   return { directory, environment: { AMBROGIO_HTTP_CONFIG_PATH: http,
     AMBROGIO_CONVERSATIONS_CONFIG_PATH: conversations } };
 }

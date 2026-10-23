@@ -1,3 +1,4 @@
+import { writeConfigFile } from '../support/config-fixture.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
@@ -18,7 +19,7 @@ const base: HttpConfig = { host: '127.0.0.1', port: 3000, allowedOrigins: [], pu
 async function fixture() {
   const directory = await mkdtemp(join(tmpdir(), 'ambrogio-http-'));
   directories.push(directory);
-  return { http: join(directory, 'http.json'), conversations: join(directory, 'conversations.json'),
+  return { http: join(directory, 'http.ts'), conversations: join(directory, 'conversations.ts'),
     archive: join(directory, 'archive.sqlite') };
 }
 
@@ -52,7 +53,7 @@ afterEach(async () => {
 describe('consultation HTTP runtime', () => {
   it('requires explicit host and port and validates CORS and HSTS settings', async () => {
     const files = await fixture();
-    await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port: 3030 }));
+    await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port: 3030 }));
     expect(await loadHttpConfig(files.http)).toEqual({ ...base, port: 3030 });
     for (const invalid of [
       {}, { port: 3030 }, { host: '127.0.0.1' }, { host: '', port: 3030 },
@@ -61,13 +62,13 @@ describe('consultation HTTP runtime', () => {
       { ...base, allowedOrigins: ['https://example.test/path'] },
       { ...base, publicHttps: true }, { ...base, publicHttps: true, hstsMaxAgeSeconds: 0 },
     ]) {
-      await writeFile(files.http, JSON.stringify(invalid));
+      await writeConfigFile(files.http, JSON.stringify(invalid));
       await expect(loadHttpConfig(files.http)).rejects.toThrow();
     }
-    await writeFile(files.http, '{');
+    await writeConfigFile(files.http, '{');
     await expect(loadHttpConfig(files.http)).rejects.toThrow('Invalid HTTP configuration file');
-    await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port: 3030 }));
-    await writeFile(files.conversations, '{}');
+    await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port: 3030 }));
+    await writeConfigFile(files.conversations, '{}');
     await expect(startConsultationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
       AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }))
       .rejects.toThrow('Missing conversation archive path');
@@ -76,22 +77,22 @@ describe('consultation HTTP runtime', () => {
   it('does not open a listener when the HTTP path, file or listener fields are invalid', async () => {
     const files = await fixture();
     const port = await freePort();
-    await writeFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
+    await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
     const environment = { AMBROGIO_HTTP_CONFIG_PATH: files.http,
       AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations, PORT: String(port), HOST: '0.0.0.0' };
     await expect(startConsultationServer({ AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }))
       .rejects.toThrow('Missing HTTP configuration path');
     await expect(startConsultationServer(environment)).rejects.toThrow('Invalid HTTP configuration file');
-    await writeFile(files.http, '{');
+    await writeConfigFile(files.http, '{');
     await expect(startConsultationServer(environment)).rejects.toThrow('Invalid HTTP configuration file');
     for (const invalid of [{ port }, { host: '127.0.0.1' },
       { host: '127.0.0.1', port: 0 }, { host: '127.0.0.1', port: '3000' }]) {
-      await writeFile(files.http, JSON.stringify(invalid));
+      await writeConfigFile(files.http, JSON.stringify(invalid));
       await expect(startConsultationServer(environment)).rejects.toThrow('Invalid HTTP listener configuration');
       await expectPortAvailable(port);
     }
-    await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-    await writeFile(files.conversations, JSON.stringify({ archivePath:
+    await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
+    await writeConfigFile(files.conversations, JSON.stringify({ archivePath:
       join(dirname(files.archive), 'missing', 'archive.sqlite') }));
     await expect(startConsultationServer(environment)).rejects.toThrow();
     await expectPortAvailable(port);
@@ -477,8 +478,8 @@ describe('consultation HTTP runtime', () => {
     const destroy = vi.spyOn(Object.getPrototypeOf(archive.db) as { destroy: () => Promise<void> }, 'destroy');
 
     const port = await freePort();
-    await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-    await writeFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
+    await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
+    await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
     const runtime = await startConsultationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
       AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations });
     const address = runtime.server.server.address();

@@ -1,5 +1,6 @@
 import { ProjectError } from '@ambrogio/conversations/application/project-error';
-import { readFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
+import { resolve } from 'node:path';
 
 export type HttpConfig = Readonly<{
   host: string;
@@ -8,6 +9,8 @@ export type HttpConfig = Readonly<{
   publicHttps: boolean;
   hstsMaxAgeSeconds?: number;
 }>;
+
+let configRevision = 0;
 
 export function httpConfigPath(environment: NodeJS.ProcessEnv = process.env): string {
   const filename = environment.AMBROGIO_HTTP_CONFIG_PATH;
@@ -18,7 +21,8 @@ export function httpConfigPath(environment: NodeJS.ProcessEnv = process.env): st
 export async function loadHttpConfig(filename: string): Promise<HttpConfig> {
   let value: unknown;
   try {
-    value = JSON.parse(await readFile(filename, 'utf8'));
+    if (!filename.endsWith('.ts')) throw new Error('Expected TypeScript configuration');
+    value = (await import(`${pathToFileURL(resolve(filename)).href}?revision=${++configRevision}`)).default;
   } catch {
     throw new ProjectError('Invalid HTTP configuration file');
   }

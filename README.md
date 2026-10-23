@@ -110,71 +110,32 @@ sequenceDiagram
 
 ## Quick start
 
-The server reads one small JSON file per component. Configuration files and the database stay outside the image and the repository.
+The server imports one TypeScript configuration module per active component. Each module exports a default object and may read `process.env`; the values are validated before the server starts. Configuration modules and the SQLite archive stay outside the image.
 
-```
-/etc/ambrogio/
-├── http.json              # listen address, allowed origins, HTTPS flags
-├── conversations.json     # SQLite archive path, language, page sizes
-├── voice.json             # optional: Vosk model and Piper voice
-└── agents/
-    ├── orchestrator.json  # chooses the agent for each turn
-    └── generic.json       # at least one specialised agent
-```
-
-Minimal examples:
-
-```jsonc
-// http.json
-{ "host": "0.0.0.0", "port": 3000 }
-
-// conversations.json
-{ "archivePath": "/data/conversations.sqlite", "language": "en" }
-
-// agents/orchestrator.json
-{ "instructions": "Choose the agent that should answer the family's latest message.",
-  "llm": { "provider": "mistral", "model": "mistral-medium-latest", "apiKey": "..." } }
-
-// agents/generic.json
-{ "description": "Answers general questions and makes conversation.",
-  "instructions": "Answer briefly.",
-  "llm": { "provider": "mistral", "model": "mistral-medium-latest", "apiKey": "..." } }
-```
-
-The [agent examples](examples/agents/) use English instructions. The backend
-adds the selected response language to each specialist's instructions; the
-orchestrator only chooses an agent.
-
-Each agent picks its own `provider`: `mistral`, `openai`, `anthropic`, `google` or `openai-compatible`. With `openai-compatible`, add `baseURL`, the address of the API, for example `"baseURL": "http://localhost:11434/v1"`.
-
-**With Docker**
+The ready modules are [`examples/http.ts`](examples/http.ts), [`examples/conversations.ts`](examples/conversations.ts), [`examples/voice.ts`](examples/voice.ts), and the agent modules in [`examples/agents/`](examples/agents/). The voice module is optional. To configure the container with Docker Compose, use [`compose.example.yaml`](compose.example.yaml):
 
 ```bash
-docker run -d --name ambrogio -p 3000:3000 \
-  -v /srv/ambrogio/config:/etc/ambrogio:ro \
-  -v /srv/ambrogio/data:/data \
-  -e AMBROGIO_HTTP_CONFIG_PATH=/etc/ambrogio/http.json \
-  -e AMBROGIO_CONVERSATIONS_CONFIG_PATH=/etc/ambrogio/conversations.json \
-  ghcr.io/ambrogio-app/ambrogio-backend:<version>
+AMBROGIO_VERSION=v0.8.0 MISTRAL_API_KEY=replace-me docker compose -f compose.example.yaml up -d
 ```
 
-Versioned images are published on GHCR for every `vX.Y.Z` tag. There is no `latest` tag.
+You can put the values mapped in the Compose example in a local `.env` file. For additional variables, add them under the service's `environment` section. The example mounts only the orchestrator and generic agent. To enable the Home Assistant agent, mount [`examples/agents/home-assistant.ts`](examples/agents/home-assistant.ts) at `/etc/ambrogio/agents/home-assistant.ts` and provide `AMBROGIO_HOME_ASSISTANT_MCP_URL` and `HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN` in the service environment.
 
 **From source**
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm build
-AMBROGIO_HTTP_CONFIG_PATH=/etc/ambrogio/http.json \
-AMBROGIO_CONVERSATIONS_CONFIG_PATH=/etc/ambrogio/conversations.json \
+AMBROGIO_HTTP_CONFIG_PATH="$PWD/examples/http.ts" \
+AMBROGIO_CONVERSATIONS_CONFIG_PATH="$PWD/examples/conversations.ts" \
+MISTRAL_API_KEY=replace-me \
 node apps/server/dist/main.js
 ```
 
-To enable voice, copy [`examples/voice.json`](examples/voice.json) into the mounted configuration directory and set `AMBROGIO_VOICE_CONFIG_PATH` to that file. It names the Vosk model and Piper voice for each language. [`examples/voice-kokoro.json`](examples/voice-kokoro.json) selects the included Kokoro model instead. `conversations.json.language` chooses the active profile. Every model is selected by its path inside the container, so you can mount your own models and change the corresponding paths without rebuilding the image. The earlier single-profile `voice.json` format remains supported. Kokoro needs a faster CPU than Piper.
+Set `AMBROGIO_VOICE_CONFIG_PATH` to [`examples/voice.ts`](examples/voice.ts) to enable Piper voice, or to [`examples/voice-kokoro.ts`](examples/voice-kokoro.ts) for Kokoro. Set `AMBROGIO_LANGUAGE` to `it` or `en` to select the active profile. You can override model paths and other fields through the variables read by those modules. Node.js 24 runs the `.ts` modules directly; use syntax supported by Node's built-in TypeScript type stripping.
 
 If the server cannot start, it writes one JSON line with `"event":"server_startup_failed"` to stdout, whose `err.message` names the cause (for example `Invalid agent configuration: general` or `Agent MCP connection failed: home-assistant`), then prints `Unable to start HTTP server.` to stderr and exits with code 1.
 
-**Home Assistant.** [`examples/agents/home-assistant.json`](examples/agents/home-assistant.json) is a ready agent for Home Assistant's [Model Context Protocol Server](https://www.home-assistant.io/integrations/mcp_server/) integration. Copy it to `/etc/ambrogio/agents/`, then replace the address, `<MISTRAL_API_KEY>` and `<HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN>` (a long-lived access token created in your Home Assistant profile). Only the entities exposed to Assist are available to Ambrogio.
+**Home Assistant.** [`examples/agents/home-assistant.ts`](examples/agents/home-assistant.ts) provides an agent for Home Assistant's [Model Context Protocol Server](https://www.home-assistant.io/integrations/mcp_server/) integration. Mount it in `/etc/ambrogio/agents/`, then set `AMBROGIO_HOME_ASSISTANT_MCP_URL` and `HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN` in the container environment. Only the entities exposed to Assist are available to Ambrogio.
 
 > Ambrogio has no user accounts or authentication. Run it on a trusted network, or behind a reverse proxy that allows only your own clients.
 

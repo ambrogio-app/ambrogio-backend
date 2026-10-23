@@ -1,7 +1,8 @@
 import { llmProviders, type LlmProvider } from '@ambrogio/conversations/adapters/out/ai-sdk-reply';
 import { ProjectError } from '@ambrogio/conversations/application/project-error';
-import { readFile, readdir } from 'node:fs/promises';
-import { join } from 'node:path';
+import { readdir } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 export type McpAuth =
   | Readonly<{ type: 'bearer'; token: string }>
@@ -19,6 +20,7 @@ export type AgentConfig = Readonly<{
 }>;
 
 const agentId = /^[a-z][a-z0-9-]*$/;
+let configRevision = 0;
 
 function record(value: unknown): Record<string, unknown> | undefined {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -114,19 +116,19 @@ export async function loadAgentConfigs(directory = '/etc/ambrogio/agents'): Prom
   let filenames: string[];
   try { filenames = await readdir(directory); }
   catch { throw new ProjectError('Agent configuration directory unavailable'); }
-  if (!filenames.includes('orchestrator.json')) throw new ProjectError('Missing orchestrator configuration');
-  const specialistNames = filenames.filter((name) => name.endsWith('.json') && name !== 'orchestrator.json');
+  if (!filenames.includes('orchestrator.ts')) throw new ProjectError('Missing orchestrator configuration');
+  const specialistNames = filenames.filter((name) => name.endsWith('.ts') && name !== 'orchestrator.ts');
   // The orchestrator only chooses: at least one agent must be able to answer.
   if (specialistNames.length === 0) throw new ProjectError('No specialist agent configured');
   for (const filename of specialistNames) {
-    if (!agentId.test(filename.slice(0, -5))) throw new ProjectError(`Invalid agent configuration filename: ${filename}`);
+    if (!agentId.test(filename.slice(0, -3))) throw new ProjectError(`Invalid agent configuration filename: ${filename}`);
   }
   const load = async (filename: string): Promise<AgentConfig> => {
-    const id = filename.slice(0, -5);
-    try { return parseAgent(id, JSON.parse(await readFile(join(directory, filename), 'utf8'))); }
+    const id = filename.slice(0, -3);
+    try { return parseAgent(id, (await import(`${pathToFileURL(resolve(join(directory, filename))).href}?revision=${++configRevision}`)).default); }
     catch (error) { throw new ProjectError(`Invalid agent configuration: ${id}`, { cause: error }); }
   };
-  const orchestrator = await load('orchestrator.json');
+  const orchestrator = await load('orchestrator.ts');
   const specialists = await Promise.all(specialistNames.sort().map(load));
   return { orchestrator, specialists };
 }

@@ -21,6 +21,7 @@ WORKDIR /workspace
 LABEL org.opencontainers.image.source="https://github.com/ambrogio-app/ambrogio-backend" \
       org.opencontainers.image.licenses="MIT"
 RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 && rm -rf /var/lib/apt/lists/*
+RUN mkdir -p /etc/ambrogio/agents /data
 COPY --from=build /opt/ambrogio/voices/ /opt/ambrogio/voices/
 COPY --from=build /opt/ambrogio/models/ /opt/ambrogio/models/
 COPY --from=build /opt/ambrogio/kokoro/ /opt/ambrogio/kokoro/

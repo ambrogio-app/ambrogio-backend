@@ -1,3 +1,4 @@
+import { writeConfigFile } from '../support/config-fixture.js';
 import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -57,7 +58,7 @@ async function sessionServer(prepared: Awaited<ReturnType<typeof prepareConversa
 async function fixture() {
   const directory = await mkdtemp(join(tmpdir(), 'ambrogio-server-list-'));
   directories.push(directory);
-  return { configFilename: join(directory, 'conversations.json'), archiveFilename: join(directory, 'archive.sqlite') };
+  return { configFilename: join(directory, 'conversations.ts'), archiveFilename: join(directory, 'archive.sqlite') };
 }
 
 function environment(configFilename: string): NodeJS.ProcessEnv {
@@ -71,9 +72,9 @@ afterEach(async () => {
 });
 
 describe('server conversation composition', () => {
-  it('loads JSON before opening the archive and uses the configured page size', async () => {
+  it('loads TypeScript before opening the archive and uses the configured page size', async () => {
     const files = await fixture();
-    await writeFile(files.configFilename, '{"listPageSize": 1, "maxListPageSize": 2, "language":"it"}');
+    await writeConfigFile(files.configFilename, '{"listPageSize": 1, "maxListPageSize": 2, "language":"it"}');
     const prepared = await prepareConversations(files.archiveFilename, new Date(1000), {
       ...environment(files.configFilename),
       AMBROGIO_CONVERSATIONS_LIST_PAGE_SIZE: '50',
@@ -94,7 +95,7 @@ describe('server conversation composition', () => {
 
   it('serves configured list pages and a current first page after activity changes', async () => {
     const files = await fixture();
-    await writeFile(files.configFilename, '{"listPageSize":2,"maxListPageSize":3}');
+    await writeConfigFile(files.configFilename, '{"listPageSize":2,"maxListPageSize":3}');
     const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
     const server = Fastify();
     try {
@@ -123,9 +124,9 @@ describe('server conversation composition', () => {
     }
   });
 
-  it('rejects invalid JSON before creating the SQLite archive', async () => {
+  it('rejects invalid TypeScript before creating the SQLite archive', async () => {
     const files = await fixture();
-    await writeFile(files.configFilename, '{"listPageSize": 0}');
+    await writeConfigFile(files.configFilename, '{"listPageSize": 0}');
     await expect(prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename)))
       .rejects.toThrow('Invalid conversation list limits');
     await expect(readFile(files.archiveFilename)).rejects.toThrow();
@@ -138,13 +139,13 @@ describe('server conversation composition', () => {
         .rejects.toThrow('Missing conversation configuration path');
     }
     await expect(prepareConversations(files.archiveFilename, new Date(1000),
-      environment(join(files.archiveFilename, 'missing.json')))).rejects.toThrow('Invalid conversation configuration file');
+      environment(join(files.archiveFilename, 'missing.ts')))).rejects.toThrow('Invalid conversation configuration file');
     await expect(readFile(files.archiveFilename)).rejects.toThrow();
   });
 
   it('uses the process environment when no environment is injected', async () => {
     const files = await fixture();
-    await writeFile(files.configFilename, '{}');
+    await writeConfigFile(files.configFilename, '{}');
     const previous = process.env.AMBROGIO_CONVERSATIONS_CONFIG_PATH;
     process.env.AMBROGIO_CONVERSATIONS_CONFIG_PATH = files.configFilename;
     try {
@@ -163,7 +164,7 @@ describe('server conversation composition', () => {
 
   it('uses English for an unsupported configured language', async () => {
     const files = await fixture();
-    await writeFile(files.configFilename, '{"language":"fr"}');
+    await writeConfigFile(files.configFilename, '{"language":"fr"}');
     const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
     try {
       expect(prepared.failureMessage).toBe("I can't complete the response.");
@@ -174,7 +175,7 @@ describe('server conversation composition', () => {
 
   it('passes the selected Italian failure message through the use case into SQLite', async () => {
     const files = await fixture();
-    await writeFile(files.configFilename, '{"language":"it"}');
+    await writeConfigFile(files.configFilename, '{"language":"it"}');
     const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
     try {
       const exchange = assembleExchangeTurn(prepared, {
@@ -193,7 +194,7 @@ describe('server conversation composition', () => {
 
   it('serves a text turn through the session channel and conserves its completed answer', async () => {
     const files = await fixture();
-    await writeFile(files.configFilename, '{"language":"it"}');
+    await writeConfigFile(files.configFilename, '{"language":"it"}');
     const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
     const running = await sessionServer(prepared, {
       async *produce(history) {
@@ -221,7 +222,7 @@ describe('server conversation composition', () => {
 
   it('reads a pending turn and then its persisted answer through GET without another stream', async () => {
     const files = await fixture();
-    await writeFile(files.configFilename, '{"language":"it"}');
+    await writeConfigFile(files.configFilename, '{"language":"it"}');
     const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
     let signalStarted!: () => void;
     const started = new Promise<void>(resolve => { signalStarted = resolve; });
@@ -273,7 +274,7 @@ describe('server conversation composition', () => {
   // Verification: Prova della conservazione del testo originale
   it('conserves typed and transcribed turn text exactly as received', async () => {
     const files = await fixture();
-    await writeFile(files.configFilename, '{}');
+    await writeConfigFile(files.configFilename, '{}');
     const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
     const histories: string[] = [];
     const running = await sessionServer(prepared, {
@@ -310,7 +311,7 @@ describe('server conversation composition', () => {
 
   it('rejects empty text before admission for new, existing, and missing conversations', async () => {
     const files = await fixture();
-    await writeFile(files.configFilename, '{}');
+    await writeConfigFile(files.configFilename, '{}');
     const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
     const running = await sessionServer(prepared, {
       async *produce() { yield text('answer'); yield expectation(false); },
@@ -343,7 +344,7 @@ describe('server conversation composition', () => {
 
   it('rejects a simultaneous turn in the same conversation without queuing it', async () => {
     const files = await fixture();
-    await writeFile(files.configFilename, '{}');
+    await writeConfigFile(files.configFilename, '{}');
     const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
     let signalStarted!: () => void;
     const started = new Promise<void>(resolve => { signalStarted = resolve; });
@@ -383,7 +384,7 @@ describe('server conversation composition', () => {
 
   it('blocks new turns after a completion write failure and recovers on restart', async () => {
     const files = await fixture();
-    await writeFile(files.configFilename, '{"language":"it"}');
+    await writeConfigFile(files.configFilename, '{"language":"it"}');
     const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
     let archiveClosed = false;
     const running = await sessionServer(prepared, {
@@ -427,7 +428,7 @@ describe('server conversation composition', () => {
 
   it('recovers a pending turn before returning the prepared list', async () => {
     const files = await fixture();
-    await writeFile(files.configFilename, '{}');
+    await writeConfigFile(files.configFilename, '{}');
     const first = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
     await first.archive.db.insertInto('conversations').values({
       id: 'conversation', created_at: 100, last_activity_at: 100,

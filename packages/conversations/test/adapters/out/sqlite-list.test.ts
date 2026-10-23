@@ -1,3 +1,4 @@
+import { writeConfigFile } from '../../support/config-fixture.js';
 import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -73,8 +74,8 @@ describe('conversation list', () => {
     await migrateConversationArchive(db);
     const directory = await mkdtemp(join(tmpdir(), 'ambrogio-list-settings-'));
     configDirectories.push(directory);
-    const filename = join(directory, 'conversations.json');
-    await writeFile(filename, '{"listPageSize": 110, "maxListPageSize": 120}');
+    const filename = join(directory, 'conversations.ts');
+    await writeConfigFile(filename, '{"listPageSize": 110, "maxListPageSize": 120}');
     const settings = await loadConversationConfig(filename);
     const limits: number[] = [];
     const list = createListConversations({

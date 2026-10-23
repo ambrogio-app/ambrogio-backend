@@ -1,3 +1,4 @@
+import { writeConfigFile } from '../support/config-fixture.js';
 import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -186,8 +187,8 @@ test('shutdown interrupts active turns, stores them and notifies open sessions',
   const directory = await mkdtemp(join(tmpdir(), 'ambrogio-session-shutdown-'));
   directories.push(directory);
   const port = await freePort();
-  await writeFile(join(directory, 'http.json'), JSON.stringify({ host: '127.0.0.1', port }));
-  await writeFile(join(directory, 'conversations.json'), JSON.stringify({
+  await writeConfigFile(join(directory, 'http.ts'), JSON.stringify({ host: '127.0.0.1', port }));
+  await writeConfigFile(join(directory, 'conversations.ts'), JSON.stringify({
     archivePath: join(directory, 'archive.sqlite'), language: 'it' }));
   const never = gate();
   const { reply } = scriptedReply(async function* () {
@@ -196,8 +197,8 @@ test('shutdown interrupts active turns, stores them and notifies open sessions',
     yield expectation(false);
   });
   const runtime = await startConversationServer({
-    AMBROGIO_HTTP_CONFIG_PATH: join(directory, 'http.json'),
-    AMBROGIO_CONVERSATIONS_CONFIG_PATH: join(directory, 'conversations.json'),
+    AMBROGIO_HTTP_CONFIG_PATH: join(directory, 'http.ts'),
+    AMBROGIO_CONVERSATIONS_CONFIG_PATH: join(directory, 'conversations.ts'),
   }, join(directory, 'agents'), async () => ({ orchestrator: reply, async close() {} }));
   const client = await ProtocolClient.ready(`ws://127.0.0.1:${port}/api/session`);
   const requestId = client.requestId();
@@ -216,8 +217,8 @@ test('shutdown interrupts active turns, stores them and notifies open sessions',
   never.release();
 
   const restarted = await startConversationServer({
-    AMBROGIO_HTTP_CONFIG_PATH: join(directory, 'http.json'),
-    AMBROGIO_CONVERSATIONS_CONFIG_PATH: join(directory, 'conversations.json'),
+    AMBROGIO_HTTP_CONFIG_PATH: join(directory, 'http.ts'),
+    AMBROGIO_CONVERSATIONS_CONFIG_PATH: join(directory, 'conversations.ts'),
   }, join(directory, 'agents'), async () => ({ orchestrator: reply, async close() {} }));
   try {
     const response = await fetch(`http://127.0.0.1:${port}/api/conversations/${accepted.conversationId}`);

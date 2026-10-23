@@ -3,6 +3,8 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+const writeConfig = (filename, value) => writeFileSync(filename, `export default ${JSON.stringify(value)};\n`);
+
 const existingImage = process.env.AMBROGIO_DOCKER_IMAGE;
 const image = existingImage || 'ambrogio-server:verification';
 const port = 34123;
@@ -21,27 +23,27 @@ try {
   mkdirSync(data);
   mkdirSync(customVoices);
   writeFileSync(join(customVoices, 'custom-voice.marker'), 'mounted voice directory');
-  writeFileSync(join(config, 'http.json'), JSON.stringify({
+  writeConfig(join(config, 'http.ts'), {
     host: '0.0.0.0', port, allowedOrigins: [], publicHttps: false,
-  }));
-  writeFileSync(join(config, 'conversations.json'), JSON.stringify({
+  });
+  writeConfig(join(config, 'conversations.ts'), {
     archivePath: '/var/lib/ambrogio/conversations.sqlite', language: 'it',
-  }));
-  writeFileSync(join(config, 'voice.json'), readFileSync('examples/voice.json'));
-  writeFileSync(join(config, 'voice-kokoro.json'), readFileSync('examples/voice-kokoro.json'));
-  writeFileSync(join(config, 'agents', 'orchestrator.json'), JSON.stringify({
+  });
+  writeFileSync(join(config, 'voice.ts'), readFileSync('examples/voice.ts'));
+  writeFileSync(join(config, 'voice-kokoro.ts'), readFileSync('examples/voice-kokoro.ts'));
+  writeConfig(join(config, 'agents', 'orchestrator.ts'), {
     instructions: 'Docker image verification',
     llm: { provider: 'mistral', model: 'mistral-medium-latest', apiKey: 'test-only-placeholder' },
-  }));
+  });
   // The orchestrator only chooses: at least one agent, here one without MCP, must answer.
-  writeFileSync(join(config, 'agents', 'generic.json'), JSON.stringify({
+  writeConfig(join(config, 'agents', 'generic.ts'), {
     description: 'Answers general questions.', instructions: 'Docker image verification',
     llm: { provider: 'mistral', model: 'mistral-medium-latest', apiKey: 'test-only-placeholder' },
-  }));
+  });
 
   if (!existingImage) docker('build', '--tag', image, '.');
   docker('run', '--rm', '--entrypoint', '/bin/sh', image, '-c',
-    'test ! -e /etc/ambrogio/http.json && test ! -e /etc/ambrogio/conversations.json && test ! -e /var/lib/ambrogio/conversations.sqlite && ' +
+    'test ! -e /etc/ambrogio/http.ts && test ! -e /etc/ambrogio/conversations.ts && test ! -e /var/lib/ambrogio/conversations.sqlite && ' +
     'test ! -e /opt/piper && ! command -v python3 >/dev/null && cd /workspace/packages/conversations && node -e "require(\'vosk-koffi\')"');
   // Each bundled voice is loaded and spoken with the image's own synthesizer code.
   const synthesis = [
@@ -107,10 +109,10 @@ try {
   const profiles = [
     "import { loadVoiceConfig } from '/workspace/packages/conversations/dist/adapters/out/voice-config.js';",
     "for (const [language, vosk, voice] of [['it', 'vosk-model-small-it-0.22', 'vits-piper-it_IT-paola-medium'], ['en', 'vosk-model-small-en-us-0.15', 'vits-piper-en_US-kristin-medium']]) {",
-    "  const config = await loadVoiceConfig('/etc/ambrogio/voice.json', language);",
+    "  const config = await loadVoiceConfig('/etc/ambrogio/voice.ts', language);",
     "  if (!config.voskModelPath.endsWith(vosk) || !config.voiceModelDir.endsWith(voice)) throw new Error('Wrong voice profile: ' + language);",
     "  console.log('Selected ' + language + ': ' + voice);",
-    "  const kokoro = await loadVoiceConfig('/etc/ambrogio/voice-kokoro.json', language);",
+    "  const kokoro = await loadVoiceConfig('/etc/ambrogio/voice-kokoro.ts', language);",
     "  if (kokoro.voiceEngine !== 'kokoro' || kokoro.voiceLanguage !== language || kokoro.voiceSpeaker !== (language === 'it' ? 35 : 3)) throw new Error('Wrong Kokoro profile: ' + language);",
     "  console.log('Selected Kokoro ' + language + ': speaker ' + kokoro.voiceSpeaker);",
     "}",
@@ -125,12 +127,12 @@ try {
   try {
     docker('cp', `${sourceContainer}:/opt/ambrogio/voices/vits-piper-it_IT-riccardo-x_low/.`, alternateVoice);
   } finally { docker('rm', sourceContainer); }
-  const customProfile = JSON.parse(readFileSync(join(config, 'voice.json'), 'utf8'));
-  customProfile.languages.it.voiceModelDir = '/custom-voices/alternate-italian';
-  writeFileSync(join(config, 'voice-custom.json'), JSON.stringify(customProfile));
+  const customProfile = readFileSync(join(config, 'voice.ts'), 'utf8').replace(
+    '/opt/ambrogio/voices/vits-piper-it_IT-paola-medium', '/custom-voices/alternate-italian');
+  writeFileSync(join(config, 'voice-custom.ts'), customProfile);
   const customSelection = [
     "import { loadVoiceConfig, voiceModel } from '/workspace/packages/conversations/dist/adapters/out/voice-config.js';",
-    "const selected = await loadVoiceConfig('/etc/ambrogio/voice-custom.json', 'it');",
+    "const selected = await loadVoiceConfig('/etc/ambrogio/voice-custom.ts', 'it');",
     "if (selected.voiceModelDir !== '/custom-voices/alternate-italian') throw new Error('Mounted voice not selected');",
     "await voiceModel(selected);",
     "console.log('Selected mounted Italian Piper voice');",
@@ -143,16 +145,16 @@ try {
     '--mount', `type=bind,src=${customVoices},dst=/opt/ambrogio/voices,readonly`,
     image, '-c', 'test -f /opt/ambrogio/voices/custom-voice.marker && test ! -e /opt/ambrogio/voices/vits-piper-it_IT-riccardo-x_low');
   for (const language of ['it', 'en']) {
-    writeFileSync(join(config, 'conversations.json'), JSON.stringify({
+    writeConfig(join(config, 'conversations.ts'), {
       archivePath: '/var/lib/ambrogio/conversations.sqlite', language,
-    }));
+    });
     container = docker('run', '--detach', '--rm',
       '--publish', `127.0.0.1::${port}`,
       '--mount', `type=bind,src=${config},dst=/etc/ambrogio,readonly`,
       '--mount', `type=bind,src=${data},dst=/var/lib/ambrogio`,
-      '--env', 'AMBROGIO_HTTP_CONFIG_PATH=/etc/ambrogio/http.json',
-      '--env', 'AMBROGIO_CONVERSATIONS_CONFIG_PATH=/etc/ambrogio/conversations.json',
-      '--env', 'AMBROGIO_VOICE_CONFIG_PATH=/etc/ambrogio/voice.json',
+      '--env', 'AMBROGIO_HTTP_CONFIG_PATH=/etc/ambrogio/http.ts',
+      '--env', 'AMBROGIO_CONVERSATIONS_CONFIG_PATH=/etc/ambrogio/conversations.ts',
+      '--env', 'AMBROGIO_VOICE_CONFIG_PATH=/etc/ambrogio/voice.ts',
       image);
     const published = docker('port', container, `${port}/tcp`);
     const hostPort = Number(published.match(/:(\d+)$/)?.[1]);
@@ -175,7 +177,7 @@ try {
   if (!existsSync(join(data, 'conversations.sqlite'))) {
     throw new Error('SQLite archive was not created in the external mount');
   }
-  console.log('Docker image verification passed: external JSON and SQLite, language profiles, bundled Italian and English Vosk, Piper and Kokoro models, replaceable Piper voices, voice-enabled HTTP 200, no Compose.');
+  console.log('Docker image verification passed: external TypeScript configuration and SQLite, language profiles, bundled Italian and English Vosk, Piper and Kokoro models, replaceable Piper voices, voice-enabled HTTP 200, no Compose.');
 } finally {
   if (container) {
     try { docker('stop', container); } catch { /* preserve the verification failure */ }

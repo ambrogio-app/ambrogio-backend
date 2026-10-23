@@ -59,7 +59,7 @@ Quando Ambrogio non può avviare l'elaborazione di un nuovo turno al momento del
 
 ### Autenticazione Bearer del client MCP
 
-Quando un agente specializzato accede al proprio server MCP tramite Streamable HTTP, il client MCP comune deve poter usare un Bearer token letto dalla configurazione JSON di quell'agente per autenticare le richieste verso l'endpoint configurato.
+Quando un agente specializzato accede al proprio server MCP tramite Streamable HTTP, il client MCP comune deve poter usare un Bearer token letto dalla configurazione TypeScript di quell'agente per autenticare le richieste verso l'endpoint configurato.
 
 #### Metadata
   * type: requirement
@@ -71,7 +71,7 @@ Quando un agente specializzato accede al proprio server MCP tramite Streamable H
 
 ### Autenticazione OAuth tra servizi del client MCP
 
-Quando la configurazione JSON di un agente specializzato richiede OAuth `client_credentials`, il client MCP comune deve ottenere e usare un token di accesso per il server MCP di quell'agente, senza richiedere un accesso interattivo della persona e senza presentare le credenziali a un authorization server diverso da quello configurato.
+Quando la configurazione TypeScript di un agente specializzato richiede OAuth `client_credentials`, il client MCP comune deve ottenere e usare un token di accesso per il server MCP di quell'agente, senza richiedere un accesso interattivo della persona e senza presentare le credenziali a un authorization server diverso da quello configurato.
 
 #### Metadata
   * type: requirement
@@ -222,7 +222,7 @@ Quando il backend completa correttamente un turno, deve inviare al client la con
 
 ### Configurazione MCP dell'agente specializzato
 
-Quando il server attiva un agente con connettore MCP, deve leggere la configurazione della sua connessione MCP dal file JSON dell'agente e consegnarla al client MCP comune.
+Quando il server attiva un agente con connettore MCP, deve leggere la configurazione della sua connessione MCP dal modulo TypeScript dell'agente e consegnarla al client MCP comune.
 
 #### Metadata
   * type: requirement
@@ -235,7 +235,7 @@ Quando il server attiva un agente con connettore MCP, deve leggere la configuraz
 
 ### Configurazione del fuso orario della conversazione
 
-Il server deve leggere il fuso orario della famiglia dal file JSON locale del componente «Conversazioni» e impedire l'avvio quando il valore indicato non è un fuso orario valido.
+Il server deve leggere il fuso orario della famiglia dal modulo TypeScript locale del componente «Conversazioni» e impedire l'avvio quando il valore indicato non è un fuso orario valido.
 
 #### Metadata
   * type: requirement
@@ -247,7 +247,7 @@ Il server deve leggere il fuso orario della famiglia dal file JSON locale del co
 
 ### Configurazione del modello per agente
 
-Quando il server attiva un agente, incluso l'orchestratore, deve leggere il file JSON locale dedicato a quell'agente e selezionare l'adapter del provider indicato, fornendogli l'identificativo del modello, la chiave API, l'indirizzo dell'endpoint quando il provider lo richiede e soltanto le opzioni specifiche validate.
+Quando il server attiva un agente, incluso l'orchestratore, deve leggere il modulo TypeScript locale dedicato a quell'agente e selezionare l'adapter del provider indicato, fornendogli l'identificativo del modello, la chiave API, l'indirizzo dell'endpoint quando il provider lo richiede e soltanto le opzioni specifiche validate.
 
 #### Metadata
   * type: requirement
@@ -261,14 +261,14 @@ Quando il server attiva un agente, incluso l'orchestratore, deve leggere il file
 
 ### Configurazione della paginazione conversazionale
 
-Quando il server prepara la consultazione dell'elenco delle conversazioni, deve individuare il file JSON locale del componente «Conversazioni» tramite `AMBROGIO_CONVERSATIONS_CONFIG_PATH` e usare i valori di dimensione della pagina e dimensione massima scelti dall'utente nel file, applicando i valori predefiniti concordati se i campi sono assenti e impedendo l'attivazione se il percorso o i valori sono invalidi.
+Quando il server prepara la consultazione dell'elenco delle conversazioni, deve individuare il modulo TypeScript locale del componente «Conversazioni» tramite `AMBROGIO_CONVERSATIONS_CONFIG_PATH` e usare i valori di dimensione della pagina e dimensione massima scelti dall'utente nel file, applicando i valori predefiniti concordati se i campi sono assenti e impedendo l'attivazione se il percorso o i valori sono invalidi.
 
 #### Metadata
   * type: requirement
 
 #### Contract References
   * [Pagine dell'elenco conversazioni](../Contracts/FamilyConversation.md#pagine-dellelenco-conversazioni)
-  * [Profilo di bootstrap dei JSON dei componenti](../Contracts/ServerFoundation.md#profilo-di-bootstrap-dei-json-dei-componenti)
+  * [Profilo di bootstrap delle configurazioni TypeScript](../Contracts/ServerFoundation.md#profilo-di-bootstrap-delle-configurazioni-typescript)
 
 #### Relations
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
@@ -279,7 +279,7 @@ Quando il server prepara la consultazione dell'elenco delle conversazioni, deve 
 
 ### Configurazione pronta del connettore Home Assistant
 
-Il repository deve fornire un file JSON pronto dell'agente Home Assistant, accettato dalla validazione delle configurazioni degli agenti, che chi installa completa con l'indirizzo di Home Assistant e con le proprie credenziali senza modificarne la struttura.
+Il repository deve fornire un modulo TypeScript pronto dell'agente Home Assistant, accettato dalla validazione delle configurazioni degli agenti, che chi installa completa con l'indirizzo di Home Assistant e con le proprie credenziali senza modificarne la struttura.
 
 #### Metadata
   * type: requirement
@@ -288,7 +288,7 @@ Il repository deve fornire un file JSON pronto dell'agente Home Assistant, accet
   * [Profilo del connettore Home Assistant](../Contracts/FamilyConversation.md#profilo-del-connettore-home-assistant)
 
 #### Relations
-  * satisfiedBy: [home-assistant.json](../../examples/agents/home-assistant.json)
+  * satisfiedBy: [home-assistant.ts](../../examples/agents/home-assistant.ts)
   * specify: [Interazione domestica tramite Home Assistant](../Capabilities/FamilyAssistance.md#interazione-domestica-tramite-home-assistant)
 ---
 
@@ -301,7 +301,7 @@ Dove l'installazione abilita il connettore Home Assistant, il server deve raggiu
 
 #### Relations
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
-  * satisfiedBy: [home-assistant.json](../../examples/agents/home-assistant.json)
+  * satisfiedBy: [home-assistant.ts](../../examples/agents/home-assistant.ts)
   * specify: [Interazione domestica tramite Home Assistant](../Capabilities/FamilyAssistance.md#interazione-domestica-tramite-home-assistant)
 ---
 
@@ -483,7 +483,7 @@ Quando un caso d'uso del modulo «Conversazioni» riceve dati di ingresso o prod
 
 ### Descrizione degli agenti specializzati per l'orchestrazione
 
-Quando Ambrogio prepara un agente specializzato da un file JSON, deve rendere disponibile all'orchestratore una descrizione dell'agente per permettere la scelta della delega.
+Quando Ambrogio prepara un agente specializzato da un modulo TypeScript, deve rendere disponibile all'orchestratore una descrizione dell'agente per permettere la scelta della delega.
 
 #### Metadata
   * type: requirement
@@ -551,9 +551,9 @@ Quando un client elabora un turno o ne riproduce la risposta, deve impedire nuov
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
-### Disponibilità degli agenti dai file JSON
+### Disponibilità degli agenti dai moduli TypeScript
 
-Quando il server avvia la conversazione con la directory degli agenti, deve rendere disponibile all'orchestratore ogni agente specializzato descritto da un file `<id>.json` valido presente nella directory, con o senza connettore MCP, senza richiedere un elenco separato di agenti da abilitare, e non deve avviare la conversazione se la directory non contiene almeno un agente specializzato.
+Quando il server avvia la conversazione con la directory degli agenti, deve rendere disponibile all'orchestratore ogni agente specializzato descritto da un file `<id>.ts` valido presente nella directory, con o senza connettore MCP, senza richiedere un elenco separato di agenti da abilitare, e non deve avviare la conversazione se la directory non contiene almeno un agente specializzato.
 
 #### Metadata
   * type: requirement
@@ -615,14 +615,14 @@ Quando la famiglia consulta l'elenco delle conversazioni conservate, Ambrogio de
 
 ### Esempi degli agenti in inglese
 
-Quando il progetto distribuisce esempi di configurazione per generic.json, orchestrator.json o altri agenti specializzati, deve scrivere in inglese le istruzioni e le descrizioni degli agenti, senza fissare nelle istruzioni una lingua diversa da quella selezionata dall'installazione.
+Quando il progetto distribuisce esempi di configurazione per generic.ts, orchestrator.ts o altri agenti specializzati, deve scrivere in inglese le istruzioni e le descrizioni degli agenti, senza fissare nelle istruzioni una lingua diversa da quella selezionata dall'installazione.
 
 #### Metadata
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [generic.json](../../examples/agents/generic.json)
-  * satisfiedBy: [orchestrator.json](../../examples/agents/orchestrator.json)
+  * satisfiedBy: [generic.ts](../../examples/agents/generic.ts)
+  * satisfiedBy: [orchestrator.ts](../../examples/agents/orchestrator.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
 ---
 
@@ -782,10 +782,10 @@ Quando Application e Domain rappresentano un istante della conversazione, devono
 
 ### Istruzioni del server MCP per l'agente
 
-Quando un agente specializzato con connettore MCP elabora un turno delegato e il suo server MCP offre prompt senza argomenti obbligatori, Ambrogio deve leggerne il testo dal server durante quel turno e consegnarlo al modello dell'agente insieme alle istruzioni del file JSON dell'agente.
+Quando un agente specializzato con connettore MCP elabora un turno delegato e il suo server MCP offre prompt senza argomenti obbligatori, Ambrogio deve leggerne il testo dal server durante quel turno e consegnarlo al modello dell'agente insieme alle istruzioni del modulo TypeScript dell'agente.
 
 #### Details
-Se la lettura dei prompt fallisce, Ambrogio deve concludere il turno con il guasto comunicato secondo il contratto pubblico del turno, senza produrre la risposta con le sole istruzioni del file JSON.
+Se la lettura dei prompt fallisce, Ambrogio deve concludere il turno con il guasto comunicato secondo il contratto pubblico del turno, senza produrre la risposta con le sole istruzioni del modulo TypeScript.
 
 #### Metadata
   * type: requirement
@@ -797,9 +797,9 @@ Se la lettura dei prompt fallisce, Ambrogio deve concludere il turno con il guas
   * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
 ---
 
-### Istruzioni dell'agente nel JSON dell'utente
+### Istruzioni dell'agente nel modulo TypeScript dell'utente
 
-Quando il server attiva un agente, incluso l'orchestratore, deve leggere le istruzioni destinate a quell'agente dal suo file JSON locale gestito dall'utente e consegnarle soltanto al modello dell'agente interessato.
+Quando il server attiva un agente, incluso l'orchestratore, deve leggere le istruzioni destinate a quell'agente dal suo modulo TypeScript locale gestito dall'utente e consegnarle soltanto al modello dell'agente interessato.
 
 #### Metadata
   * type: requirement
@@ -842,7 +842,7 @@ Quando un client della chat testuale consulta una conversazione conservata, il b
 
 ### Limite delle chiamate agli strumenti per agente
 
-Quando un agente specializzato usa gli strumenti del proprio connettore MCP per elaborare un turno, Ambrogio deve arrestare ulteriori chiamate agli strumenti al raggiungimento del limite configurato nel file JSON di quell'agente e comunicare il guasto secondo il contratto pubblico del turno.
+Quando un agente specializzato usa gli strumenti del proprio connettore MCP per elaborare un turno, Ambrogio deve arrestare ulteriori chiamate agli strumenti al raggiungimento del limite configurato nel modulo TypeScript di quell'agente e comunicare il guasto secondo il contratto pubblico del turno.
 
 #### Metadata
   * type: requirement
@@ -868,7 +868,7 @@ Quando un agente specializzato produce una risposta per la famiglia, il backend 
 
 ### Localizzazione dell'errore conversazionale inatteso
 
-Quando un turno ammesso termina con un guasto inatteso, Ambrogio deve comunicare e conservare lo stesso messaggio pubblico standard tradotto nella lingua scelta dall'utente nel file JSON locale del componente «Conversazioni».
+Quando un turno ammesso termina con un guasto inatteso, Ambrogio deve comunicare e conservare lo stesso messaggio pubblico standard tradotto nella lingua scelta dall'utente nel modulo TypeScript locale del componente «Conversazioni».
 
 #### Metadata
   * type: requirement
@@ -1231,7 +1231,7 @@ Quando la famiglia invia un turno, Ambrogio deve produrre una risposta testuale 
 
 ### Scoperta delle configurazioni degli agenti
 
-Quando il server prepara gli agenti attivi, deve cercare i rispettivi file JSON in una directory dedicata stabilita dal prodotto e distinguere la configurazione dell'orchestratore da quelle degli agenti specializzati.
+Quando il server prepara gli agenti attivi, deve cercare i rispettivi modulo TypeScript in una directory dedicata stabilita dal prodotto e distinguere la configurazione dell'orchestratore da quelle degli agenti specializzati.
 
 #### Metadata
   * type: requirement
@@ -1289,7 +1289,7 @@ Quando conferma il completamento di un turno, il backend deve indicare esplicita
 
 ### Selezione degli strumenti MCP offerti all'agente
 
-Dove il file JSON di un agente specializzato elenca gli strumenti MCP ammessi, Ambrogio deve offrire al modello di quell'agente soltanto gli strumenti elencati fra quelli scoperti sul suo server MCP e non deve inoltrare al server chiamate a strumenti non elencati.
+Dove il modulo TypeScript di un agente specializzato elenca gli strumenti MCP ammessi, Ambrogio deve offrire al modello di quell'agente soltanto gli strumenti elencati fra quelli scoperti sul suo server MCP e non deve inoltrare al server chiamate a strumenti non elencati.
 
 #### Metadata
   * type: requirement
@@ -1310,7 +1310,7 @@ Quando la voce è abilitata con profili vocali per lingua, Ambrogio deve selezio
 
 #### Relations
   * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
-  * satisfiedBy: [voice.json](../../examples/voice.json)
+  * satisfiedBy: [voice.ts](../../examples/voice.ts)
   * satisfiedBy: [voice-config.ts](../../packages/conversations/src/adapters/out/voice-config.ts)
   * satisfiedBy: [voice-config.test.ts](../../packages/conversations/test/adapters/out/voice-config.test.ts)
   * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
@@ -1318,7 +1318,7 @@ Quando la voce è abilitata con profili vocali per lingua, Ambrogio deve selezio
 
 ### Selezione dell'archivio conversazionale all'avvio
 
-Quando il processo prepara l'ingresso HTTP di consultazione, deve aprire l'archivio SQLite al percorso dichiarato nel JSON locale del componente «Conversazioni» e impedire l'avvio se il percorso manca o è invalido.
+Quando il processo prepara l'ingresso HTTP di consultazione, deve aprire l'archivio SQLite al percorso dichiarato nel configurazione locale del componente «Conversazioni» e impedire l'avvio se il percorso manca o è invalido.
 
 #### Metadata
   * type: requirement

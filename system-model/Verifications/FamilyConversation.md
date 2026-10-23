@@ -117,7 +117,7 @@ Raggruppa le prove di connessione, scoperta e invocazione dei tool tramite il cl
 
 ### Dimostrazione del connettore Home Assistant su un'installazione reale
 
-Su un'installazione Home Assistant reale abilitare l'integrazione «Model Context Protocol Server», esporre ad Assist almeno due luci in aree diverse e un sensore, creare un token di accesso di lunga durata e installare `examples/agents/home-assistant.json` completato con indirizzo, token e chiave API. Avviare il backend e chiedere in conversazione lo stato del sensore, se una luce di un'area è accesa, poi di accendere e spegnere quella luce e di spegnere tutte le luci; chiedere infine di comandare un'entità non esposta. Ripetere l'avvio con un token errato.
+Su un'installazione Home Assistant reale abilitare l'integrazione «Model Context Protocol Server», esporre ad Assist almeno due luci in aree diverse e un sensore, creare un token di accesso di lunga durata e installare `examples/agents/home-assistant.ts` completato con indirizzo, token e chiave API. Avviare il backend e chiedere in conversazione lo stato del sensore, se una luce di un'area è accesa, poi di accendere e spegnere quella luce e di spegnere tutte le luci; chiedere infine di comandare un'entità non esposta. Ripetere l'avvio con un token errato.
 
 #### Details
 La dimostrazione passa se il backend si avvia scoprendo gli strumenti di Home Assistant, la risposta riporta lo stato effettivo del sensore, la domanda sullo stato della luce riceve lo stato effettivo senza che alcun dispositivo cambi stato, la luce cambia stato in Home Assistant e la risposta lo dichiara solo dopo la conferma dello strumento, la richiesta di spegnere tutte le luci spegne tutte le luci esposte, l'entità non esposta non viene comandata e, con il token errato, l'avvio fallisce con l'evento `server_startup_failed` che indica `Agent MCP connection failed: home-assistant` senza mostrare il token. Fallisce se uno di questi esiti non si verifica. La dimostrazione è affidata alla persona su un'installazione reale e non è ancora stata eseguita.
@@ -164,12 +164,12 @@ La prova passa se ogni richiesta MCP dell'agente autenticato invia `Authorizatio
 
 ### Prova del client MCP comune
 
-Configurare due agenti specializzati in file JSON distinti, ciascuno con `mcp.url` di un server MCP di prova che usa Streamable HTTP ed espone tool con nomi e schemi diversi. Le configurazioni non contengono un campo `transport`. Avviare gli agenti tramite la stessa implementazione client, completare l'inizializzazione MCP via HTTP, scoprire i rispettivi tool e invocarne uno con argomenti validi. Ripetere con `mcp.url` assente e con un URL non HTTP o HTTPS.
+Configurare due agenti specializzati in modulo TypeScript distinti, ciascuno con `mcp.url` di un server MCP di prova che usa Streamable HTTP ed espone tool con nomi e schemi diversi. Le configurazioni non contengono un campo `transport`. Avviare gli agenti tramite la stessa implementazione client, completare l'inizializzazione MCP via HTTP, scoprire i rispettivi tool e invocarne uno con argomenti validi. Ripetere con `mcp.url` assente e con un URL non HTTP o HTTPS.
 
 #### Details
 La prova passa se ogni agente riceve soltanto l'endpoint MCP definito nel proprio file, entrambe le connessioni usano il client comune e Streamable HTTP, ciascuna espone i tool del proprio server e le invocazioni raggiungono il server corretto senza un campo `transport`. Una configurazione invalida impedisce l'attivazione dell'agente interessato prima di contattare un server. Fallisce se serve un client specifico per un server, se le connessioni o i tool si confondono tra agenti oppure se la configurazione invalida raggiunge un server. La prova resta da eseguire dopo l'implementazione.
 
-Evidenza operativa parziale del 17 ottobre 2026: sul backend v0.1.1 è stato aggiunto il file utente `home-assistant.json` con endpoint Home Assistant `/api/mcp` e autenticazione Bearer, poi il container è stato riavviato. Il client MCP del container ha completato la connessione, scoperto 18 tool e invocato `GetLiveContext` senza errore e senza modificare dispositivi. Un turno HTTP di sola lettura sulle luci è terminato con `finishReason: stop` e `turnStatus: answered`; la persona ha inoltre confermato il funzionamento del connettore sia dalla chat sia dalla voce. La prova completa con due agenti e i casi di configurazione invalida resta aperta. Credenziali e configurazione dell'utente non sono versionate.
+Evidenza operativa parziale del 17 ottobre 2026: sul backend v0.1.1 è stato aggiunto il file utente `home-assistant.ts` con endpoint Home Assistant `/api/mcp` e autenticazione Bearer, poi il container è stato riavviato. Il client MCP del container ha completato la connessione, scoperto 18 tool e invocato `GetLiveContext` senza errore e senza modificare dispositivi. Un turno HTTP di sola lettura sulle luci è terminato con `finishReason: stop` e `turnStatus: answered`; la persona ha inoltre confermato il funzionamento del connettore sia dalla chat sia dalla voce. La prova completa con due agenti e i casi di configurazione invalida resta aperta. Credenziali e configurazione dell'utente non sono versionate.
 
 #### Metadata
   * type: test-verification
@@ -200,7 +200,7 @@ La prova passa se ciascun agente usa il proprio limite, nessuna chiamata viene i
 
 ### Prova della configurazione pronta di Home Assistant
 
-Copiare `examples/agents/home-assistant.json` in una directory degli agenti di prova insieme a un orchestratore valido e caricarla con la validazione delle configurazioni degli agenti usata all'avvio. Esaminare i valori del file e cercare nei campi delle credenziali valori diversi dai segnaposto previsti.
+Copiare `examples/agents/home-assistant.ts` in una directory degli agenti di prova insieme a un orchestratore valido e caricarla con la validazione delle configurazioni degli agenti usata all'avvio. Esaminare i valori del file e cercare nei campi delle credenziali valori diversi dai segnaposto previsti.
 
 #### Details
 La prova passa se il file è accettato senza modifiche come agente specializzato `home-assistant` con connettore MCP, `mcp.url` termina con `/api/mcp`, `mcp.auth` è di tipo `bearer`, `maxToolCalls` vale 5, `llm` usa il provider `mistral` con il modello `mistral-medium-latest`, `description` e `instructions` corrispondono al contratto e le credenziali sono esattamente i segnaposto `<MISTRAL_API_KEY>` e `<HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN>`. Fallisce se il file viene rifiutato, se un campo differisce dal contratto o se contiene un valore che può essere una credenziale effettiva.
@@ -214,9 +214,9 @@ La prova passa se il file è accettato senza modifiche come agente specializzato
   * verify: [Configurazione pronta del connettore Home Assistant](../Requirements/FamilyConversation.md#configurazione-pronta-del-connettore-home-assistant)
 ---
 
-### Prova della disponibilità degli agenti dai file JSON
+### Prova della disponibilità degli agenti dai moduli TypeScript
 
-Avviare il server con `orchestrator.json` e un file specializzato valido in `/etc/ambrogio/agents`, usando agenti di prova osservabili dall'orchestratore. Aggiungere un secondo file `<id>.json` valido e riavviare; rimuovere il primo file e riavviare ancora, senza modificare altri elenchi di abilitazione.
+Avviare il server con `orchestrator.ts` e un file specializzato valido in `/etc/ambrogio/agents`, usando agenti di prova osservabili dall'orchestratore. Aggiungere un secondo file `<id>.ts` valido e riavviare; rimuovere il primo file e riavviare ancora, senza modificare altri elenchi di abilitazione.
 
 #### Details
 La prova passa se al primo avvio l'orchestratore può scegliere il primo agente, al secondo entrambi e al terzo soltanto il secondo. Fallisce se un file presente richiede registrazione altrove, se un agente rimosso resta disponibile dopo il riavvio o se un file viene associato all'identificativo sbagliato. La prova resta da eseguire dopo l'implementazione.
@@ -227,7 +227,7 @@ La prova passa se al primo avvio l'orchestratore può scegliere il primo agente,
 #### Relations
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
   * satisfiedBy: [agents.test.ts](../../apps/server/test/composition/agents.test.ts)
-  * verify: [Disponibilità degli agenti dai file JSON](../Requirements/FamilyConversation.md#disponibilità-degli-agenti-dai-file-json)
+  * verify: [Disponibilità degli agenti dai moduli TypeScript](../Requirements/FamilyConversation.md#disponibilità-degli-agenti-dai-moduli-typescript)
 ---
 
 ### Prova della selezione degli strumenti MCP
@@ -251,7 +251,7 @@ La prova passa se l'agente senza `mcp.tools` riceve tutti e quattro gli strument
 
 ### Prova delle configurazioni degli agenti con e senza MCP
 
-Caricare la directory degli agenti con un agente con `mcp` e `maxToolCalls` e un agente senza `mcp` e senza `maxToolCalls`. In tentativi separati usare un agente senza `mcp` ma con `maxToolCalls`, un agente con `mcp` senza `maxToolCalls` e una directory con il solo `orchestrator.json`; avviare inoltre il server con la directory priva di agenti specializzati.
+Caricare la directory degli agenti con un agente con `mcp` e `maxToolCalls` e un agente senza `mcp` e senza `maxToolCalls`. In tentativi separati usare un agente senza `mcp` ma con `maxToolCalls`, un agente con `mcp` senza `maxToolCalls` e una directory con il solo `orchestrator.ts`; avviare inoltre il server con la directory priva di agenti specializzati.
 
 #### Details
 La prova passa se la prima directory viene caricata con entrambi gli agenti disponibili all'orchestratore, l'agente senza MCP privo di connettore e di limite; se ciascun tentativo invalido viene rifiutato prima dell'attivazione, senza aprire connessioni MCP; e se il server senza agenti specializzati non si mette in ascolto e chiude le risorse già preparate. Fallisce se un file invalido viene accettato, se l'agente senza MCP viene rifiutato o se il server si avvia senza agenti specializzati.
@@ -265,7 +265,7 @@ La prova passa se la prima directory viene caricata con entrambi gli agenti disp
   * satisfiedBy: [agent-config.test.ts](../../apps/server/test/runtime/agent-config.test.ts)
   * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
   * verify: [Agente specializzato senza connettore MCP](../Requirements/FamilyConversation.md#agente-specializzato-senza-connettore-mcp)
-  * verify: [Disponibilità degli agenti dai file JSON](../Requirements/FamilyConversation.md#disponibilità-degli-agenti-dai-file-json)
+  * verify: [Disponibilità degli agenti dai moduli TypeScript](../Requirements/FamilyConversation.md#disponibilità-degli-agenti-dai-moduli-typescript)
 ---
 
 ### Prova delle istruzioni del server MCP
@@ -273,7 +273,7 @@ La prova passa se la prima directory viene caricata con entrambi gli agenti disp
 Con un server MCP Streamable HTTP di prova che dichiara la capacità `prompts` ed espone un prompt senza argomenti, un prompt con un argomento obbligatorio e uno strumento, preparare un agente specializzato con connettore MCP e un modello controllato che registra le istruzioni ricevute. Elaborare due turni cambiando il testo del prompt fra il primo e il secondo. Ripetere con un server che non dichiara la capacità `prompts`, con un server la cui lista dei prompt fallisce all'avvio e con un server la cui lettura del prompt fallisce durante il turno.
 
 #### Details
-La prova passa se all'avvio il backend conserva soltanto il prompt senza argomenti obbligatori; a ogni turno il modello riceve le istruzioni del file JSON, l'intestazione `Instructions and context from the connected MCP server:` e il testo corrente del prompt, prima delle indicazioni sul formato della risposta, e il secondo turno vede il testo aggiornato senza riavvio; il server senza capacità `prompts` non riceve `prompts/list` e il modello riceve soltanto le istruzioni del file JSON con le indicazioni sul formato; l'errore della lista all'avvio impedisce l'attivazione con `Agent MCP connection failed: <id>`; l'errore di lettura durante il turno termina il turno con il guasto `MCP prompt retrieval failed` senza chiamare il modello. Le letture dei prompt non contano per `maxToolCalls`. Fallisce se uno di questi esiti non si verifica.
+La prova passa se all'avvio il backend conserva soltanto il prompt senza argomenti obbligatori; a ogni turno il modello riceve le istruzioni del modulo TypeScript, l'intestazione `Instructions and context from the connected MCP server:` e il testo corrente del prompt, prima delle indicazioni sul formato della risposta, e il secondo turno vede il testo aggiornato senza riavvio; il server senza capacità `prompts` non riceve `prompts/list` e il modello riceve soltanto le istruzioni del modulo TypeScript con le indicazioni sul formato; l'errore della lista all'avvio impedisce l'attivazione con `Agent MCP connection failed: <id>`; l'errore di lettura durante il turno termina il turno con il guasto `MCP prompt retrieval failed` senza chiamare il modello. Le letture dei prompt non contano per `maxToolCalls`. Fallisce se uno di questi esiti non si verifica.
 
 #### Metadata
   * type: test-verification
@@ -818,10 +818,10 @@ Il controllo passa se lo stato persistente delle conversazioni è in SQLite e le
 
 ### Ispezione degli esempi inglesi degli agenti
 
-Esaminare tutti gli esempi distribuiti di generic.json, orchestrator.json e agenti specializzati, incluse istruzioni e descrizioni.
+Esaminare tutti gli esempi distribuiti di generic.ts, orchestrator.ts e agenti specializzati, incluse istruzioni e descrizioni.
 
 #### Details
-L'ispezione passa se i testi sono in inglese, generic.json non prescrive una lingua fissa per la risposta e l'orchestratore è descritto soltanto come selettore dell'agente. Resta da eseguire dopo l'aggiornamento degli esempi.
+L'ispezione passa se i testi sono in inglese, generic.ts non prescrive una lingua fissa per la risposta e l'orchestratore è descritto soltanto come selettore dell'agente. Resta da eseguire dopo l'aggiornamento degli esempi.
 
 #### Metadata
   * type: inspection-verification
@@ -883,7 +883,7 @@ La prova passa se, in tutti i casi, il backend prosegue l'elaborazione dopo la c
 
 ### Prova del fuso orario configurato
 
-Caricare il file JSON del componente «Conversazioni» senza `timeZone`, con `timeZone` uguale a `Europe/Rome` e, in tentativi separati, con un numero, con una stringa vuota e con `Mars/Olympus`.
+Caricare il modulo TypeScript del componente «Conversazioni» senza `timeZone`, con `timeZone` uguale a `Europe/Rome` e, in tentativi separati, con un numero, con una stringa vuota e con `Mars/Olympus`.
 
 #### Details
 La prova passa se senza il campo il fuso effettivo è `UTC`, con `Europe/Rome` è `Europe/Rome`, e ciascun valore invalido rende invalida la configurazione con il messaggio `Invalid conversation time zone`. Fallisce se un valore invalido viene accettato o se il fuso effettivo differisce da quello atteso.
@@ -986,7 +986,7 @@ La prova passa se il server chiude la trasmissione in corso con `output.end`, ap
 
 ### Prova dell'ingresso dei turni con agenti configurati
 
-Avviare il processo con i JSON HTTP, Conversazioni, orchestratore e almeno un agente specializzato validi, usando un provider e un connettore MCP controllati. Aprire una sessione su `/api/session`, inviare un turno e leggere trasmissioni, esito e storico; richiedere anche i due GET. Ripetere con un JSON agente invalido e con un connettore non disponibile prima dell'ascolto.
+Avviare il processo con i moduli TypeScript HTTP, Conversazioni, orchestratore e almeno un agente specializzato validi, usando un provider e un connettore MCP controllati. Aprire una sessione su `/api/session`, inviare un turno e leggere trasmissioni, esito e storico; richiedere anche i due GET. Ripetere con un modulo agente invalido e con un connettore non disponibile prima dell'ascolto.
 
 #### Details
 La prova passa se l'avvio valido espone il canale conversazionale e i GET, il turno usa il produttore orchestratore e produce trasmissioni, esito e storico previsti; l'avvio invalido non apre il listener e chiude le risorse già preparate. Le risposte GET conservano gli header di sicurezza, `Cache-Control: no-store` e l'identificativo di correlazione. Fallisce se il canale manca, usa un produttore diverso, espone dettagli segreti o lascia risorse aperte. Verifica definita per il protocollo `ambrogio.v1`, da eseguire.
@@ -1006,7 +1006,7 @@ La prova passa se l'avvio valido espone il canale conversazionale e i GET, il tu
 Avviare l'ingresso conversazionale con un agente il cui oggetto `llm` indica `provider: "mistral"`, modello e chiave API ma nessun URL. Provare opzioni assenti e opzioni `temperature` e `max_tokens` valide; ripetere con modello o chiave mancanti, opzione sconosciuta e valori invalidi. Con provider e stream controllati, osservare i parametri inviati e la conversione di frammenti testuali e indicazione `expectsReply` alla porta applicativa, per turni testuali e vocali. Ripetere la richiesta controllata per ciascun altro provider ammesso, `openai`, `anthropic`, `google` e `openai-compatible` con un `baseURL` d'esempio, osservando indirizzo, credenziale e corpo della richiesta.
 
 #### Details
-La prova passa se l'adapter usa il pacchetto AI SDK del provider indicato, l'endpoint predefinito del provider senza URL nel JSON e, con `openai-compatible`, l'endpoint derivato da `baseURL` con lo schema JSON della risposta in `response_format` di tipo `json_schema`; se la chiave API raggiunge soltanto quell'endpoint nell'intestazione prevista dal provider; se trasmette solo le opzioni configurate e validate e fornisce, con un unico percorso di generazione, gli stessi frammenti e la stessa indicazione strutturata della replica attesa per qualsiasi tipo di contenuto del turno tramite `ProduceConversationReply`. Configurazioni invalide impediscono l'attivazione prima delle richieste; i tipi dell'SDK non attraversano la porta Application. Fallisce se una configurazione invalida raggiunge il provider, se le opzioni assenti vengono forzate, se una richiesta raggiunge un provider diverso da quello configurato o se esistono percorsi di generazione distinti per testo e voce. La prova usa risposte controllate: non dimostra che un modello reale di ciascun provider supporti tool calling e output strutturato.
+La prova passa se l'adapter usa il pacchetto AI SDK del provider indicato, l'endpoint predefinito del provider senza URL nella configurazione e, con `openai-compatible`, l'endpoint derivato da `baseURL` con lo schema JSON della risposta in `response_format` di tipo `json_schema`; se la chiave API raggiunge soltanto quell'endpoint nell'intestazione prevista dal provider; se trasmette solo le opzioni configurate e validate e fornisce, con un unico percorso di generazione, gli stessi frammenti e la stessa indicazione strutturata della replica attesa per qualsiasi tipo di contenuto del turno tramite `ProduceConversationReply`. Configurazioni invalide impediscono l'attivazione prima delle richieste; i tipi dell'SDK non attraversano la porta Application. Fallisce se una configurazione invalida raggiunge il provider, se le opzioni assenti vengono forzate, se una richiesta raggiunge un provider diverso da quello configurato o se esistono percorsi di generazione distinti per testo e voce. La prova usa risposte controllate: non dimostra che un modello reale di ciascun provider supporti tool calling e output strutturato.
 
 #### Metadata
   * type: test-verification
@@ -1209,10 +1209,10 @@ La prova passa se la risposta `200` è JSON senza cache, conserva identità, tes
 
 ### Prova della ricerca delle configurazioni degli agenti
 
-Preparare in `/etc/ambrogio/agents` `orchestrator.json`, `memory.json` e `home-assistant.json` con valori distinguibili. Per la prova isolata usare un filesystem controllato che rappresenti lo stesso percorso visto dal processo. Osservare i file scoperti e le associazioni; verificare separatamente nomi di file con identificativo invalido, come `Home.json` e `home_assistant.json`, e l'assenza di `orchestrator.json`.
+Preparare in `/etc/ambrogio/agents` `orchestrator.ts`, `memory.ts` e `home-assistant.ts` con valori distinguibili. Per la prova isolata usare un filesystem controllato che rappresenti lo stesso percorso visto dal processo. Osservare i file scoperti e le associazioni; verificare separatamente nomi di file con identificativo invalido, come `Home.ts` e `home_assistant.ts`, e l'assenza di `orchestrator.ts`.
 
 #### Details
-La prova passa se il server cerca nel percorso previsto, riconosce `orchestrator.json` come orchestratore e ricava `memory` e `home-assistant` dai rispettivi file. Nomi che non rispettano `^[a-z][a-z0-9-]*$` non identificano agenti specializzati. Senza `orchestrator.json` l'orchestratore non viene attivato e l'avvio interessato segnala l'errore secondo il contratto di configurazione. Fallisce se un file è associato all'agente sbagliato o se un nome invalido è accettato come identificativo. La prova resta da eseguire dopo l'implementazione.
+La prova passa se il server cerca nel percorso previsto, riconosce `orchestrator.ts` come orchestratore e ricava `memory` e `home-assistant` dai rispettivi file. Nomi che non rispettano `^[a-z][a-z0-9-]*$` non identificano agenti specializzati. Senza `orchestrator.ts` l'orchestratore non viene attivato e l'avvio interessato segnala l'errore secondo il contratto di configurazione. Fallisce se un file è associato all'agente sbagliato o se un nome invalido è accettato come identificativo. La prova resta da eseguire dopo l'implementazione.
 
 #### Metadata
   * type: test-verification
@@ -1260,10 +1260,10 @@ La prova passa se la richiesta all'orchestratore non offre strumenti, dichiara c
 
 ### Prova della selezione del modello per agente
 
-Preparare due file JSON di agenti attivi, uno per l'orchestratore e uno per un agente specializzato, con oggetti `llm` distinguibili, provider diversi e i campi `provider`, `model`, `apiKey` e `options`; ripetere con un agente `openai-compatible` che indica `baseURL`. Avviare il processo con adapter di prova e osservare i valori consegnati a ciascuno; ripetere con `llm` mancante, con uno dei suoi campi richiesti invalido, con un `provider` non ammesso, con `openai-compatible` senza `baseURL` o con un `baseURL` che non è un URL HTTP o HTTPS assoluto, con `baseURL` per un altro provider e con opzioni specifiche non valide.
+Preparare due modulo TypeScript di agenti attivi, uno per l'orchestratore e uno per un agente specializzato, con oggetti `llm` distinguibili, provider diversi e i campi `provider`, `model`, `apiKey` e `options`; ripetere con un agente `openai-compatible` che indica `baseURL`. Avviare il processo con adapter di prova e osservare i valori consegnati a ciascuno; ripetere con `llm` mancante, con uno dei suoi campi richiesti invalido, con un `provider` non ammesso, con `openai-compatible` senza `baseURL` o con un `baseURL` che non è un URL HTTP o HTTPS assoluto, con `baseURL` per un altro provider e con opzioni specifiche non valide.
 
 #### Details
-La prova passa se ciascun agente usa soltanto provider, modello, chiave, `baseURL` quando previsto e opzioni validate del proprio oggetto `llm`, ogni valore ammesso di `provider` viene accettato e il processo non attiva un agente con configurazione necessaria mancante o invalida. Fallisce se i valori si mescolano tra agenti, provengono da variabili d'ambiente, se un provider non ammesso o un `baseURL` mancante, invalido o superfluo vengono accettati o se una configurazione invalida raggiunge l'adapter.
+La prova passa se ciascun agente usa soltanto provider, modello, chiave, `baseURL` quando previsto e opzioni validate del proprio oggetto `llm`, ogni valore ammesso di `provider` viene accettato e il processo non attiva un agente con configurazione necessaria mancante o invalida. I moduli possono leggere le variabili d'ambiente. Fallisce se i valori si mescolano tra agenti, se un provider non ammesso o un `baseURL` mancante, invalido o superfluo vengono accettati o se una configurazione invalida raggiunge l'adapter.
 
 #### Metadata
   * type: test-verification
@@ -1277,7 +1277,7 @@ La prova passa se ciascun agente usa soltanto provider, modello, chiave, `baseUR
 
 ### Prova delle istruzioni per agente
 
-Preparare due file JSON locali dell'utente con istruzioni riconoscibili e diverse, uno per l'orchestratore e uno per un agente specializzato. Attivare entrambi con modelli di prova e osservare le istruzioni consegnate a ciascuno durante un turno delegato; modificare poi le istruzioni di uno solo dei file e ripetere.
+Preparare due moduli TypeScript locali dell'utente con istruzioni riconoscibili e diverse, uno per l'orchestratore e uno per un agente specializzato. Attivare entrambi con modelli di prova e osservare le istruzioni consegnate a ciascuno durante un turno delegato; modificare poi le istruzioni di uno solo dei file e ripetere.
 
 #### Details
 La prova passa se ogni modello riceve le istruzioni del proprio file e la modifica di un file cambia soltanto le istruzioni dell'agente corrispondente. Fallisce se le istruzioni sono scambiate, condivise tra agenti o ignorate. La prova resta da eseguire dopo l'implementazione.
@@ -1288,7 +1288,7 @@ La prova passa se ogni modello riceve le istruzioni del proprio file e la modifi
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * verify: [Istruzioni dell'agente nel JSON dell'utente](../Requirements/FamilyConversation.md#istruzioni-dellagente-nel-json-dellutente)
+  * verify: [Istruzioni dell'agente nel modulo TypeScript dell'utente](../Requirements/FamilyConversation.md#istruzioni-dellagente-nel-modulo-typescript-dellutente)
 ---
 
 ### Verifica della risorsa SQLite conversazionale
@@ -1539,10 +1539,10 @@ La prova passa se i due GET rispondono secondo i contratti esistenti usando l'ar
 
 ### Prova della configurazione della paginazione
 
-Preparare file JSON del componente «Conversazioni» con i due campi assenti, poi con `listPageSize` e `maxListPageSize` espliciti e diversi dai valori predefiniti. Indicare il percorso del file con `AMBROGIO_CONVERSATIONS_CONFIG_PATH` e leggere l'elenco attraverso i valori caricati, verificando il numero di voci e il limite applicato dall'archivio. Ripetere con variabile o file mancante, JSON invalido, valori non interi o non positivi e dimensione della pagina superiore al massimo.
+Preparare modulo TypeScript del componente «Conversazioni» con i due campi assenti, poi con `listPageSize` e `maxListPageSize` espliciti e diversi dai valori predefiniti. Indicare il percorso del file con `AMBROGIO_CONVERSATIONS_CONFIG_PATH` e leggere l'elenco attraverso i valori caricati, verificando il numero di voci e il limite applicato dall'archivio. Ripetere con variabile o file mancante, modulo TypeScript non importabile, valori non interi o non positivi e dimensione della pagina superiore al massimo.
 
 #### Details
-La prova passa se la variabile d'ambiente seleziona solo il percorso, i campi assenti danno 20 e 100, i valori espliciti validi sono usati dal caso d'uso e dall'adapter, e ogni percorso, file o combinazione invalida impedisce la preparazione dell'ingresso prima di accettare richieste. Fallisce se una variabile d'ambiente sostituisce un valore del JSON, se un valore invalido viene corretto in silenzio, se il massimo resta fissato a 100 quando la configurazione ne sceglie un altro o se il caso d'uso legge il file direttamente.
+La prova passa se la variabile d'ambiente seleziona il percorso del modulo e il modulo può leggere valori dall'ambiente, i campi assenti danno 20 e 100, i valori espliciti validi sono usati dal caso d'uso e dall'adapter, e ogni percorso, file o combinazione invalida impedisce la preparazione dell'ingresso prima di accettare richieste. Fallisce se un valore d'ambiente non validato viene usato direttamente, se un valore invalido viene corretto in silenzio, se il massimo resta fissato a 100 quando la configurazione ne sceglie un altro o se il caso d'uso legge il file direttamente.
 
 #### Metadata
   * type: test-verification

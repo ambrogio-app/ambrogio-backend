@@ -1,3 +1,4 @@
+import { writeConfigFile } from '../support/config-fixture.js';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -10,7 +11,7 @@ afterEach(async () => { await Promise.all(directories.splice(0).map((path) => rm
 async function directory(): Promise<string> {
   const path = await mkdtemp(join(tmpdir(), 'ambrogio-agents-'));
   directories.push(path);
-  await writeFile(join(path, 'orchestrator.json'), JSON.stringify({
+  await writeConfigFile(join(path, 'orchestrator.ts'), JSON.stringify({
     instructions: 'Coordinate.', llm: { provider: 'mistral', model: 'mistral-small-latest', apiKey: 'key-1' },
   }));
   return path;
@@ -22,11 +23,11 @@ test('discovers each agent and accepts distinct Bearer, OAuth, and unauthenticat
     instructions: 'Use tools.', llm: {
     provider: 'mistral', model: 'mistral-small-latest', apiKey: 'key-2',
   } };
-  await writeFile(join(path, 'home.json'), JSON.stringify({ ...base,
+  await writeConfigFile(join(path, 'home.ts'), JSON.stringify({ ...base,
     mcp: { url: 'https://home.example/mcp', auth: { type: 'bearer', token: 'home-token' } } }));
-  await writeFile(join(path, 'memory.json'), JSON.stringify({ ...base,
+  await writeConfigFile(join(path, 'memory.ts'), JSON.stringify({ ...base,
     mcp: { url: 'http://memory.example/mcp' } }));
-  await writeFile(join(path, 'search.json'), JSON.stringify({ ...base,
+  await writeConfigFile(join(path, 'search.ts'), JSON.stringify({ ...base,
     mcp: { url: 'https://search.example/mcp', auth: { type: 'oauth_client_credentials',
       clientId: 'ambrogio', clientSecret: 'search-secret', issuer: 'https://auth.example', scope: 'read' } } }));
   const loaded = await loadAgentConfigs(path);
@@ -65,7 +66,7 @@ test.each([
   { url: 'https://example/mcp', tools: ['geocoding', 'geocoding'] },
 ])('rejects invalid MCP configuration before activation: %j', async (mcp) => {
   const path = await directory();
-  await writeFile(join(path, 'specialist.json'), JSON.stringify({
+  await writeConfigFile(join(path, 'specialist.ts'), JSON.stringify({
     description: 'Specialist.', maxToolCalls: 3, instructions: 'Use tools.',
     llm: { provider: 'mistral', model: 'model', apiKey: 'key' }, mcp,
   }));
@@ -77,8 +78,8 @@ test('keeps the listed MCP tools and leaves them unset when the list is absent',
   const path = await directory();
   const base = { description: 'Weather.', maxToolCalls: 3, instructions: 'Use tools.',
     llm: { provider: 'mistral', model: 'model', apiKey: 'key' } };
-  await writeFile(join(path, 'all.json'), JSON.stringify({ ...base, mcp: { url: 'https://all.example/mcp' } }));
-  await writeFile(join(path, 'some.json'), JSON.stringify({ ...base,
+  await writeConfigFile(join(path, 'all.ts'), JSON.stringify({ ...base, mcp: { url: 'https://all.example/mcp' } }));
+  await writeConfigFile(join(path, 'some.ts'), JSON.stringify({ ...base,
     mcp: { url: 'https://some.example/mcp', tools: ['weather_forecast', 'geocoding'] } }));
   const loaded = await loadAgentConfigs(path);
   expect(loaded.specialists[0]?.mcp?.tools).toBeUndefined();
@@ -87,7 +88,7 @@ test('keeps the listed MCP tools and leaves them unset when the list is absent',
 
 test.each([undefined, '', 42])('rejects invalid specialist description: %j', async (description) => {
   const path = await directory();
-  await writeFile(join(path, 'specialist.json'), JSON.stringify({
+  await writeConfigFile(join(path, 'specialist.ts'), JSON.stringify({
     description, maxToolCalls: 3, instructions: 'Use tools.',
     llm: { provider: 'mistral', model: 'model', apiKey: 'key' },
     mcp: { url: 'https://example.com/mcp' },
@@ -98,7 +99,7 @@ test.each([undefined, '', 42])('rejects invalid specialist description: %j', asy
 test.each([undefined, 0, -1, 1.5, '3', Number.MAX_SAFE_INTEGER + 1])(
   'rejects invalid specialist tool call limit: %j', async (maxToolCalls) => {
     const path = await directory();
-    await writeFile(join(path, 'specialist.json'), JSON.stringify({
+    await writeConfigFile(join(path, 'specialist.ts'), JSON.stringify({
       description: 'Specialist.', maxToolCalls, instructions: 'Use tools.',
       llm: { provider: 'mistral', model: 'model', apiKey: 'key' },
       mcp: { url: 'https://example.com/mcp' },
@@ -111,9 +112,9 @@ test.each([undefined, 0, -1, 1.5, '3', Number.MAX_SAFE_INTEGER + 1])(
 test('accepts an agent without MCP and without a tool call limit next to an MCP agent', async () => {
   const path = await directory();
   const llm = { provider: 'mistral', model: 'mistral-medium-latest', apiKey: 'key-3' };
-  await writeFile(join(path, 'generic.json'), JSON.stringify({
+  await writeConfigFile(join(path, 'generic.ts'), JSON.stringify({
     description: 'Answers general questions.', instructions: 'Answer from knowledge.', llm }));
-  await writeFile(join(path, 'home.json'), JSON.stringify({
+  await writeConfigFile(join(path, 'home.ts'), JSON.stringify({
     description: 'Controls the home.', maxToolCalls: 2, instructions: 'Use tools.', llm,
     mcp: { url: 'https://home.example/mcp' } }));
   const loaded = await loadAgentConfigs(path);
@@ -127,7 +128,7 @@ test('accepts an agent without MCP and without a tool call limit next to an MCP 
 // Verification: Prova delle configurazioni degli agenti con e senza MCP
 test('rejects a tool call limit on an agent without MCP', async () => {
   const path = await directory();
-  await writeFile(join(path, 'generic.json'), JSON.stringify({
+  await writeConfigFile(join(path, 'generic.ts'), JSON.stringify({
     description: 'Answers general questions.', maxToolCalls: 3, instructions: 'Answer.',
     llm: { provider: 'mistral', model: 'model', apiKey: 'key' } }));
   await expect(loadAgentConfigs(path)).rejects.toThrow('Invalid agent configuration: generic');
@@ -144,7 +145,7 @@ test('accepts every supported provider and keeps each agent on its own llm', asy
       baseURL: 'http://models.example:8080/v1' },
   };
   for (const [id, llm] of Object.entries(providers)) {
-    await writeFile(join(path, `${id}.json`), JSON.stringify({
+    await writeConfigFile(join(path, `${id}.ts`), JSON.stringify({
       description: `${id} agent.`, instructions: 'Answer.', llm }));
   }
   const loaded = await loadAgentConfigs(path);
@@ -163,7 +164,7 @@ test.each([
   { provider: 'mistral', model: 'model', apiKey: 'key', baseURL: 'https://models.example/v1' },
 ])('rejects an unsupported provider or a misplaced endpoint: %j', async (llm) => {
   const path = await directory();
-  await writeFile(join(path, 'specialist.json'), JSON.stringify({
+  await writeConfigFile(join(path, 'specialist.ts'), JSON.stringify({
     description: 'Specialist.', instructions: 'Answer.', llm }));
   await expect(loadAgentConfigs(path)).rejects.toThrow('Invalid agent configuration: specialist');
 });

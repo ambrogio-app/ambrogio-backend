@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startConversationServer } from '../apps/server/dist/runtime/conversation-server.js';
 
+const writeConfig = (filename, value) => writeFile(filename, `export default ${JSON.stringify(value)};\n`);
+
 const directory = await mkdtemp(join(tmpdir(), 'ambrogio-server-startup-'));
 try {
   const probe = createServer();
@@ -15,21 +17,21 @@ try {
   if (!address || typeof address === 'string') throw new Error('No available port');
   await new Promise(resolve => probe.close(resolve));
 
-  const http = join(directory, 'http.json');
-  const conversations = join(directory, 'conversations.json');
+  const http = join(directory, 'http.ts');
+  const conversations = join(directory, 'conversations.ts');
   const agents = join(directory, 'agents');
   await mkdir(agents);
-  await writeFile(http, JSON.stringify({ host: '127.0.0.1', port: address.port }));
-  await writeFile(conversations, JSON.stringify({ archivePath: join(directory, 'archive.sqlite') }));
-  await writeFile(join(agents, 'orchestrator.json'), JSON.stringify({
+  await writeConfig(http, { host: '127.0.0.1', port: address.port });
+  await writeConfig(conversations, { archivePath: join(directory, 'archive.sqlite') });
+  await writeConfig(join(agents, 'orchestrator.ts'), {
     instructions: 'Choose the agent.',
     llm: { provider: 'mistral', model: 'mistral-medium-latest', apiKey: 'startup-test-key' },
-  }));
+  });
   // The orchestrator only chooses: at least one agent, here one without MCP, must answer.
-  await writeFile(join(agents, 'generic.json'), JSON.stringify({
+  await writeConfig(join(agents, 'generic.ts'), {
     description: 'Answers general questions.', instructions: 'Answer briefly.',
     llm: { provider: 'mistral', model: 'mistral-medium-latest', apiKey: 'startup-test-key' },
-  }));
+  });
 
   const runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: http,
     AMBROGIO_CONVERSATIONS_CONFIG_PATH: conversations }, agents);

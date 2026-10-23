@@ -1,3 +1,4 @@
+import { writeConfigFile } from '../support/config-fixture.js';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createServer as createHttpServer } from 'node:http';
 import { createServer, type AddressInfo } from 'node:net';
@@ -37,8 +38,8 @@ function expectation(expectsReply = false): ReplyPart { return { kind: 'reply_ex
 async function fixture() {
   const directory = await mkdtemp(join(tmpdir(), 'ambrogio-conversation-server-'));
   directories.push(directory);
-  return { directory, http: join(directory, 'http.json'),
-    conversations: join(directory, 'conversations.json'), archive: join(directory, 'archive.sqlite') };
+  return { directory, http: join(directory, 'http.ts'),
+    conversations: join(directory, 'conversations.ts'), archive: join(directory, 'archive.sqlite') };
 }
 
 async function freePort(): Promise<number> {
@@ -173,8 +174,8 @@ test('the session ingress uses the orchestrator and GET routes retain security, 
 test('shutdown interrupts a pending turn without waiting for the remote reply', async () => {
   const files = await fixture();
   const port = await freePort();
-  await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
+  await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
+  await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
   let started!: () => void;
   const producing = new Promise<void>((resolve) => { started = resolve; });
   let release!: () => void;
@@ -245,8 +246,8 @@ test('shutdown interrupts a pending turn without waiting for the remote reply', 
 test('shutdown preserves a turn already completed before interruption', async () => {
   const files = await fixture();
   const port = await freePort();
-  await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
+  await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
+  await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
   const runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
     AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory,
   async () => ({ orchestrator: { async *produce() { yield text('completed answer'); yield expectation(); } },
@@ -269,8 +270,8 @@ test('shutdown preserves a turn already completed before interruption', async ()
 test('keeps SQLite writable while waiting for an agent and while streaming the reply', async () => {
   const files = await fixture();
   const port = await freePort();
-  await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
+  await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
+  await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
   const agentGate = gate();
   const streamGate = gate();
   let agentStarted!: () => void;
@@ -320,8 +321,8 @@ test('keeps SQLite writable while waiting for an agent and while streaming the r
 test('restores completed history after restart and uses it for textual continuation', async () => {
   const files = await fixture();
   const port = await freePort();
-  await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
+  await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
+  await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
   const environment = { AMBROGIO_HTTP_CONFIG_PATH: files.http,
     AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations };
   const seen: Array<Array<{ text: string; status: string; answer?: string; error?: string }>> = [];
@@ -421,8 +422,8 @@ test('restores completed history after restart and uses it for textual continuat
 test('processes separate conversations in parallel and rejects a second turn in the same conversation', async () => {
   const files = await fixture();
   const port = await freePort();
-  await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
+  await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
+  await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
   const origin = `http://127.0.0.1:${port}`;
   const firstGate = gate();
   const secondGate = gate();
@@ -489,8 +490,8 @@ test.each(['answered', 'failed'] as const)(
   'persists a %s turn after its session client disconnects', async (outcome) => {
     const files = await fixture();
     const port = await freePort();
-    await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-    await writeFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
+    await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
+    await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
     const origin = `http://127.0.0.1:${port}`;
     const continuation = gate();
     const runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
@@ -646,9 +647,9 @@ test('does not confirm success when the answer transaction cannot commit', async
 test('invalid agent files prevent the conversation listener from starting', async () => {
   const files = await fixture();
   const port = await freePort();
-  await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
-  await writeFile(join(files.directory, 'orchestrator.json'), '{');
+  await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
+  await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
+  await writeConfigFile(join(files.directory, 'orchestrator.ts'), '{');
   await expect(startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
     AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory))
     .rejects.toThrow('Invalid agent configuration: orchestrator');
@@ -663,8 +664,8 @@ test('invalid agent files prevent the conversation listener from starting', asyn
 test('migrates an existing archive before listening and preserves its history', async () => {
   const files = await fixture();
   const port = await freePort();
-  await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
+  await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
+  await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
   const priorConversationId = 'dc89cb5e-e695-43cc-8a04-917316771ea4';
   const priorTurnId = '79e437a8-c11a-48ba-b476-e4fd4712ea58';
   const archive = await openConversationArchive(files.archive, new Date());
@@ -704,8 +705,8 @@ test('migrates an existing archive before listening and preserves its history', 
 test('a failed archive migration prevents the conversation listener', async () => {
   const files = await fixture();
   const port = await freePort();
-  await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
+  await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
+  await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
   await downgradeArchiveToInitial(files.archive);
   const sqlite = new DatabaseSync(files.archive);
   sqlite.exec('alter table turns add column ordinal integer');
@@ -753,13 +754,13 @@ test('a session turn delegates to a configured MCP tool and persists the answer'
   await new Promise<void>((resolve) => mcpServer.listen(0, '127.0.0.1', resolve));
   const address = mcpServer.address();
   if (!address || typeof address === 'string') throw new Error('No MCP port');
-  await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
+  await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
+  await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
   const llm = { provider: 'mistral', model: 'controlled-model', apiKey: 'fake-key' };
-  await writeFile(join(agentDirectory, 'orchestrator.json'), JSON.stringify({
+  await writeConfigFile(join(agentDirectory, 'orchestrator.ts'), JSON.stringify({
     instructions: 'Delegate fact lookups.', llm,
   }));
-  await writeFile(join(agentDirectory, 'facts.json'), JSON.stringify({
+  await writeConfigFile(join(agentDirectory, 'facts.ts'), JSON.stringify({
     instructions: 'Use lookup.', description: 'Find facts.', maxToolCalls: 1, llm,
     mcp: { url: `http://127.0.0.1:${address.port}/mcp` },
   }));
@@ -851,7 +852,7 @@ test('a session turn delegates to a configured MCP tool and persists the answer'
     await client.close();
     await runtime.close();
     runtime = undefined;
-    await writeFile(join(agentDirectory, 'facts.json'), JSON.stringify({
+    await writeConfigFile(join(agentDirectory, 'facts.ts'), JSON.stringify({
       instructions: 'Use the updated lookup.', description: 'Find facts.', maxToolCalls: 1, llm,
       mcp: { url: `http://127.0.0.1:${address.port}/mcp` },
     }));
@@ -881,13 +882,13 @@ test('unavailable configured MCP connector prevents the conversation listener', 
   await mkdir(agentDirectory);
   const port = await freePort();
   const unavailablePort = await freePort();
-  await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
+  await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
+  await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
   const llm = { provider: 'mistral', model: 'controlled-model', apiKey: 'fake-key' };
-  await writeFile(join(agentDirectory, 'orchestrator.json'), JSON.stringify({
+  await writeConfigFile(join(agentDirectory, 'orchestrator.ts'), JSON.stringify({
     instructions: 'Delegate.', llm,
   }));
-  await writeFile(join(agentDirectory, 'facts.json'), JSON.stringify({
+  await writeConfigFile(join(agentDirectory, 'facts.ts'), JSON.stringify({
     instructions: 'Use lookup.', description: 'Find facts.', maxToolCalls: 1, llm,
     mcp: { url: `http://127.0.0.1:${unavailablePort}/mcp` },
   }));
@@ -908,9 +909,9 @@ test('a directory without specialist agents prevents the conversation listener',
   const agentDirectory = join(files.directory, 'agents');
   await mkdir(agentDirectory);
   const port = await freePort();
-  await writeFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
-  await writeFile(join(agentDirectory, 'orchestrator.json'), JSON.stringify({
+  await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
+  await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
+  await writeConfigFile(join(agentDirectory, 'orchestrator.ts'), JSON.stringify({
     instructions: 'Choose.', llm: { provider: 'mistral', model: 'controlled-model', apiKey: 'fake-key' },
   }));
   await expect(startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,

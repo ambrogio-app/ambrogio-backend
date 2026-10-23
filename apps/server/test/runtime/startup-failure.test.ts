@@ -1,3 +1,4 @@
+import { writeConfigFile } from '../support/config-fixture.js';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createServer, type AddressInfo, type Server } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -47,13 +48,13 @@ async function installation(options: Readonly<{ port?: number; archive?: string;
   directories.push(directory);
   const agents = join(directory, 'agents');
   await mkdir(agents);
-  const http = join(directory, 'http.json');
-  const conversations = join(directory, 'conversations.json');
-  await writeFile(http, JSON.stringify({ host: '127.0.0.1', port: options.port ?? await freePort() }));
-  await writeFile(conversations, JSON.stringify({ archivePath: options.archive ?? join(directory, 'archive.sqlite') }));
-  await writeFile(join(agents, 'orchestrator.json'), JSON.stringify({ instructions: 'Choose.', llm }));
+  const http = join(directory, 'http.ts');
+  const conversations = join(directory, 'conversations.ts');
+  await writeConfigFile(http, JSON.stringify({ host: '127.0.0.1', port: options.port ?? await freePort() }));
+  await writeConfigFile(conversations, JSON.stringify({ archivePath: options.archive ?? join(directory, 'archive.sqlite') }));
+  await writeConfigFile(join(agents, 'orchestrator.ts'), JSON.stringify({ instructions: 'Choose.', llm }));
   if (options.specialist !== null) {
-    await writeFile(join(agents, 'facts.json'), JSON.stringify(options.specialist
+    await writeConfigFile(join(agents, 'facts.ts'), JSON.stringify(options.specialist
       ?? { description: 'Answers questions.', instructions: 'Answer.', llm }));
   }
   return { directory, agents, environment: { AMBROGIO_HTTP_CONFIG_PATH: http,
@@ -104,8 +105,8 @@ test('names a missing component configuration path', async () => {
 
 test('names an invalid voice configuration file', async () => {
   const { directory, agents, environment } = await installation();
-  const voice = join(directory, 'voice.json');
-  await writeFile(voice, JSON.stringify({ voskModelPath: secret }));
+  const voice = join(directory, 'voice.ts');
+  await writeConfigFile(voice, JSON.stringify({ voskModelPath: secret }));
   expectReported(await startupError({ ...environment, AMBROGIO_VOICE_CONFIG_PATH: voice }, agents),
     'Invalid voice configuration file');
 });

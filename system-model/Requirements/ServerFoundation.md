@@ -111,15 +111,17 @@ Le varianti di rifiuto previsto di Domain, Application e delle porte del server 
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
-### Caricamento iniziale dei JSON di configurazione
+### Caricamento iniziale delle configurazioni TypeScript
 
-Quando un processo del server avvia un ingresso, deve leggere una volta all'avvio i file JSON locali dei componenti necessari a quell'ingresso, prima di attivarli, senza sostituire i valori di configurazione dei file con variabili d'ambiente.
+Quando un processo del server avvia un ingresso, deve caricare una volta i moduli TypeScript locali dei componenti necessari prima di attivarli. I moduli devono poter leggere i valori dalle variabili d'ambiente fornite dal deployment.
 
 #### Metadata
   * type: requirement
 
 #### Relations
   * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
+  * satisfiedBy: [http-config.ts](../../apps/server/src/runtime/http-config.ts)
+  * satisfiedBy: [conversation-config.ts](../../packages/conversations/src/adapters/out/conversation-config.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -152,7 +154,7 @@ La compilazione TypeScript del server deve avere l'opzione effettiva `strict` ab
 
 ### Configurazione esplicita dell'ascolto HTTP
 
-Quando il processo avvia l'ingresso HTTP, deve usare un indirizzo host e una porta dichiarati esplicitamente nel JSON locale del componente HTTP e impedire l'avvio se tali valori sono assenti o invalidi.
+Quando il processo avvia l'ingresso HTTP, deve usare un indirizzo host e una porta dichiarati esplicitamente nel configurazione locale del componente HTTP e impedire l'avvio se tali valori sono assenti o invalidi.
 
 #### Metadata
   * type: requirement
@@ -210,9 +212,9 @@ Quando l'MVP è installato senza autenticazione applicativa, il deployment deve 
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
-### Credenziali API nel JSON del componente
+### Credenziali API nel modulo TypeScript del componente
 
-Quando un componente del server usa credenziali per un'API esterna, deve leggere tali credenziali dal proprio file JSON di configurazione locale effettivo.
+Quando un componente del server usa credenziali per un'API esterna, deve riceverle dal proprio modulo TypeScript di configurazione, che può leggerle dall'ambiente del processo.
 
 #### Metadata
   * type: requirement
@@ -309,13 +311,13 @@ Quando il progetto distribuisce il server, deve fornire un'immagine Docker esegu
 
 ### Distribuzione mirata della configurazione validata
 
-Quando il processo ha validato i JSON dei componenti attivi, la composition root deve fornire a ciascun componente soltanto i valori di configurazione che gli servono, già convertiti nei tipi previsti, senza far leggere direttamente file o variabili d'ambiente a Domain e ai casi d'uso Application.
+Quando il processo ha validato le configurazioni TypeScript dei componenti attivi, la composition root deve fornire a ciascun componente soltanto i valori di configurazione che gli servono, già convertiti nei tipi previsti, senza far leggere direttamente file o variabili d'ambiente a Domain e ai casi d'uso Application.
 
 #### Metadata
   * type: requirement
 
 #### Contract References
-  * [Profilo di bootstrap dei JSON dei componenti](../Contracts/ServerFoundation.md#profilo-di-bootstrap-dei-json-dei-componenti)
+  * [Profilo di bootstrap delle configurazioni TypeScript](../Contracts/ServerFoundation.md#profilo-di-bootstrap-delle-configurazioni-typescript)
 
 #### Relations
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
@@ -398,27 +400,29 @@ Quando un installatore avvia l'immagine Docker del server, deve poterlo fare sen
 
 ### Esempi di configurazione privi di credenziali
 
-Quando il repository fornisce esempi di file di configurazione JSON, tali esempi non devono contenere credenziali effettive.
+Quando il repository fornisce esempi di file di configurazione TypeScript, tali esempi non devono contenere credenziali effettive.
 
 #### Metadata
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [home-assistant.json](../../examples/agents/home-assistant.json)
+  * satisfiedBy: [home-assistant.ts](../../examples/agents/home-assistant.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
-### File JSON separato per componente configurabile
+### File TypeScript separato per componente configurabile
 
-Quando un componente del server richiede configurazione locale, la sua configurazione deve risiedere in un file JSON dedicato, separato dai file di configurazione degli altri componenti.
+Quando un componente del server richiede configurazione locale, la sua configurazione deve risiedere in un modulo TypeScript dedicato, separato dai moduli degli altri componenti.
 
 #### Metadata
   * type: requirement
 
 #### Contract References
-  * [Profilo di bootstrap dei JSON dei componenti](../Contracts/ServerFoundation.md#profilo-di-bootstrap-dei-json-dei-componenti)
+  * [Profilo di bootstrap delle configurazioni TypeScript](../Contracts/ServerFoundation.md#profilo-di-bootstrap-delle-configurazioni-typescript)
 
 #### Relations
+  * satisfiedBy: [conversations.ts](../../examples/conversations.ts)
+  * satisfiedBy: [http.ts](../../examples/http.ts)
   * specify: [Assistenza personale domestica](../Capabilities/FamilyAssistance.md#assistenza-personale-domestica)
 ---
 
@@ -915,13 +919,13 @@ Quando il server HTTP emette un evento diagnostico tecnico, deve usare Pino come
 
 ### Validazione preventiva della configurazione attiva
 
-Quando un processo del server prepara un ingresso, deve verificare presenza, formato e valori richiesti dei JSON dei componenti effettivamente attivi prima di creare o attivare le risorse che li usano; una configurazione non valida deve impedire l'attivazione dell'ingresso e produrre un errore sicuro al confine di avvio.
+Quando un processo del server prepara un ingresso, deve verificare presenza, formato e valori richiesti dei moduli TypeScript dei componenti effettivamente attivi prima di creare o attivare le risorse che li usano; una configurazione non valida deve impedire l'attivazione dell'ingresso e produrre un errore sicuro al confine di avvio.
 
 #### Metadata
   * type: requirement
 
 #### Contract References
-  * [Profilo di bootstrap dei JSON dei componenti](../Contracts/ServerFoundation.md#profilo-di-bootstrap-dei-json-dei-componenti)
+  * [Profilo di bootstrap delle configurazioni TypeScript](../Contracts/ServerFoundation.md#profilo-di-bootstrap-delle-configurazioni-typescript)
 
 #### Relations
   * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)

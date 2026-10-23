@@ -1,3 +1,4 @@
+import { writeConfigFile } from '../../support/config-fixture.js';
 import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -9,8 +10,8 @@ const directories: string[] = [];
 async function configFile(contents: string): Promise<string> {
   const directory = await mkdtemp(join(tmpdir(), 'ambrogio-conversation-config-'));
   directories.push(directory);
-  const filename = join(directory, 'conversations.json');
-  await writeFile(filename, contents);
+  const filename = join(directory, 'conversations.ts');
+  await writeConfigFile(filename, contents);
   return filename;
 }
 
@@ -18,7 +19,7 @@ afterEach(async () => {
   await Promise.all(directories.splice(0).map(directory => rm(directory, { recursive: true, force: true })));
 });
 
-describe('conversation JSON configuration', () => {
+describe('conversation TypeScript configuration', () => {
   it('uses defaults for absent fields and accepts explicit page limits', async () => {
     expect(await loadConversationConfig(await configFile('{}'))).toEqual({
       listPageSize: 20, maxListPageSize: 100, language: 'en', timeZone: 'UTC',
@@ -56,8 +57,8 @@ describe('conversation JSON configuration', () => {
     }
   });
 
-  it('rejects missing files, malformed JSON and invalid limits before use', async () => {
-    await expect(loadConversationConfig('/missing/conversations.json')).rejects.toThrow();
+  it('rejects missing files, malformed TypeScript and invalid limits before use', async () => {
+    await expect(loadConversationConfig('/missing/conversations.ts')).rejects.toThrow();
     for (const contents of [
       '{', 'null', '[]', '{"listPageSize": 0}', '{"maxListPageSize": -1}',
       '{"listPageSize": 1.5}', '{"maxListPageSize": "100"}',

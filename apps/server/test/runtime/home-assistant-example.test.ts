@@ -1,19 +1,26 @@
+import { writeConfigFile } from '../support/config-fixture.js';
 import { copyFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, expect, test } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 import { loadAgentConfigs } from '../../src/runtime/agent-config.js';
 
-const example = new URL('../../../../examples/agents/home-assistant.json', import.meta.url);
+const example = new URL('../../../../examples/agents/home-assistant.ts', import.meta.url);
 const directories: string[] = [];
-afterEach(async () => { await Promise.all(directories.splice(0).map((path) => rm(path, { recursive: true, force: true }))); });
+afterEach(async () => {
+  vi.unstubAllEnvs();
+  await Promise.all(directories.splice(0).map((path) => rm(path, { recursive: true, force: true })));
+});
 
 test('the ready Home Assistant agent is accepted unchanged by the agent loader', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'ambrogio-home-assistant-'));
   directories.push(directory);
-  await writeFile(join(directory, 'orchestrator.json'), JSON.stringify({ instructions: 'Choose.',
+  await writeConfigFile(join(directory, 'orchestrator.ts'), JSON.stringify({ instructions: 'Choose.',
     llm: { provider: 'mistral', model: 'mistral-medium-latest', apiKey: '<MISTRAL_API_KEY>' } }));
-  await copyFile(example, join(directory, 'home-assistant.json'));
+  await copyFile(example, join(directory, 'home-assistant.ts'));
+  vi.stubEnv('MISTRAL_API_KEY', '<MISTRAL_API_KEY>');
+  vi.stubEnv('HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN', '<HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN>');
+  vi.stubEnv('AMBROGIO_HOME_ASSISTANT_MCP_URL', 'https://home-assistant.example.test/api/mcp');
 
   const { specialists } = await loadAgentConfigs(directory);
   expect(specialists).toHaveLength(1);
@@ -35,11 +42,7 @@ test('the ready Home Assistant agent is accepted unchanged by the agent loader',
 
 test('the ready Home Assistant agent contains only placeholder credentials', async () => {
   const raw = await readFile(example, 'utf8');
-  const file = JSON.parse(raw) as { llm: { apiKey: string }; mcp: { auth: { token: string } } };
-  expect(file.llm.apiKey).toBe('<MISTRAL_API_KEY>');
-  expect(file.mcp.auth.token).toBe('<HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN>');
-  // Home Assistant tokens are JWTs; apart from the placeholders no long opaque value may appear.
-  const rest = raw.replaceAll('<MISTRAL_API_KEY>', '').replaceAll('<HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN>', '');
-  expect(rest).not.toMatch(/eyJ[A-Za-z0-9_-]{10,}/);
-  expect(rest).not.toMatch(/[A-Za-z0-9_-]{24,}/);
+  expect(raw).toContain('process.env.MISTRAL_API_KEY');
+  expect(raw).toContain('process.env.HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN');
+  expect(raw).not.toMatch(/eyJ[A-Za-z0-9_-]{10,}/);
 });

@@ -42,7 +42,7 @@ Una sessione conversazionale attraversa gli stati `aperta`, dopo l'upgrade accet
 
 ### Controllo dell'origine all'apertura della sessione
 
-L'upgrade WebSocket del canale conversazionale applica l'elenco di origini autorizzate del JSON locale del componente HTTP. Una richiesta senza header `Origin`, tipica dei client non browser, è accettata. Una richiesta con `Origin` è accettata soltanto se il valore corrisponde esattamente a un'origine dell'elenco; altrimenti il server rifiuta l'upgrade con HTTP 403 prima di creare la sessione. Con elenco vuoto o assente nessuna origine dichiarata è accettata. Il controllo non sostituisce le restrizioni di rete e reverse proxy previste per l'installazione.
+L'upgrade WebSocket del canale conversazionale applica l'elenco di origini autorizzate del configurazione locale del componente HTTP. Una richiesta senza header `Origin`, tipica dei client non browser, è accettata. Una richiesta con `Origin` è accettata soltanto se il valore corrisponde esattamente a un'origine dell'elenco; altrimenti il server rifiuta l'upgrade con HTTP 403 prima di creare la sessione. Con elenco vuoto o assente nessuna origine dichiarata è accettata. Il controllo non sostituisce le restrizioni di rete e reverse proxy previste per l'installazione.
 
 #### Metadata
   * type: specification

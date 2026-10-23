@@ -652,7 +652,7 @@ Sull'installazione di riferimento la stessa immagine non pubblicata ha avviato u
 
 ### Controllo degli esempi di configurazione
 
-Esaminare tutti gli esempi JSON di configurazione presenti nel repository e i campi in cui potrebbero comparire credenziali.
+Esaminare tutti i moduli TypeScript di configurazione d'esempio presenti nel repository e i campi in cui potrebbero comparire credenziali.
 
 #### Details
 Il controllo passa se gli esempi non contengono credenziali effettive; eventuali campi dedicati usano soltanto valori dimostrativi non utilizzabili. Fallisce se un esempio contiene una credenziale effettiva. Il controllo degli esempi resta da eseguire quando vengono aggiunti.
@@ -670,14 +670,14 @@ Il controllo passa se gli esempi non contengono credenziali effettive; eventuali
 Per ogni componente configurabile presente nel server, individuare il file da cui viene caricata la configurazione locale; esaminare il formato e confrontare i percorsi usati dai diversi componenti.
 
 #### Details
-Il controllo passa se ogni componente legge un proprio file JSON e nessun file è condiviso come configurazione locale di componenti distinti. Fallisce se un componente usa un formato diverso da JSON o condivide il proprio file di configurazione con un altro componente. Il controllo per un componente non ancora presente resta da eseguire quando viene introdotto.
+Il controllo passa se ogni componente legge un proprio modulo TypeScript e nessun file è condiviso come configurazione locale di componenti distinti. Fallisce se un componente usa un formato diverso da TypeScript o condivide il proprio file di configurazione con un altro componente. Il controllo per un componente non ancora presente resta da eseguire quando viene introdotto.
 
 #### Metadata
   * type: inspection-verification
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * verify: [File JSON separato per componente configurabile](../Requirements/ServerFoundation.md#file-json-separato-per-componente-configurabile)
+  * verify: [File TypeScript separato per componente configurabile](../Requirements/ServerFoundation.md#file-typescript-separato-per-componente-configurabile)
 ---
 
 ### Controllo del percorso CI del server
@@ -869,12 +869,12 @@ La prova passa se tutte le risposte HTTP che trasportano dati conversazionali in
   * verify: [Esclusione dalla cache delle risposte conversazionali HTTP](../Requirements/ServerFoundation.md#esclusione-dalla-cache-delle-risposte-conversazionali-http)
 ---
 
-### Prova del bootstrap delle configurazioni JSON
+### Prova del bootstrap delle configurazioni TypeScript
 
-Avviare l'ingresso HTTP con file JSON di prova distinti per i componenti attivi; predisporre variabili d'ambiente con valori discordanti e un file vocale mancante quando la voce è disabilitata. Osservare letture dei file, valori ricevuti dai componenti e momento in cui vengono create e attivate le risorse. Ripetere con un JSON richiesto mancante, malformato o con un valore non valido, includendo un segreto marcatore.
+Avviare l'ingresso HTTP con moduli TypeScript di prova distinti per i componenti attivi; fornire valori tramite variabili d'ambiente e omettere il modulo vocale quando la voce è disabilitata. Osservare i valori ricevuti dai componenti e il momento in cui vengono create e attivate le risorse. Ripetere con un modulo richiesto mancante, non importabile o con un valore non valido, includendo un segreto marcatore.
 
 #### Details
-La prova passa se ciascun processo legge una volta all'avvio i soli file necessari, usa i valori validati dei JSON senza sovrascriverli con quelli d'ambiente e consegna a ogni componente solo i dati pertinenti già convertiti. L'assenza del file vocale non blocca gli ingressi quando la voce è disabilitata. Un file necessario mancante o invalido impedisce l'attivazione prima dell'uso delle risorse dipendenti e produce un errore sicuro senza riprodurre il segreto. Domain e casi d'uso non leggono direttamente file o ambiente. Fallisce se un valore d'ambiente prevale, un file non necessario diventa obbligatorio, la configurazione viene riletta durante il lavoro, una risorsa dipendente si attiva prima della validazione o un segreto appare nell'errore. La prova resta da eseguire quando i componenti esistono.
+La prova passa se ciascun processo importa una volta all'avvio solo i moduli necessari, usa i valori validati anche quando provengono dall'ambiente e consegna a ogni componente solo i dati pertinenti già convertiti. L'assenza del modulo vocale non blocca gli ingressi quando la voce è disabilitata. Un modulo necessario mancante o invalido impedisce l'attivazione prima dell'uso delle risorse dipendenti e produce un errore sicuro senza riprodurre il segreto. Domain e casi d'uso non leggono direttamente file o ambiente. Fallisce se un modulo non necessario diventa obbligatorio, la configurazione viene riletta durante il lavoro, una risorsa dipendente si attiva prima della validazione o un segreto appare nell'errore.
 
 #### Metadata
   * type: test-verification
@@ -883,8 +883,9 @@ La prova passa se ciascun processo legge una volta all'avvio i soli file necessa
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
   * satisfiedBy: [agent-config.test.ts](../../apps/server/test/runtime/agent-config.test.ts)
   * satisfiedBy: [config-bootstrap.test.ts](../../apps/server/test/runtime/config-bootstrap.test.ts)
+  * satisfiedBy: [config-examples.test.ts](../../apps/server/test/runtime/config-examples.test.ts)
   * satisfiedBy: [conversation-config.test.ts](../../packages/conversations/test/adapters/out/conversation-config.test.ts)
-  * verify: [Caricamento iniziale dei JSON di configurazione](../Requirements/ServerFoundation.md#caricamento-iniziale-dei-json-di-configurazione)
+  * verify: [Caricamento iniziale delle configurazioni TypeScript](../Requirements/ServerFoundation.md#caricamento-iniziale-delle-configurazioni-typescript)
   * verify: [Distribuzione mirata della configurazione validata](../Requirements/ServerFoundation.md#distribuzione-mirata-della-configurazione-validata)
   * verify: [Validazione preventiva della configurazione attiva](../Requirements/ServerFoundation.md#validazione-preventiva-della-configurazione-attiva)
 ---
@@ -955,10 +956,10 @@ La prova passa se il progetto produce un'immagine eseguibile, il server si avvia
 
 ### Prova dell'origine delle credenziali API
 
-Per ogni componente del server che usa un'API esterna, predisporre un file JSON locale di prova con credenziali fittizie distinguibili, avviare il componente con un client API controllato e osservare le credenziali fornite al client. Esaminare il percorso di caricamento della configurazione.
+Per ogni componente del server che usa un'API esterna, predisporre un modulo TypeScript locale di prova con credenziali fittizie distinguibili, avviare il componente con un client API controllato e osservare le credenziali fornite al client. Esaminare il percorso di caricamento della configurazione.
 
 #### Details
-La prova passa se le credenziali fornite al client corrispondono a quelle del file JSON dedicato al componente e il codice le ottiene da quel file. Fallisce se il componente usa credenziali incorporate nel codice o ricavate da un'altra sorgente al posto del proprio JSON. La prova per un componente non ancora presente resta da eseguire quando viene introdotto.
+La prova passa se le credenziali fornite al client corrispondono a quelle del modulo TypeScript dedicato al componente e il codice le ottiene da quel file. Fallisce se il componente usa credenziali incorporate nel codice o ricavate da un'altra sorgente al posto del proprio modulo TypeScript. La prova per un componente non ancora presente resta da eseguire quando viene introdotto.
 
 #### Metadata
   * type: test-verification
@@ -966,7 +967,7 @@ La prova passa se le credenziali fornite al client corrispondono a quelle del fi
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
   * satisfiedBy: [api-credentials.test.ts](../../apps/server/test/composition/api-credentials.test.ts)
-  * verify: [Credenziali API nel JSON del componente](../Requirements/ServerFoundation.md#credenziali-api-nel-json-del-componente)
+  * verify: [Credenziali API nel modulo TypeScript del componente](../Requirements/ServerFoundation.md#credenziali-api-nel-modulo-typescript-del-componente)
 ---
 
 ### Prova della build e dell'avvio del server
@@ -1022,10 +1023,10 @@ La prova passa se HSTS è assente quando la configurazione pubblica è HTTP o no
 
 ### Prova della configurazione esplicita del listener HTTP
 
-Fornire al processo file JSON HTTP con `host` e `port` validi, poi omettere separatamente ciascun campo e provare valori di tipo o intervallo invalidi; provare anche variabile di percorso mancante, file assente e JSON malformato. Verificare l'indirizzo e la porta effettivamente ascoltati nel caso valido e l'assenza di listener nei casi invalidi.
+Fornire al processo modulo TypeScript HTTP con `host` e `port` validi, poi omettere separatamente ciascun campo e provare valori di tipo o intervallo invalidi; provare anche variabile di percorso mancante, file assente e modulo TypeScript non importabile. Verificare l'indirizzo e la porta effettivamente ascoltati nel caso valido e l'assenza di listener nei casi invalidi.
 
 #### Details
-La prova passa se il processo ascolta solo all'indirizzo e alla porta espliciti validati, senza valori predefiniti, e non apre né attiva l'ingresso per configurazioni mancanti o invalide. Fallisce se usa valori d'ambiente per sostituire campi JSON o un valore implicito per host o porta.
+La prova passa se il processo ascolta solo all'indirizzo e alla porta espliciti validati, senza valori predefiniti, e non apre né attiva l'ingresso per configurazioni mancanti o invalide. Fallisce se usa valori non validati per host o porta o un valore implicito per host o porta.
 
 #### Metadata
   * type: test-verification

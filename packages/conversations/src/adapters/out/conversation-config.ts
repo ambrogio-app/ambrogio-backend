@@ -1,5 +1,6 @@
 import { ProjectError } from '../../project-error.js';
-import { readFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
+import { resolve } from 'node:path';
 
 export type ConversationConfig = Readonly<{
   listPageSize: number;
@@ -10,17 +11,20 @@ export type ConversationConfig = Readonly<{
   archivePath?: string;
 }>;
 
+let configRevision = 0;
+
 function validTimeZone(name: string): boolean {
   if (!name) return false;
   try { new Intl.DateTimeFormat('en-GB', { timeZone: name }); return true; }
   catch { return false; }
 }
 
-/** Load the conversation component's JSON before constructing its resources. */
+/** Load the conversation component's TypeScript module before constructing its resources. */
 export async function loadConversationConfig(filename: string): Promise<ConversationConfig> {
   let value: unknown;
   try {
-    value = JSON.parse(await readFile(filename, 'utf8'));
+    if (!filename.endsWith('.ts')) throw new Error('Expected TypeScript configuration');
+    value = (await import(`${pathToFileURL(resolve(filename)).href}?revision=${++configRevision}`)).default;
   } catch {
     throw new ProjectError('Invalid conversation configuration file');
   }

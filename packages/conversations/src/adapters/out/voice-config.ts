@@ -1,4 +1,8 @@
-import { access, readdir, readFile, stat } from 'node:fs/promises';
+import { access, readdir, stat } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
+import { resolve } from 'node:path';
+
+let configRevision = 0;
 import { constants } from 'node:fs';
 import { join } from 'node:path';
 import { ProjectError } from '../../project-error.js';
@@ -100,7 +104,10 @@ function parseVoiceConfig(raw: unknown): VoiceConfig {
 
 export async function loadVoiceConfig(filename: string, language: 'en' | 'it' = 'en'): Promise<VoiceConfig> {
   let raw: unknown;
-  try { raw = JSON.parse(await readFile(filename, 'utf8')); }
+  try {
+    if (!filename.endsWith('.ts')) throw new Error('Expected TypeScript configuration');
+    raw = (await import(`${pathToFileURL(resolve(filename)).href}?revision=${++configRevision}`)).default;
+  }
   catch { throw new ProjectError('Invalid voice configuration file'); }
   const root = fieldsOf(raw);
   let config: VoiceConfig;

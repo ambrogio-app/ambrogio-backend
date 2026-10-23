@@ -1,3 +1,4 @@
+import { writeConfigFile } from '../support/config-fixture.js';
 import { access, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -28,22 +29,22 @@ async function freePort(): Promise<number> {
   return address.port;
 }
 
-test('loads the active component JSON once and retains validated values after startup', async () => {
+test('loads the active component TypeScript once and retains validated values after startup', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'ambrogio-bootstrap-'));
   directories.push(directory);
-  const http = join(directory, 'http.json');
-  const conversations = join(directory, 'conversations.json');
+  const http = join(directory, 'http.ts');
+  const conversations = join(directory, 'conversations.ts');
   const archive = join(directory, 'archive.sqlite');
   const port = await freePort();
-  await writeFile(http, JSON.stringify({ host: '127.0.0.1', port,
+  await writeConfigFile(http, JSON.stringify({ host: '127.0.0.1', port,
     allowedOrigins: ['https://allowed.example'], publicHttps: true, hstsMaxAgeSeconds: 120 }));
-  await writeFile(conversations, JSON.stringify({ archivePath: archive,
+  await writeConfigFile(conversations, JSON.stringify({ archivePath: archive,
     language: 'it', listPageSize: 2, maxListPageSize: 3 }));
 
   const runtime = await startConsultationServer({
     AMBROGIO_HTTP_CONFIG_PATH: http,
     AMBROGIO_CONVERSATIONS_CONFIG_PATH: conversations,
-    AMBROGIO_VOICE_CONFIG_PATH: join(directory, 'absent-voice.json'),
+    AMBROGIO_VOICE_CONFIG_PATH: join(directory, 'absent-voice.ts'),
     HOST: '0.0.0.0', PORT: String(port + 1),
     AMBROGIO_LANGUAGE: 'en',
   });
@@ -57,8 +58,8 @@ test('loads the active component JSON once and retains validated values after st
     expect(before.headers.get('strict-transport-security')).toBe('max-age=120');
     expect((await before.json() as { items: unknown[] }).items).toEqual([]);
 
-    await writeFile(http, '{ "secret": "must-not-reload"');
-    await writeFile(conversations, '{ "secret": "must-not-reload"');
+    await writeConfigFile(http, '{ "secret": "must-not-reload"');
+    await writeConfigFile(conversations, '{ "secret": "must-not-reload"');
     const after = await request();
     expect(after.status).toBe(200);
     expect(after.headers.get('access-control-allow-origin')).toBe('https://allowed.example');
@@ -69,15 +70,15 @@ test('loads the active component JSON once and retains validated values after st
   }
 });
 
-test('rejects a secret-bearing invalid component JSON before opening its archive or listener', async () => {
+test('rejects a secret-bearing invalid component TypeScript before opening its archive or listener', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'ambrogio-bootstrap-'));
   directories.push(directory);
-  const http = join(directory, 'http.json');
-  const conversations = join(directory, 'conversations.json');
+  const http = join(directory, 'http.ts');
+  const conversations = join(directory, 'conversations.ts');
   const archive = join(directory, 'archive.sqlite');
   const port = await freePort();
-  await writeFile(http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeFile(conversations, JSON.stringify({ archivePath: { secret: 'private-marker' } }));
+  await writeConfigFile(http, JSON.stringify({ host: '127.0.0.1', port }));
+  await writeConfigFile(conversations, JSON.stringify({ archivePath: { secret: 'private-marker' } }));
 
   let failure: unknown;
   try {
@@ -98,24 +99,24 @@ test('rejects a secret-bearing invalid component JSON before opening its archive
 });
 
 // Verification: Prova dell'agente specializzato senza connettore MCP
-test('uses the validated agent, HTTP and conversation JSON throughout the active server', async () => {
+test('uses the validated agent, HTTP and conversation TypeScript throughout the active server', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'ambrogio-bootstrap-'));
   directories.push(directory);
-  const http = join(directory, 'http.json');
-  const conversations = join(directory, 'conversations.json');
+  const http = join(directory, 'http.ts');
+  const conversations = join(directory, 'conversations.ts');
   const archive = join(directory, 'archive.sqlite');
   const agents = join(directory, 'agents');
   const port = await freePort();
   await mkdir(agents);
-  await writeFile(http, JSON.stringify({ host: '127.0.0.1', port,
+  await writeConfigFile(http, JSON.stringify({ host: '127.0.0.1', port,
     allowedOrigins: ['https://allowed.example'] }));
-  await writeFile(conversations, JSON.stringify({ archivePath: archive, language: 'it' }));
-  await writeFile(join(agents, 'orchestrator.json'), JSON.stringify({
+  await writeConfigFile(conversations, JSON.stringify({ archivePath: archive, language: 'it' }));
+  await writeConfigFile(join(agents, 'orchestrator.ts'), JSON.stringify({
     instructions: 'Scegli l\'agente.',
     llm: { provider: 'mistral', model: 'mistral-medium-latest', apiKey: 'json-router-key' },
   }));
   // An agent with instructions only: no MCP section and no tool call limit.
-  await writeFile(join(agents, 'generic.json'), JSON.stringify({
+  await writeConfigFile(join(agents, 'generic.ts'), JSON.stringify({
     description: 'Risponde alle domande generali.', instructions: 'Rispondi brevemente.',
     llm: { provider: 'mistral', model: 'mistral-medium-latest', apiKey: 'json-agent-key' },
   }));
@@ -159,9 +160,9 @@ test('uses the validated agent, HTTP and conversation JSON throughout the active
       };
       await exercise();
 
-      await writeFile(http, '{');
-      await writeFile(conversations, '{');
-      await writeFile(join(agents, 'orchestrator.json'), '{');
+      await writeConfigFile(http, '{');
+      await writeConfigFile(conversations, '{');
+      await writeConfigFile(join(agents, 'orchestrator.ts'), '{');
       await exercise();
       expect(seen.map(request => request.authorization)).toEqual([
         'Bearer json-router-key', 'Bearer json-agent-key', 'Bearer json-router-key', 'Bearer json-agent-key',

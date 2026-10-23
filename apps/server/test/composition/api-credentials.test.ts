@@ -1,3 +1,4 @@
+import { writeConfigFile } from '../support/config-fixture.js';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -7,7 +8,7 @@ import { prepareAgents } from '../../src/composition/agents.js';
 const history = { id: 'conversation', createdAt: new Date(0), lastActivityAt: new Date(0),
   turns: [{ id: 'turn', acceptedAt: new Date(0), status: 'pending' as const, text: 'Question' }] };
 
-test('passes each agent JSON credential to its own controlled Mistral client', async () => {
+test('passes each agent TypeScript credential to its own controlled Mistral client', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'ambrogio-api-credentials-'));
   const seen: Array<{ authorization: string | null; body: unknown }> = [];
   const connections: unknown[] = [];
@@ -31,17 +32,17 @@ test('passes each agent JSON credential to its own controlled Mistral client', a
     });
   });
   try {
-    await writeFile(join(directory, 'orchestrator.json'), JSON.stringify({
+    await writeConfigFile(join(directory, 'orchestrator.ts'), JSON.stringify({
       instructions: 'Coordinate.', llm: { provider: 'mistral', model: 'mistral-small-latest',
         apiKey: 'orchestrator-json-key' },
     }));
-    await writeFile(join(directory, 'bearer.json'), JSON.stringify({
+    await writeConfigFile(join(directory, 'bearer.ts'), JSON.stringify({
       description: 'Use the service.', maxToolCalls: 1, instructions: 'Use tools.',
       llm: { provider: 'mistral', model: 'mistral-small-latest', apiKey: 'specialist-json-key' },
       mcp: { url: 'https://bearer.example/mcp',
         auth: { type: 'bearer', token: 'bearer-json-token' } },
     }));
-    await writeFile(join(directory, 'oauth.json'), JSON.stringify({
+    await writeConfigFile(join(directory, 'oauth.ts'), JSON.stringify({
       description: 'Use another service.', maxToolCalls: 1, instructions: 'Use tools.',
       llm: { provider: 'mistral', model: 'mistral-small-latest', apiKey: 'oauth-agent-json-key' },
       mcp: { url: 'https://oauth.example/mcp', auth: {
@@ -56,9 +57,9 @@ test('passes each agent JSON credential to its own controlled Mistral client', a
         close: async () => {} };
     });
     try {
-      await writeFile(join(directory, 'orchestrator.json'), '{');
-      await writeFile(join(directory, 'bearer.json'), '{');
-      await writeFile(join(directory, 'oauth.json'), '{');
+      await writeConfigFile(join(directory, 'orchestrator.ts'), '{');
+      await writeConfigFile(join(directory, 'bearer.ts'), '{');
+      await writeConfigFile(join(directory, 'oauth.ts'), '{');
       for await (const _chunk of agents.orchestrator.produce(history, { requested: new Promise<void>(() => { /* never */ }) })) { /* consume response */ }
       for (const specialist of agents.specialists) {
         for await (const _chunk of specialist.reply.produce(history, { requested: new Promise<void>(() => { /* never */ }) })) { /* consume response */ }

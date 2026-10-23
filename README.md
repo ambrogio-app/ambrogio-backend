@@ -115,7 +115,7 @@ The server imports one TypeScript configuration module per active component. Eac
 The ready modules are [`examples/http.ts`](examples/http.ts), [`examples/conversations.ts`](examples/conversations.ts), [`examples/voice.ts`](examples/voice.ts), and the agent modules in [`examples/agents/`](examples/agents/). The voice module is optional. To configure the container with Docker Compose, use [`compose.example.yaml`](compose.example.yaml):
 
 ```bash
-AMBROGIO_VERSION=v0.8.0 MISTRAL_API_KEY=replace-me docker compose -f compose.example.yaml up -d
+AMBROGIO_VERSION=v0.9.0 MISTRAL_API_KEY=replace-me docker compose -f compose.example.yaml up -d
 ```
 
 You can put the values mapped in the Compose example in a local `.env` file. For additional variables, add them under the service's `environment` section. The example mounts only the orchestrator and generic agent. To enable the Home Assistant agent, mount [`examples/agents/home-assistant.ts`](examples/agents/home-assistant.ts) at `/etc/ambrogio/agents/home-assistant.ts` and provide `AMBROGIO_HOME_ASSISTANT_MCP_URL` and `HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN` in the service environment.

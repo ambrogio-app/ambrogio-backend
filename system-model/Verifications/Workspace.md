@@ -97,7 +97,7 @@ Analizzare il grafo degli import dei test degli adapter inbound e outbound di og
 #### Details
 L'analisi passa se i test inbound importano codice di produzione solo dal proprio adapter inbound e dall'Application del modulo, senza Domain, e i test outbound solo dal proprio adapter outbound, dall'Application e dal Domain del modulo, senza adapter inbound. Fallisce se un test raggiunge altro codice di produzione, anche tramite un import di soli tipi. Runner, assertion, tecnologie degli adapter e fake locali non sono classificati come codice di produzione del modulo.
 
-Non automatizzabile: stabilire quale adapter è il proprio adapter di ciascun test e classificare per responsabilità i file di produzione esterni alle cartelle dei layer, come `src/project-error.ts`, richiede giudizio umano.
+Non automatizzabile: diversi test degli adapter importano `src/project-error.ts`, che si trova fuori dalle cartelle dei layer; è una deviazione nota in attesa di una decisione sulla collocazione di `ProjectError`, e finché quella decisione manca un controllo automatico fallirebbe su quegli import.
 
 #### Metadata
   * type: analysis-verification

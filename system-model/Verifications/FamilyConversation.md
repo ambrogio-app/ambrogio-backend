@@ -495,7 +495,7 @@ Analizzare il grafo degli import del codice TypeScript di produzione del modulo 
 #### Details
 L'analisi passa se ogni import originato da Domain punta a Domain dello stesso modulo e ogni import originato da Application punta a Domain o Application dello stesso modulo. Fallisce se è presente anche un solo collegamento verso un componente o modulo non ammesso, compresi quelli che importano soltanto tipi.
 
-Non automatizzabile: Domain e Application importano `src/project-error.ts`, esterno alle cartelle dei layer, e attribuirlo a un componente secondo la responsabilità richiede giudizio umano.
+Non automatizzabile: Domain e Application importano `src/project-error.ts`, che si trova fuori dalle cartelle dei layer; è una deviazione nota in attesa di una decisione sulla collocazione di `ProjectError`, e finché quella decisione manca un controllo automatico fallirebbe su ogni import di quel file.
 
 #### Metadata
   * type: analysis-verification

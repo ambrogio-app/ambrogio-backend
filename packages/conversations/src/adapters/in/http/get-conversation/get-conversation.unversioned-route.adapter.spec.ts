@@ -1,17 +1,18 @@
-import Fastify from 'fastify';
+import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { registerHistoryRoute } from './history-route.adapter.js';
-import { httpAjvOptions } from './http-validation.js';
-import { createGetConversation } from '../../../application/get-conversation.use-case.js';
-import { ProjectError } from '../../../project-error.js';
-import type { GetConversation } from '../../../application/get-conversation.use-case.js';
+import { registerUnversionedGetConversationRoute } from './get-conversation.unversioned-route.adapter.js';
+import { createGetConversationHandler } from './get-conversation.handler.js';
+import { createGetConversation } from '../../../../application/get-conversation.use-case.js';
+import { ProjectError } from '../../../../project-error.js';
+import type { GetConversation } from '../../../../application/get-conversation.use-case.js';
+import { routeServer } from '../../../../../test/support/http-routes.js';
 
-const servers: ReturnType<typeof Fastify>[] = [];
+const servers: FastifyInstance[] = [];
 
 function fixture(getConversation: GetConversation, language: 'en' | 'it' = 'en') {
-  const server = Fastify({ ajv: { customOptions: httpAjvOptions } });
+  const server = routeServer('/api', scope => registerUnversionedGetConversationRoute(scope,
+    createGetConversationHandler(getConversation), language));
   servers.push(server);
-  registerHistoryRoute(server, { getConversation, language });
   return server;
 }
 
@@ -19,8 +20,8 @@ afterEach(async () => {
   await Promise.all(servers.splice(0).map(server => server.close()));
 });
 
-describe('conversation history HTTP ingress', () => {
-  // Verification: Prova degli istanti ai confini HTTP
+describe('conversation history HTTP ingress of the API without a version', () => {
+  // Verification: Prova dell'API HTTP senza versione
   it('returns the complete ordered snapshot with state-specific fields and UTC instants', async () => {
     const server = fixture(async ({ conversationId }) => {
       expect(conversationId).toBe('conversation-1');
@@ -64,6 +65,16 @@ describe('conversation history HTTP ingress', () => {
     expect(response.headers['content-type']).toMatch(/^application\/json/);
     expect(response.headers['cache-control']).toBe('no-store');
     expect(response.json()).toEqual({ error: 'Conversazione non trovata.' });
+  });
+
+  it('rejects an empty identifier with the generic JSON error of the API without a version', async () => {
+    let calls = 0;
+    const server = fixture(async () => { calls += 1; return { ok: false, error: { kind: 'conversation_not_found' } }; });
+    const response = await server.inject({ method: 'GET', url: '/api/conversations/' });
+    expect(response.statusCode).toBe(400);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.json()).toEqual({ error: 'Invalid HTTP request.' });
+    expect(calls).toBe(0);
   });
 
   it('logs a failed read and returns a safe localized 500', async () => {

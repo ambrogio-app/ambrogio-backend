@@ -3,7 +3,7 @@ import type { SpeechComponentsFactory } from '@ambrogio/conversations/adapters/i
 import { readConversationConfig } from '@ambrogio/conversations/adapters/out/conversation-config';
 import type { ProduceConversationReply } from '@ambrogio/conversations/application/produce-conversation-reply';
 import { prepareConfiguredConversations } from '../composition/conversations.js';
-import { buildConversationServer } from './http-server.js';
+import { buildConversationServer } from '../composition/http-surface.js';
 
 /** What a client integration test supplies to the test server. */
 export type TestServerOptions = Readonly<{

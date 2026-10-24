@@ -22,7 +22,9 @@ export type RuleName =
   | 'application-public-exports'
   | 'no-path-aliases'
   | 'layer-test-imports'
-  | 'domain-application-own-package';
+  | 'domain-application-own-package'
+  | 'technical-factory-imports'
+  | 'no-dependency-container';
 
 export type Violation = Readonly<{ rule: RuleName; from: string; to: string }>;
 export type Rule = Readonly<{ name: RuleName; check: (graph: ImportGraph) => Violation[] }>;
@@ -155,8 +157,37 @@ const domainApplicationOwnPackage: Rule = {
   }),
 };
 
+/** The technical factories of the runtime («Factory tecniche senza conoscenza business»). */
+export const technicalFactories: readonly string[] = ['apps/server/src/runtime/http-server.ts'];
+
+const technicalFactoryImports: Rule = {
+  name: 'technical-factory-imports',
+  check: (graph) => graph.files.filter((file) => technicalFactories.includes(file.path)).flatMap((file) => {
+    const app = appsOf(graph).find((unit) => inside(file.path, unit.directory));
+    return file.specifiers.filter((specifier) => {
+      const named = namedUnit(specifier, graph.units);
+      if (named !== undefined) return named.unit !== app;
+      if (!specifier.startsWith('.') || app === undefined) return false;
+      const target = resolveSpecifier(file.path, specifier);
+      return ['src/composition', 'src/adapters'].some((folder) => inside(target, `${app.directory}/${folder}`));
+    }).map((specifier) => ({ rule: 'technical-factory-imports' as const, from: file.path, to: specifier }));
+  }),
+};
+
+/** Dependency injection containers: the composition roots are written by hand («Composizione scritta a mano»). */
+export const dependencyContainers: readonly string[] = ['awilix', 'inversify', 'tsyringe', 'typedi', 'injection-js',
+  '@nestjs/core'];
+
+const noDependencyContainer: Rule = {
+  name: 'no-dependency-container',
+  check: (graph) => graph.files.flatMap((file) => file.specifiers
+    .filter((specifier) => dependencyContainers.some((name) => specifier === name || specifier.startsWith(`${name}/`)))
+    .map((specifier) => ({ rule: 'no-dependency-container' as const, from: file.path, to: specifier }))),
+};
+
 export const rules: readonly Rule[] = [
   packageIsolation, applicationPublicExports, noPathAliases, layerTestImports, domainApplicationOwnPackage,
+  technicalFactoryImports, noDependencyContainer,
 ];
 
 const excepted = (violation: Violation, list: readonly ArchitectureException[]) =>

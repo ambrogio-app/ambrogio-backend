@@ -31,6 +31,7 @@ test('the analysis covers the sources and tests of every application and package
 // Verification: Prova degli import delle API pubbliche nelle applicazioni
 // Verification: Prova degli import dei test Domain e Application
 // Verification: Prova dell'indipendenza tecnica di Domain e Application
+// Verification: Prova delle regole sulle factory tecniche e sulla composizione
 test.each(rules.map((rule) => rule.name))('the workspace respects the rule %s', (name) => {
   const rule = rules.find((candidate) => candidate.name === name)!;
   expect(analyse(workspace, [rule]).map(describeViolation)).toEqual([]);
@@ -86,6 +87,15 @@ const negativeFixtures: ReadonlyArray<Readonly<{ rule: RuleName; title: string; 
       'packages/conversations/src/application/start-turn.use-case.ts': "import { Turn } from '../domain/turn.js';\n",
       'packages/conversations/src/adapters/out/note.adapter.ts': "import { randomUUID } from 'node:crypto';\nexport const Turn = randomUUID;\n",
     }, units),
+  },
+  {
+    rule: 'technical-factory-imports', title: 'the HTTP factory importing a business package and the composition',
+    graph: fixtureGraph({ 'apps/server/src/runtime/http-server.ts':
+      "import type { Turn } from '@ambrogio/conversations';\nimport { routes } from '../composition/conversations.js';\n" }, units),
+  },
+  {
+    rule: 'no-dependency-container', title: 'a composition root using a dependency injection container',
+    graph: fixtureGraph({ 'apps/server/src/composition/conversations.ts': "import { createContainer } from 'awilix';\n" }, units),
   },
 ];
 

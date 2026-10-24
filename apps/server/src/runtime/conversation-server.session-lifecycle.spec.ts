@@ -214,7 +214,7 @@ test('shutdown interrupts active turns, stores them and notifies open sessions',
 
   const restarted = await startConversationServer(environment, async () => ({ orchestrator: reply, async close() {} }));
   try {
-    const response = await fetch(`http://127.0.0.1:${port}/api/conversations/${accepted.conversationId}`);
+    const response = await fetch(`http://127.0.0.1:${port}/api/v1/conversations/${accepted.conversationId}`);
     expect((await response.json()).turns).toMatchObject([{ status: 'interrupted' }]);
   } finally { await restarted.close(); }
 });

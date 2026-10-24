@@ -5,7 +5,7 @@ import { SystemCurrentTime } from '@ambrogio/conversations/adapters/out/system-c
 import type { ProduceConversationReply } from '@ambrogio/conversations/application/produce-conversation-reply';
 import { prepareAgents } from '../composition/agents.js';
 import { prepareConfiguredConversations } from '../composition/conversations.js';
-import { buildConversationServer } from './http-server.js';
+import { buildConversationServer } from '../composition/http-surface.js';
 import { readAgentsDirectory } from './agent-config.js';
 import { readHttpConfig } from './http-config.js';
 import { startupPhase } from './startup-failure.js';

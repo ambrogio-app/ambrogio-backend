@@ -18,7 +18,7 @@ import { McpToolClient } from '@ambrogio/conversations/adapters/out/mcp-tool-cli
 import { AiSdkOrchestratorReply, AiSdkToolAgentReply } from '@ambrogio/conversations/adapters/out/ai-sdk-reply';
 import { prepareConfiguredConversations } from '../composition/conversations.js';
 import { loadAgentConfigs } from './agent-config.js';
-import { buildConversationServer } from './http-server.js';
+import { buildConversationServer } from '../composition/http-surface.js';
 import { startConversationServer } from './conversation-server.js';
 import { closeAllClients, ProtocolClient, takeSchemaViolations } from '../../test/support/protocol-client.js';
 
@@ -84,7 +84,7 @@ function gate() {
 async function conversationTurns(origin: string, id: string): Promise<Array<{
   text: string; status: string; answer?: string; error?: string;
 }>> {
-  const response = await fetch(`${origin}/api/conversations/${id}`);
+  const response = await fetch(`${origin}/api/v1/conversations/${id}`);
   expect(response.status).toBe(200);
   return (await response.json() as { turns: Array<{
     text: string; status: string; answer?: string; error?: string;
@@ -127,12 +127,12 @@ test('the session ingress uses the orchestrator and GET routes retain security, 
   const { server, turnIngress } = built;
   try {
     const port = await listen(built);
-    const preflight = await server.inject({ method: 'OPTIONS', url: '/api/conversations',
+    const preflight = await server.inject({ method: 'OPTIONS', url: '/api/v1/conversations',
       headers: { origin: 'https://client.test', 'access-control-request-method': 'GET' } });
     expect(preflight.headers['access-control-allow-methods']).toContain('GET');
     expect(preflight.headers['access-control-allow-methods']).not.toContain('POST');
     expect(preflight.headers['access-control-allow-origin']).toBe('https://client.test');
-    const rejected = await server.inject({ method: 'OPTIONS', url: '/api/conversations',
+    const rejected = await server.inject({ method: 'OPTIONS', url: '/api/v1/conversations',
       headers: { origin: 'https://other.test', 'access-control-request-method': 'GET' } });
     expect(rejected.headers['access-control-allow-origin']).toBeUndefined();
 
@@ -142,7 +142,7 @@ test('the session ingress uses the orchestrator and GET routes retain security, 
     expect(turn.final).toEqual({ type: 'turn.completed', turnId: turn.accepted!.turnId, expectsReply: false });
     expect((await upgradeResponse(sessionUrl(port), 'https://other.test')).status).toBe(403);
 
-    const list = await server.inject({ method: 'GET', url: '/api/conversations',
+    const list = await server.inject({ method: 'GET', url: '/api/v1/conversations',
       headers: { origin: 'https://client.test' } });
     expect(list.statusCode).toBe(200);
     expect(list.json().items).toHaveLength(1);
@@ -152,7 +152,7 @@ test('the session ingress uses the orchestrator and GET routes retain security, 
     expect(list.headers['x-content-type-options']).toBe('nosniff');
     expect(list.headers['x-request-id']).toMatch(uuidV4);
     const history = await server.inject({ method: 'GET',
-      url: `/api/conversations/${turn.accepted!.conversationId}` });
+      url: `/api/v1/conversations/${turn.accepted!.conversationId}` });
     expect(history.headers['x-request-id']).toMatch(uuidV4);
     expect(history.headers['x-request-id']).not.toBe(list.headers['x-request-id']);
 
@@ -160,7 +160,7 @@ test('the session ingress uses the orchestrator and GET routes retain security, 
     const afterStop = await client.textTurn('too late');
     expect(afterStop.final).toMatchObject({ type: 'turn.rejected', reason: 'unavailable',
       message: 'Service temporarily unavailable.' });
-    expect((await server.inject({ method: 'GET', url: '/api/conversations' })).json().items)
+    expect((await server.inject({ method: 'GET', url: '/api/v1/conversations' })).json().items)
       .toHaveLength(1);
   } finally {
     await closeAllClients();
@@ -326,7 +326,7 @@ test('restores completed history after restart and uses it for textual continuat
     const unknown = await client.textTurn('unknown', { conversationId: '00000000-0000-4000-8000-000000000000' });
     expect(unknown.final).toMatchObject({ type: 'turn.rejected', reason: 'conversation_not_found',
       message: 'Conversation not found.' });
-    expect((await firstRuntime.server.inject({ method: 'GET', url: '/api/conversations' }))
+    expect((await firstRuntime.server.inject({ method: 'GET', url: '/api/v1/conversations' }))
       .json().items).toEqual([]);
 
     const first = await client.textTurn('first question');
@@ -344,7 +344,7 @@ test('restores completed history after restart and uses it for textual continuat
         { text: 'second question', status: 'pending' }],
     ]);
     const history = await firstRuntime.server.inject({ method: 'GET',
-      url: `/api/conversations/${id}` });
+      url: `/api/v1/conversations/${id}` });
     expect(history.statusCode).toBe(200);
     beforeRestart = history.json() as typeof beforeRestart;
     expect(id).toMatch(uuidV4);
@@ -378,7 +378,7 @@ test('restores completed history after restart and uses it for textual continuat
     } }, async close() {} }));
   try {
     const history = await restarted.server.inject({ method: 'GET',
-      url: `/api/conversations/${id}` });
+      url: `/api/v1/conversations/${id}` });
     expect(history.statusCode).toBe(200);
     expect(history.json()).toEqual(beforeRestart);
     const client = await ProtocolClient.ready(sessionUrl(port));
@@ -388,13 +388,13 @@ test('restores completed history after restart and uses it for textual continuat
     expect(third.accepted!.conversationId).toBe(id);
     expect(afterRestartSeen).toEqual([['first question', 'second question', 'third question']]);
     const finalHistory = await restarted.server.inject({ method: 'GET',
-      url: `/api/conversations/${id}` });
+      url: `/api/v1/conversations/${id}` });
     const persisted = finalHistory.json() as { id: string; turns: Array<{ text: string; status: string }> };
     expect(persisted.id).toBe(id);
     expect(persisted.turns.map(turn => [turn.text, turn.status])).toEqual([
       ['first question', 'answered'], ['second question', 'failed'], ['third question', 'answered'],
     ]);
-    expect((await restarted.server.inject({ method: 'GET', url: '/api/conversations' }))
+    expect((await restarted.server.inject({ method: 'GET', url: '/api/v1/conversations' }))
       .json().items).toHaveLength(1);
   } finally {
     await closeAllClients();
@@ -450,7 +450,7 @@ test('processes separate conversations in parallel and rejects a second turn in 
     const simultaneous = await Promise.all([client.textTurn('one of two'), other.textTurn('other of two')]);
     expect(simultaneous.map(result => result.final.type)).toEqual(['turn.completed', 'turn.completed']);
     expect(productions).toBe(4);
-    const after = await fetch(`${origin}/api/conversations`);
+    const after = await fetch(`${origin}/api/v1/conversations`);
     expect((await after.json() as { items: unknown[] }).items).toHaveLength(4);
     const archive = await openConversationArchive(files.archive);
     try {
@@ -544,7 +544,7 @@ test.each([
     completionFault?.mockRestore();
     const id = first.accepted!.conversationId as string;
     const history = await built.server.inject({ method: 'GET',
-      url: `/api/conversations/${id}` });
+      url: `/api/v1/conversations/${id}` });
     const turns = (history.json() as { turns: Array<{ status: string; error?: string }> }).turns;
     expect(turns).toHaveLength(1);
     expect(turns[0]?.status).toBe(completionFails ? 'pending' : 'failed');
@@ -660,14 +660,14 @@ test('migrates an existing archive before listening and preserves its history', 
     async close() {} }));
   try {
     const origin = `http://127.0.0.1:${port}`;
-    const history = await fetch(`${origin}/api/conversations/${priorConversationId}`);
+    const history = await fetch(`${origin}/api/v1/conversations/${priorConversationId}`);
     expect(history.status).toBe(200);
     expect((await history.json() as { turns: Array<{ id: string; text: string; answer: string }> }).turns)
       .toMatchObject([{ id: priorTurnId, text: 'old question', answer: 'old answer' }]);
     const client = await ProtocolClient.ready(sessionUrl(port));
     const next = await client.textTurn('new question', { conversationId: priorConversationId });
     expect(next.final.type).toBe('turn.completed');
-    const updated = await fetch(`${origin}/api/conversations/${priorConversationId}`);
+    const updated = await fetch(`${origin}/api/v1/conversations/${priorConversationId}`);
     expect((await updated.json() as { turns: Array<{ text: string }> }).turns.map(turn => turn.text))
       .toEqual(['old question', 'new question']);
   } finally {
@@ -792,7 +792,7 @@ test('a session turn delegates to a configured MCP tool and persists the answer'
     expect(delegated.outputs.map(output => output.text)).toEqual(['Answer from tool.']);
     expect(calls).toEqual(['lookup']);
     const id = delegated.accepted!.conversationId as string;
-    const list = await fetch(`http://127.0.0.1:${port}/api/conversations`);
+    const list = await fetch(`http://127.0.0.1:${port}/api/v1/conversations`);
     expect((await list.json() as { items: Array<{ id: string }> }).items.map(item => item.id)).toEqual([id]);
     const second = await client.textTurn('And the next one?', { conversationId: id });
     expect(second.final.type).toBe('turn.completed');
@@ -813,7 +813,7 @@ test('a session turn delegates to a configured MCP tool and persists the answer'
       { role: 'user', content: [{ type: 'text', text: 'And the next one?' }] },
     ]);
     expect(JSON.stringify([delegated, second])).not.toContain('facts');
-    const history = await fetch(`http://127.0.0.1:${port}/api/conversations/${id}`);
+    const history = await fetch(`http://127.0.0.1:${port}/api/v1/conversations/${id}`);
     const historyBody = await history.json() as { turns: Array<Record<string, unknown>> };
     expect(historyBody.turns.map((turn) => turn.answer)).toEqual(['Answer from tool.', 'Second answer.']);
     expect(historyBody.turns.every((turn) => !('agent' in turn))).toBe(true);
@@ -944,12 +944,12 @@ test('listens on the configured address and serves the configured archive after 
   expect(address && typeof address !== 'string' && address.port).toBe(port);
   try {
     const origin = `http://127.0.0.1:${port}`;
-    const list = await fetch(`${origin}/api/conversations`);
+    const list = await fetch(`${origin}/api/v1/conversations`);
     expect(list.status).toBe(200);
     expect((await list.json() as { items: { id: string }[] }).items).toEqual([
       { id: '0a0f1c2e-3b4d-4e5f-8a6b-7c8d9e0f1a2b', lastActivityAt: new Date(100).toISOString() },
     ]);
-    const history = await fetch(`${origin}/api/conversations/0a0f1c2e-3b4d-4e5f-8a6b-7c8d9e0f1a2b`);
+    const history = await fetch(`${origin}/api/v1/conversations/0a0f1c2e-3b4d-4e5f-8a6b-7c8d9e0f1a2b`);
     expect(history.status).toBe(200);
     expect((await history.json() as { turns: { status: string }[] }).turns[0]?.status).toBe('interrupted');
   } finally {

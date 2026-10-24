@@ -144,7 +144,7 @@ La rappresentazione JSON di `err` usa una vista composta soltanto da campi ammes
 
 ### Profilo del limite dei corpi HTTP
 
-Il componente HTTP configura un limite di dimensione positivo per i corpi ricevuti dalle rotte che ne accettano uno; un'eventuale eccezione per rotta dichiara un proprio limite esplicito. Il controllo riguarda la dimensione effettivamente ricevuta, anche quando il corpo arriva in più parti. Il rifiuto `413` usa la forma JSON pubblica degli errori HTTP e non passa il corpo al caso d'uso. Le rotte HTTP attuali di elenco e storico non accettano un corpo; i valori di future rotte con corpo saranno fissati nei rispettivi contratti. I limiti dei turni sono definiti dal protocollo conversazionale e non da questo profilo.
+Il componente HTTP configura un limite di dimensione positivo per i corpi ricevuti dalle rotte che ne accettano uno; un'eventuale eccezione per rotta dichiara un proprio limite esplicito. Il controllo riguarda la dimensione effettivamente ricevuta, anche quando il corpo arriva in più parti. Il rifiuto `413` è il problema `about:blank` con `title` `Content Too Large` del catalogo dei problemi di protocollo e non passa il corpo al caso d'uso. Le rotte HTTP attuali di elenco e storico non accettano un corpo; i valori di future rotte con corpo saranno fissati nei rispettivi contratti. I limiti dei turni sono definiti dal protocollo conversazionale e non da questo profilo.
 
 #### Metadata
   * type: specification
@@ -289,6 +289,8 @@ Le regole sono definite in `test/repository/architecture-rules.ts` e controllate
 | `no-path-aliases` | una configurazione `tsconfig*.json` della radice o di un'unità del workspace che dichiara `paths` | «Import delle API pubbliche dei package business» |
 | `layer-test-imports` | un file di test `*.test.ts` di un'applicazione o di un package; un file `*.spec.ts` di un package che non risiede in `src/domain`, `src/application`, `src/adapters/in` o `src/adapters/out` accanto al file che verifica secondo «Suite di test con Vitest»; un test Domain o Application, cioè accanto a un file di `src/domain` o di `src/application`, che raggiunge, anche tramite i moduli di supporto della cartella `test/` del package, codice di produzione fuori dai layer ammessi | «Import del codice di produzione nei test Domain», «Import del codice di produzione nei test Application» |
 | `domain-application-own-package` | un file di produzione di `src/domain` o `src/application` di un package, esclusi i file `*.spec.ts`, che importa, anche tramite i file che importa, un modulo diverso da un file di produzione esistente in `src/` dello stesso package | «Indipendenza tecnica di Domain e Application nel backend» |
+| `technical-factory-imports` | un file delle factory tecniche del runtime, oggi `apps/server/src/runtime/http-server.ts`, che importa un package del workspace oppure un file dell'applicazione in `src/composition/` o `src/adapters/` | «Factory tecniche senza conoscenza business» |
+| `no-dependency-container` | un file di un'applicazione o di un package che importa un container di dependency injection: `awilix`, `inversify`, `tsyringe`, `typedi`, `injection-js` o `@nestjs/core` | «Composizione scritta a mano» |
 
 Ogni regola ha almeno una fixture negativa in memoria che produce violazioni soltanto con il nome di quella regola. Un'eccezione è una voce dell'elenco `exceptions` del modulo con il nome della regola, il file che importa, l'import ammesso e il motivo, e ammette soltanto quell'import; ogni voce compare anche in questo contratto con il motivo.
 
@@ -340,7 +342,7 @@ Il backend applica «Suite di test con Vitest» con questi valori.
 
 Le unità con test sono `packages/conversations` e `apps/server`: i loro test risiedono in `src/` accanto ai file che verificano. Le cartelle `test/` dedicate sono:
 
-- `packages/conversations/test/support/`, con la fixture dei file di configurazione;
+- `packages/conversations/test/support/`, con le fixture dell'archivio dei turni e lo scope Fastify con le opzioni Ajv del server usato dalle prove delle rotte HTTP;
 - `apps/server/test/support/`, con la fixture dei file di configurazione, la fixture del server di sessione, il client del protocollo `ambrogio.v1` e la vista Ajv dello schema pubblicato usata dalle asserzioni;
 - `apps/server/test/protocol/`, con il test dello schema `protocol/ambrogio-v1.schema.json` che il server pubblica;
 - `apps/server/test/examples/`, con i test delle configurazioni d'esempio di `examples/`;

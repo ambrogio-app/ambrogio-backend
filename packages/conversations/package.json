@@ -106,17 +106,13 @@
       "types": "./dist/adapters/out/mcp-tool-client.d.ts",
       "import": "./dist/adapters/out/mcp-tool-client.js"
     },
-    "./adapters/in/http/history-route": {
-      "types": "./dist/adapters/in/http/history-route.adapter.d.ts",
-      "import": "./dist/adapters/in/http/history-route.adapter.js"
+    "./adapters/in/http/conversation-routes": {
+      "types": "./dist/adapters/in/http/conversation-routes.d.ts",
+      "import": "./dist/adapters/in/http/conversation-routes.js"
     },
-    "./adapters/in/http/list-route": {
-      "types": "./dist/adapters/in/http/list-route.adapter.d.ts",
-      "import": "./dist/adapters/in/http/list-route.adapter.js"
-    },
-    "./adapters/in/http/http-validation": {
-      "types": "./dist/adapters/in/http/http-validation.d.ts",
-      "import": "./dist/adapters/in/http/http-validation.js"
+    "./adapters/in/http/problem-details": {
+      "types": "./dist/adapters/in/http/problem-details.d.ts",
+      "import": "./dist/adapters/in/http/problem-details.js"
     },
     "./adapters/out/sqlite/schema": {
       "types": "./dist/adapters/out/sqlite/schema.d.ts",

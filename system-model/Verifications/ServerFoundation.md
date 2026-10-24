@@ -419,8 +419,8 @@ La prova passa se per l'`Error` del progetto il campo strutturato `err` conserva
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
   * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
-  * satisfiedBy: [history-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.spec.ts)
-  * satisfiedBy: [list-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.spec.ts)
+  * satisfiedBy: [get-conversation.unversioned-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.unversioned-route.adapter.spec.ts)
+  * satisfiedBy: [list-conversations.unversioned-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.unversioned-route.adapter.spec.ts)
   * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
   * verify: [Conservazione dell'errore originale durante la serializzazione](../Requirements/ServerFoundation.md#conservazione-dellerrore-originale-durante-la-serializzazione)
   * verify: [Oggetto Error nel campo err del log definitivo](../Requirements/ServerFoundation.md#oggetto-error-nel-campo-err-del-log-definitivo)
@@ -504,8 +504,8 @@ La prova passa se per il guasto esiste al massimo un log diagnostico definitivo,
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
   * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
-  * satisfiedBy: [history-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.spec.ts)
-  * satisfiedBy: [list-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.spec.ts)
+  * satisfiedBy: [get-conversation.unversioned-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.unversioned-route.adapter.spec.ts)
+  * satisfiedBy: [list-conversations.unversioned-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.unversioned-route.adapter.spec.ts)
   * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
   * verify: [Assenza di log definitivi nei componenti intermedi](../Requirements/ServerFoundation.md#assenza-di-log-definitivi-nei-componenti-intermedi)
   * verify: [Proprietà e unicità del log diagnostico definitivo](../Requirements/ServerFoundation.md#proprietà-e-unicità-del-log-diagnostico-definitivo)
@@ -560,8 +560,8 @@ La prova passa se la normalizzazione avviene una sola volta nel confine definiti
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
   * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
-  * satisfiedBy: [history-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.spec.ts)
-  * satisfiedBy: [list-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.spec.ts)
+  * satisfiedBy: [get-conversation.unversioned-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.unversioned-route.adapter.spec.ts)
+  * satisfiedBy: [list-conversations.unversioned-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.unversioned-route.adapter.spec.ts)
   * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
   * verify: [Normalizzazione diagnostica nel confine definitivo](../Requirements/ServerFoundation.md#normalizzazione-diagnostica-nel-confine-definitivo)
 ---
@@ -578,8 +578,8 @@ La prova passa se entrambi i guasti si propagano come eccezioni fino al confine 
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [history-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.spec.ts)
-  * satisfiedBy: [list-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.spec.ts)
+  * satisfiedBy: [get-conversation.unversioned-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.unversioned-route.adapter.spec.ts)
+  * satisfiedBy: [list-conversations.unversioned-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.unversioned-route.adapter.spec.ts)
   * verify: [Propagazione dei guasti inattesi](../Requirements/ServerFoundation.md#propagazione-dei-guasti-inattesi)
 ---
 
@@ -614,8 +614,8 @@ La prova passa se il messaggio pubblico non contiene nessuno dei marcatori tecni
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
   * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
-  * satisfiedBy: [history-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.spec.ts)
-  * satisfiedBy: [list-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.spec.ts)
+  * satisfiedBy: [get-conversation.unversioned-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.unversioned-route.adapter.spec.ts)
+  * satisfiedBy: [list-conversations.unversioned-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.unversioned-route.adapter.spec.ts)
   * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
   * verify: [Esclusione dei dettagli tecnici dal messaggio pubblico](../Requirements/ServerFoundation.md#esclusione-dei-dettagli-tecnici-dal-messaggio-pubblico)
   * verify: [Separazione del messaggio pubblico dalla diagnosi tecnica](../Requirements/ServerFoundation.md#separazione-del-messaggio-pubblico-dalla-diagnosi-tecnica)
@@ -936,8 +936,10 @@ La prova passa se tutte le risposte HTTP che trasportano dati conversazionali in
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [history-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.spec.ts)
-  * satisfiedBy: [list-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.spec.ts)
+  * satisfiedBy: [get-conversation.route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.route.adapter.spec.ts)
+  * satisfiedBy: [get-conversation.unversioned-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.unversioned-route.adapter.spec.ts)
+  * satisfiedBy: [list-conversations.route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.route.adapter.spec.ts)
+  * satisfiedBy: [list-conversations.unversioned-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.unversioned-route.adapter.spec.ts)
   * verify: [Esclusione dalla cache delle risposte conversazionali HTTP](../Requirements/ServerFoundation.md#esclusione-dalla-cache-delle-risposte-conversazionali-http)
 ---
 

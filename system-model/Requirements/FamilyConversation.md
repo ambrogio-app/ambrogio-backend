@@ -104,6 +104,7 @@ Quando il server avvia la conversazione con agenti configurati, deve rendere dis
 
 #### Relations
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
+  * satisfiedBy: [http-surface.ts](../../apps/server/src/composition/http-surface.ts)
   * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
@@ -693,7 +694,7 @@ Origine: baseline Reqvire «List or pagination chosen per query», adottata.
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
+  * satisfiedBy: [list-conversations.handler.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.handler.ts)
   * satisfiedBy: [sqlite-conversation-list-read.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-list-read.adapter.ts)
   * satisfiedBy: [list-conversations.use-case.ts](../../packages/conversations/src/application/list-conversations.use-case.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
@@ -947,8 +948,8 @@ Origine: baseline Reqvire «Instants distinct from calendar concepts», adattata
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
-  * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
+  * satisfiedBy: [get-conversation.handler.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.handler.ts)
+  * satisfiedBy: [list-conversations.handler.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.handler.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
@@ -1007,10 +1008,13 @@ Quando un client della chat testuale consulta l'elenco delle conversazioni conse
 
 #### Contract References
   * [Pagine dell'elenco conversazioni](../Contracts/FamilyConversation.md#pagine-dellelenco-conversazioni)
+  * [Forma dei Problem Details dell'API HTTP](../Contracts/HttpApi.md#forma-dei-problem-details-dellapi-http)
+  * [Versioni dell'API HTTP pubblica](../Contracts/HttpApi.md#versioni-dellapi-http-pubblica)
 
 #### Relations
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
-  * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
+  * satisfiedBy: [list-conversations.handler.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.handler.ts)
+  * satisfiedBy: [list-conversations.route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.route.adapter.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
@@ -1021,9 +1025,14 @@ Quando un client della chat testuale consulta una conversazione conservata, il b
 #### Metadata
   * type: requirement
 
+#### Contract References
+  * [Forma dei Problem Details dell'API HTTP](../Contracts/HttpApi.md#forma-dei-problem-details-dellapi-http)
+  * [Versioni dell'API HTTP pubblica](../Contracts/HttpApi.md#versioni-dellapi-http-pubblica)
+
 #### Relations
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
-  * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
+  * satisfiedBy: [get-conversation.handler.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.handler.ts)
+  * satisfiedBy: [get-conversation.route.adapter.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.route.adapter.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
@@ -1755,8 +1764,8 @@ Origine: baseline Reqvire «Shape validation in inbound adapters», adottata; «
 
 #### Relations
   * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
-  * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
-  * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
+  * satisfiedBy: [get-conversation.schemas.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.schemas.ts)
+  * satisfiedBy: [list-conversations.schemas.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.schemas.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 

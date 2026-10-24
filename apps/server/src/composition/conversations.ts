@@ -11,8 +11,8 @@ import { SqliteConversationLookup } from '@ambrogio/conversations/adapters/out/s
 import { createConversationSessions } from '@ambrogio/conversations/adapters/in/session/conversation-session';
 import { createProtocolDecoder } from '@ambrogio/conversations/adapters/in/session/protocol-decoder';
 import type { SpeechComponents } from '@ambrogio/conversations/adapters/in/session/speech-components';
-import { registerHistoryRoute } from '@ambrogio/conversations/adapters/in/http/history-route';
-import { registerListRoute } from '@ambrogio/conversations/adapters/in/http/list-route';
+import { conversationApiRoutes, unversionedConversationRoutes,
+  type RouteRegistration } from '@ambrogio/conversations/adapters/in/http/conversation-routes';
 import { createBeginTurn } from '@ambrogio/conversations/application/begin-turn';
 import { createCompleteTurn } from '@ambrogio/conversations/application/complete-turn';
 import { createInterruptPendingTurns } from '@ambrogio/conversations/application/interrupt-pending-turns';
@@ -111,25 +111,21 @@ export function registerConversationSessionRoute(
   return sessions;
 }
 
-/** Attach the HTTP history ingress after archive recovery. */
-export function registerConversationHistoryRoute(
-  server: FastifyInstance,
-  prepared: PreparedConversations,
-): void {
-  registerHistoryRoute(server, {
+/** Dependencies of the consultation routes, built once from the prepared component. */
+function consultationDependencies(prepared: PreparedConversations) {
+  return {
+    listConversations: prepared.listConversations,
     getConversation: createGetConversation(new SqliteConversationHistoryRead(prepared.archive.db)),
-    language: prepared.language,
-  });
+    maxPageSize: prepared.maxListPageSize,
+  };
 }
 
-/** Attach the HTTP list ingress after archive recovery. */
-export function registerConversationListRoute(
-  server: FastifyInstance,
-  prepared: PreparedConversations,
-): void {
-  registerListRoute(server, {
-    listConversations: prepared.listConversations,
-    maxPageSize: prepared.maxListPageSize,
-    language: prepared.language,
-  });
+/** The consultation routes of HTTP API `v1`, for the scope `/api/v1`. */
+export function conversationApiRegistration(prepared: PreparedConversations): RouteRegistration {
+  return conversationApiRoutes(consultationDependencies(prepared));
+}
+
+/** The same routes in the API without a version, for the scope `/api`, kept while a client release uses it. */
+export function unversionedConversationRegistration(prepared: PreparedConversations): RouteRegistration {
+  return unversionedConversationRoutes({ ...consultationDependencies(prepared), language: prepared.language });
 }

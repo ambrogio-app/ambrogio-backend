@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { ProjectError } from '@ambrogio/conversations/application/project-error';
 import type { ProduceConversationReply } from '@ambrogio/conversations/application/produce-conversation-reply';
 import { prepareConfiguredConversations } from '../composition/conversations.js';
-import { buildConversationServer } from './http-server.js';
+import { buildConversationServer } from '../composition/http-surface.js';
 import type { HttpConfig } from './http-config.js';
 import { closeAllClients, ProtocolClient, takeSchemaViolations } from '../../test/support/protocol-client.js';
 import type { AddressInfo } from 'node:net';
@@ -45,14 +45,14 @@ describe('conversation HTTP server', () => {
       publicHttps: true, hstsMaxAgeSeconds: 600 }, prepared);
     server.get('/test-fallback', async () => { throw new Error('private diagnostic marker'); });
     try {
-      const allowed = await server.inject({ method: 'GET', url: '/api/conversations',
+      const allowed = await server.inject({ method: 'GET', url: '/api/v1/conversations',
         headers: { origin: 'https://client.test', 'request-id': 'client-controlled' } });
-      const rejected = await server.inject({ method: 'GET', url: '/api/conversations',
+      const rejected = await server.inject({ method: 'GET', url: '/api/v1/conversations',
         headers: { origin: 'https://other.test' } });
       const missing = await server.inject({ method: 'GET', url: '/missing' });
-      const invalid = await server.inject({ method: 'GET', url: '/api/conversations?limit=0',
+      const invalid = await server.inject({ method: 'GET', url: '/api/v1/conversations?limit=0',
         headers: { 'x-forwarded-proto': 'http' } });
-      const failed = await server.inject({ method: 'GET', url: '/api/conversations/not-found',
+      const failed = await server.inject({ method: 'GET', url: '/api/v1/conversations/not-found',
         headers: { 'x-forwarded-proto': 'http' } });
       const fallback = await server.inject({ method: 'GET', url: '/test-fallback',
         headers: { 'x-forwarded-proto': 'http' } });
@@ -62,7 +62,8 @@ describe('conversation HTTP server', () => {
       expect(invalid.statusCode).toBe(400);
       expect(failed.statusCode).toBe(404);
       expect(fallback.statusCode).toBe(500);
-      expect(fallback.json()).toEqual({ error: 'Internal server error.' });
+      expect(fallback.json()).toEqual({ type: 'about:blank', title: 'Internal Server Error', status: 500 });
+      expect(fallback.headers['content-type']).toMatch(/^application\/problem\+json/);
       for (const response of [allowed, invalid, failed, missing, fallback]) {
         expect(response.headers['strict-transport-security']).toBe('max-age=600');
         expect(response.headers['x-content-type-options']).toBe('nosniff');
@@ -72,10 +73,10 @@ describe('conversation HTTP server', () => {
         .map(response => response.headers['x-request-id']);
       expect(new Set(ids).size).toBe(ids.length);
       for (const id of ids) expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
-      const preflight = await server.inject({ method: 'OPTIONS', url: '/api/conversations',
+      const preflight = await server.inject({ method: 'OPTIONS', url: '/api/v1/conversations',
         headers: { origin: 'https://client.test', 'access-control-request-method': 'GET' } });
       expect(preflight.headers['access-control-allow-origin']).toBe('https://client.test');
-      const rejectedPreflight = await server.inject({ method: 'OPTIONS', url: '/api/conversations',
+      const rejectedPreflight = await server.inject({ method: 'OPTIONS', url: '/api/v1/conversations',
         headers: { origin: 'https://other.test', 'access-control-request-method': 'GET' } });
       expect(rejectedPreflight.headers['access-control-allow-origin']).toBeUndefined();
       for (const response of [rejected, rejectedPreflight]) {
@@ -91,15 +92,15 @@ describe('conversation HTTP server', () => {
       listPageSize: 20, maxListPageSize: 100, language: 'en', timeZone: 'UTC' }, new Date());
     const defaultServer = await buildServer(base, other);
     try {
-      const response = await defaultServer.inject({ method: 'GET', url: '/api/conversations',
+      const response = await defaultServer.inject({ method: 'GET', url: '/api/v1/conversations',
         headers: { origin: 'https://client.test', 'x-forwarded-proto': 'https' } });
       expect(response.headers['access-control-allow-origin']).toBeUndefined();
       expect(response.headers['strict-transport-security']).toBeUndefined();
-      const failed = await defaultServer.inject({ method: 'GET', url: '/api/conversations?limit=0',
+      const failed = await defaultServer.inject({ method: 'GET', url: '/api/v1/conversations?limit=0',
         headers: { 'x-forwarded-proto': 'https' } });
       expect(failed.statusCode).toBe(400);
       expect(failed.headers['strict-transport-security']).toBeUndefined();
-      const preflight = await defaultServer.inject({ method: 'OPTIONS', url: '/api/conversations',
+      const preflight = await defaultServer.inject({ method: 'OPTIONS', url: '/api/v1/conversations',
         headers: { origin: 'https://client.test', 'access-control-request-method': 'GET' } });
       expect(preflight.headers['access-control-allow-origin']).toBeUndefined();
       expect(preflight.headers['strict-transport-security']).toBeUndefined();
@@ -135,10 +136,10 @@ describe('conversation HTTP server', () => {
       done();
     });
     try {
-      const ordinary = await server.inject({ method: 'GET', url: '/api/conversations',
+      const ordinary = await server.inject({ method: 'GET', url: '/api/v1/conversations',
         headers: { authorization: 'private authorization marker' } });
-      const expected = await server.inject({ method: 'GET', url: '/api/conversations?limit=0' });
-      const missing = await server.inject({ method: 'GET', url: '/api/conversations/private-id-marker' });
+      const expected = await server.inject({ method: 'GET', url: '/api/v1/conversations?limit=0' });
+      const missing = await server.inject({ method: 'GET', url: '/api/v1/conversations/private-id-marker' });
       expect([ordinary.statusCode, expected.statusCode, missing.statusCode]).toEqual([200, 400, 404]);
       expect(output).toEqual([]);
       await prepared.archive.close();
@@ -148,9 +149,9 @@ describe('conversation HTTP server', () => {
         headers: { 'x-context-marker': 'HISTORY_CONTEXT_MARKER_A' } });
       const fallback = await server.inject({ method: 'GET', url: '/test-fallback',
         headers: { 'x-context-marker': 'FALLBACK_CONTEXT_MARKER_A' } });
-      const listAgain = await server.inject({ method: 'GET', url: '/api/conversations?limit=2',
+      const listAgain = await server.inject({ method: 'GET', url: '/api/v1/conversations?limit=2',
         headers: { 'x-context-marker': 'LIST_CONTEXT_MARKER_B' } });
-      const historyAgain = await server.inject({ method: 'GET', url: '/api/conversations/other',
+      const historyAgain = await server.inject({ method: 'GET', url: '/api/v1/conversations/other',
         headers: { 'x-context-marker': 'HISTORY_CONTEXT_MARKER_B' } });
       const fallbackAgain = await server.inject({ method: 'GET', url: '/test-fallback?run=2',
         headers: { 'x-context-marker': 'FALLBACK_CONTEXT_MARKER_B' } });
@@ -158,13 +159,15 @@ describe('conversation HTTP server', () => {
         expect(response.statusCode).toBe(500);
         expect(response.headers['x-request-id']).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
       }
-      expect(list.headers['cache-control']).toBe('no-store');
-      expect(history.headers['cache-control']).toBe('no-store');
+      for (const response of [list, history, listAgain, historyAgain]) {
+        expect(response.headers['cache-control']).toBe('no-store');
+      }
+      for (const response of [listAgain, historyAgain]) expect(response.json()).toEqual({ type: 'about:blank', title: 'Internal Server Error', status: 500 });
       expect(list.headers['x-request-id']).not.toBe(history.headers['x-request-id']);
       const expectedEvents = [[list, 'conversation_list_http_failed'],
         [history, 'conversation_history_http_failed'], [fallback, 'http.unexpected_failure'],
-        [listAgain, 'conversation_list_http_failed'],
-        [historyAgain, 'conversation_history_http_failed'],
+        [listAgain, 'http.unexpected_failure'],
+        [historyAgain, 'http.unexpected_failure'],
         [fallbackAgain, 'http.unexpected_failure']] as const;
       for (const [response, event] of expectedEvents) {
         const id = response.headers['x-request-id'] as string;
@@ -250,7 +253,7 @@ describe('conversation HTTP server', () => {
         '/test-unknown', '/test-string'].entries()) {
         const response = await server.inject({ method: 'GET', url });
         expect(response.statusCode).toBe(500);
-        expect(response.json()).toEqual({ error: 'Internal server error.' });
+        expect(response.json()).toEqual({ type: 'about:blank', title: 'Internal Server Error', status: 500 });
         expect(logged).toHaveLength(index + 1);
         expect(warnings[index]).toHaveLength(0);
       }
@@ -318,11 +321,11 @@ describe('conversation HTTP server', () => {
       expect(turn.final.type).toBe('turn.completed');
       const conversationId = turn.accepted!.conversationId as string;
       const history = await server.inject({ method: 'GET',
-        url: `/api/conversations/${conversationId}` });
+        url: `/api/v1/conversations/${conversationId}` });
       expect(history.statusCode).toBe(200);
       expect(history.body).toContain('PRIVATE_CONVERSATION_TEXT');
       expect(history.body).toContain('PRIVATE_USE_CASE_OUTPUT');
-      const list = await server.inject({ method: 'GET', url: '/api/conversations?limit=1' });
+      const list = await server.inject({ method: 'GET', url: '/api/v1/conversations?limit=1' });
       expect(list.statusCode).toBe(200);
       expect(list.body).toContain(conversationId);
       expect(output).toEqual([]);

@@ -8,8 +8,8 @@ import Fastify from 'fastify';
 import websocket from '@fastify/websocket';
 import type { ProduceConversationReply, ReplyPart } from '@ambrogio/conversations/application/produce-conversation-reply';
 import type { SpeechComponents } from '@ambrogio/conversations/adapters/in/session/speech-components';
-import { assembleExchangeTurn, loadProtocolSchema, prepareConfiguredConversations, registerConversationHistoryRoute,
-  registerConversationListRoute, registerConversationSessionRoute } from './conversations.js';
+import { assembleExchangeTurn, conversationApiRegistration, loadProtocolSchema, prepareConfiguredConversations,
+  registerConversationSessionRoute } from './conversations.js';
 import { closeAllClients, pcm, ProtocolClient, takeSchemaViolations } from '../../test/support/protocol-client.js';
 
 const directories: string[] = [];
@@ -42,7 +42,7 @@ async function sessionServer(prepared: Awaited<ReturnType<typeof prepareConfigur
     schema: await loadProtocolSchema(), allowedOrigins: [], pingIntervalMs: 30_000,
     ...(speech ? { speech } : {}),
   });
-  registerConversationHistoryRoute(server, prepared);
+  await server.register(async scope => { conversationApiRegistration(prepared)(scope); }, { prefix: '/api/v1' });
   await server.listen({ host: '127.0.0.1', port: 0 });
   const { port } = server.server.address() as AddressInfo;
   let closed = false;
@@ -104,18 +104,18 @@ describe('server conversation composition', () => {
         { id: 'c', created_at: 100, last_activity_at: 200 },
         { id: 'd', created_at: 100, last_activity_at: 100 },
       ]).execute();
-      registerConversationListRoute(server, prepared);
-      const first = (await server.inject({ method: 'GET', url: '/api/conversations' })).json();
+      await server.register(async scope => { conversationApiRegistration(prepared)(scope); }, { prefix: '/api/v1' });
+      const first = (await server.inject({ method: 'GET', url: '/api/v1/conversations' })).json();
       expect(first.items.map((item: { id: string }) => item.id)).toEqual(['a', 'c']);
       expect(typeof first.nextCursor).toBe('string');
       const second = (await server.inject({ method: 'GET',
-        url: `/api/conversations?cursor=${first.nextCursor}` })).json();
+        url: `/api/v1/conversations?cursor=${first.nextCursor}` })).json();
       expect(second.items.map((item: { id: string }) => item.id)).toEqual(['b', 'd']);
       expect(second.nextCursor).toBeNull();
 
       await prepared.archive.db.updateTable('conversations').set({ last_activity_at: 400 })
         .where('id', '=', 'd').execute();
-      const refreshed = (await server.inject({ method: 'GET', url: '/api/conversations' })).json();
+      const refreshed = (await server.inject({ method: 'GET', url: '/api/v1/conversations' })).json();
       expect(refreshed.items.map((item: { id: string }) => item.id)).toEqual(['d', 'a']);
     } finally {
       await server.close();
@@ -211,7 +211,7 @@ describe('server conversation composition', () => {
       client.end(requestId);
       await started;
       const conversation = await prepared.archive.db.selectFrom('conversations').select('id').executeTakeFirstOrThrow();
-      const url = `/api/conversations/${conversation.id}`;
+      const url = `/api/v1/conversations/${conversation.id}`;
       const pending = await running.server.inject({ method: 'GET', url });
       expect(pending.statusCode).toBe(200);
       expect(pending.headers['content-type']).toMatch(/^application\/json/);
@@ -228,9 +228,10 @@ describe('server conversation composition', () => {
         turns: [{ text: '  domanda  interna  ', status: 'answered', answer: 'risposta completa' }] });
       expect(completed.json().turns).toHaveLength(1);
       expect(completed.json().turns[0].finishedAt).toMatch(/Z$/);
-      const missing = await running.server.inject({ method: 'GET', url: '/api/conversations/missing' });
+      const missing = await running.server.inject({ method: 'GET', url: '/api/v1/conversations/missing' });
       expect(missing.statusCode).toBe(404);
-      expect(missing.json()).toEqual({ error: 'Conversazione non trovata.' });
+      expect(missing.json()).toEqual({ type: '/problems/conversation-not-found', title: 'Conversation not found',
+        status: 404 });
     } finally {
       release();
       await running.close();
@@ -258,7 +259,7 @@ describe('server conversation composition', () => {
       for (const result of [typed, spoken]) {
         expect(result.accepted!.text).toBe(original);
         const history = await running.server.inject({ method: 'GET',
-          url: `/api/conversations/${result.accepted!.conversationId as string}` });
+          url: `/api/v1/conversations/${result.accepted!.conversationId as string}` });
         expect(history.json().turns).toMatchObject([{ text: original, status: 'answered' }]);
       }
       expect(histories).toEqual([original, original]);

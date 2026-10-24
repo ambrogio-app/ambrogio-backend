@@ -6,7 +6,7 @@ import type { ConversationHistory } from '@ambrogio/conversations/application/co
 import type { ProduceConversationReply, ReplyPart } from '@ambrogio/conversations/application/produce-conversation-reply';
 import type { SpeechComponents, SpeechComponentsFactory } from '@ambrogio/conversations/adapters/in/session/speech-components';
 import { prepareConfiguredConversations } from '../../src/composition/conversations.js';
-import { buildConversationServer } from '../../src/runtime/http-server.js';
+import { buildConversationServer } from '../../src/composition/http-surface.js';
 
 export type Language = 'en' | 'it';
 export type Reason = 'invalid' | 'conversation_not_found' | 'occupied' | 'unavailable' | 'too_large'
@@ -139,12 +139,12 @@ export async function startSessionServer(options: Readonly<{
     ingress: built.turnIngress,
     speech: speech.state,
     async conversationIds(): Promise<string[]> {
-      const response = await built.server.inject({ method: 'GET', url: '/api/conversations?limit=100' });
+      const response = await built.server.inject({ method: 'GET', url: '/api/v1/conversations?limit=100' });
       return (response.json().items as Array<{ id: string }>).map(item => item.id);
     },
     async turns(conversationId: string): Promise<Array<{ id: string; text: string; status: string;
       answer?: string; error?: string }>> {
-      const response = await built.server.inject({ method: 'GET', url: `/api/conversations/${conversationId}` });
+      const response = await built.server.inject({ method: 'GET', url: `/api/v1/conversations/${conversationId}` });
       return response.json().turns;
     },
     async close() {

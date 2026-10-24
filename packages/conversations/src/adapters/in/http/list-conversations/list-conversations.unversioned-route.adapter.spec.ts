@@ -1,17 +1,18 @@
-import Fastify from 'fastify';
+import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { registerListRoute } from './list-route.adapter.js';
-import { httpAjvOptions } from './http-validation.js';
-import { createListConversations } from '../../../application/list-conversations.use-case.js';
-import { ProjectError } from '../../../project-error.js';
-import type { ListConversations } from '../../../application/list-conversations.use-case.js';
+import { registerUnversionedListConversationsRoute } from './list-conversations.unversioned-route.adapter.js';
+import { createListConversationsHandler } from './list-conversations.handler.js';
+import { createListConversations } from '../../../../application/list-conversations.use-case.js';
+import { ProjectError } from '../../../../project-error.js';
+import type { ListConversations } from '../../../../application/list-conversations.use-case.js';
+import { routeServer } from '../../../../../test/support/http-routes.js';
 
-const servers: ReturnType<typeof Fastify>[] = [];
+const servers: FastifyInstance[] = [];
 
 function fixture(listConversations: ListConversations, maxPageSize = 100, language: 'en' | 'it' = 'en') {
-  const server = Fastify({ ajv: { customOptions: httpAjvOptions } });
+  const server = routeServer('/api', scope => registerUnversionedListConversationsRoute(scope,
+    createListConversationsHandler({ listConversations, maxPageSize }), language));
   servers.push(server);
-  registerListRoute(server, { listConversations, maxPageSize, language });
   return server;
 }
 
@@ -19,8 +20,8 @@ afterEach(async () => {
   await Promise.all(servers.splice(0).map(server => server.close()));
 });
 
-describe('conversation list HTTP ingress', () => {
-  // Verification: Prova degli istanti ai confini HTTP
+describe('conversation list HTTP ingress of the API without a version', () => {
+  // Verification: Prova dell'API HTTP senza versione
   it('returns a page and passes its opaque cursor and explicit limit to the next read', async () => {
     const inputs: Parameters<ListConversations>[0][] = [];
     const server = fixture(async input => {
@@ -55,7 +56,7 @@ describe('conversation list HTTP ingress', () => {
     ]);
   });
 
-  // Verification: Prova degli istanti ai confini HTTP
+  // Verification: Prova dell'API HTTP senza versione
   it('accepts only the canonical UTC instant it produced in a cursor', async () => {
     const calls: Parameters<ListConversations>[0][] = [];
     const server = fixture(async input => { calls.push(input); return { items: [] }; });

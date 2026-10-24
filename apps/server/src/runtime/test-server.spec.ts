@@ -35,11 +35,11 @@ test('serves the session and the HTTP routes of the product on a free loopback p
   expect(result.final).toMatchObject({ type: 'turn.completed', expectsReply: false });
   expect(result.outputs.map(output => output.text).join('')).toBe('eco: ciao');
 
-  const list = await fetch(`${server.origin}/api/conversations`);
+  const list = await fetch(`${server.origin}/api/v1/conversations`);
   expect(list.status).toBe(200);
   const body = await list.json() as { items: readonly Readonly<{ id: string }>[] };
   expect(body.items).toHaveLength(1);
-  const history = await fetch(`${server.origin}/api/conversations/${body.items[0]!.id}`);
+  const history = await fetch(`${server.origin}/api/v1/conversations/${body.items[0]!.id}`);
   expect(history.status).toBe(200);
 });
 
@@ -58,14 +58,14 @@ test('accepts voice turns only with the deterministic speech components of the c
 
 test('applies the allowed origins of the caller to the session and the HTTP routes', async () => {
   const server = await start({ allowedOrigins: ['http://chat.example'] });
-  const allowed = await fetch(`${server.origin}/api/conversations`, { headers: { origin: 'http://chat.example' } });
+  const allowed = await fetch(`${server.origin}/api/v1/conversations`, { headers: { origin: 'http://chat.example' } });
   expect(allowed.headers.get('access-control-allow-origin')).toBe('http://chat.example');
-  const other = await fetch(`${server.origin}/api/conversations`, { headers: { origin: 'http://other.example' } });
+  const other = await fetch(`${server.origin}/api/v1/conversations`, { headers: { origin: 'http://other.example' } });
   expect(other.headers.get('access-control-allow-origin')).toBeNull();
 });
 
 test('closes idempotently and stops listening', async () => {
   const server = await start();
   await Promise.all([server.close(), server.close()]);
-  await expect(fetch(`${server.origin}/api/conversations`)).rejects.toThrow();
+  await expect(fetch(`${server.origin}/api/v1/conversations`)).rejects.toThrow();
 });

@@ -553,8 +553,8 @@ Origine: baseline Reqvire «No technical details in public failure messages», a
 
 #### Relations
   * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
-  * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
-  * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
+  * satisfiedBy: [get-conversation.unversioned-route.adapter.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.unversioned-route.adapter.ts)
+  * satisfiedBy: [list-conversations.unversioned-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.unversioned-route.adapter.ts)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
@@ -1037,8 +1037,8 @@ Origine: baseline Reqvire «Diagnostic normalization at the definitive boundary�
 #### Relations
   * derivedFrom: [Diagnosi definitiva unica dei guasti inattesi](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#diagnosi-definitiva-unica-dei-guasti-inattesi)
   * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
-  * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
-  * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
+  * satisfiedBy: [get-conversation.unversioned-route.adapter.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.unversioned-route.adapter.ts)
+  * satisfiedBy: [list-conversations.unversioned-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.unversioned-route.adapter.ts)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
@@ -1154,8 +1154,8 @@ Quando un componente del server decide definitivamente l'esito esterno di un gua
 #### Relations
   * derivedFrom: [Diagnosi definitiva unica dei guasti inattesi](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#diagnosi-definitiva-unica-dei-guasti-inattesi)
   * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
-  * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
-  * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
+  * satisfiedBy: [get-conversation.unversioned-route.adapter.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.unversioned-route.adapter.ts)
+  * satisfiedBy: [list-conversations.unversioned-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.unversioned-route.adapter.ts)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
@@ -1254,8 +1254,8 @@ Quando il runtime HTTP del server emette un evento diagnostico applicativo, la r
 #### Relations
   * derivedFrom: [Log tecnici JSON con Pino](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#log-tecnici-json-con-pino)
   * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
-  * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
-  * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
+  * satisfiedBy: [get-conversation.unversioned-route.adapter.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.unversioned-route.adapter.ts)
+  * satisfiedBy: [list-conversations.unversioned-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.unversioned-route.adapter.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -1271,8 +1271,8 @@ Origine: baseline Reqvire «Public message separated from technical diagnosis»,
 
 #### Relations
   * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
-  * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
-  * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
+  * satisfiedBy: [get-conversation.unversioned-route.adapter.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.unversioned-route.adapter.ts)
+  * satisfiedBy: [list-conversations.unversioned-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.unversioned-route.adapter.ts)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---

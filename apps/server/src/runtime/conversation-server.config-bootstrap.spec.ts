@@ -47,7 +47,7 @@ test('reads the active components from the environment once and keeps the valida
 
   const runtime = await startConversationServer(environment, controlledAgents);
   try {
-    const request = () => fetch(`http://127.0.0.1:${port}/api/conversations`, {
+    const request = () => fetch(`http://127.0.0.1:${port}/api/v1/conversations`, {
       headers: { origin: 'https://allowed.example' },
     });
     const before = await request();
@@ -156,7 +156,7 @@ test('uses the validated agent, HTTP and conversation configuration throughout t
         const invalid = await client.textTurn('');
         expect(invalid.final).toMatchObject({ type: 'turn.rejected', message: 'Messaggio non valido.' });
         expect(await rejectedUpgradeStatus(url, { origin: 'https://other.example' })).toBe(403);
-        const list = await runtime.server.inject({ method: 'GET', url: '/api/conversations',
+        const list = await runtime.server.inject({ method: 'GET', url: '/api/v1/conversations',
           headers: { origin: 'https://allowed.example' } });
         expect(list.headers['access-control-allow-origin']).toBe('https://allowed.example');
         await client.close();

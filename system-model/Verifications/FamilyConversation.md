@@ -654,8 +654,8 @@ La prova passa se ogni istante delle risposte è una stringa ISO 8601 in UTC ter
 
 #### Relations
   * derivedFrom: [Verifica dell'organizzazione delle conversazioni](#verifica-dellorganizzazione-delle-conversazioni)
-  * satisfiedBy: [history-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.spec.ts)
-  * satisfiedBy: [list-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.spec.ts)
+  * satisfiedBy: [get-conversation.route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.route.adapter.spec.ts)
+  * satisfiedBy: [list-conversations.route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.route.adapter.spec.ts)
   * verify: [Istanti distinti dai concetti di calendario nella conversazione](../Requirements/FamilyConversation.md#istanti-distinti-dai-concetti-di-calendario-nella-conversazione)
 ---
 
@@ -1083,8 +1083,8 @@ La prova passa se gli schemi TypeBox sono applicati da Fastify/Ajv prima dei ges
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
-  * satisfiedBy: [history-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.spec.ts)
-  * satisfiedBy: [list-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.spec.ts)
+  * satisfiedBy: [get-conversation.route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.route.adapter.spec.ts)
+  * satisfiedBy: [list-conversations.route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.route.adapter.spec.ts)
   * verify: [Validazione strutturale delle richieste conversazionali HTTP](../Requirements/FamilyConversation.md#validazione-strutturale-delle-richieste-conversazionali-http)
 ---
 
@@ -1418,7 +1418,7 @@ La prova passa se, dopo il riavvio, la famiglia può recuperare la conversazione
 Leggere via GET una conversazione con turni conclusi con risposta ed errore, un turno in elaborazione e un turno interrotto. Ripetere la lettura dopo la conclusione del turno in elaborazione e verificare anche conversazione assente e guasto tecnico dell'archivio.
 
 #### Details
-La prova passa se la risposta `200` è JSON senza cache, conserva identità, testi, ordine e istanti ISO 8601 UTC e presenta solo i campi di esito pertinenti a ciascuno stato. La seconda lettura presenta l'esito persistente del turno prima in elaborazione senza duplicarlo; la lettura non usa SSE né recupera frammenti parziali. La conversazione assente restituisce `404` e il guasto tecnico `500`, entrambi con un messaggio pubblico sicuro tradotto e senza dettagli tecnici. Fallisce se uno stato o un testo è alterato, se un frammento parziale compare nello storico o se un guasto espone dettagli interni.
+La prova passa se la risposta `200` è JSON senza cache, conserva identità, testi, ordine e istanti ISO 8601 UTC e presenta solo i campi di esito pertinenti a ciascuno stato. La seconda lettura presenta l'esito persistente del turno prima in elaborazione senza duplicarlo; la lettura non usa SSE né recupera frammenti parziali. Le letture usano `GET /api/v1/conversations/:conversationId`. La conversazione assente restituisce `404` con il problema `/problems/conversation-not-found` e il guasto tecnico `500` con la risposta opaca, entrambi `application/problem+json` conformi ai propri schemi e senza dettagli tecnici. Fallisce se uno stato o un testo è alterato, se un frammento parziale compare nello storico o se un guasto espone dettagli interni.
 
 #### Metadata
   * type: test-verification
@@ -1426,7 +1426,7 @@ La prova passa se la risposta `200` è JSON senza cache, conserva identità, tes
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * satisfiedBy: [conversations.spec.ts](../../apps/server/src/composition/conversations.spec.ts)
-  * satisfiedBy: [history-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.spec.ts)
+  * satisfiedBy: [get-conversation.route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.route.adapter.spec.ts)
   * verify: [Lettura HTTP dello storico conversazionale](../Requirements/FamilyConversation.md#lettura-http-dello-storico-conversazionale)
 ---
 
@@ -1822,7 +1822,7 @@ La prova passa se le variabili assenti danno 20 e 100, i valori espliciti validi
 Leggere via GET più pagine di un elenco con conversazioni di attività differente e a parità di attività, usando il cursore restituito, il limite predefinito e un `limit` esplicito entro il massimo configurato. Ripetere con elenco vuoto, cursore e limite invalidi e guasto tecnico dell'archivio.
 
 #### Details
-La prova passa se le risposte `200` JSON senza cache contengono solo `items` ordinati e `nextCursor`, con identificativi e istanti ISO 8601 UTC preservati; seguire il cursore attraversa l'archivio invariato senza omissioni o duplicati e termina con `nextCursor: null`. Il limite predefinito proviene dalla configurazione e un limite esplicito valido la rispetta; valori invalidi ricevono `400` JSON sicuro senza chiamare il caso d'uso. Un guasto dell'archivio riceve `500` JSON sicuro e viene registrato. Fallisce se l'ordine, i limiti o gli esiti HTTP non corrispondono al contratto.
+La prova passa se le risposte `200` JSON senza cache contengono solo `items` ordinati e `nextCursor`, con identificativi e istanti ISO 8601 UTC preservati; seguire il cursore attraversa l'archivio invariato senza omissioni o duplicati e termina con `nextCursor: null`. Il limite predefinito proviene dalla configurazione e un limite esplicito valido la rispetta; le letture usano `GET /api/v1/conversations`; cursore e limite invalidi ricevono `400` con il problema `/problems/invalid-pagination` e un parametro non previsto `400` con `/problems/request-validation`, senza chiamare il caso d'uso. Un guasto dell'archivio riceve la risposta opaca `500` e viene registrato dalla gestione centrale. Ogni risposta d'errore è `application/problem+json` conforme al proprio schema. Fallisce se l'ordine, i limiti o gli esiti HTTP non corrispondono al contratto.
 
 #### Metadata
   * type: test-verification
@@ -1830,7 +1830,7 @@ La prova passa se le risposte `200` JSON senza cache contengono solo `items` ord
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
   * satisfiedBy: [conversations.spec.ts](../../apps/server/src/composition/conversations.spec.ts)
-  * satisfiedBy: [list-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.spec.ts)
+  * satisfiedBy: [list-conversations.route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.route.adapter.spec.ts)
   * verify: [Lettura HTTP dell'elenco conversazioni](../Requirements/FamilyConversation.md#lettura-http-dellelenco-conversazioni)
 ---
 

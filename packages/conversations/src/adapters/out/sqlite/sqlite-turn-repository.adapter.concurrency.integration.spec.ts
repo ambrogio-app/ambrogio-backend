@@ -12,6 +12,7 @@ import { Kysely, SqliteDialect } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { migrateConversationArchive } from './migrations.js';
 import type { ConversationDatabase } from './schema.js';
+import { commitLockWaitMs } from './sqlite-transaction.js';
 import type { ProcessReply, ProcessRequest } from '../../../../test/support/turn-repository-process.js';
 
 const worker = fileURLToPath(new URL('../../../../test/support/turn-repository-process.ts', import.meta.url));
@@ -136,6 +137,38 @@ describe('turn repository under concurrent processes', () => {
       expect(occupantOf(conversationId)).toBe(winners[0]);
     }
   });
+
+  it('commits an admission after a read lock of another connection is released within the wait', async () => {
+    const conversationId = await freeConversation();
+    const turnId = randomUUID();
+    // An independent connection holds a read lock, as a reader does for the length of one statement.
+    const reader = new Database(file, { readonly: true });
+    reader.exec('begin');
+    reader.prepare('select count(*) from turns').get();
+    const released = new Promise<void>(resolve => setTimeout(() => { reader.exec('commit'); reader.close(); resolve(); }, 200));
+    expect(await peers[0]!.result({ op: 'admit', conversationId, turnId, conversation: 'existing', at: 3000 }))
+      .toEqual({ ok: true });
+    await released;
+    expect(turnsOf(conversationId).map(turn => [turn.id, turn.status]).slice(1)).toEqual([[turnId, 'pending']]);
+    expect(occupantOf(conversationId)).toBe(turnId);
+  });
+
+  it('answers archive_busy and stores nothing when a read lock outlasts the commit wait', async () => {
+    const conversationId = await freeConversation();
+    const turnId = randomUUID();
+    const reader = new Database(file, { readonly: true });
+    reader.exec('begin');
+    reader.prepare('select count(*) from turns').get();
+    try {
+      expect(await peers[0]!.result({ op: 'admit', conversationId, turnId, conversation: 'existing', at: 3001 }))
+        .toEqual({ ok: false, error: { kind: 'archive_busy' } });
+    } finally {
+      reader.exec('commit');
+      reader.close();
+    }
+    expect(turnsOf(conversationId).slice(1)).toEqual([]);
+    expect(occupantOf(conversationId)).toBeNull();
+  }, commitLockWaitMs + 10_000);
 
   it('keeps the first saved outcome when both processes loaded the pending turn and save in turn', async () => {
     const { conversationId, turnId } = await pendingTurn();

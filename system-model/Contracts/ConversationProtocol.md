@@ -13,11 +13,8 @@ Chat testuale e voce usano un unico protocollo conversazionale di Ambrogio, `amb
 - Elenco e storico delle conversazioni restano rotte HTTP GET.
 - La definizione macchina dei messaggi è uno schema JSON versionato nel repository backend.
 - Il protocollo ammette messaggi del server non legati a un turno, con una regola di risposta esplicita del client, senza una dichiarazione preventiva delle capacità del client.
-
-#### Alternative e conseguenze
-Sono state considerate la conservazione dei due protocolli, SSE di AI SDK per il testo e Micdrop per la voce, un protocollo solo testuale con trascrizione e sintesi sul satellite, e una connessione per conversazione. La conservazione dei protocolli lasciava regole diverse per canale: rifiuti HTTP per il testo e risposte parlate per la voce, conferma di successo soltanto nel testo, `expectsReply` soltanto nella voce, una copia della conversazione nella memoria di Micdrop, patch locali del client Micdrop e la stima della fine della risposta tramite silenzio. Trascrizione e sintesi sul satellite avrebbero spostato modelli e scelta della voce su ogni dispositivo, contro la decisione di includere le voci Piper nell'immagine backend. Una connessione per conversazione avrebbe obbligato la chat a riconnettersi a ogni cambio di conversazione.
-
-Le regole su ammissione atomica per conversazione, completamento dopo disconnessione, esiti conservati, diagnostica, configurazione e lingua sono definite dai rispettivi contratti e valgono per ogni client del protocollo. Un cambio incompatibile del protocollo segue «Compatibilità fra release per versione d'interfaccia»: introduce una nuova versione maggiore del protocollo, e la versione precedente resta un elemento distinto del modello del backend finché un client la usa.
+- Le regole su ammissione atomica per conversazione, completamento dopo disconnessione, esiti conservati, diagnostica, configurazione e lingua sono definite dai rispettivi contratti e valgono per ogni client del protocollo.
+- Un cambio incompatibile del protocollo segue «Compatibilità fra release per versione d'interfaccia»: introduce una nuova versione maggiore del protocollo, e la versione precedente resta un elemento distinto del modello del backend finché un client la usa.
 
 #### Documentazione utente
 Un cambiamento del protocollo aggiorna nello stesso lavoro la documentazione utente secondo «Documentazione utente aggiornata con i cambiamenti pubblici».

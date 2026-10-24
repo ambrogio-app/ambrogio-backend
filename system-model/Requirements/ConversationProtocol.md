@@ -17,6 +17,11 @@ Quando un client apre il canale conversazionale, il backend deve accettare la se
 
 Ambrogio deve offrire ai client testuali e vocali un unico canale conversazionale WebSocket in cui l'invio dei turni, la trasmissione delle risposte e la comunicazione degli esiti seguono lo stesso protocollo e le stesse regole, qualunque sia il tipo di contenuto trasmesso.
 
+#### Details
+Alternative: due protocolli, SSE di AI SDK per il testo e Micdrop per la voce (regole diverse per canale: rifiuti HTTP per il testo e risposte parlate per la voce, conferma di successo soltanto nel testo, `expectsReply` soltanto nella voce, una copia della conversazione nella memoria di Micdrop, patch locali del client Micdrop e fine della risposta stimata dal silenzio); un protocollo solo testuale con trascrizione e sintesi sul satellite (modelli e scelta della voce su ogni dispositivo, contro i modelli vocali inclusi nell'immagine del backend); una connessione per conversazione (la chat si riconnette a ogni cambio di conversazione).
+
+Motivo: un solo protocollo applica a testo e voce le stesse regole su rifiuti, esiti e replica attesa, lascia trascrizione e sintesi nel backend e trasporta in una sessione i turni di più conversazioni.
+
 #### Metadata
   * type: requirement
 

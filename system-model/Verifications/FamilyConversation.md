@@ -531,6 +531,7 @@ La prova passa se `tsc` termina con stato 0 senza diagnostiche e se ogni import 
 #### Relations
   * derivedFrom: [Verifica dell'organizzazione delle conversazioni](#verifica-dellorganizzazione-delle-conversazioni)
   * satisfiedBy: [domain-application-independence.test.ts](../../test/repository/domain-application-independence.test.ts)
+  * satisfiedBy: [import-boundaries.test.ts](../../test/repository/import-boundaries.test.ts)
   * verify: [Indipendenza tecnica di Domain e Application nel backend](../Requirements/FamilyConversation.md#indipendenza-tecnica-di-domain-e-application-nel-backend)
 ---
 

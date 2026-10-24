@@ -234,3 +234,19 @@ La prova passa se nessun import originato da un package sotto `packages/` nomina
   * satisfiedBy: [import-boundaries.test.ts](../../test/repository/import-boundaries.test.ts)
   * verify: [Isolamento dei package business dai package tecnici condivisi](../Requirements/Workspace.md#isolamento-dei-package-business-dai-package-tecnici-condivisi)
 ---
+
+### Prova delle regole di architettura centrali del backend
+
+Eseguire ogni regola di `test/repository/architecture-rules.ts` sull'intero grafo degli import del repository e sulle fixture negative in memoria di `test/repository/import-boundaries.test.ts`; leggere l'elenco `exceptions`.
+
+#### Details
+La prova passa se l'estrazione degli import riconosce anche gli import di soli tipi, gli import dinamici e le riesportazioni; se l'analisi copre sorgenti e test di ogni applicazione e package; se nessuna regola segnala violazioni sul repository; se ogni regola del contratto «Regole di architettura del backend» ha almeno una fixture negativa e ogni fixture produce violazioni soltanto con il nome della regola attesa; se ogni eccezione nomina una regola esistente, il file, l'import e un motivo non vuoto; e se un'eccezione ammette soltanto l'import che nomina. Fallisce se una regola non ha fixture, se una fixture non fallisce o fallisce per un'altra regola, se l'analisi esclude una parte del grafo o se un'eccezione è incompleta o ammette altri import.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della struttura del monorepo](#verifica-della-struttura-del-monorepo)
+  * satisfiedBy: [import-boundaries.test.ts](../../test/repository/import-boundaries.test.ts)
+  * verify: [Regole di architettura centrali del backend](../Requirements/Workspace.md#regole-di-architettura-centrali-del-backend)
+---

@@ -1,121 +1,121 @@
-import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { expect, test } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import {
-  extractSpecifiers, importFormsExample, importFormsSpecifiers, namedUnit, repositoryRoot, resolveSpecifier,
-  workspaceSources, workspaceUnits, type SourceFile,
-} from './source-imports.js';
+  analyse, describeViolation, exceptions, fixtureGraph, rules, workspaceGraph,
+  type ArchitectureException, type RuleName,
+} from './architecture-rules.js';
+import { extractSpecifiers, importFormsExample, importFormsSpecifiers, type WorkspaceUnit } from './source-imports.js';
 
-const workspace = { files: workspaceSources() };
-const units = workspaceUnits();
-const packages = units.filter((unit) => unit.directory.startsWith('packages/'));
-const apps = units.filter((unit) => unit.directory.startsWith('apps/'));
-const inside = (path: string, directory: string) => path.startsWith(`${directory}/`);
-const unitOf = (path: string) => units.find((unit) => inside(path, unit.directory));
-const filesIn = (directory: string) => workspace.files.filter((file) => inside(file.path, directory));
+const workspace = workspaceGraph();
 
-test('the import extraction sees every form of import and ignores comments and strings', () => {
+test('the import extraction sees every form of import, type-only ones included, and ignores comments and strings', () => {
   expect([...extractSpecifiers(importFormsExample)].sort()).toEqual([...importFormsSpecifiers].sort());
 });
 
 test('the analysis covers the sources and tests of every application and package', () => {
-  expect(apps.length).toBeGreaterThan(0);
-  expect(packages.length).toBeGreaterThan(0);
+  const units = workspace.units;
+  expect(units.some((unit) => unit.directory.startsWith('apps/'))).toBe(true);
+  expect(units.some((unit) => unit.directory.startsWith('packages/'))).toBe(true);
   for (const unit of units) {
-    expect(filesIn(`${unit.directory}/src`).length, unit.directory).toBeGreaterThan(0);
-    expect(filesIn(`${unit.directory}/test`).length, unit.directory).toBeGreaterThan(0);
+    expect(workspace.files.filter((file) => file.path.startsWith(`${unit.directory}/src/`)).length, unit.directory).toBeGreaterThan(0);
+    expect(workspace.files.filter((file) => file.path.startsWith(`${unit.directory}/test/`)).length, unit.directory).toBeGreaterThan(0);
   }
+  expect(workspace.configs.map((config) => config.path)).toContain('tsconfig.json');
 });
 
+// Verification: Prova delle regole di architettura centrali del backend
 // Verification: Prova degli import tra package business e applicazioni
 // Verification: Prova degli import verso package tecnici condivisi
-test('package files import nothing from another workspace package or application', () => {
-  const violations: string[] = [];
-  for (const unit of packages) {
-    for (const file of filesIn(unit.directory)) {
-      for (const specifier of file.specifiers) {
-        const target = resolveSpecifier(file.path, specifier);
-        const named = namedUnit(specifier, units);
-        if ((specifier.startsWith('.') && !inside(target, unit.directory))
-          || (named !== undefined && named.unit !== unit)) violations.push(`${file.path} -> ${specifier}`);
-      }
-    }
-  }
-  expect(violations).toEqual([]);
-});
-
 // Verification: Prova degli import delle API pubbliche nelle applicazioni
-test('applications reach packages only through declared export subpaths', () => {
-  const violations: string[] = [];
-  for (const app of apps) {
-    for (const file of filesIn(app.directory)) {
-      for (const specifier of file.specifiers) {
-        const named = namedUnit(specifier, units);
-        if (specifier.startsWith('#')) violations.push(`${file.path} -> ${specifier} (import alias)`);
-        else if (specifier.startsWith('.') && !inside(resolveSpecifier(file.path, specifier), app.directory)) {
-          violations.push(`${file.path} -> ${specifier} (relative path outside the application)`);
-        } else if (named !== undefined && named.unit !== app && !named.unit.exports.includes(named.subpath)) {
-          violations.push(`${file.path} -> ${specifier} (subpath not declared in exports)`);
-        }
-      }
-    }
-  }
-  expect(violations).toEqual([]);
-});
-
-test('no TypeScript configuration declares path aliases', () => {
-  const configs = ['', ...units.map((unit) => unit.directory)].flatMap((directory) =>
-    readdirSync(join(repositoryRoot, directory)).filter((name) => /^tsconfig.*\.json$/.test(name))
-      .map((name) => join(directory, name)));
-  expect(configs.length).toBeGreaterThan(0);
-  for (const config of configs) {
-    expect(readFileSync(join(repositoryRoot, config), 'utf8'), config).not.toMatch(/"paths"\s*:/);
-  }
-});
-
-const testKinds = ['test/domain/', 'test/application/', 'test/adapters/in/', 'test/adapters/out/'];
-
-/** Production code reached by a test file, directly or through local test files. */
-function productionReached(file: SourceFile, testDirectory: string): string[] {
-  const reached: string[] = [];
-  const seen = new Set<string>();
-  const visit = (current: SourceFile) => {
-    if (seen.has(current.path)) return;
-    seen.add(current.path);
-    for (const specifier of current.specifiers) {
-      if (namedUnit(specifier, units) !== undefined) { reached.push(specifier); continue; }
-      if (!specifier.startsWith('.')) continue; // runner, assertion, Node.js modules and npm dependencies
-      const target = resolveSpecifier(current.path, specifier).replace(/\.js$/, '.ts');
-      if (inside(target, testDirectory)) {
-        const local = workspace.files.find((candidate) => candidate.path === target);
-        if (local !== undefined) visit(local);
-        continue;
-      }
-      reached.push(target);
-    }
-  };
-  visit(file);
-  return reached;
-}
-
 // Verification: Prova degli import dei test Domain e Application
-test('Domain and Application tests import production code only from their own layers', () => {
-  const violations: string[] = [];
-  for (const unit of packages) {
-    const testDirectory = `${unit.directory}/test`;
-    const tests = filesIn(testDirectory).filter((file) => file.path.endsWith('.test.ts'));
-    for (const file of tests) {
-      const kind = testKinds.find((prefix) => inside(file.path, `${unit.directory}/${prefix.slice(0, -1)}`));
-      if (kind === undefined) { violations.push(`${file.path} (not classifiable)`); continue; }
-      const allowed = kind === 'test/domain/' ? ['src/domain']
-        : kind === 'test/application/' ? ['src/domain', 'src/application'] : undefined;
-      if (allowed === undefined) continue;
-      for (const target of productionReached(file, testDirectory)) {
-        if (!allowed.some((layer) => inside(target, `${unit.directory}/${layer}`))) {
-          violations.push(`${file.path} -> ${target}`);
-        }
-      }
+// Verification: Prova dell'indipendenza tecnica di Domain e Application
+test.each(rules.map((rule) => rule.name))('the workspace respects the rule %s', (name) => {
+  const rule = rules.find((candidate) => candidate.name === name)!;
+  expect(analyse(workspace, [rule]).map(describeViolation)).toEqual([]);
+});
+
+// Negative fixtures: a minimal workspace with one application and two packages.
+const units: readonly WorkspaceUnit[] = [
+  { directory: 'apps/server', name: 'server', exports: [] },
+  { directory: 'packages/conversations', name: '@ambrogio/conversations', exports: ['.', './composition'] },
+  { directory: 'packages/memory', name: '@ambrogio/memory', exports: ['.'] },
+];
+
+const negativeFixtures: ReadonlyArray<Readonly<{ rule: RuleName; title: string; graph: ReturnType<typeof fixtureGraph> }>> = [
+  {
+    rule: 'package-isolation', title: 'a type-only import of another package',
+    graph: fixtureGraph({ 'packages/conversations/test/adapters/in/route.test.ts': "import type { Note } from '@ambrogio/memory';\n" }, units),
+  },
+  {
+    rule: 'package-isolation', title: 'a relative import that leaves the package',
+    graph: fixtureGraph({ 'packages/conversations/test/adapters/out/store.test.ts': "import { main } from '../../../../../apps/server/src/main.js';\n" }, units),
+  },
+  {
+    rule: 'application-public-exports', title: 'an application importing a subpath not declared in exports',
+    graph: fixtureGraph({ 'apps/server/src/main.ts': "import { Turn } from '@ambrogio/conversations/src/domain/turn.js';\n" }, units),
+  },
+  {
+    rule: 'application-public-exports', title: 'an application using an import alias',
+    graph: fixtureGraph({ 'apps/server/test/main.test.ts': "import { main } from '#main';\n" }, units),
+  },
+  {
+    rule: 'no-path-aliases', title: 'a TypeScript configuration with path aliases',
+    graph: fixtureGraph({}, units, [{ path: 'tsconfig.json', text: '{ "compilerOptions": { "paths": { "#*": ["./src/*"] } } }' }]),
+  },
+  {
+    rule: 'layer-test-imports', title: 'a Domain test reaching an adapter through a local helper',
+    graph: fixtureGraph({
+      'packages/conversations/test/domain/turn.test.ts': "import { store } from '../support/store.js';\n",
+      'packages/conversations/test/support/store.ts': "export { store } from '../../src/adapters/out/sqlite/store.adapter.js';\n",
+    }, units),
+  },
+  {
+    rule: 'layer-test-imports', title: 'a test outside the layer folders',
+    graph: fixtureGraph({ 'packages/conversations/test/misc/turn.test.ts': "import { Turn } from '../../src/domain/turn.js';\n" }, units),
+  },
+  {
+    rule: 'domain-application-own-package', title: 'an Application file importing a Node.js module through a Domain file',
+    graph: fixtureGraph({
+      'packages/conversations/src/application/start-turn.use-case.ts': "import { Turn } from '../domain/turn.js';\n",
+      'packages/conversations/src/adapters/out/note.adapter.ts': "import { randomUUID } from 'node:crypto';\nexport const Turn = randomUUID;\n",
+    }, units),
+  },
+];
+
+describe('negative fixtures', () => {
+  test('every rule has at least one negative fixture', () => {
+    expect(new Set(negativeFixtures.map((fixture) => fixture.rule))).toEqual(new Set(rules.map((rule) => rule.name)));
+  });
+
+  test.each(negativeFixtures.map((fixture) => [fixture.rule, fixture.title, fixture] as const))(
+    '%s fails on %s', (rule, _title, fixture) => {
+      const violations = analyse(fixture.graph);
+      expect(violations.length).toBeGreaterThan(0);
+      expect(new Set(violations.map((violation) => violation.rule))).toEqual(new Set([rule]));
+    });
+});
+
+describe('exceptions', () => {
+  test('every recorded exception names an existing rule, one import and a reason', () => {
+    const names = new Set<string>(rules.map((rule) => rule.name));
+    for (const entry of exceptions) {
+      expect(names.has(entry.rule), entry.rule).toBe(true);
+      expect(entry.from.trim(), entry.rule).not.toBe('');
+      expect(entry.to.trim(), entry.rule).not.toBe('');
+      expect(entry.reason.trim(), `${entry.rule} ${entry.from}`).not.toBe('');
     }
-  }
-  expect(violations).toEqual([]);
+  });
+
+  test('an exception suppresses only the import it names', () => {
+    const graph = fixtureGraph({
+      'packages/conversations/src/adapters/out/note.adapter.ts': "import type { Note } from '@ambrogio/memory';\nimport { Fact } from '@ambrogio/memory';\n",
+    }, units);
+    const fixtureExceptions: readonly ArchitectureException[] = [{
+      rule: 'package-isolation', from: 'packages/conversations/src/adapters/out/note.adapter.ts', to: '@ambrogio/memory', reason: 'fixture',
+    }];
+    expect(analyse(graph).map(describeViolation)).toEqual(['[package-isolation] packages/conversations/src/adapters/out/note.adapter.ts -> @ambrogio/memory']);
+    expect(analyse(graph, rules, fixtureExceptions)).toEqual([]);
+    const other = fixtureGraph({ 'packages/conversations/src/adapters/out/other.adapter.ts': "import { Fact } from '@ambrogio/memory';\n" }, units);
+    expect(analyse(other, rules, fixtureExceptions).map(describeViolation))
+      .toEqual(['[package-isolation] packages/conversations/src/adapters/out/other.adapter.ts -> @ambrogio/memory']);
+  });
 });

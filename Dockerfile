@@ -2,7 +2,8 @@ FROM node:24-bookworm-slim AS build
 
 WORKDIR /workspace
 RUN apt-get update && apt-get install -y --no-install-recommends bzip2 unzip && rm -rf /var/lib/apt/lists/*
-RUN npm install --global pnpm@12.11.2
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
 COPY apps/server/package.json apps/server/tsconfig.build.json apps/server/

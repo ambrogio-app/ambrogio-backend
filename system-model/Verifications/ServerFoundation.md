@@ -1,5 +1,77 @@
 # Elements
 
+### Verifica degli strumenti del repository backend
+
+Raggruppa le prove dell'hook pre-commit, dell'installazione, dell'audit delle dipendenze, del comando di verifica completo e del workflow di pubblicazione del backend.
+
+#### Metadata
+  * type: verification-objective
+---
+
+### Prova dei controlli del modello nell'hook pre-commit del backend
+
+In una cartella temporanea con un repository Git che contiene l'hook `.githooks/pre-commit` del backend, con `core.hooksPath` impostato a `.githooks`, e accanto una cartella `ambrogio-model/scripts/` con uno script `model-checks` sostitutivo che registra ogni esecuzione e termina con successo oppure con un errore, tentare il commit di un file privo di segreti con lo script che riesce, con lo script che fallisce e senza la cartella `ambrogio-model`; tentare poi il commit di un token fittizio con lo script che riesce.
+
+#### Details
+La prova passa se il commit privo di segreti riesce ed esegue lo script; se con lo script che fallisce il commit è impedito e l'output riporta il messaggio dello script; se senza `ambrogio-model` affiancato il commit è impedito con il messaggio del contratto «Controlli del modello nell'hook pre-commit»; e se il commit con il token è impedito senza eseguire lo script. Fallisce se un commit è creato nonostante un controllo fallito o l'assenza di `ambrogio-model`, se lo script non è eseguito dopo una scansione riuscita o se è eseguito dopo un segreto. Lo script sostitutivo evita di eseguire Reqvire nella suite; `scripts/model-checks` è provato in `ambrogio-model`.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica degli strumenti del repository backend](#verifica-degli-strumenti-del-repository-backend)
+  * satisfiedBy: [pre-commit-hook.test.ts](../../test/repository/pre-commit-hook.test.ts)
+  * verify: [Controlli del modello prima del commit del backend](../Requirements/ServerFoundation.md#controlli-del-modello-prima-del-commit-del-backend)
+---
+
+### Prova del comando di verifica completo del backend
+
+Leggere lo script `verify` di `package.json` e i passi del job `Backend checks` di `.github/workflows/ci.yml`.
+
+#### Details
+La prova passa se i comandi `pnpm` del job successivi all'installazione, escluso l'audit, sono `pnpm typecheck`, `pnpm build` e `pnpm test` e se `verify` è la sequenza unita da `&&` di `../ambrogio-model/scripts/model-checks`, `pnpm install --frozen-lockfile`, `pnpm audit --audit-level high` e di quei comandi nello stesso ordine. Fallisce se un controllo della CI manca da `verify`, se l'ordine differisce o se i comandi non sono uniti da `&&`. Che `&&` interrompa la sequenza al primo comando fallito è un comportamento della shell.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica degli strumenti del repository backend](#verifica-degli-strumenti-del-repository-backend)
+  * satisfiedBy: [workflows.test.ts](../../test/repository/workflows.test.ts)
+  * verify: [Comando di verifica completo del backend](../Requirements/ServerFoundation.md#comando-di-verifica-completo-del-backend)
+---
+
+### Prova dell'audit delle dipendenze nella CI del backend
+
+Leggere come testo i workflow del backend e `pnpm-workspace.yaml`.
+
+#### Details
+La prova passa se l'unico comando di audit dei workflow è `pnpm audit --audit-level high`, nel job `Backend checks` subito dopo `pnpm install --frozen-lockfile` e prima degli altri passi pnpm, e se `auditConfig` di `pnpm-workspace.yaml` dichiara al più `ignoreGhsas` con soli identificativi GHSA singoli, oggi nessuno come nel contratto. Fallisce se l'audit manca, usa un'altra soglia o opzioni che ignorano avvisi, è in un'altra posizione, o se un'eccezione non è un singolo avviso o non è registrata nel contratto. Che `pnpm audit` fallisca su un avviso alto non ignorato è un comportamento di pnpm, osservato nella CI: l'audit interroga il registro in rete e la suite di test non dipende dalla rete.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica degli strumenti del repository backend](#verifica-degli-strumenti-del-repository-backend)
+  * satisfiedBy: [workflows.test.ts](../../test/repository/workflows.test.ts)
+  * verify: [Audit delle dipendenze nella CI del backend](../Requirements/ServerFoundation.md#audit-delle-dipendenze-nella-ci-del-backend)
+---
+
+### Prova dell'installazione del backend con pnpm e Corepack
+
+Leggere come testo `package.json`, i workflow e il `Dockerfile` del backend.
+
+#### Details
+La prova passa se `packageManager` dichiara una versione esatta di pnpm; se nessun workflow né il `Dockerfile` installano pnpm con `npm install --global` o lo eseguono con `npx`; se il job `Backend checks` dichiara `COREPACK_ENABLE_DOWNLOAD_PROMPT` uguale a `0` ed esegue `corepack enable` prima di ogni comando `pnpm`; e se la fase di build del `Dockerfile` parte da `node:24`, dichiara `ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0` ed esegue `corepack enable` prima di `pnpm install --frozen-lockfile`, primo comando pnpm della fase. Fallisce se una di queste condizioni manca.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica degli strumenti del repository backend](#verifica-degli-strumenti-del-repository-backend)
+  * satisfiedBy: [workflows.test.ts](../../test/repository/workflows.test.ts)
+  * verify: [Installazione delle dipendenze del backend con pnpm e Corepack](../Requirements/ServerFoundation.md#installazione-delle-dipendenze-del-backend-con-pnpm-e-corepack)
+---
+
 ### Verifica del ciclo di vita del server
 
 Raggruppa le prove dell'interruzione dei turni attivi all'arresto ordinato e della chiusura delle risorse.
@@ -629,6 +701,22 @@ Non automatizzabile: richiede la creazione di un tag di release, l'esecuzione su
   * verify: [Pubblicazione dell'immagine Docker del server](../Requirements/ServerFoundation.md#pubblicazione-dellimmagine-docker-del-server)
 ---
 
+### Prova del workflow di pubblicazione dell'immagine del server
+
+Leggere come testo `.github/workflows/publish-image.yml`.
+
+#### Details
+La prova passa se il workflow parte soltanto sui tag `v*`, se il job `publish` convalida il tag e ricava `IMAGE` uguale a `ghcr.io/ambrogio-app/ambrogio-backend:<tag Git>`, verifica l'immagine con `scripts/verify-docker-image.mjs` prima del push e, nel passo del push, dopo `docker push "$IMAGE"`, scrive `Published $IMAGE` in `$GITHUB_STEP_SUMMARY`, e se il workflow non nomina un tag `latest`. Fallisce se una di queste condizioni manca. La pubblicazione effettiva resta provata da «Dimostrazione della pubblicazione dell'immagine Docker del server».
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della pubblicazione dell'immagine Docker del server](#verifica-della-pubblicazione-dellimmagine-docker-del-server)
+  * satisfiedBy: [workflows.test.ts](../../test/repository/workflows.test.ts)
+  * verify: [Pubblicazione dell'immagine Docker del server](../Requirements/ServerFoundation.md#pubblicazione-dellimmagine-docker-del-server)
+---
+
 ### Verifica delle integrazioni senza eventi differiti
 
 Raggruppa i controlli sulla scelta di non usare eventi di dominio persistenti per consegne successive nella prima versione.
@@ -1044,7 +1132,7 @@ La prova passa se HSTS è assente quando la configurazione pubblica è HTTP o no
 Leggere come testo `.github/workflows/ci.yml` e i file di prova dei package sotto `packages/`.
 
 #### Details
-La prova passa se il workflow parte a ogni push su `main`, a ogni pull request, su richiesta manuale e con `workflow_call`; se il job `Backend checks` dichiara `BRANCH` pari a `${{ github.head_ref || github.ref_name }}`, esegue il checkout del repository in `workspace/ambrogio-backend` con `fetch-depth: 0`, clona `ambrogio-model` in `workspace/ambrogio-model` sul branch `BRANCH` se esiste sul remoto e altrimenti su `main`, esegue poi `workspace/ambrogio-model/scripts/checkout-workspace workspace "$BRANCH"` e `workspace/ambrogio-model/scripts/model-checks --workspace workspace`, e infine, nella cartella `workspace/ambrogio-backend`, `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm build` e `pnpm test`, con l'installazione delle dipendenze prima degli altri passi pnpm e con `pnpm build` e l'installazione verificata di gitleaks prima di `pnpm test`; se il workflow non nomina un pacchetto o una versione di Reqvire né uno script di integrità locale; se nessun passo o job dichiara `continue-on-error`; e se ogni file di prova che importa un adapter di persistenza di `src/adapters/out/sqlite/` importa anche `better-sqlite3`, così da esercitare un database SQLite reale. Fallisce se manca un evento o una fase, se l'ordine richiesto non è rispettato, se un fallimento è tollerato o se una prova di un adapter SQLite non usa il driver reale. Che un controllo fallito impedisca l'integrazione è verificato da «Ispezione della protezione del merge del backend».
+La prova passa se il workflow parte a ogni push su `main`, a ogni pull request, su richiesta manuale e con `workflow_call`; se il job `Backend checks` dichiara `BRANCH` pari a `${{ github.head_ref || github.ref_name }}`, esegue il checkout del repository in `workspace/ambrogio-backend` con `fetch-depth: 0`, clona `ambrogio-model` in `workspace/ambrogio-model` sul branch `BRANCH` se esiste sul remoto e altrimenti su `main`, esegue poi `workspace/ambrogio-model/scripts/checkout-workspace workspace "$BRANCH"` e `workspace/ambrogio-model/scripts/model-checks --workspace workspace`, e infine, nella cartella `workspace/ambrogio-backend`, `pnpm install --frozen-lockfile`, `pnpm audit --audit-level high` subito dopo, `pnpm typecheck`, `pnpm build` e `pnpm test`, con `corepack enable` prima dell'installazione e l'installazione e l'audit delle dipendenze prima degli altri passi pnpm e con `pnpm build` e l'installazione verificata di gitleaks prima di `pnpm test`; se il workflow non nomina un pacchetto o una versione di Reqvire né uno script di integrità locale; se nessun passo o job dichiara `continue-on-error`; e se ogni file di prova che importa un adapter di persistenza di `src/adapters/out/sqlite/` importa anche `better-sqlite3`, così da esercitare un database SQLite reale. Fallisce se manca un evento o una fase, se l'ordine richiesto non è rispettato, se un fallimento è tollerato o se una prova di un adapter SQLite non usa il driver reale. Che un controllo fallito impedisca l'integrazione è verificato da «Ispezione della protezione del merge del backend».
 
 #### Metadata
   * type: test-verification

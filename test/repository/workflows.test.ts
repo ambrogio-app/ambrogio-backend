@@ -131,7 +131,7 @@ test('the CI checks the whole model from the side-by-side workspace, then the ba
   });
   const job = ci.document.jobs.checks;
   expect(job.name).toBe('Backend checks');
-  expect(job.env).toEqual({ BRANCH: '${{ github.head_ref || github.ref_name }}' });
+  expect(job.env).toEqual({ BRANCH: '${{ github.head_ref || github.ref_name }}', COREPACK_ENABLE_DOWNLOAD_PROMPT: '0' });
   expect(ci.text).not.toMatch(/continue-on-error/);
   // The Reqvire version is resolved by ambrogio-model, never repeated here.
   expect(ci.text).not.toMatch(/reqvire-org|check-model/);
@@ -146,17 +146,21 @@ test('the CI checks the whole model from the side-by-side workspace, then the ba
   expect(modelRun).toContain('git ls-remote --exit-code --heads "$url" "$BRANCH"');
   const sideBySide = indexOfRun(job, /^workspace\/ambrogio-model\/scripts\/checkout-workspace workspace "\$BRANCH"\s*$/);
   const modelChecks = indexOfRun(job, /^workspace\/ambrogio-model\/scripts\/model-checks --workspace workspace\s*$/);
+  const corepack = indexOfRun(job, /^corepack enable\s*$/);
   const install = indexOfRun(job, /^pnpm install --frozen-lockfile\s*$/);
+  const audit = indexOfRun(job, /^pnpm audit --audit-level high\s*$/);
   const typecheck = indexOfRun(job, /^pnpm typecheck\s*$/);
   const build = indexOfRun(job, /^pnpm build\s*$/);
   const tests = indexOfRun(job, /^pnpm test\s*$/);
   const gitleaks = stepsOf(job).indexOf(installStep(job));
-  for (const index of [model, sideBySide, modelChecks, install, typecheck, build, tests]) expect(index).toBeGreaterThanOrEqual(0);
+  for (const index of [model, sideBySide, modelChecks, corepack, install, audit, typecheck, build, tests]) expect(index).toBeGreaterThanOrEqual(0);
+  expect(install).toBeGreaterThan(corepack);
+  expect(audit).toBe(install + 1);
   expect(sideBySide).toBeGreaterThan(model);
   expect(modelChecks).toBeGreaterThan(sideBySide);
-  expect(Math.min(typecheck, build, tests)).toBeGreaterThan(install);
+  expect(Math.min(typecheck, build, tests)).toBeGreaterThan(audit);
   expect(tests).toBeGreaterThan(Math.max(build, gitleaks));
-  for (const index of [install, typecheck, build, tests]) {
+  for (const index of [install, audit, typecheck, build, tests]) {
     expect(stepsOf(job)[index]!['working-directory']).toBe('workspace/ambrogio-backend');
   }
   expectVerifiedInstall(job);
@@ -174,4 +178,75 @@ test('every SQLite persistence adapter test drives a real SQLite database', () =
   for (const file of adapterTests) {
     expect(readFileSync(join(repositoryRoot, file), 'utf8'), file).toMatch(/from 'better-sqlite3'/);
   }
+});
+
+const pnpmProfileViolations = (text: string) => [/npm install (--global|-g)\b[^\n]*pnpm/, /npx[^\n]*\bpnpm@/]
+  .filter((pattern) => pattern.test(text)).map(String);
+
+// Verification: Prova dell'installazione del backend con pnpm e Corepack
+test('the CI and the image build activate the declared pnpm with Corepack and install from the frozen lockfile', () => {
+  const manifest = JSON.parse(readFileSync(join(repositoryRoot, 'package.json'), 'utf8')) as { packageManager?: string };
+  expect(manifest.packageManager).toMatch(/^pnpm@\d+\.\d+\.\d+$/);
+  for (const workflow of workflows) expect(pnpmProfileViolations(workflow.text), workflow.path).toEqual([]);
+  const job = ci.document.jobs.checks;
+  expect(job.env.COREPACK_ENABLE_DOWNLOAD_PROMPT).toBe('0');
+  expect(indexOfRun(job, /^corepack enable\s*$/)).toBeLessThan(indexOfRun(job, /^pnpm /));
+  const dockerfile = readFileSync(join(repositoryRoot, 'Dockerfile'), 'utf8');
+  expect(pnpmProfileViolations(dockerfile)).toEqual([]);
+  const build = dockerfile.split(/^FROM /m)[1]!;
+  expect(build).toMatch(/^node:24\b/);
+  const prompt = build.indexOf('ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0\n');
+  const enable = build.indexOf('RUN corepack enable\n');
+  const install = build.indexOf('RUN pnpm install --frozen-lockfile\n');
+  expect(prompt).toBeGreaterThanOrEqual(0);
+  expect(enable).toBeGreaterThan(prompt);
+  expect(install).toBeGreaterThan(enable);
+  expect(build.indexOf('RUN pnpm ')).toBe(install);
+});
+
+// Verification: Prova dell'audit delle dipendenze nella CI del backend
+test('the CI audits the dependencies at high severity and exceptions name single advisories', () => {
+  const audits = workflows.flatMap((workflow) => workflow.text.split('\n').filter((line) => /pnpm audit/.test(line)));
+  expect(audits.map((line) => line.trim())).toEqual(['run: pnpm audit --audit-level high']);
+  const settings = parseYaml(readFileSync(join(repositoryRoot, 'pnpm-workspace.yaml'), 'utf8')) as { [key: string]: any };
+  const auditConfig = settings.auditConfig ?? {};
+  expect(Object.keys(auditConfig).filter((key) => key !== 'ignoreGhsas')).toEqual([]);
+  const ignored: unknown = auditConfig.ignoreGhsas ?? [];
+  expect(Array.isArray(ignored)).toBe(true);
+  for (const advisory of ignored as unknown[]) {
+    expect(String(advisory)).toMatch(/^GHSA(-[23456789cfghjmpqrvwx]{4}){3}$/);
+  }
+  // «Audit delle dipendenze con pnpm» lists no accepted advisory.
+  expect(ignored).toEqual([]);
+});
+
+// Verification: Prova del comando di verifica completo del backend
+test('pnpm verify runs the model checks, the frozen installation, the audit and the CI checks in order', () => {
+  const manifest = JSON.parse(readFileSync(join(repositoryRoot, 'package.json'), 'utf8')) as { scripts: Record<string, string> };
+  const job = ci.document.jobs.checks;
+  const install = indexOfRun(job, /^pnpm install --frozen-lockfile\s*$/);
+  const checks = runs(job).slice(install + 1).map((run) => run.trim()).filter((run) => /^pnpm /.test(run))
+    .filter((run) => run !== 'pnpm audit --audit-level high');
+  expect(checks).toEqual(['pnpm typecheck', 'pnpm build', 'pnpm test']);
+  expect(manifest.scripts.verify!.split(' && ')).toEqual([
+    '../ambrogio-model/scripts/model-checks', 'pnpm install --frozen-lockfile', 'pnpm audit --audit-level high', ...checks,
+  ]);
+});
+
+// Verification: Prova del workflow di pubblicazione dell'immagine del server
+test('the release workflow publishes the verified image on version tags and reports it in the job summary', () => {
+  expect(publish.document.on).toEqual({ push: { tags: ['v*'] } });
+  const job = publish.document.jobs.publish;
+  const validate = indexOfRun(job, /\^v\(0\|\[1-9\]\[0-9\]\*\)/);
+  const verify = indexOfRun(job, /^AMBROGIO_DOCKER_IMAGE="\$IMAGE" node scripts\/verify-docker-image\.mjs\s*$/);
+  const push = indexOfRun(job, /docker push "\$IMAGE"/);
+  for (const index of [validate, verify, push]) expect(index).toBeGreaterThanOrEqual(0);
+  expect(verify).toBeGreaterThan(validate);
+  expect(push).toBeGreaterThan(verify);
+  expect(runs(job)[validate]).toContain('IMAGE=ghcr.io/ambrogio-app/ambrogio-backend:${GITHUB_REF_NAME}');
+  const publishRun = runs(job)[push]!;
+  expect(publishRun).toContain('set -euo pipefail');
+  const summary = publishRun.indexOf('echo "Published $IMAGE" >> "$GITHUB_STEP_SUMMARY"');
+  expect(summary).toBeGreaterThan(publishRun.indexOf('docker push "$IMAGE"'));
+  expect(publish.text).not.toMatch(/:latest\b/);
 });

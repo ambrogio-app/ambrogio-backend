@@ -5,7 +5,8 @@
   "scripts": {
     "build": "tsc -p packages/conversations/tsconfig.build.json && tsc -p apps/server/tsconfig.build.json",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "verify": "../ambrogio-model/scripts/model-checks && pnpm install --frozen-lockfile && pnpm audit --audit-level high && pnpm typecheck && pnpm build && pnpm test"
   },
   "devDependencies": {
     "typescript": "7.0.2",

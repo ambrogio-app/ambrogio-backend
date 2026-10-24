@@ -1,9 +1,9 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, test } from 'vitest';
-import { extractSpecifiers, repositoryRoot, resolveSpecifier } from './source-imports.js';
+import { repositoryRoot } from './source-imports.js';
 
 const modulePackage = 'packages/conversations';
 const tsc = join(repositoryRoot, 'node_modules/.bin/tsc');
@@ -50,21 +50,4 @@ test('Domain and Application compile with ECMAScript alone', () => {
   expect(result.status).toBe(0);
 });
 
-// Verification: Prova dell'indipendenza tecnica di Domain e Application
-test('Domain and Application import only sources of their package, also through the files they import', () => {
-  const violations: string[] = [];
-  const pending = [...layerFiles];
-  const seen = new Set<string>();
-  while (pending.length > 0) {
-    const file = pending.pop()!;
-    if (seen.has(file)) continue;
-    seen.add(file);
-    for (const specifier of extractSpecifiers(readFileSync(join(repositoryRoot, file), 'utf8'))) {
-      const target = resolveSpecifier(file, specifier).replace(/\.js$/, '.ts');
-      if (!specifier.startsWith('.') || !target.startsWith(`${modulePackage}/src/`)
-        || !existsSync(join(repositoryRoot, target))) violations.push(`${file} -> ${specifier}`);
-      else pending.push(target);
-    }
-  }
-  expect(violations).toEqual([]);
-});
+// The import rule of the same verification, «domain-application-own-package», is in architecture-rules.ts.

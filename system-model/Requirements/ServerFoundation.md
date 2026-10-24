@@ -100,6 +100,25 @@ Origine: baseline Reqvire «No global catalog of use case rejections», adottata
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
+### Audit delle dipendenze nella CI del backend
+
+Quando la CI del backend viene eseguita, il job `Backend checks` di `.github/workflows/ci.yml` deve eseguire l'audit delle dipendenze del backend secondo «Audit delle dipendenze con pnpm», subito dopo l'installazione congelata, e deve fallire se l'audit fallisce.
+
+#### Details
+`pnpm-workspace.yaml` non dichiara `auditConfig`: il backend non ha avvisi accettati. Quando un avviso riguarda una dipendenza transitiva con una versione corretta compatibile con gli intervalli dichiarati, il lockfile si aggiorna con `pnpm update -r <pacchetto>`.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Audit delle dipendenze con pnpm](../../../ambrogio-model/system-model/Contracts/ModelDrivenDevelopment.md#audit-delle-dipendenze-con-pnpm)
+
+#### Relations
+  * derivedFrom: [Audit delle vulnerabilità delle dipendenze](../../../ambrogio-model/system-model/Requirements/ModelDrivenDevelopment.md#audit-delle-vulnerabilità-delle-dipendenze)
+  * satisfiedBy: [ci.yml](../../.github/workflows/ci.yml)
+  * satisfiedBy: [pnpm-workspace.yaml](../../pnpm-workspace.yaml)
+---
+
 ### Blocco locale dei commit con segreti
 
 Il repository backend deve realizzare il controllo dei segreti prima del commit con l'hook versionato `.githooks/pre-commit`, eseguito quando il clone ha attivato gli hook con `git config core.hooksPath .githooks`.
@@ -170,6 +189,24 @@ Origine: baseline Reqvire «Interrupted state persisted before closing resources
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
 ---
 
+### Comando di verifica completo del backend
+
+Il backend deve offrire `pnpm verify` secondo «Comando di verifica completo con pnpm», con i comandi dei controlli successivi all'installazione nell'ordine del job `Backend checks` della CI.
+
+#### Details
+I comandi del punto 5 del contratto sono, in quest'ordine, `pnpm typecheck`, `pnpm build` e `pnpm test`; la build precede i test perché i package del workspace esportano la propria cartella `dist/`. La suite di test prova l'hook pre-commit e richiede gitleaks nel `PATH`.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Comando di verifica completo con pnpm](../../../ambrogio-model/system-model/Contracts/ModelDrivenDevelopment.md#comando-di-verifica-completo-con-pnpm)
+
+#### Relations
+  * derivedFrom: [Comando di verifica completo](../../../ambrogio-model/system-model/Requirements/ModelDrivenDevelopment.md#comando-di-verifica-completo)
+  * satisfiedBy: [package.json](../../package.json)
+---
+
 ### Compilazione TypeScript strict del server
 
 La compilazione TypeScript del server deve avere l'opzione effettiva `strict` abilitata.
@@ -228,7 +265,7 @@ Quando un `catch` del server aggiunge un contesto operativo concreto a un guasto
 
 ### Controlli CI delle modifiche funzionali del server
 
-Quando la CI del backend viene eseguita, il job `Backend checks` di `.github/workflows/ci.yml` deve eseguire il checkout del repository in `workspace/ambrogio-backend`, scaricare affiancati gli altri repository del modello con `ambrogio-model/scripts/checkout-workspace`, eseguire `ambrogio-model/scripts/model-checks` sulla cartella `workspace` e poi, nella cartella del backend, il controllo TypeScript, la build e la suite backend con Vitest, comprendente prove degli adapter di persistenza su SQLite reale quando tali adapter esistono e la prova dell'hook dei segreti con lo scanner installato e verificato, e deve fallire se uno di questi controlli fallisce.
+Quando la CI del backend viene eseguita, il job `Backend checks` di `.github/workflows/ci.yml` deve eseguire il checkout del repository in `workspace/ambrogio-backend`, scaricare affiancati gli altri repository del modello con `ambrogio-model/scripts/checkout-workspace`, eseguire `ambrogio-model/scripts/model-checks` sulla cartella `workspace` e poi, nella cartella del backend, l'installazione delle dipendenze, l'audit delle dipendenze, il controllo TypeScript, la build e la suite backend con Vitest, comprendente prove degli adapter di persistenza su SQLite reale quando tali adapter esistono e la prova dell'hook dei segreti con lo scanner installato e verificato, e deve fallire se uno di questi controlli fallisce.
 
 #### Details
 Origine: baseline Reqvire «Persistence adapter tests against a real database», adottata.
@@ -245,6 +282,21 @@ Origine: baseline Reqvire «Persistence adapter tests against a real database»,
   * derivedFrom: [Controlli CI dei repository di Ambrogio](../../../ambrogio-model/system-model/Requirements/ModelDrivenDevelopment.md#controlli-ci-dei-repository-di-ambrogio)
   * satisfiedBy: [ci.yml](../../.github/workflows/ci.yml)
   * specify: [Sviluppo governato dal modello](../../../ambrogio-model/system-model/Capabilities/Engineering.md#sviluppo-governato-dal-modello)
+---
+
+### Controlli del modello prima del commit del backend
+
+Quando si crea un commit in un clone del backend con gli hook versionati attivi, l'hook `.githooks/pre-commit` del backend deve eseguire i controlli del modello di `ambrogio-model` affiancato dopo la scansione dei segreti, secondo «Controlli del modello nell'hook pre-commit».
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Controlli del modello nell'hook pre-commit](../../../ambrogio-model/system-model/Contracts/ModelDrivenDevelopment.md#controlli-del-modello-nellhook-pre-commit)
+
+#### Relations
+  * derivedFrom: [Controlli del modello prima del commit](../../../ambrogio-model/system-model/Requirements/ModelDrivenDevelopment.md#controlli-del-modello-prima-del-commit)
+  * satisfiedBy: [pre-commit](../../.githooks/pre-commit)
 ---
 
 ### Controlli obbligatori prima del merge del backend
@@ -727,6 +779,23 @@ Quando è richiesta la raccolta centralizzata dei log tecnici del server HTTP, l
 #### Relations
   * derivedFrom: [Log affidati al deployment](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#log-affidati-al-deployment)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
+---
+
+### Installazione delle dipendenze del backend con pnpm e Corepack
+
+Il backend deve dichiarare in `package.json` `"packageManager": "pnpm@12.11.2"` e il job `Backend checks` della CI e la fase di build del `Dockerfile` devono attivare quella versione con Corepack e installare le dipendenze del workspace con `pnpm install --frozen-lockfile`, secondo «Profilo di installazione con pnpm e Corepack».
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Profilo di installazione con pnpm e Corepack](../../../ambrogio-model/system-model/Contracts/ModelDrivenDevelopment.md#profilo-di-installazione-con-pnpm-e-corepack)
+
+#### Relations
+  * derivedFrom: [Installazione delle dipendenze con pnpm attivato da Corepack](../../../ambrogio-model/system-model/Requirements/ModelDrivenDevelopment.md#installazione-delle-dipendenze-con-pnpm-attivato-da-corepack)
+  * satisfiedBy: [ci.yml](../../.github/workflows/ci.yml)
+  * satisfiedBy: [Dockerfile](../../Dockerfile)
+  * satisfiedBy: [package.json](../../package.json)
 ---
 
 ### Interruzione dei turni durante l'arresto

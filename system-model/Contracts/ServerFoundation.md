@@ -207,7 +207,7 @@ Il job che pubblica è `publish` di `publish-image.yml`: riceve `contents: read`
 
 ### Profilo di pubblicazione dell'immagine Docker del server
 
-Il backend pubblica l'immagine su GitHub Container Registry (`ghcr.io`) tramite GitHub Actions quando viene creato un tag Git di release nel formato `vMAJOR.MINOR.PATCH`. La versione senza `v` corrisponde a `apps/server/package.json`. Il pacchetto OCI usa il nome `ghcr.io/ambrogio-app/ambrogio-backend` e riceve un tag immagine uguale al tag Git di release; non viene pubblicato un tag mobile `latest`. L'immagine supporta `linux/amd64`. Il workflow costruisce l'immagine dal Dockerfile del repository, la verifica prima del push e usa il `GITHUB_TOKEN` con permesso `packages: write` per pubblicarla. La pubblicazione richiede che la CI del backend e la scansione dei segreti siano superate sullo stesso commit. Un commit ordinario su `main` non è un evento di pubblicazione. Il contenuto dell'immagine pubblicata segue «Profilo dell'immagine Docker del server» e la scansione dei segreti richiesta segue «Profilo di scansione dei segreti del backend». Un numero di versione già pubblicato e poi ritirato non è riusato. La visibilità del pacchetto nel registro è decisa dalla persona e non è modificata dal workflow.
+Il backend pubblica l'immagine su GitHub Container Registry (`ghcr.io`) tramite GitHub Actions quando viene creato un tag Git di release nel formato `vMAJOR.MINOR.PATCH`. La versione senza `v` corrisponde a `apps/server/package.json`. Il pacchetto OCI usa il nome `ghcr.io/ambrogio-app/ambrogio-backend` e riceve un tag immagine uguale al tag Git di release; non viene pubblicato un tag mobile `latest`. L'immagine supporta `linux/amd64`. Il workflow costruisce l'immagine dal Dockerfile del repository, la verifica prima del push e usa il `GITHUB_TOKEN` con permesso `packages: write` per pubblicarla. Dopo il push il job `publish` scrive nel riepilogo del job la riga `Published ghcr.io/ambrogio-app/ambrogio-backend:<tag Git>`. La pubblicazione richiede che la CI del backend e la scansione dei segreti siano superate sullo stesso commit. Un commit ordinario su `main` non è un evento di pubblicazione. Il contenuto dell'immagine pubblicata segue «Profilo dell'immagine Docker del server» e la scansione dei segreti richiesta segue «Profilo di scansione dei segreti del backend». Un numero di versione già pubblicato e poi ritirato non è riusato. La visibilità del pacchetto nel registro è decisa dalla persona e non è modificata dal workflow.
 
 #### Metadata
   * type: specification
@@ -264,6 +264,29 @@ Il segnale diagnostico della prima versione è costituito dai log JSON struttura
 
 #### Relations
   * define: [Perimetro iniziale dei segnali di osservabilità del backend](../Requirements/ServerFoundation.md#perimetro-iniziale-dei-segnali-di-osservabilità-del-backend)
+---
+
+### Regole di architettura del backend
+
+Le regole sono definite in `test/repository/architecture-rules.ts` e controllate da `test/repository/import-boundaries.test.ts` sull'intero grafo degli import dei sorgenti e dei test di `apps/*` e `packages/*`, compresi gli import di soli tipi, gli import dinamici e le riesportazioni letti dal testo dei sorgenti senza commenti e stringhe; ogni violazione riporta il nome della regola, il file che importa e lo specificatore o il file raggiunto.
+
+| Nome della regola | Che cosa vieta | Requisiti serviti |
+|---|---|---|
+| `package-isolation` | un file di un package che importa un altro package o un'applicazione del workspace, per nome o con un percorso relativo che esce dal package | «Isolamento degli import dei package business», «Isolamento dei package business dai package tecnici condivisi» |
+| `application-public-exports` | un file di un'applicazione che importa un package con un sottopercorso non dichiarato in `exports`, con un alias `#` o con un percorso relativo che esce dall'applicazione | «Import delle API pubbliche dei package business» |
+| `no-path-aliases` | una configurazione `tsconfig*.json` della radice o di un'unità del workspace che dichiara `paths` | «Import delle API pubbliche dei package business» |
+| `layer-test-imports` | un test di un package fuori da `test/domain`, `test/application`, `test/adapters/in` e `test/adapters/out`, e un test Domain o Application che raggiunge, anche tramite file locali dei test, codice di produzione fuori dai layer ammessi | «Import del codice di produzione nei test Domain», «Import del codice di produzione nei test Application» |
+| `domain-application-own-package` | un file di `src/domain` o `src/application` di un package che importa, anche tramite i file che importa, un modulo diverso da un file esistente in `src/` dello stesso package | «Indipendenza tecnica di Domain e Application nel backend» |
+
+Ogni regola ha almeno una fixture negativa in memoria che produce violazioni soltanto con il nome di quella regola. Un'eccezione è una voce dell'elenco `exceptions` del modulo con il nome della regola, il file che importa, l'import ammesso e il motivo, e ammette soltanto quell'import; ogni voce compare anche in questo contratto con il motivo.
+
+Eccezioni: nessuna.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Regole di architettura centrali del backend](../Requirements/Workspace.md#regole-di-architettura-centrali-del-backend)
 ---
 
 ### Ruleset del branch principale del backend

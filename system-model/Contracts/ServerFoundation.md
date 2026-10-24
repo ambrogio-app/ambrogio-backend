@@ -13,13 +13,13 @@ Alla richiesta di arresto ordinato, il server impedisce subito nuove ammissioni 
 
 ### Catalogo bilingue dei modelli vocali nell'immagine backend
 
-L'immagine runtime include:
+L'immagine runtime include i modelli elencati, con archivio, origine, impronta SHA-256 e licenza, dalla fonte «Modelli vocali scaricati nell'immagine del backend», ciascuno nella directory che ha il nome dell'archivio senza estensione:
 
-- in `/opt/ambrogio/models` i modelli Vosk `vosk-model-small-it-0.22` e `vosk-model-small-en-us-0.15`;
-- in `/opt/ambrogio/voices` le voci Piper VITS convertite per sherpa-onnx `vits-piper-it_IT-riccardo-x_low`, `vits-piper-it_IT-paola-medium` e `vits-piper-en_US-kristin-medium`, ciascuna con un solo modello `.onnx`, `tokens.txt`, `espeak-ng-data/` e la scheda `MODEL_CARD`, insieme a una nota di provenienza e licenza (`README.md`);
-- in `/opt/ambrogio/kokoro` il modello multilingue `kokoro-multi-lang-v1_0`, con voci italiane e inglesi, `voices.bin` e il file `LICENSE`.
+- in `/opt/ambrogio/models` i modelli Vosk per italiano e inglese;
+- in `/opt/ambrogio/voices` le voci Piper VITS convertite per sherpa-onnx, ciascuna con un solo modello `.onnx`, `tokens.txt`, `espeak-ng-data/` e la scheda `MODEL_CARD`, insieme a una nota di provenienza e licenza (`README.md`);
+- in `/opt/ambrogio/kokoro` il modello Kokoro multilingue, con voci italiane e inglesi, `voices.bin` e il file `LICENSE`.
 
-La build scarica gli archivi con versioni fissate dalla release `tts-models` di k2-fsa/sherpa-onnx e dal catalogo dei modelli Vosk, ne verifica l'impronta SHA-256 fissata in `scripts/fetch-speech-models.mjs` prima dell'estrazione e si interrompe se un'impronta differisce o se il contenuto estratto non ha la struttura attesa. Le voci Piper sono rilasciate con licenza MIT da rhasspy/piper-voices, i modelli Vosk e Kokoro con licenza Apache-2.0. Gli esempi selezionano Piper per le macchine modeste; Kokoro è disponibile senza download aggiuntivo e viene caricato solo se indicato dal profilo attivo. I profili vocali indicano i modelli con percorsi espliciti e ammettono anche modelli esterni montati. Non è prevista la scelta della voce durante una conversazione.
+La build scarica gli archivi della fonte, ne verifica l'impronta SHA-256 fissata in `scripts/fetch-speech-models.mjs` prima dell'estrazione e si interrompe se un'impronta differisce o se il contenuto estratto non ha la struttura attesa. Gli esempi selezionano Piper per le macchine modeste; Kokoro è disponibile senza download aggiuntivo e viene caricato solo se indicato dal profilo attivo. I profili vocali indicano i modelli con percorsi espliciti e ammettono anche modelli esterni montati. Non è prevista la scelta della voce durante una conversazione.
 
 #### Metadata
   * type: specification

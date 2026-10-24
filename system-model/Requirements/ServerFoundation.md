@@ -501,6 +501,7 @@ Quando l'installazione monta in sola lettura una propria directory di voci al po
   * type: requirement
 
 #### Contract References
+  * [Modelli vocali scaricati nell'immagine del backend](../Contracts/ExternalContracts.md#modelli-vocali-scaricati-nellimmagine-del-backend)
   * [Catalogo bilingue dei modelli vocali nell'immagine backend](../Contracts/ServerFoundation.md#catalogo-bilingue-dei-modelli-vocali-nellimmagine-backend)
 
 #### Relations

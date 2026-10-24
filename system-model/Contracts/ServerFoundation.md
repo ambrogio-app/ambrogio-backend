@@ -39,27 +39,6 @@ Il confine tecnico usa il valore catturato come `err` senza crearne un altro qua
   * define: [Normalizzazione diagnostica nel confine definitivo](../Requirements/ServerFoundation.md#normalizzazione-diagnostica-nel-confine-definitivo)
 ---
 
-### Convenzione dei nomi di casi d'uso e adapter
-
-Il progetto usa suffissi di ruolo per i casi d'uso e gli adapter, mantenendo nel nome la funzione concreta del componente. Questa convenzione appartiene a questo repository; non richiede un modello multirepository.
-
-Un file che realizza un caso d'uso Application si chiama `<azione>.use-case.ts`, con un nome che descrive l'operazione offerta, per esempio `exchange-turn.use-case.ts`. Il criterio vale anche per casi d'uso che non espongono rifiuti previsti.
-
-Un file che realizza un adapter si chiama `<funzione-o-integrazione>.adapter.ts`. Sono adapter di ingresso i componenti che traducono eventi o richieste esterne in invocazioni di Application; sono adapter di uscita i componenti che realizzano una porta Application tramite una tecnologia concreta. La realizzazione è indifferentemente una classe, una funzione o un oggetto fornito dalla composition root: non dipende dalla presenza della parola TypeScript `implements`. Per esempio, un'implementazione SQLite di una porta di lettura si chiama `sqlite-conversation-history-read.adapter.ts`.
-
-La collocazione in `adapters/` non rende automaticamente adapter ogni file contenuto. Mapper, schemi, cataloghi, validatori, driver di libreria e funzioni tecniche di supporto mantengono nomi descrittivi senza aggiungere `.adapter`, salvo che realizzino essi stessi un ingresso o una porta Application. Un coordinatore con stato non riceve o evita `.use-case` per il solo fatto di essere una classe: occorre identificarne la responsabilità e stabilire se offre un caso d'uso oppure supporta altri casi d'uso. In caso di ruolo ambiguo, documentare l'esito della classificazione nell'ispezione prima di rinominare.
-
-La regola riguarda i nomi dei file di produzione. Non impone il suffisso `Adapter` o `UseCase` a ogni simbolo TypeScript, non introduce un suffisso obbligatorio per le porte e non modifica le regole sui confini dei layer. Le regole preesistenti sulla dichiarazione di firme, factory ed esiti restano applicabili nel loro ambito.
-
-Motivazione: Martin Fowler sostiene una politica coerente dei nomi dei ruoli e l'uso dei nomi dei pattern quando chiariscono la responsabilità, senza proporre una convenzione universale: https://martinfowler.com/articles/refactoring-external-service.html . Robert C. Martin evidenzia la riconoscibilità dei casi d'uso nella struttura: https://blog.cleancoder.com/uncle-bob/2011/09/30/Screaming-Architecture.html . Gli esempi di Alistair Cockburn non impongono il termine Adapter nei nomi: https://alistair.cockburn.us/hexagonal-architecture . Il suffisso obbligatorio qui adottato è una scelta locale, non una prescrizione attribuita a questi autori.
-
-#### Metadata
-  * type: specification
-
-#### Relations
-  * define: [Nomi dei file secondo il ruolo architetturale](../Requirements/ServerFoundation.md#nomi-dei-file-secondo-il-ruolo-architetturale)
----
-
 ### Distribuzione dei modelli vocali
 
 Quando la voce è abilitata, Vosk e la sintesi vocale sherpa-onnx sono eseguiti nel processo backend del medesimo container Docker. Le librerie necessarie a Vosk e a sherpa-onnx appartengono all'immagine runtime, insieme ai modelli del catalogo definito da «Catalogo bilingue dei modelli vocali nell'immagine backend»; l'immagine non contiene un ambiente Python né il binario Piper. Il componente vocale riceve i percorsi dalla configurazione validata e ne verifica la disponibilità prima di attivare l'ingresso vocale; un modello necessario assente, illeggibile o non caricabile impedisce l'avvio. Quando la voce è disabilitata, i percorsi dei modelli non sono richiesti.
@@ -93,6 +72,19 @@ La definizione TypeScript locale a un modulo business è `type Result<T, E> = Re
 
 #### Relations
   * define: [Struttura del tipo Result](../Requirements/ServerFoundation.md#struttura-del-tipo-result)
+---
+
+### Ingresso di prova del server conversazionale
+
+L'ingresso di prova è il modulo `apps/server/dist/runtime/test-server.js` del backend compilato, distinto dall'avvio di produzione, che esporta la funzione asincrona `startTestServer(options)`. `options` contiene `directory`, la cartella di un archivio temporaneo posseduta dalla prova; `language`, `it` oppure `en`; `reply`, il produttore di risposte deterministico al posto dell'orchestratore e degli agenti, con la forma della porta di produzione della risposta; facoltativi `speech`, la fabbrica di un trascrittore e di un sintetizzatore deterministici al posto di Vosk e della sintesi vocale, `allowedOrigins`, le origini consentite del componente HTTP, e `sessionPingIntervalMs`. Senza `speech` la voce non è abilitata.
+
+L'ingresso avvia lo stesso server conversazionale dell'avvio di produzione, con il canale `ambrogio.v1`, le API HTTP pubbliche e gli stessi contratti di comportamento del turno, in ascolto su `127.0.0.1` con una porta libera, e restituisce `origin`, l'origine HTTP del server, `sessionUrl`, l'URL della sessione `ambrogio.v1`, e `close()`, che smette di accettare turni, interrompe quelli in corso, chiude le sessioni, il listener e l'archivio, ed è idempotente. Non legge i moduli di configurazione dell'installazione né le variabili d'ambiente, non carica modelli vocali e non contatta servizi esterni. Un cambio incompatibile della forma dell'ingresso segue «Compatibilità fra release per versione d'interfaccia».
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Ingresso di prova pubblico del server conversazionale](../Requirements/ServerFoundation.md#ingresso-di-prova-pubblico-del-server-conversazionale)
 ---
 
 ### Politica CORS del componente HTTP
@@ -200,13 +192,11 @@ Il percorso del modulo TypeScript di un componente attivo è indicato dalla vari
 
 ### Profilo di irrobustimento dei workflow GitHub Actions
 
-I workflow `.github/workflows/ci.yml`, `.github/workflows/secret-scan.yml` e `.github/workflows/publish-image.yml` dichiarano a livello di workflow `permissions: contents: read`. Soltanto il job `publish` di `publish-image.yml` dichiara `permissions` con `contents: read` e `packages: write`, necessario per inviare l'immagine a GHCR con il `GITHUB_TOKEN`; nessun altro job riceve permessi di scrittura.
+Il backend applica «Profilo comune dei workflow GitHub Actions» ai workflow `.github/workflows/ci.yml`, `.github/workflows/secret-scan.yml` e `.github/workflows/publish-image.yml`, che sono i soli del repository, con questi valori propri.
 
-Le action esterne sono indicate con l'impronta SHA completa del commit e con la versione come commento: `actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803` (v6) e `actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38` (v6). Un aggiornamento di un'action sostituisce l'impronta e il commento insieme. Nei job `checks` e `gitleaks` lo scanner dei segreti è scaricato e verificato secondo «Profilo di scansione dei segreti con gitleaks».
+Il job che pubblica è `publish` di `publish-image.yml`: riceve `contents: read` e `packages: write` per inviare l'immagine a GHCR con il `GITHUB_TOKEN`. Nessun job esegue operazioni Git autenticate dopo il checkout; il job `publish` si autentica al registro con `docker login` usando il `GITHUB_TOKEN` passato come variabile d'ambiente del solo passo di login, e nessun altro passo riceve il token.
 
-Ogni job usa il runner `ubuntu-24.04` e dichiara `timeout-minutes`: 20 per il job `checks` della CI, 10 per il job `gitleaks` della scansione dei segreti e 60 per il job `publish`, che costruisce e verifica l'immagine con il download dei modelli vocali. Ogni passo `actions/checkout` imposta `persist-credentials: false`: nessun job esegue operazioni Git autenticate dopo il checkout, e il job `publish` si autentica al registro con `docker login` usando il `GITHUB_TOKEN` passato come variabile d'ambiente del solo passo di login.
-
-`ci.yml` e `secret-scan.yml` dichiarano l'evento `workflow_call`; `publish-image.yml` li richiama come job `checks` e `secret-scan` invece di duplicarne i passi, e il job `publish` dipende da entrambi con `needs`.
+`timeout-minutes` vale 20 per il job `checks` della CI, 10 per il job `gitleaks` della scansione dei segreti e 60 per il job `publish`, che costruisce e verifica l'immagine con il download dei modelli vocali. `publish-image.yml` richiama `ci.yml` e `secret-scan.yml` come job `checks` e `secret-scan`.
 
 #### Metadata
   * type: specification
@@ -217,7 +207,7 @@ Ogni job usa il runner `ubuntu-24.04` e dichiara `timeout-minutes`: 20 per il jo
 
 ### Profilo di pubblicazione dell'immagine Docker del server
 
-Il backend pubblica l'immagine su GitHub Container Registry (`ghcr.io`) tramite GitHub Actions quando viene creato un tag Git di release nel formato `vMAJOR.MINOR.PATCH`. La versione senza `v` corrisponde a `apps/server/package.json`. Il pacchetto OCI usa il nome `ghcr.io/ambrogio-app/ambrogio-backend` e riceve un tag immagine uguale al tag Git di release; non viene pubblicato un tag mobile `latest`. L'immagine supporta `linux/amd64`. Il workflow costruisce l'immagine dal Dockerfile del repository, la verifica prima del push e usa il `GITHUB_TOKEN` con permesso `packages: write` per pubblicarla. La pubblicazione richiede che la CI del backend e la scansione dei segreti siano superate sullo stesso commit. Un commit ordinario su `main` non è un evento di pubblicazione. Il contenuto dell'immagine pubblicata segue «Profilo dell'immagine Docker del server» e la scansione dei segreti richiesta segue «Profilo di scansione dei segreti con gitleaks». Un numero di versione già pubblicato e poi ritirato non è riusato. La visibilità del pacchetto nel registro è decisa dalla persona e non è modificata dal workflow.
+Il backend pubblica l'immagine su GitHub Container Registry (`ghcr.io`) tramite GitHub Actions quando viene creato un tag Git di release nel formato `vMAJOR.MINOR.PATCH`. La versione senza `v` corrisponde a `apps/server/package.json`. Il pacchetto OCI usa il nome `ghcr.io/ambrogio-app/ambrogio-backend` e riceve un tag immagine uguale al tag Git di release; non viene pubblicato un tag mobile `latest`. L'immagine supporta `linux/amd64`. Il workflow costruisce l'immagine dal Dockerfile del repository, la verifica prima del push e usa il `GITHUB_TOKEN` con permesso `packages: write` per pubblicarla. La pubblicazione richiede che la CI del backend e la scansione dei segreti siano superate sullo stesso commit. Un commit ordinario su `main` non è un evento di pubblicazione. Il contenuto dell'immagine pubblicata segue «Profilo dell'immagine Docker del server» e la scansione dei segreti richiesta segue «Profilo di scansione dei segreti del backend». Un numero di versione già pubblicato e poi ritirato non è riusato. La visibilità del pacchetto nel registro è decisa dalla persona e non è modificata dal workflow.
 
 #### Metadata
   * type: specification
@@ -226,15 +216,15 @@ Il backend pubblica l'immagine su GitHub Container Registry (`ghcr.io`) tramite 
   * define: [Pubblicazione dell'immagine Docker del server](../Requirements/ServerFoundation.md#pubblicazione-dellimmagine-docker-del-server)
 ---
 
-### Profilo di scansione dei segreti con gitleaks
+### Profilo di scansione dei segreti del backend
 
-Il repository backend usa gitleaks per impedire che chiavi API, token o altre credenziali entrino nella storia Git, con due controlli complementari, uno in CI e uno locale. La stessa scelta è adottata dagli altri repository di Ambrogio; questa registrazione riguarda soltanto il backend.
+Il backend applica «Profilo di scansione dei segreti con gitleaks» con questi elementi propri.
 
-Nella CI il workflow `.github/workflows/secret-scan.yml` è eseguito a ogni push su qualunque branch, a ogni pull request, su richiesta manuale e come workflow riutilizzabile. Esegue il checkout dell'intera storia (`fetch-depth: 0`) senza conservare le credenziali del checkout, scarica dalla release ufficiale l'archivio `gitleaks_8.30.1_linux_x64.tar.gz` di gitleaks v8.30.1 e ne verifica l'impronta SHA-256 `551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb`; un'impronta diversa interrompe il workflow con esito negativo. Lo scanner esegue `gitleaks git --redact --no-banner --exit-code 1 .` sull'intera storia; un ritrovamento produce esito negativo e i valori trovati sono oscurati nell'output. Il workflow di pubblicazione dell'immagine richiama questo workflow e il job di pubblicazione dipende dal suo esito, così che nessuna immagine venga pubblicata se la scansione fallisce.
+Nel workflow `.github/workflows/secret-scan.yml` la scansione è il job `gitleaks`, chiamato `Scan history for secrets`; versione e impronta di gitleaks sono dichiarate a livello di workflow nelle variabili `GITLEAKS_VERSION` e `GITLEAKS_SHA256`. Il workflow di pubblicazione `.github/workflows/publish-image.yml` richiama `secret-scan.yml` come job `secret-scan` e il job `publish` dipende dal suo esito, così che nessuna immagine venga pubblicata se la scansione fallisce.
 
-In locale l'hook versionato `.githooks/pre-commit`, script POSIX eseguibile, controlla le modifiche in staging con `gitleaks git --pre-commit --staged --redact --no-banner .` e impedisce il commit in caso di ritrovamento. Se `gitleaks` non è disponibile nel `PATH`, l'hook stampa un messaggio che indica come installarlo e impedisce il commit invece di proseguire senza controllo. L'hook si attiva una volta per clone con `git config core.hooksPath .githooks`. Il job `checks` di `.github/workflows/ci.yml` installa lo stesso archivio di gitleaks v8.30.1, con la stessa verifica dell'impronta SHA-256, e aggiunge lo scanner al `PATH` prima della suite Vitest, che esercita l'hook in un repository Git temporaneo. La configurazione predefinita delle regole di gitleaks è adottata senza eccezioni; un'eccezione per un falso positivo richiede una nuova decisione registrata qui.
+Il job `checks` di `.github/workflows/ci.yml` dichiara le stesse variabili, installa lo stesso archivio di gitleaks con lo stesso passo di download e verifica dell'impronta del job `gitleaks` e aggiunge lo scanner al `PATH` prima della suite Vitest, che esercita l'hook `.githooks/pre-commit` in un repository Git temporaneo.
 
-Alternative considerate: l'action `gitleaks/gitleaks-action` richiede una chiave di licenza per i repository di organizzazioni e aggiunge una dipendenza di terze parti al percorso di pubblicazione, mentre il binario fissato con impronta verificata non dipende da licenze; un controllo solo in CI lascerebbe entrare il segreto nella storia locale e lo bloccherebbe soltanto al push; un controllo solo locale dipenderebbe dall'attivazione dell'hook in ogni clone e non proteggerebbe integrazione e pubblicazione. L'aggiornamento della versione di gitleaks richiede di aggiornare insieme versione e impronta.
+Alternative considerate: l'action `gitleaks/gitleaks-action` richiede una chiave di licenza per i repository di organizzazioni e aggiunge una dipendenza di terze parti al percorso di pubblicazione, mentre il binario fissato con impronta verificata non dipende da licenze; un controllo solo in CI lascerebbe entrare il segreto nella storia locale e lo bloccherebbe soltanto al push; un controllo solo locale dipenderebbe dall'attivazione dell'hook in ogni clone e non proteggerebbe integrazione e pubblicazione.
 
 #### Metadata
   * type: specification
@@ -265,49 +255,26 @@ Il componente HTTP registra `@fastify/helmet` sulla radice dell'istanza Fastify 
   * define: [Header di sicurezza sulle risposte HTTP](../Requirements/ServerFoundation.md#header-di-sicurezza-sulle-risposte-http)
 ---
 
-### Profilo iniziale di osservabilità
+### Profilo iniziale di osservabilità del backend
 
-Il segnale diagnostico della prima versione è costituito dai log JSON strutturati del runtime HTTP, con i `correlationId` per collegare gli eventi di una richiesta. Un `correlationId` non è una traccia distribuita e i log non costituiscono un registro di audit garantito. Non sono attivati raccoglitori o API applicative separati per metriche, tracing o audit. Eventuali estensioni richiedono un bisogno concreto, un contratto proprio per dati e protezioni, una collocazione nei confini tecnici e verifiche dedicate; non ereditano automaticamente le garanzie dei log. La diagnostica tecnica non acquisisce automaticamente contenuti delle conversazioni o credenziali secondo i requisiti già definiti.
+Il segnale diagnostico della prima versione è costituito dai log JSON strutturati del runtime HTTP, con i `correlationId` per collegare gli eventi di una richiesta. Un `correlationId` non è una traccia distribuita e i log non costituiscono un registro di audit garantito. Non sono attivati raccoglitori o API applicative separati per metriche, tracing o audit; un'estensione non eredita automaticamente le garanzie dei log. La diagnostica tecnica non acquisisce automaticamente contenuti delle conversazioni o credenziali secondo i requisiti già definiti.
 
 #### Metadata
   * type: specification
 
 #### Relations
-  * define: [Perimetro iniziale dei segnali di osservabilità](../Requirements/ServerFoundation.md#perimetro-iniziale-dei-segnali-di-osservabilità)
+  * define: [Perimetro iniziale dei segnali di osservabilità del backend](../Requirements/ServerFoundation.md#perimetro-iniziale-dei-segnali-di-osservabilità-del-backend)
 ---
 
-### Ruleset del branch principale
+### Ruleset del branch principale del backend
 
-Il repository GitHub ha un ruleset di branch chiamato `main`, con applicazione `active`, che ha come destinazione il branch predefinito, nessun attore escluso e le regole:
-
-- `pull_request`, che ammette l'integrazione solo tramite pull request, con `required_approving_review_count` uguale a 0;
-- `required_status_checks`, con i controlli `Backend checks` e `Scan history for secrets` prodotti da GitHub Actions e `strict_required_status_checks_policy` uguale a `false`;
-- `non_fast_forward`, che vieta la riscrittura forzata;
-- `deletion`, che vieta la cancellazione del branch.
+Il ruleset `main` del repository `ambrogio-backend` segue «Ruleset del branch principale» e richiede i controlli `Backend checks`, il job `checks` di `.github/workflows/ci.yml`, e `Scan history for secrets`, il job `gitleaks` di `.github/workflows/secret-scan.yml`.
 
 #### Metadata
   * type: specification
 
 #### Relations
-  * define: [Controlli obbligatori prima del merge](../Requirements/ServerFoundation.md#controlli-obbligatori-prima-del-merge)
----
-
-### Script di integrità del modello
-
-Lo script `scripts/check-model.mjs` legge il modello con Reqvire 1.3.2 (`search --filter-type <tipo> --json` e `resources`) e i file tracciati con `git ls-files`, e segnala:
-
-- ogni requisito, contratto o verifica il cui testo, tolti code span, testi tra virgolette e nomi tra «», contiene una data (ISO `AAAA-MM-GG` oppure giorno, nome del mese e anno, in italiano o in inglese) o le formule `concordato il`, `concordata il`, `deciso il`, `decisa il`, `scelto il`, `scelta il`, anche con `con la persona`, `agreed on` e `decided on`;
-- ogni occorrenza, come parola intera e senza distinzione di maiuscole, di `può`, `possono`, `potrebbe`, `potrebbero`, `dovrebbe`, `dovrebbero`, `eventualmente`, `may`, `might`, `could`, `should` e `possibly` nell'enunciato di un requisito (il testo prima della sezione `#### Details`) o nel testo di un contratto, tolti code span, testi tra virgolette e nomi tra «»;
-- ogni verifica di ispezione, analisi o dimostrazione il cui contenuto non contiene `Non automatizzabile:`;
-- ogni file tracciato che corrisponde a `.github/workflows/**`, `.githooks/**`, `scripts/**`, `Dockerfile*`, `compose*.yaml`, `compose*.yml`, `.dockerignore`, `.gitignore`, `.npmrc`, `package.json`, `tsconfig*.json`, `vitest*.config.*`, a qualunque profondità, oppure a `pnpm-workspace.yaml` nella radice, e che nessun elemento del modello riferisce.
-
-Lo script stampa una riga per violazione e termina con stato 1 se ne trova almeno una, con stato 0 altrimenti. La CI lo esegue con `node scripts/check-model.mjs` dopo `validate` e `lint`.
-
-#### Metadata
-  * type: specification
-
-#### Relations
-  * define: [Controllo automatico dell'integrità del modello](../Requirements/Workspace.md#controllo-automatico-dellintegrità-del-modello)
+  * define: [Controlli obbligatori prima del merge del backend](../Requirements/ServerFoundation.md#controlli-obbligatori-prima-del-merge-del-backend)
 ---
 
 ### Sostituzione della directory delle voci nell'immagine backend

@@ -17,6 +17,7 @@ This repository holds the **backend**: the server that receives turns from clien
 | [ambrogio-cli](https://github.com/ambrogio-app/ambrogio-cli) | Terminal chat client |
 | [ambrogio-satellite](https://github.com/ambrogio-app/ambrogio-satellite) | Voice satellite with wake word, microphone and speaker |
 | [ambrogio-web](https://github.com/ambrogio-app/ambrogio-web) | Optional web chat client |
+| [ambrogio-model](https://github.com/ambrogio-app/ambrogio-model) | Shared engineering model: product capabilities, vocabulary, cross-cutting decisions and workspace scripts |
 
 > Ambrogio is in early development. Its own messages are in English or Italian, and the configuration format may still change between versions.
 
@@ -166,7 +167,7 @@ Secrets must never enter the history. CI scans the whole history with [gitleaks]
 git config core.hooksPath .githooks
 ```
 
-Ambrogio is developed model first with [Reqvire](https://reqvire.org/). Capabilities, requirements, contracts and verifications live in [`system-model/`](system-model/) and are recorded before the code changes. [`AGENTS.md`](AGENTS.md) describes the workflow.
+Ambrogio is developed model first with [Reqvire](https://reqvire.org/). The model is a single one across the repositories, checked out side by side in one workspace folder: the backend requirements, contracts and verifications live in [`system-model/`](system-model/), the product capabilities, shared vocabulary and cross-cutting decisions in `ambrogio-model`. Changes are recorded in the model before the code changes. [`AGENTS.md`](AGENTS.md) describes the workflow.
 
 ## License
 

@@ -365,6 +365,9 @@ Dove l'installazione abilita il connettore Home Assistant, il server deve raggiu
 #### Metadata
   * type: requirement
 
+#### Contract References
+  * [Protocollo Model Context Protocol](../Contracts/ExternalContracts.md#protocollo-model-context-protocol)
+
 #### Relations
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
   * satisfiedBy: [home-assistant.json](../../examples/agents/home-assistant.json)
@@ -983,6 +986,10 @@ Se la lettura dei prompt fallisce, Ambrogio deve concludere il turno con il guas
 #### Metadata
   * type: requirement
 
+#### Contract References
+  * [Protocollo Model Context Protocol](../Contracts/ExternalContracts.md#protocollo-model-context-protocol)
+  * [Server MCP di Home Assistant](../Contracts/ExternalContracts.md#server-mcp-di-home-assistant)
+
 #### Relations
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
   * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
@@ -1172,6 +1179,9 @@ Quando Ambrogio elabora un turno della famiglia, l'agente orchestratore deve sce
 
 #### Metadata
   * type: requirement
+
+#### Contract References
+  * [API dei provider di modelli linguistici](../Contracts/ExternalContracts.md#api-dei-provider-di-modelli-linguistici)
 
 #### Relations
   * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
@@ -1473,6 +1483,7 @@ Quando la voce è abilitata nell'installazione, Ambrogio deve pronunciare le ris
 
 #### Contract Bindings
   * [Configurazione facoltativa della voce](../Contracts/FamilyConversation.md#configurazione-facoltativa-della-voce)
+  * [Modelli vocali scaricati nell'immagine del backend](../Contracts/ExternalContracts.md#modelli-vocali-scaricati-nellimmagine-del-backend)
 
 #### Relations
   * derivedFrom: [Risposta parlata su richiesta del client](#risposta-parlata-su-richiesta-del-client)

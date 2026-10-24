@@ -1279,6 +1279,22 @@ La prova passa se la build usa `tsc`, produce JavaScript ESM e l'artefatto si av
   * verify: [Preparazione del server TypeScript ESM](../Requirements/ServerFoundation.md#preparazione-del-server-typescript-esm)
 ---
 
+### Prova della coerenza dei modelli vocali registrati
+
+Leggere la tabella degli archivi della fonte «Modelli vocali scaricati nell'immagine del backend», gli archivi con le impronte SHA-256 di `scripts/fetch-speech-models.mjs` e la tabella di `voices/README.md`.
+
+#### Details
+La prova passa se le tre fonti elencano gli stessi sei archivi con le stesse impronte. Fallisce se un archivio o un'impronta cambia in una sola di esse, così che un aggiornamento di un modello scaricato richieda la modifica esplicita dell'elemento `source`.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * satisfiedBy: [speech-models-source.spec.ts](../../test/repository/speech-models-source.spec.ts)
+  * verify: [Modelli vocali italiani e inglesi inclusi](../Requirements/ServerFoundation.md#modelli-vocali-italiani-e-inglesi-inclusi)
+---
+
 ### Prova della compilazione TypeScript strict
 
 Esaminare la configurazione TypeScript effettiva dei progetti che compongono il server e compilare il codice TypeScript con `tsc`.
@@ -1365,7 +1381,7 @@ La prova passa se, senza elenco, nessuna risposta autorizza CORS; con l'elenco, 
 
 ### Prova delle voci incluse e sostituibili
 
-Con `scripts/verify-docker-image.mjs`, costruire l'immagine backend oppure usare quella indicata da `AMBROGIO_DOCKER_IMAGE`, ispezionare le directory delle voci Piper incluse `vits-piper-it_IT-riccardo-x_low`, `vits-piper-it_IT-paola-medium` e `vits-piper-en_US-kristin-medium` e sintetizzare una breve frase con ciascuna usando il codice di sintesi dell'immagine. Verificare che l'immagine non contenga `python3` né `/opt/piper`. Avviare un container con una directory di prova montata in sola lettura su `/opt/ambrogio/voices` e osservare che il mount sostituisce il contenuto incluso; selezionare inoltre una voce italiana montata in un percorso distinto tramite le variabili del profilo vocale.
+Con `scripts/verify-docker-image.mjs`, costruire l'immagine backend oppure usare quella indicata da `AMBROGIO_DOCKER_IMAGE`, ispezionare le directory delle voci Piper incluse, elencate dalla fonte «Modelli vocali scaricati nell'immagine del backend», e sintetizzare una breve frase con ciascuna usando il codice di sintesi dell'immagine. Verificare che l'immagine non contenga `python3` né `/opt/piper`. Avviare un container con una directory di prova montata in sola lettura su `/opt/ambrogio/voices` e osservare che il mount sostituisce il contenuto incluso; selezionare inoltre una voce italiana montata in un percorso distinto tramite le variabili del profilo vocale.
 
 #### Details
 La prova passa se ogni directory contiene un solo modello `.onnx`, `tokens.txt`, `espeak-ng-data/` e `MODEL_CARD`, `/opt/ambrogio/voices/README.md` è presente, la sintesi produce audio non vuoto alla frequenza del modello per ogni voce, l'immagine non contiene `python3` né `/opt/piper`, il mount su `/opt/ambrogio/voices` presenta i file esterni al posto delle voci incluse senza una nuova build e la voce montata in un percorso distinto viene selezionata e caricata. Fallisce se manca una voce, la sintesi fallisce o il mount non sostituisce la directory. La prova non sostituisce l'ascolto umano della qualità delle voci.

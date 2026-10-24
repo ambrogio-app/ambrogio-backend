@@ -398,7 +398,7 @@ La prova passa se ogni rifiuto è restituito come valore distinguibile dal succe
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
   * satisfiedBy: [sqlite-conversation-history-read.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-history-read.adapter.integration.spec.ts)
-  * satisfiedBy: [sqlite-conversation-write.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.integration.spec.ts)
+  * satisfiedBy: [sqlite-turn-repository.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.integration.spec.ts)
   * satisfiedBy: [begin-turn.use-case.spec.ts](../../packages/conversations/src/application/begin-turn.use-case.spec.ts)
   * satisfiedBy: [complete-turn.use-case.spec.ts](../../packages/conversations/src/application/complete-turn.use-case.spec.ts)
   * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)

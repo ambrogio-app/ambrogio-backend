@@ -303,6 +303,130 @@ La prova passa se il client ottiene un token con `client_credentials` senza logi
   * verify: [Autenticazione OAuth tra servizi del client MCP](../Requirements/FamilyConversation.md#autenticazione-oauth-tra-servizi-del-client-mcp)
 ---
 
+### Verifica del modello Domain conversazionale
+
+Raggruppa le verifiche dei ruoli, delle classi, delle identità e del caricamento degli oggetti del Domain conversazionale.
+
+#### Metadata
+  * type: verification-objective
+---
+
+### Analisi dei ruoli del Domain conversazionale
+
+Per ogni concetto del Domain di «Conversazioni», registrare se è Root, Entità, Value Object o campo semplice, l'identità o il valore che giustifica il ruolo e le regole che porta; per l'aggregato del turno elencare gli invarianti che richiedono coerenza congiunta e lo stato coinvolto, e per ogni regola che supera il turno il componente che la garantisce.
+
+#### Details
+L'analisi passa se il `Turn` ha un'identità che sopravvive ai cambi di stato, le identità sono Value Object con regole proprie, i campi senza regole restano campi semplici, tutto lo stato coinvolto da un invariante del turno sta nell'aggregato e l'unicità del turno attivo per conversazione è attribuita all'archivio. Fallisce se un ruolo deriva soltanto dalla chiave primaria di una tabella, se un Value Object avvolge un campo senza regole, se l'aggregato segue le relazioni fra i dati invece degli invarianti o se un invariante coinvolge stato di aggregati separati.
+
+Non automatizzabile: stabilire se un concetto richiede un'identità duratura e quale stato coinvolge un invariante dipende dal significato del dominio e richiede giudizio umano.
+
+#### Metadata
+  * type: analysis-verification
+
+#### Relations
+  * derivedFrom: [Verifica del modello Domain conversazionale](#verifica-del-modello-domain-conversazionale)
+  * verify: [Confine dell'aggregato del turno secondo gli invarianti](../Requirements/FamilyConversation.md#confine-dellaggregato-del-turno-secondo-gli-invarianti)
+---
+
+### Prova del caricamento completo del turno
+
+Su un archivio SQLite reale preparato con le migrazioni dell'applicazione, conservare tramite il repository un turno in elaborazione e uno concluso; preparare poi direttamente nell'archivio un turno senza la propria conversazione, un turno in elaborazione senza occupazione, un turno in elaborazione occupato anche da un'altra conversazione, un turno concluso che occupa ancora la conversazione e un turno con un valore incompatibile; caricare ogni caso con `find` e con `findPending`.
+
+#### Details
+La prova passa se l'identità assente produce `undefined`, i turni completi sono ricostruiti con identità, conversazione, testo, istanti ed esito conservati, e ogni caso mancante, duplicato, non associabile o incompatibile interrompe il caricamento con un guasto. Fallisce se un caso parziale o incompatibile è presentato come assenza, come rifiuto previsto o come turno valido, oppure se un valore è corretto durante il caricamento.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica del modello Domain conversazionale](#verifica-del-modello-domain-conversazionale)
+  * satisfiedBy: [sqlite-turn-repository.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.integration.spec.ts)
+  * verify: [Caricamento completo del turno](../Requirements/FamilyConversation.md#caricamento-completo-del-turno)
+---
+
+### Prova del comportamento dei Value Object di identità
+
+Costruire `ConversationId` e `TurnId` da UUID v4 canonici uguali e diversi e da valori non validi, compresi UUID di altre versioni, in maiuscolo o con spazi; confrontare le istanze con `equals` e provare a modificarne il valore.
+
+#### Details
+La prova passa se istanze distinte con lo stesso valore sono uguali, istanze con valori diversi non lo sono, i valori non validi sono rifiutati da `create` e riconosciuti da `isValid`, e il valore non cambia dopo la costruzione. Fallisce se l'uguaglianza dipende dal riferimento o se un valore non valido diventa un'identità.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica del modello Domain conversazionale](#verifica-del-modello-domain-conversazionale)
+  * satisfiedBy: [identities.spec.ts](../../packages/conversations/src/domain/identities.spec.ts)
+  * verify: [Value Object immutabili con uguaglianza esplicita](../Requirements/FamilyConversation.md#value-object-immutabili-con-uguaglianza-esplicita)
+---
+
+### Prova dell'isolamento dello stato del turno
+
+Creare e ricostruire turni da istanti e dati posseduti dal chiamante, poi modificare gli istanti passati in ingresso e quelli restituiti dai getter; elencare i membri pubblici del turno.
+
+#### Details
+La prova passa se nessuna modifica dei dati in ingresso o restituiti cambia lo stato del turno e il turno espone soltanto i getter mirati e le operazioni del Domain, senza un accesso all'intero stato. Fallisce se un chiamante cambia lo stato tramite un riferimento trattenuto o restituito, oppure se esiste un getter dell'intero stato.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica del modello Domain conversazionale](#verifica-del-modello-domain-conversazionale)
+  * satisfiedBy: [turn.spec.ts](../../packages/conversations/src/domain/turn.spec.ts)
+  * verify: [Stato del turno senza riferimenti mutabili condivisi](../Requirements/FamilyConversation.md#stato-del-turno-senza-riferimenti-mutabili-condivisi)
+---
+
+### Prova della struttura TypeScript del Domain
+
+Leggere come testo le classi del Domain di «Conversazioni»: per ogni classe annotare costruttore, ingressi statici, campi, setter, classi base e la firma di `equals`; controllare l'assegnabilità reciproca delle classi di identità con asserzioni di tipo verificate dal typecheck; elencare gli import delle classi di identità negli adapter di ingresso e i tipi degli identificativi negli ingressi e nelle uscite dei casi d'uso.
+
+#### Details
+La prova passa se ogni classe del Domain ha costruttore privato e gli ingressi statici del proprio ruolo, lo stato è in campi `#private`, il `Turn` non espone campi pubblici, setter né un getter dell'intero stato, ogni Value Object ha `equals` tipizzato non ereditato, `ConversationId` e `TurnId` non sono assegnabili l'uno all'altro, nessun adapter di ingresso importa una classe di identità e gli ingressi e le uscite dei casi d'uso portano gli identificativi come stringhe. Fallisce a ogni deviazione.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica del modello Domain conversazionale](#verifica-del-modello-domain-conversazionale)
+  * satisfiedBy: [identities.spec.ts](../../packages/conversations/src/domain/identities.spec.ts)
+  * satisfiedBy: [domain-model.spec.ts](../../test/repository/domain-model.spec.ts)
+  * verify: [Classi TypeScript del Domain conversazionale](../Requirements/FamilyConversation.md#classi-typescript-del-domain-conversazionale)
+  * verify: [Identità distinte di conversazioni e turni](../Requirements/FamilyConversation.md#identità-distinte-di-conversazioni-e-turni)
+---
+
+### Prova delle responsabilità del repository del turno
+
+Leggere come testo, senza commenti e letterali, l'adapter SQLite del repository del turno e il mapper delle righe dei turni, e cercare chiamate alle operazioni del Root, ai suoi ingressi di creazione, alla generazione di identificativi e all'orologio.
+
+#### Details
+La prova passa se l'adapter non invoca `answer`, `fail`, `interrupt` né `Turn.create`, il mapper usa `Turn.rehydrate` soltanto nella ricostruzione e la conversione in scrittura legge i getter del Root, e nessuno dei due legge l'orologio o genera identificativi. Fallisce se una di queste chiamate compare nell'adapter o nella conversione in scrittura.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica del modello Domain conversazionale](#verifica-del-modello-domain-conversazionale)
+  * satisfiedBy: [domain-model.spec.ts](../../test/repository/domain-model.spec.ts)
+  * verify: [Repository del turno senza decisioni di Domain](../Requirements/FamilyConversation.md#repository-del-turno-senza-decisioni-di-domain)
+---
+
+### Prova delle transizioni del turno attraverso il Root
+
+Con un repository del turno sostituito da un doppio che registra le chiamate, concludere un turno caricato `in elaborazione` con risposta, errore e interruzione; ripetere con un turno caricato già concluso, con un salvataggio rifiutato per turno già concluso e con un turno assente. Eseguire anche il caso d'uso di interruzione dei turni in elaborazione con più turni caricati.
+
+#### Details
+La prova passa se ogni caso d'uso carica il turno, invoca l'operazione del Root, salva il turno modificato e restituisce lo stato conservato; il rifiuto della transizione e il rifiuto del salvataggio sono restituiti come esito previsto `turn_already_closed`, senza salvataggio dopo il rifiuto del Domain; il turno assente è un guasto; l'interruzione salva ogni turno caricato e conta soltanto quelli salvati. Fallisce se un caso d'uso chiede al repository una transizione, salva dopo un rifiuto del Domain o trasforma un rifiuto in guasto.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica del modello Domain conversazionale](#verifica-del-modello-domain-conversazionale)
+  * satisfiedBy: [complete-turn.use-case.spec.ts](../../packages/conversations/src/application/complete-turn.use-case.spec.ts)
+  * satisfiedBy: [interrupt-pending-turns.use-case.spec.ts](../../packages/conversations/src/application/interrupt-pending-turns.use-case.spec.ts)
+  * verify: [Modifiche del turno attraverso il Root](../Requirements/FamilyConversation.md#modifiche-del-turno-attraverso-il-root)
+---
+
 ### Verifica dell'organizzazione delle conversazioni
 
 Raggruppa i controlli sulla collocazione dei flussi testuali e vocali nel modulo business «Conversazioni».
@@ -382,12 +506,12 @@ Non automatizzabile: stabilire quali componenti integrano tecnologie esterne e q
 
 ### Controllo dei contratti di archivio della conversazione
 
-Esaminare i contratti Application usati per accettare turni, conservare esiti e interruzioni, recuperare lo storico e produrre l'elenco delle conversazioni; seguire i relativi adapter di persistenza.
+Esaminare i contratti Application usati per accettare turni, conservare esiti e interruzioni, verificare l'esistenza della conversazione, recuperare lo storico e produrre l'elenco delle conversazioni; seguire i casi d'uso che li usano e i relativi adapter di persistenza.
 
 #### Details
-Il controllo passa se il contratto di scrittura dedicato esprime le transizioni richieste dai casi d'uso, anche tramite il salvataggio coerente dell'aggregato, le letture hanno contratti separati adatti a storico ed elenco e nessuna interfaccia CRUD universale è imposta ai casi d'uso. Fallisce se Application dipende da un repository generico con sole operazioni create/get/update/delete o se le proiezioni di lettura sono accoppiate alle operazioni di scrittura.
+Il controllo passa se il repository del turno offre soltanto ammissione, caricamento e salvataggio dell'aggregato senza operazioni di transizione, le query usano soltanto porte di lettura con proiezioni raggruppate per capacità informativa coesa, i comandi ottengono i fatti ausiliari da porte di lookup specifiche e nessun contratto è unito a un altro per ragioni tecniche. Fallisce se Application dipende da un repository generico con sole operazioni create/get/update/delete, se una query usa il repository o il modello di scrittura, se un comando verifica un fatto ausiliario tramite una porta di lettura o se un contratto espone filtri tecnici.
 
-Non automatizzabile: giudicare se un contratto esprime le transizioni richieste o un'interfaccia CRUD generica richiede giudizio umano.
+Non automatizzabile: giudicare se una porta raggruppa una capacità informativa coesa e se un fatto è una verifica ausiliaria di un comando richiede di leggere l'intenzione dei casi d'uso.
 
 #### Metadata
   * type: inspection-verification
@@ -518,6 +642,23 @@ Non automatizzabile: distinguere un adapter di ingresso da uno che implementa un
   * verify: [Separazione degli adapter di ingresso e uscita](../Requirements/FamilyConversation.md#separazione-degli-adapter-di-ingresso-e-uscita)
 ---
 
+### Prova degli istanti ai confini HTTP
+
+Leggere tramite le rotte HTTP lo storico di una conversazione e una pagina dell'elenco con istanti noti; ripetere la richiesta della pagina successiva con il cursore restituito e con cursori che portano lo stesso istante con un offset diverso da UTC o in forma non canonica.
+
+#### Details
+La prova passa se ogni istante delle risposte è una stringa ISO 8601 in UTC terminata da `Z` uguale a `toISOString()` dell'istante conservato, il cursore restituito riprende dallo stesso istante e i cursori in forma non canonica sono rifiutati come richiesta non valida. Fallisce se un istante esce con un offset locale, se il cursore cambia l'istante o se un cursore non canonico è accettato.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dell'organizzazione delle conversazioni](#verifica-dellorganizzazione-delle-conversazioni)
+  * satisfiedBy: [history-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.spec.ts)
+  * satisfiedBy: [list-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.spec.ts)
+  * verify: [Istanti distinti dai concetti di calendario nella conversazione](../Requirements/FamilyConversation.md#istanti-distinti-dai-concetti-di-calendario-nella-conversazione)
+---
+
 ### Prova dell'indipendenza tecnica di Domain e Application
 
 Eseguire il comando `tsc` della dipendenza `typescript` del repository su un `tsconfig` temporaneo che compila senza emissione i file di `src/domain/` e `src/application/` del package «Conversazioni», con le sole librerie standard ECMAScript (`lib` uguale a `ESNext`) e senza dichiarazioni di tipo dell'ambiente (`types` vuoto); leggere inoltre come testo, tolti i commenti, gli specificatori di `import … from`, `export … from`, `import '…'` e `import('…')` di quei file e dei file che importano.
@@ -535,12 +676,61 @@ La prova passa se `tsc` termina con stato 0 senza diagnostiche e se ogni import 
   * verify: [Indipendenza tecnica di Domain e Application nel backend](../Requirements/FamilyConversation.md#indipendenza-tecnica-di-domain-e-application-nel-backend)
 ---
 
+### Prova della separazione dei contratti di lettura
+
+Leggere come testo le porte Application di «Conversazioni» e i casi d'uso di lettura e di inizio del turno, ed estrarne gli import.
+
+#### Details
+La prova passa se le porte di lettura e i casi d'uso di storico ed elenco non importano il Domain né il repository del turno, l'inizio del turno verifica l'esistenza della conversazione tramite la porta di lookup e non tramite una porta di lettura, e il repository del turno non dichiara letture di storico o elenco. Fallisce a ogni deviazione.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dell'organizzazione delle conversazioni](#verifica-dellorganizzazione-delle-conversazioni)
+  * satisfiedBy: [domain-model.spec.ts](../../test/repository/domain-model.spec.ts)
+  * verify: [Contratti di lettura separati dell'archivio conversazioni](../Requirements/FamilyConversation.md#contratti-di-lettura-separati-dellarchivio-conversazioni)
+---
+
+### Prova delle porte senza streaming dell'archivio
+
+Leggere come testo le porte Application di «Conversazioni» e cercare tipi di consegna incrementale: `AsyncIterable`, `AsyncIterator`, `AsyncGenerator`, stream di Node.js, `ReadableStream` e cursori del database.
+
+#### Details
+La prova passa se l'unica porta con consegna incrementale è `ProduceConversationReply`, che usa `AsyncIterable` di valori Application, e nessuna porta espone stream del runtime, cursori o tipi Kysely. Fallisce se una porta di lettura, di lookup o il repository del turno consegna in streaming o se una porta espone un tipo tecnico di stream.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dell'organizzazione delle conversazioni](#verifica-dellorganizzazione-delle-conversazioni)
+  * satisfiedBy: [domain-model.spec.ts](../../test/repository/domain-model.spec.ts)
+  * verify: [Streaming soltanto quando l'intenzione lo richiede](../Requirements/FamilyConversation.md#streaming-soltanto-quando-lintenzione-lo-richiede)
+---
+
 ### Verifica della concorrenza dei turni
 
 Raggruppa le verifiche sul singolo turno attivo per conversazione, sull'elaborazione parallela di conversazioni diverse e sul rifiuto senza accodamento dei turni in conflitto.
 
 #### Metadata
   * type: verification-objective
+---
+
+### Ispezione delle suite di concorrenza dell'archivio
+
+Esaminare le prove di ogni garanzia di concorrenza dichiarata dall'archivio delle conversazioni: database usato, processi e connessioni, sincronizzazione delle esecuzioni concorrenti e sonda dello stato finale.
+
+#### Details
+L'ispezione passa se ogni garanzia dichiarata ha una prova sull'archivio SQLite reale con processi e connessioni indipendenti, sincronizzazione esplicita e una sonda indipendente che confronta lo stato finale con l'intera intenzione. Fallisce se una prova si basa su un avvio in parallelo nello stesso processo, sul successo delle chiamate o sulla presenza di un blocco, oppure se una garanzia dichiarata non ha prova.
+
+Non automatizzabile: giudicare se la sincronizzazione impone davvero la sovrapposizione che la garanzia riguarda richiede di leggere ogni prova rispetto alla garanzia che dimostra.
+
+#### Metadata
+  * type: inspection-verification
+
+#### Relations
+  * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
+  * verify: [Garanzie di concorrenza provate da esecuzioni concorrenti reali](../Requirements/FamilyConversation.md#garanzie-di-concorrenza-provate-da-esecuzioni-concorrenti-reali)
 ---
 
 ### Prova degli ingressi disabilitati durante un turno
@@ -607,8 +797,25 @@ La prova passa se solo l'ammissione concorrente accertata produce il rifiuto pre
 
 #### Relations
   * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
-  * satisfiedBy: [sqlite-conversation-write.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.integration.spec.ts)
+  * satisfiedBy: [sqlite-turn-repository.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.integration.spec.ts)
   * verify: [Classificazione degli esiti delle scritture conversazionali](../Requirements/FamilyConversation.md#classificazione-degli-esiti-delle-scritture-conversazionali)
+---
+
+### Prova delle garanzie di concorrenza con esecuzioni reali
+
+Su un file SQLite preparato con le migrazioni di produzione, avviare processi Node.js distinti, ciascuno con la propria connessione, il proprio repository del turno e la propria porta di lookup, coordinati dal test con messaggi espliciti. Ammissione: due processi verificano l'esistenza della stessa conversazione e poi ammettono turni distinti, prima in un ordine imposto e poi in più giri nello stesso istante concordato. Conclusione: due processi caricano lo stesso turno in elaborazione; quando entrambi l'hanno caricato, uno salva una risposta e poi l'altro un'interruzione, e in altri giri salvano nello stesso istante concordato. Dopo ogni giro una connessione indipendente legge lo stato finale.
+
+#### Details
+La prova passa se ogni ammissione concorrente produce un solo successo, l'altra riceve `conversation_occupied` nell'ordine imposto oppure `conversation_occupied` o `archive_busy` nello stesso istante, e la sonda trova nella conversazione il solo turno ammesso in elaborazione, indicato come occupante, senza turni rifiutati conservati; se ogni conclusione concorrente produce al più un successo, l'altra riceve `turn_already_closed` nell'ordine imposto oppure `turn_already_closed` o un guasto tecnico nello stesso istante, mai un successo, e la sonda trova l'esito del solo vincitore con l'occupazione liberata. Fallisce se due esiti riusciti coesistono, se un esito dichiarato contraddice lo stato letto dalla sonda o se un aggiornamento perso sostituisce l'esito conservato.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
+  * satisfiedBy: [sqlite-turn-repository.adapter.concurrency.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.concurrency.integration.spec.ts)
+  * verify: [Garanzia di concorrenza dichiarata per ogni scrittura dell'archivio](../Requirements/FamilyConversation.md#garanzia-di-concorrenza-dichiarata-per-ogni-scrittura-dellarchivio)
+  * verify: [Rifiuto dei turni concorrenti nella stessa conversazione](../Requirements/FamilyConversation.md#rifiuto-dei-turni-concorrenti-nella-stessa-conversazione)
 ---
 
 ### Prova delle transazioni brevi del turno
@@ -640,7 +847,7 @@ La prova passa se un errore non lascia transizioni parziali e il chiamante non r
 #### Relations
   * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
   * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
-  * satisfiedBy: [sqlite-conversation-write.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.integration.spec.ts)
+  * satisfiedBy: [sqlite-turn-repository.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.integration.spec.ts)
   * verify: [Scritture atomiche dello stato dei turni](../Requirements/FamilyConversation.md#scritture-atomiche-dello-stato-dei-turni)
 ---
 
@@ -1462,7 +1669,7 @@ La prova passa se ogni nuovo identificativo è un UUID v4, gli identificativi cr
 #### Relations
   * derivedFrom: [Verifica delle identità conversazionali](#verifica-delle-identità-conversazionali)
   * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
-  * satisfiedBy: [sqlite-conversation-write.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.integration.spec.ts)
+  * satisfiedBy: [sqlite-turn-repository.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.integration.spec.ts)
   * verify: [Identificativi UUID v4 di conversazioni e turni](../Requirements/FamilyConversation.md#identificativi-uuid-v4-di-conversazioni-e-turni)
 ---
 
@@ -1503,7 +1710,7 @@ La prova passa se ogni turno e l'ultima attività della sua conversazione usano 
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [sqlite-conversation-write.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.integration.spec.ts)
+  * satisfiedBy: [sqlite-turn-repository.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.integration.spec.ts)
   * verify: [Fornitura esplicita dell'ora corrente alla conversazione](../Requirements/FamilyConversation.md#fornitura-esplicita-dellora-corrente-alla-conversazione)
 ---
 
@@ -1521,6 +1728,22 @@ La prova passa se la risposta non viene prodotta, una conclusione riuscita conse
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
   * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
   * verify: [Gestione del turno ammesso senza storico utilizzabile](../Requirements/FamilyConversation.md#gestione-del-turno-ammesso-senza-storico-utilizzabile)
+---
+
+### Prova del registro delle migrazioni
+
+Leggere l'elenco delle migrazioni di `migrations.ts`, i file della cartella delle migrazioni e il registro delle impronte; calcolare l'impronta SHA-256 di ogni file ed estrarne gli import. Su un archivio SQLite in memoria applicare le migrazioni e poi provare l'avvio con un elenco privato di una migrazione già applicata.
+
+#### Details
+La prova passa se i nomi dell'elenco sono in ordine strettamente crescente e coincidono, nello stesso ordine, con i file della cartella e con le voci del registro, ogni impronta coincide con il contenuto del file, ogni migrazione importa soltanto `kysely` o i suoi sottopercorsi, la cartella non contiene altri file e l'avvio senza una migrazione già applicata fallisce. Fallisce se una migrazione registrata è stata modificata, rinominata, rimossa o riordinata, se una migrazione importa altro codice o se la cartella contiene dati di prova.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
+  * satisfiedBy: [migrations.spec.ts](../../packages/conversations/src/adapters/out/sqlite/migrations.spec.ts)
+  * verify: [Igiene delle migrazioni dell'archivio conversazioni](../Requirements/FamilyConversation.md#igiene-delle-migrazioni-dellarchivio-conversazioni)
 ---
 
 ### Prova del turno interrotto dopo riavvio

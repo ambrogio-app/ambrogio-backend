@@ -20,6 +20,7 @@ afterEach(async () => {
 });
 
 describe('conversation history HTTP ingress', () => {
+  // Verification: Prova degli istanti ai confini HTTP
   it('returns the complete ordered snapshot with state-specific fields and UTC instants', async () => {
     const server = fixture(async ({ conversationId }) => {
       expect(conversationId).toBe('conversation-1');

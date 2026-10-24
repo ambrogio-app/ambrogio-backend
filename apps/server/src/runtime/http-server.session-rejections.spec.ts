@@ -60,7 +60,7 @@ describe.each<Language>(['en', 'it'])('rejections before admission in %s', langu
     expectRejected(await client.textTurn('ciao', { conversationId: busy.conversationId as string, reply: 'audio' }),
       'occupied', server.messages.occupied, 'audio');
 
-    const write = server.prepared.write as unknown as { admit: (...args: unknown[]) => Promise<unknown> };
+    const write = server.prepared.turns as unknown as { admit: (...args: unknown[]) => Promise<unknown> };
     const admit = write.admit.bind(write);
     write.admit = async () => ({ ok: false, error: { kind: 'archive_busy' } });
     expectRejected(await client.textTurn('ciao'), 'unavailable', server.messages.unavailable);

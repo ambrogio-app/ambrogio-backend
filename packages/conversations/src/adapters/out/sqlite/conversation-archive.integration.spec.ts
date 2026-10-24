@@ -5,10 +5,10 @@ import { Migrator } from 'kysely/migration';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Turn } from '../../../domain/turn.js';
+import { admitTurn, interruptPendingTurns } from '../../../../test/support/turn-archive.js';
 import { openConversationArchive } from './conversation-archive.js';
 import { conversationMigrations } from './migrations.js';
-import { SqliteConversationWrite } from './sqlite-conversation-write.adapter.js';
+import { SqliteTurnRepository } from './sqlite-turn-repository.adapter.js';
 import type { ConversationDatabase } from './schema.js';
 
 const conversationId = 'dc89cb5e-e695-43cc-8a04-917316771ea4';
@@ -24,7 +24,13 @@ function file() {
 }
 
 function turn(id: string) {
-  return Turn.accept({ id, text: '  domanda  ', acceptedAt: new Date(1234) });
+  return ({ id, text: '  domanda  ', acceptedAt: new Date(1234) });
+}
+
+/** Opens and migrates the archive, then interrupts the pending turns as the server does at startup. */
+async function openRecovered(filename: string, at: Date) {
+  const archive = await openConversationArchive(filename);
+  return { ...archive, recoveredTurns: await interruptPendingTurns(archive.db, at) };
 }
 
 afterEach(() => {
@@ -67,7 +73,7 @@ describe('conversation archive startup', () => {
     await sql`update installation set active_turn_id = ${turnId}, active_process_id = ${process.pid} where id = 1`.execute(db);
     await db.destroy();
 
-    const archive = await openConversationArchive(filename, new Date(2345));
+    const archive = await openRecovered(filename, new Date(2345));
     expect(archive.recoveredTurns).toBe(1);
     expect(await archive.db.selectFrom('turns').select(['text', 'status', 'finished_at']).executeTakeFirst())
       .toEqual({ text: '  domanda  ', status: 'interrupted', finished_at: 2345 });
@@ -76,33 +82,36 @@ describe('conversation archive startup', () => {
     const columns = await sql<{ name: string }>`pragma table_info(conversations)`.execute(archive.db);
     expect(columns.rows.map(column => column.name)).toContain('active_turn_id');
     await archive.close();
-    const reopened = await openConversationArchive(filename, new Date(3456));
+    const reopened = await openRecovered(filename, new Date(3456));
     expect(reopened.recoveredTurns).toBe(0);
     await reopened.close();
   });
 
   it('interrupts every pending turn and releases occupancy before admitting a new one', async () => {
     const filename = file();
-    const first = await openConversationArchive(filename, new Date(1000));
-    const writer = new SqliteConversationWrite(first.db);
-    expect(await writer.admit({ conversationId, createConversation: true, turn: turn(turnId) }))
+    const first = await openRecovered(filename, new Date(1000));
+    const writer = new SqliteTurnRepository(first.db);
+    expect(await admitTurn(writer, { conversationId, createConversation: true, turn: turn(turnId) }))
       .toMatchObject({ ok: true });
     await first.db.insertInto('conversations').values({
       id: otherConversationId, created_at: 1234, last_activity_at: 1234,
     }).execute();
+    // A pending turn always holds the occupancy of its conversation, written in the same transaction.
     await first.db.insertInto('turns').values({
       id: otherTurnId, conversation_id: otherConversationId, ordinal: 1, text: 'altro',
       accepted_at: 1234, status: 'pending', answer: null, error: null, finished_at: null,
     }).execute();
+    await first.db.updateTable('conversations').set({ active_turn_id: otherTurnId })
+      .where('id', '=', otherConversationId).execute();
     await first.close();
 
-    const second = await openConversationArchive(filename, new Date(2345));
+    const second = await openRecovered(filename, new Date(2345));
     expect(second.recoveredTurns).toBe(2);
     expect(await second.db.selectFrom('turns').select(['status', 'finished_at']).execute())
       .toEqual([{ status: 'interrupted', finished_at: 2345 }, { status: 'interrupted', finished_at: 2345 }]);
     expect(await second.db.selectFrom('conversations').select('active_turn_id').where('id', '=', conversationId).executeTakeFirst())
       .toEqual({ active_turn_id: null });
-    expect(await new SqliteConversationWrite(second.db).admit({
+    expect(await admitTurn(new SqliteTurnRepository(second.db), {
       conversationId: otherConversationId, createConversation: false,
       turn: turn('13209c7e-c941-44df-a28b-a34bb7e29e10'),
     })).toMatchObject({ ok: true });
@@ -116,7 +125,7 @@ describe('conversation archive startup', () => {
     sqlite.close();
     const destroy = vi.spyOn(Kysely.prototype, 'destroy');
     try {
-      await expect(openConversationArchive(filename, new Date(1000))).rejects.toThrow();
+      await expect(openConversationArchive(filename)).rejects.toThrow();
       expect(destroy).toHaveBeenCalledTimes(1);
     } finally { destroy.mockRestore(); }
   });

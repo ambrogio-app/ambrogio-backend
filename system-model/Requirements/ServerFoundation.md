@@ -1219,7 +1219,7 @@ Quando un'operazione Domain, un caso d'uso Application o una porta Application d
 
 #### Relations
   * derivedFrom: [Esiti previsti come valori tipizzati](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#esiti-previsti-come-valori-tipizzati)
-  * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
+  * satisfiedBy: [sqlite-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.ts)
   * satisfiedBy: [begin-turn.use-case.ts](../../packages/conversations/src/application/begin-turn.use-case.ts)
   * satisfiedBy: [complete-turn.use-case.ts](../../packages/conversations/src/application/complete-turn.use-case.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)

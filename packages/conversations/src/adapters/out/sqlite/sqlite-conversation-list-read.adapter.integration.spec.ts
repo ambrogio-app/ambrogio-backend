@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import Database from 'better-sqlite3';
 import { Kysely, SqliteDialect, sql } from 'kysely';
-import { Turn } from '../../../domain/turn.js';
 import { createListConversations } from '../../../application/list-conversations.use-case.js';
 import { migrateConversationArchive } from './migrations.js';
+import { admitTurn, completeTurn, interruptPendingTurns } from '../../../../test/support/turn-archive.js';
 import { SqliteConversationListRead } from './sqlite-conversation-list-read.adapter.js';
-import { SqliteConversationWrite } from './sqlite-conversation-write.adapter.js';
+import { SqliteTurnRepository } from './sqlite-turn-repository.adapter.js';
 import type { ConversationDatabase } from './schema.js';
 
 const ids = [
@@ -33,13 +33,13 @@ describe('conversation list', () => {
   it('orders by last admission, breaks ties by identity, and traverses bounded pages without duplicates', async () => {
     const db = open();
     await migrateConversationArchive(db);
-    const write = new SqliteConversationWrite(db);
+    const write = new SqliteTurnRepository(db);
     let turnNumber = 0;
     async function add(conversationId: string, at: number, createConversation: boolean) {
       const turnId = `a0000000-0000-4000-8000-${String(++turnNumber).padStart(12, '0')}`;
-      expect(await write.admit({ conversationId, createConversation,
-        turn: Turn.accept({ id: turnId, text: 'testo', acceptedAt: new Date(at) }) })).toMatchObject({ ok: true });
-      expect(await write.complete({ turnId, outcome: { kind: 'answer', text: 'risposta' }, finishedAt: new Date(at + 1) }))
+      expect(await admitTurn(write, { conversationId, createConversation,
+        turn: ({ id: turnId, text: 'testo', acceptedAt: new Date(at) }) })).toMatchObject({ ok: true });
+      expect(await completeTurn(write, { turnId, outcome: { kind: 'answer', text: 'risposta' }, finishedAt: new Date(at + 1) }))
         .toMatchObject({ ok: true });
     }
     await add(ids[0], 100, true);

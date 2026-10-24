@@ -1,10 +1,10 @@
-import type { Result, TurnSnapshot } from '../domain/turn.js';
-import type { ConversationHistoryRead } from './conversation-history-read.port.js';
+import type { Result } from '../domain/result.js';
+import type { ConversationHistoryRead, HistoryTurn } from './conversation-history-read.port.js';
 
 export type GetConversationInput = Readonly<{ conversationId: string }>;
 export type GetConversationRejection = Readonly<{ kind: 'conversation_not_found' }>;
 /** A stored turn as consulted by clients: the responding agent stays internal. */
-export type ConversationTurnView = DistributiveOmit<TurnSnapshot, 'agent'>;
+export type ConversationTurnView = DistributiveOmit<HistoryTurn, 'agent'>;
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 export type ConversationView = Readonly<{
   id: string;
@@ -22,7 +22,7 @@ export function createGetConversation(history: ConversationHistoryRead): GetConv
   };
 }
 
-function withoutAgent(turn: TurnSnapshot): ConversationTurnView {
+function withoutAgent(turn: HistoryTurn): ConversationTurnView {
   if (turn.status !== 'answered') return turn;
   const { agent: _agent, ...view } = turn;
   return view;

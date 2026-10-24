@@ -2,7 +2,6 @@ import { readConversationConfig } from '@ambrogio/conversations/adapters/out/con
 import { readRuntimeEnvironment } from '@ambrogio/conversations/adapters/out/environment-variables';
 import { loadVoiceConfig } from '@ambrogio/conversations/adapters/out/voice-config';
 import { SystemCurrentTime } from '@ambrogio/conversations/adapters/out/system-current-time';
-import { recoverPendingTurns } from '@ambrogio/conversations/adapters/out/sqlite/recover-pending-turns';
 import type { ProduceConversationReply } from '@ambrogio/conversations/application/produce-conversation-reply';
 import { prepareAgents } from '../composition/agents.js';
 import { prepareConfiguredConversations } from '../composition/conversations.js';
@@ -42,13 +41,13 @@ export async function startConversationServer(environment: NodeJS.ProcessEnv = p
     throw error;
   }
   const { server, turnIngress } = built;
-  const archive = prepared.archive;
+  const { archive, interruptPendingTurns } = prepared;
   let closing: Promise<void> | undefined;
   return { server, close() {
     closing ??= (async () => {
       try {
         await turnIngress.stopAccepting();
-        await recoverPendingTurns(archive.db, new Date());
+        await interruptPendingTurns();
         await turnIngress.closeSessions();
       } finally {
         try { await server.close(); }

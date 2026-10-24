@@ -1,14 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { Turn } from '../domain/turn.js';
 import { REPLY_TIME_LIMIT_MS, createExchangeTurn } from './exchange-turn.use-case.js';
 import type { BeginTurn } from './begin-turn.use-case.js';
 import type { CompleteTurnUseCase } from './complete-turn.use-case.js';
-import type { ConversationHistoryRead } from './conversation-history-read.port.js';
+import type { ConversationHistoryRead, HistoryTurn } from './conversation-history-read.port.js';
 import type { ProduceConversationReply, ReplyPart } from './produce-conversation-reply.port.js';
 
 const conversationId = 'dc89cb5e-e695-43cc-8a04-917316771ea4';
 const turnId = '79e437a8-c11a-48ba-b476-e4fd4712ea58';
-const pending = Turn.accept({ id: turnId, text: '  domanda  ', acceptedAt: new Date(1234) }).snapshot();
+const pending: HistoryTurn = { id: turnId, text: '  domanda  ', acceptedAt: new Date(1234), status: 'pending' };
 const englishFailure = "I can't complete the response.";
 const italianFailure = 'Non riesco a completare la risposta.';
 const text = (value: string): ReplyPart => ({ kind: 'text', text: value });
@@ -265,7 +264,7 @@ describe('conversation exchange use case', () => {
     const exchange = createExchangeTurn({
       ...deps,
       history: { async find() { throw new Error('archive read failed'); } },
-      complete: async () => ({ ok: false, error: { kind: 'turn_not_active' } }),
+      complete: async () => ({ ok: false, error: { kind: 'turn_already_closed' } }),
       reply: { async *produce() { throw new Error('must not run'); } },
     });
     await expect(exchange({ text: '  domanda  ' })).rejects.toThrow('Admitted turn could not be completed');

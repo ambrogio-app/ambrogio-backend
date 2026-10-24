@@ -13,7 +13,7 @@ import type { ReplyPart } from '@ambrogio/conversations/application/produce-conv
 import { openConversationArchive } from '@ambrogio/conversations/adapters/out/sqlite/archive';
 import { conversationMigrations } from '@ambrogio/conversations/adapters/out/sqlite/migrations';
 import { SqliteConversationHistoryRead } from '@ambrogio/conversations/adapters/out/sqlite/history-read';
-import { SqliteConversationWrite } from '@ambrogio/conversations/adapters/out/sqlite/write';
+import { SqliteTurnRepository } from '@ambrogio/conversations/adapters/out/sqlite/turn-repository';
 import { McpToolClient } from '@ambrogio/conversations/adapters/out/mcp-tool-client';
 import { AiSdkOrchestratorReply, AiSdkToolAgentReply } from '@ambrogio/conversations/adapters/out/ai-sdk-reply';
 import { prepareConfiguredConversations } from '../composition/conversations.js';
@@ -62,7 +62,7 @@ async function listen(built: Awaited<ReturnType<typeof buildConversationServer>>
 }
 
 async function downgradeArchiveToInitial(filename: string) {
-  const archive = await openConversationArchive(filename, new Date());
+  const archive = await openConversationArchive(filename);
   try {
     for (const name of ['007_turn_agent', '006_per_conversation_occupancy', '005_remove_turn_owner', '004_turn_owner',
       '003_list_order', '002_ordered_turns'] as const) {
@@ -184,7 +184,7 @@ test('shutdown interrupts a pending turn without waiting for the remote reply', 
     started(); await wait; yield text('too late'); yield expectation();
   } },
   async close() {
-    const archive = await openConversationArchive(files.archive, new Date());
+    const archive = await openConversationArchive(files.archive);
     try {
       const rows = await archive.db.selectFrom('turns').select(['status', 'answer']).execute();
       persistedBeforeAgentClose = rows.length === 1 && rows[0]?.status === 'interrupted'
@@ -215,9 +215,8 @@ test('shutdown interrupts a pending turn without waiting for the remote reply', 
     release();
     await new Promise<void>((resolve) => setImmediate(resolve));
     expect(client.json().some(message => message.type === 'turn.completed')).toBe(false);
-    const archive = await openConversationArchive(files.archive, new Date());
+    const archive = await openConversationArchive(files.archive);
     try {
-      expect(archive.recoveredTurns).toBe(0);
       const rows = await archive.db.selectFrom('turns').select(['status', 'answer']).execute();
       expect(rows).toEqual([{ status: 'interrupted', answer: null }]);
     } finally { await archive.close(); }
@@ -250,9 +249,8 @@ test('shutdown preserves a turn already completed before interruption', async ()
     await runtime.close();
     await client.closed;
     expect(client.json().some(message => message.type === 'turn.interrupted')).toBe(false);
-    const archive = await openConversationArchive(files.archive, new Date());
+    const archive = await openConversationArchive(files.archive);
     try {
-      expect(archive.recoveredTurns).toBe(0);
       expect(await archive.db.selectFrom('turns').select(['status', 'answer']).execute())
         .toEqual([{ status: 'answered', answer: 'completed answer' }]);
     } finally { await archive.close(); }
@@ -363,7 +361,7 @@ test('restores completed history after restart and uses it for textual continuat
     await firstRuntime.close();
   }
 
-  const persistedArchive = await openConversationArchive(files.archive, new Date());
+  const persistedArchive = await openConversationArchive(files.archive);
   try {
     expect(await persistedArchive.db.selectFrom('conversations').select('id').execute())
       .toEqual([{ id }]);
@@ -454,7 +452,7 @@ test('processes separate conversations in parallel and rejects a second turn in 
     expect(productions).toBe(4);
     const after = await fetch(`${origin}/api/conversations`);
     expect((await after.json() as { items: unknown[] }).items).toHaveLength(4);
-    const archive = await openConversationArchive(files.archive, new Date());
+    const archive = await openConversationArchive(files.archive);
     try {
       expect((await archive.db.selectFrom('turns').select('text').execute())
         .map(row => row.text).sort()).toEqual([
@@ -530,7 +528,7 @@ test.each([
       throw new Error('private history failure');
     });
   const completionFault = completionFails
-    ? vi.spyOn(SqliteConversationWrite.prototype, 'complete')
+    ? vi.spyOn(SqliteTurnRepository.prototype, 'saveConclusion')
       .mockImplementationOnce(async () => { throw new Error('private completion failure'); })
     : undefined;
   try {
@@ -575,7 +573,7 @@ test.each([
       allowedOrigins: [], publicHttps: false }, recovered,
     { async *produce() { yield text('after restart'); yield expectation(); } });
     try {
-      expect(recovered.archive.recoveredTurns).toBe(1);
+      expect(recovered.recoveredTurns).toBe(1);
       expect(await recovered.archive.db.selectFrom('turns').select('status').execute())
         .toEqual([{ status: 'interrupted' }]);
       const port = await listen(restarted);
@@ -645,7 +643,7 @@ test('migrates an existing archive before listening and preserves its history', 
   const port = await freePort();
   const priorConversationId = 'dc89cb5e-e695-43cc-8a04-917316771ea4';
   const priorTurnId = '79e437a8-c11a-48ba-b476-e4fd4712ea58';
-  const archive = await openConversationArchive(files.archive, new Date());
+  const archive = await openConversationArchive(files.archive);
   try {
     await archive.db.insertInto('conversations').values({
       id: priorConversationId, created_at: 1234, last_activity_at: 1234,
@@ -928,14 +926,14 @@ test('does not open a listener when the HTTP or archive configuration is missing
 // Verification: Prova dell'archivio configurato all'avvio
 test('listens on the configured address and serves the configured archive after recovering pending turns', async () => {
   const files = await fixture();
-  const archive = await openConversationArchive(files.archive, new Date(1000));
-  await archive.db.insertInto('conversations').values({ id: 'conversation', created_at: 100,
+  const archive = await openConversationArchive(files.archive);
+  await archive.db.insertInto('conversations').values({ id: '0a0f1c2e-3b4d-4e5f-8a6b-7c8d9e0f1a2b', created_at: 100,
     last_activity_at: 100 }).execute();
-  await archive.db.insertInto('turns').values({ id: 'turn', conversation_id: 'conversation',
+  await archive.db.insertInto('turns').values({ id: '1b2c3d4e-5f6a-4b7c-9d8e-0f1a2b3c4d5e', conversation_id: '0a0f1c2e-3b4d-4e5f-8a6b-7c8d9e0f1a2b',
     ordinal: 1, text: 'hello', accepted_at: 100, status: 'pending', answer: null,
     error: null, finished_at: null }).execute();
-  await archive.db.updateTable('conversations').set({ active_turn_id: 'turn' })
-    .where('id', '=', 'conversation').execute();
+  await archive.db.updateTable('conversations').set({ active_turn_id: '1b2c3d4e-5f6a-4b7c-9d8e-0f1a2b3c4d5e' })
+    .where('id', '=', '0a0f1c2e-3b4d-4e5f-8a6b-7c8d9e0f1a2b').execute();
   await archive.close();
   const destroy = vi.spyOn(Object.getPrototypeOf(archive.db) as { destroy: () => Promise<void> }, 'destroy');
 
@@ -949,9 +947,9 @@ test('listens on the configured address and serves the configured archive after 
     const list = await fetch(`${origin}/api/conversations`);
     expect(list.status).toBe(200);
     expect((await list.json() as { items: { id: string }[] }).items).toEqual([
-      { id: 'conversation', lastActivityAt: new Date(100).toISOString() },
+      { id: '0a0f1c2e-3b4d-4e5f-8a6b-7c8d9e0f1a2b', lastActivityAt: new Date(100).toISOString() },
     ]);
-    const history = await fetch(`${origin}/api/conversations/conversation`);
+    const history = await fetch(`${origin}/api/conversations/0a0f1c2e-3b4d-4e5f-8a6b-7c8d9e0f1a2b`);
     expect(history.status).toBe(200);
     expect((await history.json() as { turns: { status: string }[] }).turns[0]?.status).toBe('interrupted');
   } finally {

@@ -20,6 +20,7 @@ afterEach(async () => {
 });
 
 describe('conversation list HTTP ingress', () => {
+  // Verification: Prova degli istanti ai confini HTTP
   it('returns a page and passes its opaque cursor and explicit limit to the next read', async () => {
     const inputs: Parameters<ListConversations>[0][] = [];
     const server = fixture(async input => {
@@ -52,6 +53,23 @@ describe('conversation list HTTP ingress', () => {
       { limit: 2 },
       { after: { id: 'b', lastActivityAt: new Date(1000) }, limit: 1 },
     ]);
+  });
+
+  // Verification: Prova degli istanti ai confini HTTP
+  it('accepts only the canonical UTC instant it produced in a cursor', async () => {
+    const calls: Parameters<ListConversations>[0][] = [];
+    const server = fixture(async input => { calls.push(input); return { items: [] }; });
+    const cursor = (lastActivityAt: string) => Buffer.from(JSON.stringify({ id: 'b', lastActivityAt }), 'utf8')
+      .toString('base64url');
+    for (const instant of ['1970-01-01T01:00:01.000+01:00', '1970-01-01T00:00:01Z', '1970-01-01T00:00:01.000z',
+      '1970-01-01 00:00:01.000Z', '1970-01-01T00:00:01.000']) {
+      const response = await server.inject({ method: 'GET', url: `/api/conversations?cursor=${cursor(instant)}` });
+      expect(response.statusCode, instant).toBe(400);
+    }
+    expect(calls).toEqual([]);
+    const accepted = await server.inject({ method: 'GET', url: `/api/conversations?cursor=${cursor('1970-01-01T00:00:01.000Z')}` });
+    expect(accepted.statusCode).toBe(200);
+    expect(calls).toEqual([{ after: { id: 'b', lastActivityAt: new Date(1000) } }]);
   });
 
   it('returns an empty first page with no next cursor', async () => {

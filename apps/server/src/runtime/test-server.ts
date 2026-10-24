@@ -1,7 +1,6 @@
 import { join } from 'node:path';
 import type { SpeechComponentsFactory } from '@ambrogio/conversations/adapters/in/session/speech-components';
 import { readConversationConfig } from '@ambrogio/conversations/adapters/out/conversation-config';
-import { recoverPendingTurns } from '@ambrogio/conversations/adapters/out/sqlite/recover-pending-turns';
 import type { ProduceConversationReply } from '@ambrogio/conversations/application/produce-conversation-reply';
 import { prepareConfiguredConversations } from '../composition/conversations.js';
 import { buildConversationServer } from './http-server.js';
@@ -54,7 +53,7 @@ export async function startTestServer(options: TestServerOptions): Promise<TestS
       closing ??= (async () => {
         try {
           await turnIngress.stopAccepting();
-          await recoverPendingTurns(prepared.archive.db, new Date());
+          await prepared.interruptPendingTurns();
           await turnIngress.closeSessions();
         } finally {
           try { await server.close(); }

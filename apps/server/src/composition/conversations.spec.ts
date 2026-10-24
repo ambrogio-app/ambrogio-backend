@@ -378,7 +378,7 @@ describe('server conversation composition', () => {
       async *produce() { yield text('pronta'); yield expectation(false); },
     });
     try {
-      expect(restarted.archive.recoveredTurns).toBe(1);
+      expect(restarted.recoveredTurns).toBe(1);
       expect(await restarted.archive.db.selectFrom('turns').select('status').executeTakeFirst())
         .toEqual({ status: 'interrupted' });
       const client = await ProtocolClient.ready(restartedServer.url);
@@ -393,21 +393,21 @@ describe('server conversation composition', () => {
     const files = await fixture();
     const first = await prepare(files, new Date(1000));
     await first.archive.db.insertInto('conversations').values({
-      id: 'conversation', created_at: 100, last_activity_at: 100,
+      id: '0a0f1c2e-3b4d-4e5f-8a6b-7c8d9e0f1a2b', created_at: 100, last_activity_at: 100,
     }).execute();
     await first.archive.db.insertInto('turns').values({
-      id: 'turn', conversation_id: 'conversation', ordinal: 1, text: 'hello', accepted_at: 100,
+      id: '1b2c3d4e-5f6a-4b7c-9d8e-0f1a2b3c4d5e', conversation_id: '0a0f1c2e-3b4d-4e5f-8a6b-7c8d9e0f1a2b', ordinal: 1, text: 'hello', accepted_at: 100,
       status: 'pending', answer: null, error: null, finished_at: null,
     }).execute();
-    await first.archive.db.updateTable('conversations').set({ active_turn_id: 'turn' }).where('id', '=', 'conversation').execute();
+    await first.archive.db.updateTable('conversations').set({ active_turn_id: '1b2c3d4e-5f6a-4b7c-9d8e-0f1a2b3c4d5e' }).where('id', '=', '0a0f1c2e-3b4d-4e5f-8a6b-7c8d9e0f1a2b').execute();
     await first.archive.close();
 
     const second = await prepare(files, new Date(2000));
     try {
-      expect(second.archive.recoveredTurns).toBe(1);
+      expect(second.recoveredTurns).toBe(1);
       expect(await second.archive.db.selectFrom('turns').select(['status', 'finished_at']).executeTakeFirst())
         .toEqual({ status: 'interrupted', finished_at: 2000 });
-      expect((await second.listConversations({})).items.map(item => item.id)).toEqual(['conversation']);
+      expect((await second.listConversations({})).items.map(item => item.id)).toEqual(['0a0f1c2e-3b4d-4e5f-8a6b-7c8d9e0f1a2b']);
     } finally {
       await second.archive.close();
     }

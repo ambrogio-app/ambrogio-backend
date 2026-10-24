@@ -5,12 +5,11 @@ import { Migrator } from 'kysely/migration';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Turn } from '../../../domain/turn.js';
 import { createGetConversation } from '../../../application/get-conversation.use-case.js';
+import { admitTurn, completeTurn, interruptPendingTurns } from '../../../../test/support/turn-archive.js';
 import { conversationMigrations, migrateConversationArchive } from './migrations.js';
-import { SqliteConversationWrite } from './sqlite-conversation-write.adapter.js';
+import { SqliteTurnRepository } from './sqlite-turn-repository.adapter.js';
 import { SqliteConversationHistoryRead } from './sqlite-conversation-history-read.adapter.js';
-import { recoverPendingTurns } from './recover-pending-turns.js';
 import type { ConversationDatabase } from './schema.js';
 
 const conversationId = 'dc89cb5e-e695-43cc-8a04-917316771ea4';
@@ -28,7 +27,7 @@ function open(filename: string) {
 }
 
 function accepted(id: string) {
-  return Turn.accept({ id, text: `  ${id}  `, acceptedAt: new Date(1234) });
+  return ({ id, text: `  ${id}  `, acceptedAt: new Date(1234) });
 }
 
 afterEach(async () => {
@@ -43,27 +42,27 @@ describe('conversation history and startup recovery', () => {
     const filename = join(directory, 'history.sqlite');
     const db = open(filename);
     await migrateConversationArchive(db);
-    const writer = new SqliteConversationWrite(db);
+    const writer = new SqliteTurnRepository(db);
     const firstText = '  prima   domanda  ';
     const secondText = '  seconda  domanda  ';
-    expect(await writer.admit({ conversationId, createConversation: true,
-      turn: Turn.accept({ id: firstTurnId, text: firstText, acceptedAt: new Date(1000) }) }))
+    expect(await admitTurn(writer, { conversationId, createConversation: true,
+      turn: ({ id: firstTurnId, text: firstText, acceptedAt: new Date(1000) }) }))
       .toEqual({ ok: true, value: undefined });
-    expect(await writer.complete({ turnId: firstTurnId,
+    expect(await completeTurn(writer, { turnId: firstTurnId,
       outcome: { kind: 'answer', text: 'Prima risposta' }, finishedAt: new Date(2000) }))
       .toMatchObject({ ok: true });
-    expect(await writer.admit({ conversationId, createConversation: false,
-      turn: Turn.accept({ id: secondTurnId, text: secondText, acceptedAt: new Date(3000) }) }))
+    expect(await admitTurn(writer, { conversationId, createConversation: false,
+      turn: ({ id: secondTurnId, text: secondText, acceptedAt: new Date(3000) }) }))
       .toEqual({ ok: true, value: undefined });
-    expect(await writer.complete({ turnId: secondTurnId,
+    expect(await completeTurn(writer, { turnId: secondTurnId,
       outcome: { kind: 'error', message: 'Errore pubblico' }, finishedAt: new Date(4000) }))
       .toMatchObject({ ok: true });
     const otherConversationId = 'f4d711a3-5e8b-4a9d-a513-23d9ef21521f';
     const otherTurnId = 'bd5458f4-b393-4fb7-8d2a-6465727fbc36';
-    expect(await writer.admit({ conversationId: otherConversationId, createConversation: true,
-      turn: Turn.accept({ id: otherTurnId, text: 'altra domanda', acceptedAt: new Date(5000) }) }))
+    expect(await admitTurn(writer, { conversationId: otherConversationId, createConversation: true,
+      turn: ({ id: otherTurnId, text: 'altra domanda', acceptedAt: new Date(5000) }) }))
       .toMatchObject({ ok: true });
-    expect(await writer.complete({ turnId: otherTurnId,
+    expect(await completeTurn(writer, { turnId: otherTurnId,
       outcome: { kind: 'answer', text: 'altra risposta' }, finishedAt: new Date(6000) }))
       .toMatchObject({ ok: true });
     await db.destroy();
@@ -89,12 +88,12 @@ describe('conversation history and startup recovery', () => {
   it('stores the responding agent internally and keeps it out of the consultation view', async () => {
     const db = open(':memory:');
     await migrateConversationArchive(db);
-    const writer = new SqliteConversationWrite(db);
-    await writer.admit({ conversationId, createConversation: true, turn: accepted(firstTurnId) });
-    await writer.complete({ turnId: firstTurnId, outcome: { kind: 'answer', text: 'Fatto.', agent: 'home' },
+    const writer = new SqliteTurnRepository(db);
+    await admitTurn(writer, { conversationId, createConversation: true, turn: accepted(firstTurnId) });
+    await completeTurn(writer, { turnId: firstTurnId, outcome: { kind: 'answer', text: 'Fatto.', agent: 'home' },
       finishedAt: new Date(2000) });
-    await writer.admit({ conversationId, createConversation: false, turn: accepted(secondTurnId) });
-    await writer.complete({ turnId: secondTurnId, outcome: { kind: 'answer', text: 'Ciao.' },
+    await admitTurn(writer, { conversationId, createConversation: false, turn: accepted(secondTurnId) });
+    await completeTurn(writer, { turnId: secondTurnId, outcome: { kind: 'answer', text: 'Ciao.' },
       finishedAt: new Date(3000) });
     expect(await db.selectFrom('turns').select(['id', 'agent']).orderBy('ordinal').execute())
       .toEqual([{ id: firstTurnId, agent: 'home' }, { id: secondTurnId, agent: null }]);
@@ -127,13 +126,13 @@ describe('conversation history and startup recovery', () => {
   it('stores and restores exact Unix milliseconds before and after the epoch', async () => {
     const db = open(':memory:');
     await migrateConversationArchive(db);
-    const writer = new SqliteConversationWrite(db);
-    await writer.admit({ conversationId, createConversation: true,
-      turn: Turn.accept({ id: firstTurnId, text: 'prima', acceptedAt: new Date(-1234) }) });
-    await writer.complete({ turnId: firstTurnId, outcome: { kind: 'answer', text: 'ok' }, finishedAt: new Date(-12) });
-    await writer.admit({ conversationId, createConversation: false,
-      turn: Turn.accept({ id: secondTurnId, text: 'dopo', acceptedAt: new Date(1234) }) });
-    await writer.complete({ turnId: secondTurnId, outcome: { kind: 'error', message: 'errore' }, finishedAt: new Date(2345) });
+    const writer = new SqliteTurnRepository(db);
+    await admitTurn(writer, { conversationId, createConversation: true,
+      turn: ({ id: firstTurnId, text: 'prima', acceptedAt: new Date(-1234) }) });
+    await completeTurn(writer, { turnId: firstTurnId, outcome: { kind: 'answer', text: 'ok' }, finishedAt: new Date(-12) });
+    await admitTurn(writer, { conversationId, createConversation: false,
+      turn: ({ id: secondTurnId, text: 'dopo', acceptedAt: new Date(1234) }) });
+    await completeTurn(writer, { turnId: secondTurnId, outcome: { kind: 'error', message: 'errore' }, finishedAt: new Date(2345) });
 
     expect(await db.selectFrom('conversations').select(['created_at', 'last_activity_at']).executeTakeFirst())
       .toEqual({ created_at: -1234, last_activity_at: 1234 });
@@ -170,10 +169,10 @@ describe('conversation history and startup recovery', () => {
     const filename = join(directory, 'history.sqlite');
     const firstDb = open(filename);
     await migrateConversationArchive(firstDb);
-    const writer = new SqliteConversationWrite(firstDb);
-    await writer.admit({ conversationId, createConversation: true, turn: accepted(firstTurnId) });
-    await writer.complete({ turnId: firstTurnId, outcome: { kind: 'answer', text: 'Prima risposta' }, finishedAt: new Date(2345) });
-    await writer.admit({ conversationId, createConversation: false, turn: accepted(secondTurnId) });
+    const writer = new SqliteTurnRepository(firstDb);
+    await admitTurn(writer, { conversationId, createConversation: true, turn: accepted(firstTurnId) });
+    await completeTurn(writer, { turnId: firstTurnId, outcome: { kind: 'answer', text: 'Prima risposta' }, finishedAt: new Date(2345) });
+    await admitTurn(writer, { conversationId, createConversation: false, turn: accepted(secondTurnId) });
     const pending = await new SqliteConversationHistoryRead(firstDb).find(conversationId);
     expect(pending?.turns.map(turn => turn.status)).toEqual(['answered', 'pending']);
     await firstDb.destroy();
@@ -181,7 +180,7 @@ describe('conversation history and startup recovery', () => {
 
     const reopened = open(filename);
     await migrateConversationArchive(reopened);
-    expect(await recoverPendingTurns(reopened, new Date(3456))).toBe(1);
+    expect(await interruptPendingTurns(reopened, new Date(3456))).toBe(1);
     const history = await new SqliteConversationHistoryRead(reopened).find(conversationId);
     expect(history).toMatchObject({
       id: conversationId,
@@ -196,7 +195,7 @@ describe('conversation history and startup recovery', () => {
       .toEqual({ ok: true, value: history });
     expect(await createGetConversation(new SqliteConversationHistoryRead(reopened))({ conversationId: 'missing' }))
       .toEqual({ ok: false, error: { kind: 'conversation_not_found' } });
-    expect(await recoverPendingTurns(reopened, new Date(4567))).toBe(0);
+    expect(await interruptPendingTurns(reopened, new Date(4567))).toBe(0);
     expect((await new SqliteConversationHistoryRead(reopened).find(conversationId))?.turns[1])
       .toMatchObject({ finishedAt: new Date(3456), status: 'interrupted' });
     expect(await reopened.selectFrom('conversations').select('active_turn_id').where('id', '=', conversationId).executeTakeFirst())
@@ -206,9 +205,9 @@ describe('conversation history and startup recovery', () => {
   it('rolls back recovery if releasing occupancy fails', async () => {
     const db = open(':memory:');
     await migrateConversationArchive(db);
-    await new SqliteConversationWrite(db).admit({ conversationId, createConversation: true, turn: accepted(firstTurnId) });
+    await admitTurn(new SqliteTurnRepository(db), { conversationId, createConversation: true, turn: accepted(firstTurnId) });
     await sql.raw("create trigger reject_recovery before update on conversations when new.active_turn_id is null begin select raise(abort, 'injected'); end").execute(db);
-    await expect(recoverPendingTurns(db, new Date(3456))).rejects.toThrow();
+    await expect(interruptPendingTurns(db, new Date(3456))).rejects.toThrow();
     expect(await db.selectFrom('turns').select(['status', 'finished_at']).where('id', '=', firstTurnId).executeTakeFirst())
       .toEqual({ status: 'pending', finished_at: null });
     expect(await db.selectFrom('conversations').select('active_turn_id').where('id', '=', conversationId).executeTakeFirst())
@@ -218,7 +217,7 @@ describe('conversation history and startup recovery', () => {
   it('rejects corrupt historical instants instead of replacing them with the current time', async () => {
     const db = open(':memory:');
     await migrateConversationArchive(db);
-    await new SqliteConversationWrite(db).admit({ conversationId, createConversation: true, turn: accepted(firstTurnId) });
+    await admitTurn(new SqliteTurnRepository(db), { conversationId, createConversation: true, turn: accepted(firstTurnId) });
     await sql.raw(`update conversations set last_activity_at = 'bad' where id = '${conversationId}'`).execute(db);
     await expect(new SqliteConversationHistoryRead(db).find(conversationId)).rejects.toThrow('Invalid persisted instant');
     expect(await new SqliteConversationHistoryRead(db).find('missing')).toBeUndefined();
@@ -227,7 +226,7 @@ describe('conversation history and startup recovery', () => {
   it('rejects a missing persisted turn position', async () => {
     const db = open(':memory:');
     await migrateConversationArchive(db);
-    await new SqliteConversationWrite(db).admit({ conversationId, createConversation: true, turn: accepted(firstTurnId) });
+    await admitTurn(new SqliteTurnRepository(db), { conversationId, createConversation: true, turn: accepted(firstTurnId) });
     await db.updateTable('turns').set({ ordinal: null as unknown as number }).where('id', '=', firstTurnId).execute();
     await expect(new SqliteConversationHistoryRead(db).find(conversationId))
       .rejects.toThrow('Invalid persisted turn order');

@@ -6,7 +6,8 @@ import { UuidIdentifiers } from '@ambrogio/conversations/adapters/out/uuid-ident
 import { openConversationArchive } from '@ambrogio/conversations/adapters/out/sqlite/archive';
 import { SqliteConversationHistoryRead } from '@ambrogio/conversations/adapters/out/sqlite/history-read';
 import { SqliteConversationListRead } from '@ambrogio/conversations/adapters/out/sqlite/list-read';
-import { SqliteConversationWrite } from '@ambrogio/conversations/adapters/out/sqlite/write';
+import { SqliteTurnRepository } from '@ambrogio/conversations/adapters/out/sqlite/turn-repository';
+import { SqliteConversationLookup } from '@ambrogio/conversations/adapters/out/sqlite/conversation-lookup';
 import { createConversationSessions } from '@ambrogio/conversations/adapters/in/session/conversation-session';
 import { createProtocolDecoder } from '@ambrogio/conversations/adapters/in/session/protocol-decoder';
 import type { SpeechComponents } from '@ambrogio/conversations/adapters/in/session/speech-components';
@@ -14,6 +15,7 @@ import { registerHistoryRoute } from '@ambrogio/conversations/adapters/in/http/h
 import { registerListRoute } from '@ambrogio/conversations/adapters/in/http/list-route';
 import { createBeginTurn } from '@ambrogio/conversations/application/begin-turn';
 import { createCompleteTurn } from '@ambrogio/conversations/application/complete-turn';
+import { createInterruptPendingTurns } from '@ambrogio/conversations/application/interrupt-pending-turns';
 import { createExchangeTurn } from '@ambrogio/conversations/application/exchange-turn';
 import { createListConversations } from '@ambrogio/conversations/application/list-conversations';
 import { createGetConversation } from '@ambrogio/conversations/application/get-conversation';
@@ -24,7 +26,10 @@ import { registerSessionRoute } from '../adapters/in/session-route.adapter.js';
 
 export type PreparedConversations = Awaited<ReturnType<typeof prepareConfiguredConversations>>;
 
-/** Prepare the configured archive and the conversation services from the validated configuration. */
+/**
+ * Prepare the configured archive and the conversation services from the validated configuration: the
+ * archive is migrated, then the turns left pending are interrupted at `interruptedAt`.
+ */
 export async function prepareConfiguredConversations(config: ConversationConfig, interruptedAt: Date) {
   return openPreparedConversations(config.archivePath, interruptedAt, config);
 }
@@ -32,16 +37,20 @@ export async function prepareConfiguredConversations(config: ConversationConfig,
 async function openPreparedConversations(
   archiveFilename: string, interruptedAt: Date, config: ConversationConfig,
 ) {
-  const archive = await openConversationArchive(archiveFilename, interruptedAt);
+  const archive = await openConversationArchive(archiveFilename);
   try {
+    const turns = new SqliteTurnRepository(archive.db);
+    const recoveredTurns = await createInterruptPendingTurns({ turns, clock: { now: () => interruptedAt } })();
     const read = new SqliteConversationListRead(archive.db, config.maxListPageSize);
     const listConversations = createListConversations(read, config.listPageSize, config.maxListPageSize);
     const failureMessage = config.language === 'it'
       ? 'Non riesco a completare la risposta.'
       : "I can't complete the response.";
     return { listConversations, maxListPageSize: config.maxListPageSize,
-      failureMessage, language: config.language, archive,
-      write: new SqliteConversationWrite(archive.db) };
+      failureMessage, language: config.language, archive, recoveredTurns, turns,
+      conversations: new SqliteConversationLookup(archive.db),
+      /** At shutdown, after the ingresses stop: interrupt the turns still pending. */
+      interruptPendingTurns: createInterruptPendingTurns({ turns, clock: new SystemCurrentTime() }) };
   } catch (error) {
     try { await archive.close(); } catch { /* preserve the preparation failure */ }
     throw error;
@@ -55,8 +64,9 @@ export function assembleExchangeTurn(
 ) {
   const clock = new SystemCurrentTime();
   return createExchangeTurn({
-    begin: createBeginTurn({ archive: prepared.write, identifiers: new UuidIdentifiers(), clock }),
-    complete: createCompleteTurn({ archive: prepared.write, clock }),
+    begin: createBeginTurn({ turns: prepared.turns, conversations: prepared.conversations,
+      identifiers: new UuidIdentifiers(), clock }),
+    complete: createCompleteTurn({ turns: prepared.turns, clock }),
     history: new SqliteConversationHistoryRead(prepared.archive.db),
     reply,
     failureMessage: prepared.failureMessage,

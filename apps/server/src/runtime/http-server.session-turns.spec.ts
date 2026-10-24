@@ -75,10 +75,10 @@ test('speaks the reply as framed audio at the configured voice rate', async () =
 // Verification: Prova della conferma di completamento del turno
 test('sends turn.completed only after the outcome commit', async () => {
   const server = await start({ reply: echoReply(true).reply });
-  const write = server.prepared.write as unknown as { complete: (...args: unknown[]) => Promise<unknown> };
-  const original = write.complete.bind(write);
+  const write = server.prepared.turns as unknown as { saveConclusion: (...args: unknown[]) => Promise<unknown> };
+  const original = write.saveConclusion.bind(write);
   const commit = gate();
-  write.complete = async (...args) => { await commit.waiting; return original(...args); };
+  write.saveConclusion = async (...args) => { await commit.waiting; return original(...args); };
   const client = await ProtocolClient.ready(server.url);
   const requestId = client.requestId();
   client.startText(requestId);
@@ -96,8 +96,8 @@ test('sends turn.completed only after the outcome commit', async () => {
 // Verification: Prova della conferma di completamento del turno
 test('never confirms an outcome whose commit failed and disables new admissions', async () => {
   const server = await start({ reply: echoReply().reply });
-  const write = server.prepared.write as unknown as { complete: (...args: unknown[]) => Promise<unknown> };
-  write.complete = async () => { throw new Error('disk full'); };
+  const write = server.prepared.turns as unknown as { saveConclusion: (...args: unknown[]) => Promise<unknown> };
+  write.saveConclusion = async () => { throw new Error('disk full'); };
   const client = await ProtocolClient.ready(server.url);
   const requestId = client.requestId();
   client.startText(requestId);

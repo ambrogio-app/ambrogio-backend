@@ -1,5 +1,5 @@
 import { ProjectError } from '../project-error.js';
-import type { Result } from '../domain/turn.js';
+import type { Result } from '../domain/result.js';
 import type { BeginTurn, BeginTurnInput, BeginTurnRejection } from './begin-turn.use-case.js';
 import type { CompleteTurnUseCase } from './complete-turn.use-case.js';
 import type { ConversationHistory, ConversationHistoryRead } from './conversation-history-read.port.js';

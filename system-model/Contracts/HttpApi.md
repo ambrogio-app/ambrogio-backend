@@ -29,7 +29,7 @@ La gestione centrale degli errori e delle rotte inesistenti della factory tecnic
 
 ### Forma dei Problem Details dell'API HTTP
 
-Ogni risposta 4xx o 5xx del server HTTP del backend, cioè delle rotte dell'API versionata, delle rotte inesistenti, dei guasti inattesi e del rifiuto dell'apertura della sessione conversazionale, è un oggetto JSON Problem Details secondo RFC 9457, con `Content-Type: application/problem+json` e `Cache-Control: no-store`. Fanno eccezione soltanto le risposte d'errore delle rotte dell'API senza versione, che restano quelle del loro contratto.
+Ogni risposta 4xx o 5xx del server HTTP del backend, cioè delle rotte dell'API versionata, delle rotte inesistenti, dei guasti inattesi e del rifiuto dell'apertura della sessione conversazionale, è un oggetto JSON Problem Details secondo RFC 9457, con `Content-Type: application/problem+json` e `Cache-Control: no-store`.
 
 `type`, `title` e `status` sono sempre presenti. `type` è l'unico discriminante pubblico per i programmi: vale `about:blank` per un problema descritto completamente dallo stato HTTP, con il nome standard dello stato come `title`, oppure un riferimento URI relativo stabile della forma `/problems/<nome>`. I riferimenti `/problems/<nome>` sono identificatori: il backend non serve un documento a quell'indirizzo e il significato di ciascuno è descritto nel riferimento delle API HTTP di `ambrogio-docs`; i client li confrontano come stringhe esatte. `title` è un testo inglese breve, uguale in ogni risposta con lo stesso `type`; `status` è uguale allo stato HTTP effettivo. `detail`, quando presente, è un testo inglese sicuro per le persone, che non copia messaggi di eccezioni o del parser e non serve da discriminante. I testi dei problemi non dipendono dalla lingua configurata: ogni client sceglie il proprio testo in base a `type`. La forma comune non aggiunge `instance`, `timestamp`, `path`, `success`, metadati generici né un `code` parallelo a `type`.
 
@@ -42,32 +42,6 @@ Ogni problema concreto ha uno schema TypeBox chiuso che elenca i propri membri e
   * define: [Errori HTTP nel formato Problem Details](../Requirements/HttpApi.md#errori-http-nel-formato-problem-details)
 ---
 
-### Risposta HTTP dell'elenco conversazioni nell'API senza versione
-
-Versione precedente di «Risposta HTTP dell'elenco conversazioni», secondo «Versioni dell'API HTTP pubblica». `GET /api/conversations` accetta gli stessi parametri `cursor` e `limit` e restituisce la stessa risposta `200` dell'elenco nell'API `v1`, con lo stesso cursore opaco.
-
-Un `cursor` malformato, un `limit` invalido o un parametro di query non previsto produce `400` JSON con il solo campo stringa `error`: «Invalid pagination request.» in inglese o «Richiesta di paginazione non valida.» in italiano. Un guasto tecnico della lettura produce `500` nello stesso formato, con «I can't complete the response.» in inglese o «Non riesco a completare la risposta.» in italiano, secondo la lingua configurata. Entrambe le risposte usano `Content-Type: application/json` e `Cache-Control: no-store` e non espongono dettagli tecnici; i guasti tecnici sono registrati nella diagnostica del server con l'evento `conversation_list_http_failed`.
-
-#### Metadata
-  * type: input-output
-
-#### Relations
-  * define: [Lettura HTTP dell'elenco conversazioni nell'API senza versione](../Requirements/HttpApi.md#lettura-http-dellelenco-conversazioni-nellapi-senza-versione)
----
-
-### Risposta HTTP dello storico conversazionale nell'API senza versione
-
-Versione precedente di «Risposta HTTP dello storico conversazionale», secondo «Versioni dell'API HTTP pubblica». `GET /api/conversations/:conversationId` restituisce la stessa risposta `200` dello storico nell'API `v1`.
-
-Se la conversazione non esiste, la risposta ha stato `404`; se la lettura fallisce per un guasto tecnico, ha stato `500`. Entrambe sono JSON con il solo campo stringa `error`, un messaggio pubblico sicuro e `Cache-Control: no-store`. Per `404` il messaggio è «Conversation not found.» in inglese o «Conversazione non trovata.» in italiano. Per `500` è «I can't complete the response.» in inglese o «Non riesco a completare la risposta.» in italiano, secondo la lingua configurata; il guasto è registrato nella diagnostica del server con l'evento `conversation_history_http_failed`. Un parametro di percorso che viola lo schema produce `400` JSON con il campo `error` «Invalid HTTP request.». I dettagli tecnici restano nella diagnostica del server.
-
-#### Metadata
-  * type: input-output
-
-#### Relations
-  * define: [Lettura HTTP dello storico conversazionale nell'API senza versione](../Requirements/HttpApi.md#lettura-http-dello-storico-conversazionale-nellapi-senza-versione)
----
-
 ### Struttura delle slice delle rotte HTTP
 
 Ogni rotta HTTP del modulo «Conversazioni» è una slice nella cartella `packages/conversations/src/adapters/in/http/<operazione>/`, con tre responsabilità in file distinti:
@@ -76,9 +50,9 @@ Ogni rotta HTTP del modulo «Conversazioni» è una slice nella cartella `packag
 - `<operazione>.handler.ts` traduce esplicitamente la richiesta accettata nell'input Application del caso d'uso, lo invoca e traduce l'esito riuscito nella rappresentazione pubblica, restituendo come valori gli esiti negativi previsti;
 - `<operazione>.route.adapter.ts` registra la rotta dell'API versionata, compresa la risposta `405` ai metodi non ammessi, e mappa l'esito del gestore nello stato e nel corpo del contratto della rotta.
 
-Una rotta dell'API senza versione che espone la stessa operazione è una registrazione distinta, `<operazione>.unversioned-route.adapter.ts`, che riusa schemi e gestore e cambia soltanto percorso e rappresentazione degli errori. Le operazioni attuali sono `list-conversations` e `get-conversation`. Il file `problem-details.ts` della stessa cartella contiene lo schema comune dei Problem Details e il loro invio, usati dalle slice e dalla registrazione della sessione conversazionale.
+Le operazioni attuali sono `list-conversations` e `get-conversation`. Il file `problem-details.ts` della stessa cartella contiene lo schema comune dei Problem Details e il loro invio, usati dalle slice e dalla registrazione della sessione conversazionale.
 
-Il file `conversation-routes.ts` della stessa cartella esporta gli aggregatori espliciti `conversationApiRoutes(dependencies)`, per l'API `v1`, e `unversionedConversationRoutes(dependencies)`, per l'API senza versione: ciascuno riceve i casi d'uso e i valori già costruiti e restituisce la funzione che registra le proprie slice in uno scope Fastify, senza risolvere dipendenze durante la registrazione o le richieste. La composition root dell'applicazione server, in `apps/server/src/composition/http-surface.ts`, costruisce i casi d'uso, la sessione conversazionale e le componenti vocali, chiama gli aggregatori e consegna le registrazioni, ciascuna con il prefisso del proprio scope, `/api/v1` e `/api`, alla factory tecnica `createHttpServer(config, options)` di `apps/server/src/runtime/http-server.ts`, insieme alla serializzazione diagnostica di `err`. La factory crea l'istanza Fastify con logger, identificativo di richiesta, header di sicurezza, CORS, WebSocket, opzioni Ajv e gestione centrale di errori e rotte inesistenti, poi registra le registrazioni ricevute nell'ordine dato.
+Il file `conversation-routes.ts` della stessa cartella esporta l'aggregatore esplicito `conversationApiRoutes(dependencies)`, per l'API `v1`: riceve i casi d'uso e i valori già costruiti e restituisce la funzione che registra le proprie slice in uno scope Fastify, senza risolvere dipendenze durante la registrazione o le richieste. La composition root dell'applicazione server, in `apps/server/src/composition/http-surface.ts`, costruisce i casi d'uso, la sessione conversazionale e le componenti vocali, chiama l'aggregatore e consegna le registrazioni, quella dell'API `v1` con il prefisso `/api/v1` e quella della sessione conversazionale, alla factory tecnica `createHttpServer(config, options)` di `apps/server/src/runtime/http-server.ts`, insieme alla serializzazione diagnostica di `err`. La factory crea l'istanza Fastify con logger, identificativo di richiesta, header di sicurezza, CORS, WebSocket, opzioni Ajv e gestione centrale di errori e rotte inesistenti, poi registra le registrazioni ricevute nell'ordine dato.
 
 Gli schemi delle richieste alimentano la validazione di Fastify; gli schemi delle risposte riuscite e dei problemi sono verificati dalle prove sulle risposte effettive e non sono usati per la serializzazione di Fastify. Il backend non pubblica un contratto OpenAPI.
 
@@ -93,7 +67,7 @@ Gli schemi delle richieste alimentano la validazione di Fastify; gli schemi dell
 
 L'API HTTP pubblica del backend porta namespace e versione maggiore nel percorso. La versione corrente è `v1`, con le rotte sotto `/api/v1/`: `GET /api/v1/conversations`, definita in «Risposta HTTP dell'elenco conversazioni», e `GET /api/v1/conversations/:conversationId`, definita in «Risposta HTTP dello storico conversazionale». Il ciclo di versione dell'API HTTP è indipendente da quello del protocollo conversazionale: la sessione `ambrogio.v1` resta sul percorso `/api/session`, fuori dal namespace versionato, ed è versionata dal sottoprotocollo WebSocket. Un cambio incompatibile dell'API HTTP introduce un nuovo namespace, come `/api/v2/`, senza cambiare il protocollo, e un cambio incompatibile del protocollo non cambia la versione dell'API HTTP.
 
-La versione precedente è l'API senza versione nel percorso: `GET /api/conversations` e `GET /api/conversations/:conversationId`, con corpi d'errore `{ "error": "..." }`, definite in «Risposta HTTP dell'elenco conversazioni nell'API senza versione» e «Risposta HTTP dello storico conversazionale nell'API senza versione». Resta disponibile senza modifiche finché una release di un client conversazionale la usa, secondo «Compatibilità fra release per versione d'interfaccia»; `ambrogio-docs/reference/versions.md` elenca le versioni dell'API usate da ogni release. Le due versioni usano gli stessi casi d'uso, gli stessi schemi di richiesta e la stessa traduzione delle risposte riuscite; differiscono soltanto per il percorso, per la rappresentazione degli errori e per i metodi non ammessi, che nell'API senza versione ricevono la risposta della rotta inesistente. La rimozione della versione precedente è una modifica del modello che ne elimina gli elementi.
+Il backend offre una sola versione dell'API HTTP alla volta. Un cambio incompatibile dell'API si fa nella stessa modifica dei client che la usano, secondo «Compatibilità fra release per versione d'interfaccia», e la versione precedente non resta disponibile; `ambrogio-docs/reference/versions.md` elenca le versioni dell'API offerte e usate da ogni release. Un percorso sotto `/api` fuori da `/api/v1/` e da `/api/session`, come `/api/conversations`, non ha rotte e riceve la risposta della rotta inesistente del catalogo dei problemi di protocollo.
 
 #### Metadata
   * type: specification

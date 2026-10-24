@@ -9,7 +9,7 @@ import type { ResourceStack } from '../runtime/lifecycle.js';
 import type { Logger } from '../runtime/logger.js';
 import { startupPhase } from '../runtime/startup-failure.js';
 import { conversationApiRegistration, loadProtocolSchema, registerConversationSessionRoute,
-  unversionedConversationRegistration, type PreparedConversations } from './conversations.js';
+  type PreparedConversations } from './conversations.js';
 
 export type ConversationIngress = Readonly<{ stopAccepting(): Promise<void>; closeSessions(): Promise<void> }>;
 export type ConversationServerOptions = Readonly<{
@@ -23,8 +23,8 @@ const defaultSessionPingIntervalMs = 30_000;
 
 /**
  * The HTTP surface of the conversation server, assembled by hand: the protocol schema and the speech components
- * are built first, then the registrations of the session channel, of HTTP API `v1` under `/api/v1` and of the API
- * without a version under `/api` are handed, already built, to the technical HTTP factory. The server is built
+ * are built first, then the registrations of the session channel and of HTTP API `v1` under `/api/v1` are handed,
+ * already built, to the technical HTTP factory. The server is built
  * without listening; speech components and server are closed by the caller's stack, server first.
  */
 export async function buildConversationServer(config: HttpConfig, prepared: PreparedConversations,
@@ -52,7 +52,6 @@ export async function buildConversationServer(config: HttpConfig, prepared: Prep
   } };
   const server = await createHttpServer(config, { log: options.log, routes: [
     { prefix: '/api/v1', register: conversationApiRegistration(prepared) },
-    { prefix: '/api', register: unversionedConversationRegistration(prepared, options.log) },
     session,
   ] });
   options.resources.defer('HTTP server could not be closed', () => server.close());

@@ -1,56 +1,45 @@
-import { ProjectError } from '../../project-error.js';
-import { pathToFileURL } from 'node:url';
-import { resolve } from 'node:path';
+import { integerVariable, invalidVariable, requireVariable,
+  type EnvironmentVariable, type RuntimeEnvironment } from './environment-variables.js';
 
 export type ConversationConfig = Readonly<{
   listPageSize: number;
   maxListPageSize: number;
   language: 'en' | 'it';
-  /** IANA name of the family's time zone; UTC when the file does not set one. */
+  /** IANA name of the family's time zone. */
   timeZone: string;
-  archivePath?: string;
+  archivePath: string;
 }>;
 
-let configRevision = 0;
+/** The variables of the «Conversazioni» component; this module alone owns their defaults. */
+export const conversationVariables = {
+  archivePath: { name: 'AMBROGIO_ARCHIVE_PATH' },
+  language: { name: 'AMBROGIO_LANGUAGE', default: { environments: 'all', value: 'en' } },
+  timeZone: { name: 'AMBROGIO_TIME_ZONE', default: { environments: 'all', value: 'UTC' } },
+  listPageSize: { name: 'AMBROGIO_LIST_PAGE_SIZE', default: { environments: 'all', value: '20' } },
+  maxListPageSize: { name: 'AMBROGIO_MAX_LIST_PAGE_SIZE', default: { environments: 'all', value: '100' } },
+} as const satisfies Record<string, EnvironmentVariable>;
 
 function validTimeZone(name: string): boolean {
-  if (!name) return false;
   try { new Intl.DateTimeFormat('en-GB', { timeZone: name }); return true; }
   catch { return false; }
 }
 
-/** Load the conversation component's TypeScript module before constructing its resources. */
-export async function loadConversationConfig(filename: string): Promise<ConversationConfig> {
-  let value: unknown;
-  try {
-    if (!filename.endsWith('.ts')) throw new Error('Expected TypeScript configuration');
-    value = (await import(`${pathToFileURL(resolve(filename)).href}?revision=${++configRevision}`)).default;
-  } catch {
-    throw new ProjectError('Invalid conversation configuration file');
+/** Read and validate the conversation component's configuration before constructing its resources. */
+export function readConversationConfig(environment: NodeJS.ProcessEnv, runtime: RuntimeEnvironment): ConversationConfig {
+  const variables = conversationVariables;
+  const archivePath = requireVariable(environment, runtime, variables.archivePath);
+  if (!archivePath.trim()) throw invalidVariable(variables.archivePath.name, 'expected a file path');
+  const language = requireVariable(environment, runtime, variables.language);
+  if (language !== 'en' && language !== 'it') throw invalidVariable(variables.language.name, 'expected en or it');
+  const timeZone = requireVariable(environment, runtime, variables.timeZone);
+  if (!validTimeZone(timeZone)) throw invalidVariable(variables.timeZone.name, 'expected an IANA time zone name');
+  const listPageSize = integerVariable(variables.listPageSize.name,
+    requireVariable(environment, runtime, variables.listPageSize), 1);
+  const maxListPageSize = integerVariable(variables.maxListPageSize.name,
+    requireVariable(environment, runtime, variables.maxListPageSize), 1);
+  if (listPageSize > maxListPageSize) {
+    throw invalidVariable(variables.listPageSize.name, `expected at most ${variables.maxListPageSize.name}`);
   }
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-    throw new ProjectError('Invalid conversation configuration file');
-  }
-  const fields = value as Record<string, unknown>;
-  const listPageSize = fields.listPageSize === undefined ? 20 : fields.listPageSize;
-  const maxListPageSize = fields.maxListPageSize === undefined ? 100 : fields.maxListPageSize;
-  if (typeof listPageSize !== 'number' || !Number.isSafeInteger(listPageSize) || listPageSize < 1
-    || typeof maxListPageSize !== 'number' || !Number.isSafeInteger(maxListPageSize)
-    || maxListPageSize < 1 || listPageSize > maxListPageSize) {
-    throw new ProjectError('Invalid conversation list limits');
-  }
-  if (fields.language !== undefined && typeof fields.language !== 'string') {
-    throw new ProjectError('Invalid conversation language');
-  }
-  const language = fields.language === 'it' ? 'it' : 'en';
-  if (fields.archivePath !== undefined
-    && (typeof fields.archivePath !== 'string' || !fields.archivePath.trim())) {
-    throw new ProjectError('Invalid conversation archive path');
-  }
-  const timeZone = fields.timeZone === undefined ? 'UTC' : fields.timeZone;
-  if (typeof timeZone !== 'string' || !validTimeZone(timeZone)) {
-    throw new ProjectError('Invalid conversation time zone');
-  }
-  return { listPageSize, maxListPageSize, language, timeZone,
-    ...(fields.archivePath === undefined ? {} : { archivePath: fields.archivePath }) };
+  return { archivePath, language, timeZone, listPageSize, maxListPageSize };
 }
+

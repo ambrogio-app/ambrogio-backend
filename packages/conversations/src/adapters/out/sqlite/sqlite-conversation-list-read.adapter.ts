@@ -1,8 +1,8 @@
-import { ProjectError } from '../../../project-error.js';
+import { ProjectError } from '../../../domain/project-error.js';
 import { sql, type Kysely } from 'kysely';
 import type {
   ConversationListCursor, ConversationListPage, ConversationListRead,
-} from '../../../application/conversation-list-read.js';
+} from '../../../application/conversation-list-read.port.js';
 import type { ConversationDatabase } from './schema.js';
 import { fromMillis, toMillis } from './sqlite-turn-mapper.js';
 

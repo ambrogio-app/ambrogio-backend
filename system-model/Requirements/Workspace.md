@@ -62,7 +62,9 @@ Origine: baseline Reqvire «Execution coordination in entrypoints», adottata.
 Il repository backend deve dichiarare alla radice un workspace pnpm che comprenda l'applicazione server e i suoi package business e consenta di installarne le dipendenze tramite pnpm.
 
 #### Details
-Origine: baseline Reqvire «Single root workspace», adottata; «pnpm as package manager», adattata: pnpm è installato alla versione esatta con `npm install --global` invece che con Corepack.
+Versione di pnpm e modalità di installazione seguono «Installazione delle dipendenze del backend con pnpm e Corepack».
+
+Origine: baseline Reqvire «Single root workspace», adottata.
 
 #### Metadata
   * type: requirement
@@ -215,6 +217,18 @@ Origine: baseline Reqvire «Cross-module tests in the assembling application», 
 
 #### Relations
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
+---
+
+### Regole di architettura centrali del backend
+
+Il backend deve controllare le proprie regole di architettura sugli import con la fonte centrale `test/repository/architecture-rules.ts`, secondo il contratto «Regole di architettura del backend», a ogni esecuzione della suite Vitest.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * derivedFrom: [Regole di architettura centrali e bloccanti](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#regole-di-architettura-centrali-e-bloccanti)
+  * satisfiedBy: [architecture-rules.ts](../../test/repository/architecture-rules.ts)
 ---
 
 ### Superficie pubblica dei package business

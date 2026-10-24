@@ -5,10 +5,10 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { generateText, jsonSchema, Output, stepCountIs, streamText, tool, type LanguageModel,
   type ModelMessage } from 'ai';
-import { ProjectError } from '../../project-error.js';
-import type { ConversationHistory } from '../../application/conversation-history-read.js';
+import { ProjectError } from '../../domain/project-error.js';
+import type { ConversationHistory } from '../../application/conversation-history-read.port.js';
 import type { ProduceConversationReply, ReplyCancellation, ReplyPart }
-  from '../../application/produce-conversation-reply.js';
+  from '../../application/produce-conversation-reply.port.js';
 import type { AvailableMcpTool } from './mcp-tool-client.js';
 
 /** The providers this adapter can build a model for. */

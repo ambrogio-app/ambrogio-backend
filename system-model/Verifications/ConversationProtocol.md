@@ -37,7 +37,7 @@ La prova passa se ciascun messaggio non conforme riceve `session.error` con il `
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](#verifica-del-protocollo-conversazionale)
-  * satisfiedBy: [session-opening.test.ts](../../apps/server/test/runtime/session-opening.test.ts)
+  * satisfiedBy: [http-server.session-opening.spec.ts](../../apps/server/src/runtime/http-server.session-opening.spec.ts)
   * verify: [Errore di protocollo senza perdita della sessione](../Requirements/ConversationProtocol.md#errore-di-protocollo-senza-perdita-della-sessione)
 ---
 
@@ -53,13 +53,13 @@ La prova passa se la richiesta senza `Origin` è accettata in entrambe le config
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](#verifica-del-protocollo-conversazionale)
-  * satisfiedBy: [session-opening.test.ts](../../apps/server/test/runtime/session-opening.test.ts)
+  * satisfiedBy: [http-server.session-opening.spec.ts](../../apps/server/src/runtime/http-server.session-opening.spec.ts)
   * verify: [Origini consentite per il canale conversazionale](../Requirements/ConversationProtocol.md#origini-consentite-per-il-canale-conversazionale)
 ---
 
 ### Prova del rifiuto audio senza voce abilitata
 
-Avviare il server senza `AMBROGIO_VOICE_CONFIG_PATH`. Inviare un turno audio, un turno testuale con `reply: "audio"` e un turno testuale con `reply: "text"`.
+Avviare il server senza `AMBROGIO_VOICE_LANGUAGES`. Inviare un turno audio, un turno testuale con `reply: "audio"` e un turno testuale con `reply: "text"`.
 
 #### Details
 La prova passa se i primi due turni ricevono una trasmissione testuale con il messaggio pubblico previsto e `turn.rejected` con `reason: "audio_unavailable"`, senza creare conversazioni o turni e senza caricare componenti vocali, mentre il turno testuale con risposta in testo viene ammesso e completato. Fallisce se un turno audio viene ammesso, se il messaggio di rifiuto viene trasmesso in audio o se il server tenta di costruire Vosk o Piper.
@@ -69,7 +69,7 @@ La prova passa se i primi due turni ricevono una trasmissione testuale con il me
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](#verifica-del-protocollo-conversazionale)
-  * satisfiedBy: [session-rejections.test.ts](../../apps/server/test/runtime/session-rejections.test.ts)
+  * satisfiedBy: [http-server.session-rejections.spec.ts](../../apps/server/src/runtime/http-server.session-rejections.spec.ts)
   * verify: [Rifiuto del turno audio senza voce abilitata](../Requirements/ConversationProtocol.md#rifiuto-del-turno-audio-senza-voce-abilitata)
 ---
 
@@ -85,7 +85,7 @@ La prova passa se i turni entro il limite proseguono normalmente, mentre quelli 
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](#verifica-del-protocollo-conversazionale)
-  * satisfiedBy: [session-rejections.test.ts](../../apps/server/test/runtime/session-rejections.test.ts)
+  * satisfiedBy: [http-server.session-rejections.spec.ts](../../apps/server/src/runtime/http-server.session-rejections.spec.ts)
   * verify: [Rifiuto del turno oltre i limiti di trasmissione](../Requirements/ConversationProtocol.md#rifiuto-del-turno-oltre-i-limiti-di-trasmissione)
 ---
 
@@ -101,7 +101,7 @@ La prova passa se l'upgrade è accettato soltanto quando il client offre `ambrog
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](#verifica-del-protocollo-conversazionale)
-  * satisfiedBy: [session-opening.test.ts](../../apps/server/test/runtime/session-opening.test.ts)
+  * satisfiedBy: [http-server.session-opening.spec.ts](../../apps/server/src/runtime/http-server.session-opening.spec.ts)
   * verify: [Apertura della sessione conversazionale](../Requirements/ConversationProtocol.md#apertura-della-sessione-conversazionale)
 ---
 
@@ -117,7 +117,7 @@ La prova passa se ogni riga diagnostica della sessione contiene `correlationId` 
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](#verifica-del-protocollo-conversazionale)
-  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
+  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
   * verify: [Correlazione diagnostica della sessione conversazionale](../Requirements/ConversationProtocol.md#correlazione-diagnostica-della-sessione-conversazionale)
 ---
 
@@ -133,6 +133,6 @@ La prova passa se il server non avvia l'ammissione prima di `input.end`, il test
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](#verifica-del-protocollo-conversazionale)
-  * satisfiedBy: [session-turns.test.ts](../../apps/server/test/runtime/session-turns.test.ts)
+  * satisfiedBy: [http-server.session-turns.spec.ts](../../apps/server/src/runtime/http-server.session-turns.spec.ts)
   * verify: [Trasmissione della richiesta del turno](../Requirements/ConversationProtocol.md#trasmissione-della-richiesta-del-turno)
 ---

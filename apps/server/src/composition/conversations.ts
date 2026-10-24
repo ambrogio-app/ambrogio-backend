@@ -1,5 +1,4 @@
 import { ProjectError } from '@ambrogio/conversations/application/project-error';
-import { loadConversationConfig } from '@ambrogio/conversations/adapters/out/conversation-config';
 import type { ConversationConfig } from '@ambrogio/conversations/adapters/out/conversation-config';
 import { SystemCurrentTime } from '@ambrogio/conversations/adapters/out/system-current-time';
 import { SystemDeadlines } from '@ambrogio/conversations/adapters/out/system-deadlines';
@@ -7,54 +6,52 @@ import { UuidIdentifiers } from '@ambrogio/conversations/adapters/out/uuid-ident
 import { openConversationArchive } from '@ambrogio/conversations/adapters/out/sqlite/archive';
 import { SqliteConversationHistoryRead } from '@ambrogio/conversations/adapters/out/sqlite/history-read';
 import { SqliteConversationListRead } from '@ambrogio/conversations/adapters/out/sqlite/list-read';
-import { SqliteConversationWrite } from '@ambrogio/conversations/adapters/out/sqlite/write';
+import { SqliteTurnRepository } from '@ambrogio/conversations/adapters/out/sqlite/turn-repository';
+import { SqliteConversationLookup } from '@ambrogio/conversations/adapters/out/sqlite/conversation-lookup';
 import { createConversationSessions } from '@ambrogio/conversations/adapters/in/session/conversation-session';
 import { createProtocolDecoder } from '@ambrogio/conversations/adapters/in/session/protocol-decoder';
 import type { SpeechComponents } from '@ambrogio/conversations/adapters/in/session/speech-components';
-import { registerHistoryRoute } from '@ambrogio/conversations/adapters/in/http/history-route';
-import { registerListRoute } from '@ambrogio/conversations/adapters/in/http/list-route';
+import { conversationApiRoutes, unversionedConversationRoutes,
+  type RouteRegistration } from '@ambrogio/conversations/adapters/in/http/conversation-routes';
 import { createBeginTurn } from '@ambrogio/conversations/application/begin-turn';
 import { createCompleteTurn } from '@ambrogio/conversations/application/complete-turn';
+import { createInterruptPendingTurns } from '@ambrogio/conversations/application/interrupt-pending-turns';
 import { createExchangeTurn } from '@ambrogio/conversations/application/exchange-turn';
 import { createListConversations } from '@ambrogio/conversations/application/list-conversations';
 import { createGetConversation } from '@ambrogio/conversations/application/get-conversation';
 import type { ProduceConversationReply } from '@ambrogio/conversations/application/produce-conversation-reply';
 import type { FastifyInstance } from 'fastify';
+import type { Logger } from '@ambrogio/conversations/adapters/in/logger';
 import { readFile } from 'node:fs/promises';
 import { registerSessionRoute } from '../adapters/in/session-route.adapter.js';
-import { conversationConfigPath } from '../runtime/conversation-config-path.js';
 
 export type PreparedConversations = Awaited<ReturnType<typeof prepareConfiguredConversations>>;
 
-/** Prepare conversation resources before an HTTP ingress can be enabled. */
-export async function prepareConversations(
-  archiveFilename: string,
-  interruptedAt: Date,
-  environment?: NodeJS.ProcessEnv,
-) {
-  const config = await loadConversationConfig(conversationConfigPath(environment));
-  return openPreparedConversations(archiveFilename, interruptedAt, config);
-}
-
-/** Prepare the configured archive without reading the component JSON again. */
+/**
+ * Prepare the configured archive and the conversation services from the validated configuration: the
+ * archive is migrated, then the turns left pending are interrupted at `interruptedAt`.
+ */
 export async function prepareConfiguredConversations(config: ConversationConfig, interruptedAt: Date) {
-  if (!config.archivePath?.trim()) throw new ProjectError('Missing conversation archive path');
   return openPreparedConversations(config.archivePath, interruptedAt, config);
 }
 
 async function openPreparedConversations(
   archiveFilename: string, interruptedAt: Date, config: ConversationConfig,
 ) {
-  const archive = await openConversationArchive(archiveFilename, interruptedAt);
+  const archive = await openConversationArchive(archiveFilename);
   try {
+    const turns = new SqliteTurnRepository(archive.db);
+    const recoveredTurns = await createInterruptPendingTurns({ turns, clock: { now: () => interruptedAt } })();
     const read = new SqliteConversationListRead(archive.db, config.maxListPageSize);
     const listConversations = createListConversations(read, config.listPageSize, config.maxListPageSize);
     const failureMessage = config.language === 'it'
       ? 'Non riesco a completare la risposta.'
       : "I can't complete the response.";
     return { listConversations, maxListPageSize: config.maxListPageSize,
-      failureMessage, language: config.language, archive,
-      write: new SqliteConversationWrite(archive.db) };
+      failureMessage, language: config.language, archive, recoveredTurns, turns,
+      conversations: new SqliteConversationLookup(archive.db),
+      /** At shutdown, after the ingresses stop: interrupt the turns still pending. */
+      interruptPendingTurns: createInterruptPendingTurns({ turns, clock: new SystemCurrentTime() }) };
   } catch (error) {
     try { await archive.close(); } catch { /* preserve the preparation failure */ }
     throw error;
@@ -63,13 +60,14 @@ async function openPreparedConversations(
 
 /** Supply the chosen reply producer to the conversational use case. */
 export function assembleExchangeTurn(
-  prepared: Awaited<ReturnType<typeof prepareConversations>>,
+  prepared: PreparedConversations,
   reply: ProduceConversationReply,
 ) {
   const clock = new SystemCurrentTime();
   return createExchangeTurn({
-    begin: createBeginTurn({ archive: prepared.write, identifiers: new UuidIdentifiers(), clock }),
-    complete: createCompleteTurn({ archive: prepared.write, clock }),
+    begin: createBeginTurn({ turns: prepared.turns, conversations: prepared.conversations,
+      identifiers: new UuidIdentifiers(), clock }),
+    complete: createCompleteTurn({ turns: prepared.turns, clock }),
     history: new SqliteConversationHistoryRead(prepared.archive.db),
     reply,
     failureMessage: prepared.failureMessage,
@@ -93,13 +91,15 @@ export async function loadProtocolSchema(path: URL | string = protocolSchemaPath
 /** Attach the conversation session ingress to a server after archive recovery. */
 export function registerConversationSessionRoute(
   server: FastifyInstance,
-  prepared: Awaited<ReturnType<typeof prepareConversations>>,
+  prepared: PreparedConversations,
   reply: ProduceConversationReply,
   options: Readonly<{
     schema: Readonly<Record<string, unknown>>;
     allowedOrigins: readonly string[];
     pingIntervalMs: number;
     speech?: SpeechComponents;
+    /** Base logger of the process. */
+    log: Logger;
   }>,
 ) {
   const sessions = createConversationSessions({
@@ -107,32 +107,28 @@ export function registerConversationSessionRoute(
     decode: createProtocolDecoder(options.schema),
     language: prepared.language,
     pingIntervalMs: options.pingIntervalMs,
-    log: server.log,
+    log: options.log,
     ...(options.speech ? { speech: options.speech } : {}),
   });
-  registerSessionRoute(server, sessions, options.allowedOrigins);
+  registerSessionRoute(server, sessions, options.allowedOrigins, options.log);
   return sessions;
 }
 
-/** Attach the HTTP history ingress after archive recovery. */
-export function registerConversationHistoryRoute(
-  server: FastifyInstance,
-  prepared: Awaited<ReturnType<typeof prepareConversations>>,
-): void {
-  registerHistoryRoute(server, {
+/** Dependencies of the consultation routes, built once from the prepared component. */
+function consultationDependencies(prepared: PreparedConversations) {
+  return {
+    listConversations: prepared.listConversations,
     getConversation: createGetConversation(new SqliteConversationHistoryRead(prepared.archive.db)),
-    language: prepared.language,
-  });
+    maxPageSize: prepared.maxListPageSize,
+  };
 }
 
-/** Attach the HTTP list ingress after archive recovery. */
-export function registerConversationListRoute(
-  server: FastifyInstance,
-  prepared: Awaited<ReturnType<typeof prepareConversations>>,
-): void {
-  registerListRoute(server, {
-    listConversations: prepared.listConversations,
-    maxPageSize: prepared.maxListPageSize,
-    language: prepared.language,
-  });
+/** The consultation routes of HTTP API `v1`, for the scope `/api/v1`. */
+export function conversationApiRegistration(prepared: PreparedConversations): RouteRegistration {
+  return conversationApiRoutes(consultationDependencies(prepared));
+}
+
+/** The same routes in the API without a version, for the scope `/api`, kept while a client release uses it. */
+export function unversionedConversationRegistration(prepared: PreparedConversations, log: Logger): RouteRegistration {
+  return unversionedConversationRoutes({ ...consultationDependencies(prepared), language: prepared.language, log });
 }

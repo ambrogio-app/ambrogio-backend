@@ -1,9 +1,11 @@
 import { join } from 'node:path';
 import type { SpeechComponentsFactory } from '@ambrogio/conversations/adapters/in/session/speech-components';
-import { recoverPendingTurns } from '@ambrogio/conversations/adapters/out/sqlite/recover-pending-turns';
+import { readConversationConfig } from '@ambrogio/conversations/adapters/out/conversation-config';
 import type { ProduceConversationReply } from '@ambrogio/conversations/application/produce-conversation-reply';
 import { prepareConfiguredConversations } from '../composition/conversations.js';
-import { buildConversationServer } from './http-server.js';
+import { buildConversationServer } from '../composition/http-surface.js';
+import { createResourceStack, startupWithCleanup } from './lifecycle.js';
+import { createBaseLogger } from './logger.js';
 
 /** What a client integration test supplies to the test server. */
 export type TestServerOptions = Readonly<{
@@ -34,36 +36,36 @@ export type TestServer = Readonly<{
  * replaced by the deterministic ones of the caller. Client integration tests use only this module.
  */
 export async function startTestServer(options: TestServerOptions): Promise<TestServer> {
-  const prepared = await prepareConfiguredConversations({
-    archivePath: join(options.directory, 'conversations.sqlite'), language: options.language, timeZone: 'UTC',
-    listPageSize: 20, maxListPageSize: 100 }, new Date());
-  let built: Awaited<ReturnType<typeof buildConversationServer>> | undefined;
+  // One base logger for the test server, as the entry point of a process creates it.
+  const log = createBaseLogger();
+  const resources = createResourceStack('Test server shutdown failed');
   try {
-    built = await buildConversationServer({ host: '127.0.0.1', port: 0,
+    // The configuration module applies its own defaults to an environment built here, never the process one.
+    const prepared = await prepareConfiguredConversations(readConversationConfig({
+      AMBROGIO_ARCHIVE_PATH: join(options.directory, 'conversations.sqlite'), AMBROGIO_LANGUAGE: options.language,
+    }, 'test'), new Date());
+    resources.defer('Conversation archive could not be closed', () => prepared.archive.close());
+    // Built without listening; the deterministic speech components ignore the model paths of the voice configuration.
+    const { server, turnIngress } = await buildConversationServer({ host: '127.0.0.1', port: 0,
       allowedOrigins: options.allowedOrigins ?? [], publicHttps: false }, prepared, options.reply,
-    // The deterministic speech components ignore the model paths of the voice configuration.
     options.speech ? { voskModelPath: options.directory, voiceEngine: 'piper', voiceModelDir: options.directory }
-      : undefined, options.speech,
-    options.sessionPingIntervalMs === undefined ? {} : { sessionPingIntervalMs: options.sessionPingIntervalMs });
-    const origin = await built.server.listen({ host: '127.0.0.1', port: 0 });
-    const { server, turnIngress } = built;
+      : undefined, options.speech, { log, resources,
+      ...(options.sessionPingIntervalMs === undefined ? {} : { sessionPingIntervalMs: options.sessionPingIntervalMs }) });
+    // This module is the entry point of the test server: it activates the listener itself.
+    const origin = await server.listen({ host: '127.0.0.1', port: 0 });
     let closing: Promise<void> | undefined;
     return { origin, sessionUrl: new URL('api/session', `${origin.replace('http:', 'ws:')}/`), close() {
       closing ??= (async () => {
         try {
           await turnIngress.stopAccepting();
-          await recoverPendingTurns(prepared.archive.db, new Date());
+          await prepared.interruptPendingTurns();
           await turnIngress.closeSessions();
-        } finally {
-          try { await server.close(); }
-          finally { await prepared.archive.close(); }
-        }
+        } finally { await resources.close(); }
       })();
       return closing;
     } };
   } catch (error) {
-    try { if (built) await built.server.close(); }
-    finally { await prepared.archive.close(); }
-    throw error;
+    const cleanup = await resources.close().then(() => [], () => resources.faults);
+    throw startupWithCleanup('Test server startup failed', error, cleanup);
   }
 }

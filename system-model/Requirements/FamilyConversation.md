@@ -67,10 +67,13 @@ Quando Ambrogio non è in grado di avviare l'elaborazione di un nuovo turno al m
 
 ### Autenticazione Bearer del client MCP
 
-Quando un agente specializzato accede al proprio server MCP tramite Streamable HTTP, il client MCP comune deve poter usare un Bearer token letto dalla configurazione TypeScript di quell'agente per autenticare le richieste verso l'endpoint configurato.
+Quando un agente specializzato accede al proprio server MCP tramite Streamable HTTP, il client MCP comune deve poter usare un Bearer token, letto dalla variabile d'ambiente nominata nel file di quell'agente, per autenticare le richieste verso l'endpoint configurato.
 
 #### Metadata
   * type: requirement
+
+#### Contract References
+  * [Formato JSON dei file degli agenti](../Contracts/FamilyConversation.md#formato-json-dei-file-degli-agenti)
 
 #### Relations
   * satisfiedBy: [mcp-tool-client.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.ts)
@@ -79,10 +82,13 @@ Quando un agente specializzato accede al proprio server MCP tramite Streamable H
 
 ### Autenticazione OAuth tra servizi del client MCP
 
-Quando la configurazione TypeScript di un agente specializzato richiede OAuth `client_credentials`, il client MCP comune deve ottenere e usare un token di accesso per il server MCP di quell'agente, senza richiedere un accesso interattivo della persona e senza presentare le credenziali a un authorization server diverso da quello configurato.
+Quando il file di un agente specializzato richiede OAuth `client_credentials`, il client MCP comune deve ottenere e usare un token di accesso per il server MCP di quell'agente, senza richiedere un accesso interattivo della persona e senza presentare le credenziali a un authorization server diverso da quello configurato.
 
 #### Metadata
   * type: requirement
+
+#### Contract References
+  * [Formato JSON dei file degli agenti](../Contracts/FamilyConversation.md#formato-json-dei-file-degli-agenti)
 
 #### Relations
   * satisfiedBy: [mcp-tool-client.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.ts)
@@ -98,8 +104,27 @@ Quando il server avvia la conversazione con agenti configurati, deve rendere dis
 
 #### Relations
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
+  * satisfiedBy: [http-surface.ts](../../apps/server/src/composition/http-surface.ts)
   * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
+---
+
+### Caricamento completo del turno
+
+Quando il repository del turno carica un turno dall'archivio, deve distinguere prima della ricostruzione il turno assente, che è assenza normale, il turno con record completi e coerenti, e il turno il cui record di conversazione o di occupazione manca, è duplicato o non è associabile; questi ultimi, come i dati incompatibili con il modello corrente, devono interrompere il caricamento come guasto inatteso, mai come assenza o turno valido.
+
+#### Details
+Origine: baseline Reqvire «Complete aggregate loading», adottata; «Incompatible persisted data as unexpected failure», adottata.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Repository del turno](../Contracts/FamilyConversation.md#repository-del-turno)
+
+#### Relations
+  * satisfiedBy: [sqlite-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.ts)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
 ### Cartelle del modulo Conversazioni
@@ -149,6 +174,22 @@ Quando la sessione conversazionale di un client si chiude, Ambrogio deve rilasci
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
+### Classi TypeScript del Domain conversazionale
+
+Quando il Domain del modulo «Conversazioni» rappresenta Root, Entità o Value Object, identità comprese, deve realizzarli come classi TypeScript con costruttore privato e ingressi statici espliciti, con lo stato in campi privati JavaScript.
+
+#### Details
+Origine: baseline Reqvire «Domain classes in TypeScript», adottata.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [identities.ts](../../packages/conversations/src/domain/identities.ts)
+  * satisfiedBy: [turn.ts](../../packages/conversations/src/domain/turn.ts)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
+---
+
 ### Classificazione degli esiti delle scritture conversazionali
 
 Quando l'adapter SQLite dell'archivio esegue una mutazione conversazionale, deve comunicare un rifiuto previsto della porta soltanto se l'esito tecnico dimostra la condizione prevista dal contratto dell'operazione; deve propagare come guasto inatteso gli esiti non classificabili e non deve comunicare un successo senza che la postcondizione della mutazione sia soddisfatta.
@@ -160,7 +201,7 @@ Origine: baseline Reqvire «Classified outcomes of database writes», adottata; 
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
+  * satisfiedBy: [sqlite-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
@@ -226,7 +267,7 @@ Quando il backend completa correttamente un turno, deve inviare al client la con
 
 ### Configurazione MCP dell'agente specializzato
 
-Quando il server attiva un agente con connettore MCP, deve leggere la configurazione della sua connessione MCP dal modulo TypeScript dell'agente e consegnarla al client MCP comune.
+Quando il server attiva un agente con connettore MCP, deve leggere la configurazione della sua connessione MCP dal file dell'agente e consegnarla al client MCP comune.
 
 #### Metadata
   * type: requirement
@@ -239,10 +280,13 @@ Quando il server attiva un agente con connettore MCP, deve leggere la configuraz
 
 ### Configurazione del fuso orario della conversazione
 
-Il server deve leggere il fuso orario della famiglia dal modulo TypeScript locale del componente «Conversazioni» e impedire l'avvio quando il valore indicato non è un fuso orario valido.
+Il server deve leggere il fuso orario della famiglia dalla configurazione del componente «Conversazioni» e impedire l'avvio quando il valore indicato non è un fuso orario valido.
 
 #### Metadata
   * type: requirement
+
+#### Contract References
+  * [Profilo dell'ambiente di esecuzione e del file d'ambiente locale](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#profilo-dellambiente-di-esecuzione-e-del-file-dambiente-locale)
 
 #### Relations
   * satisfiedBy: [conversation-config.ts](../../packages/conversations/src/adapters/out/conversation-config.ts)
@@ -251,10 +295,13 @@ Il server deve leggere il fuso orario della famiglia dal modulo TypeScript local
 
 ### Configurazione del modello per agente
 
-Quando il server attiva un agente, incluso l'orchestratore, deve leggere il modulo TypeScript locale dedicato a quell'agente e selezionare l'adapter del provider indicato, fornendogli l'identificativo del modello, la chiave API, l'indirizzo dell'endpoint quando il provider lo richiede e soltanto le opzioni specifiche validate.
+Quando il server attiva un agente, incluso l'orchestratore, deve leggere il file dedicato a quell'agente e selezionare l'adapter del provider indicato, fornendogli l'identificativo del modello, la chiave API letta dalla variabile d'ambiente nominata, l'indirizzo dell'endpoint quando il provider lo richiede e soltanto le opzioni specifiche validate.
 
 #### Metadata
   * type: requirement
+
+#### Contract References
+  * [Formato JSON dei file degli agenti](../Contracts/FamilyConversation.md#formato-json-dei-file-degli-agenti)
 
 #### Relations
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
@@ -265,25 +312,25 @@ Quando il server attiva un agente, incluso l'orchestratore, deve leggere il modu
 
 ### Configurazione della paginazione conversazionale
 
-Quando il server prepara la consultazione dell'elenco delle conversazioni, deve individuare il modulo TypeScript locale del componente «Conversazioni» tramite `AMBROGIO_CONVERSATIONS_CONFIG_PATH` e usare i valori di dimensione della pagina e dimensione massima scelti dall'utente nel file, applicando i valori predefiniti concordati se i campi sono assenti e impedendo l'attivazione se il percorso o i valori sono invalidi.
+Quando il server prepara la consultazione dell'elenco delle conversazioni, deve usare la dimensione della pagina e la dimensione massima della configurazione del componente «Conversazioni», con i valori predefiniti del modulo di configurazione quando mancano, e impedire l'attivazione se i valori sono invalidi.
 
 #### Metadata
   * type: requirement
 
 #### Contract References
   * [Pagine dell'elenco conversazioni](../Contracts/FamilyConversation.md#pagine-dellelenco-conversazioni)
-  * [Profilo di bootstrap delle configurazioni TypeScript](../Contracts/ServerFoundation.md#profilo-di-bootstrap-delle-configurazioni-typescript)
+  * [Profilo di bootstrap della configurazione del backend](../Contracts/ServerFoundation.md#profilo-di-bootstrap-della-configurazione-del-backend)
+  * [Profilo dell'ambiente di esecuzione e del file d'ambiente locale](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#profilo-dellambiente-di-esecuzione-e-del-file-dambiente-locale)
 
 #### Relations
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
-  * satisfiedBy: [conversation-config-path.ts](../../apps/server/src/runtime/conversation-config-path.ts)
   * satisfiedBy: [conversation-config.ts](../../packages/conversations/src/adapters/out/conversation-config.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Configurazione pronta del connettore Home Assistant
 
-Il repository deve fornire un modulo TypeScript pronto dell'agente Home Assistant, accettato dalla validazione delle configurazioni degli agenti, che chi installa completa con l'indirizzo di Home Assistant e con le proprie credenziali senza modificarne la struttura.
+Il repository deve fornire un file JSON pronto dell'agente Home Assistant, accettato dalla validazione dei file degli agenti, che chi installa completa con l'indirizzo di Home Assistant e con le variabili d'ambiente delle proprie credenziali senza modificarne la struttura.
 
 #### Metadata
   * type: requirement
@@ -292,8 +339,23 @@ Il repository deve fornire un modulo TypeScript pronto dell'agente Home Assistan
   * [Profilo del connettore Home Assistant](../Contracts/FamilyConversation.md#profilo-del-connettore-home-assistant)
 
 #### Relations
-  * satisfiedBy: [home-assistant.ts](../../examples/agents/home-assistant.ts)
+  * satisfiedBy: [home-assistant.json](../../examples/agents/home-assistant.json)
   * specify: [Interazione domestica tramite Home Assistant](../../../ambrogio-model/system-model/Capabilities/Product.md#interazione-domestica-tramite-home-assistant)
+---
+
+### Confine dell'aggregato del turno secondo gli invarianti
+
+Quando il modulo «Conversazioni» raggruppa stato del Domain in un aggregato, il confine dell'aggregato deve comprendere lo stato che richiede coerenza congiunta secondo gli invarianti e il ciclo di vita del turno, e non deve derivare dalle relazioni fra i dati persistenti.
+
+#### Details
+Origine: baseline Reqvire «Aggregate boundary by invariants», adottata. Il `Turn` è il Root del proprio aggregato: identità, conversazione di appartenenza, testo, istante di accettazione, stato ed esito. La conversazione non è un aggregato del Domain: l'unicità del turno attivo per conversazione e l'ordine dei turni sono garanzie dell'archivio.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [turn.ts](../../packages/conversations/src/domain/turn.ts)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
 ### Connettore Home Assistant tramite il server MCP di Home Assistant
@@ -305,7 +367,7 @@ Dove l'installazione abilita il connettore Home Assistant, il server deve raggiu
 
 #### Relations
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
-  * satisfiedBy: [home-assistant.ts](../../examples/agents/home-assistant.ts)
+  * satisfiedBy: [home-assistant.json](../../examples/agents/home-assistant.json)
   * specify: [Interazione domestica tramite Home Assistant](../../../ambrogio-model/system-model/Capabilities/Product.md#interazione-domestica-tramite-home-assistant)
 ---
 
@@ -412,32 +474,36 @@ Quando un caso d'uso del modulo «Conversazioni» richiede una capacità esterna
 
 ### Contratti di lettura separati dell'archivio conversazioni
 
-Quando Application del modulo «Conversazioni» consulta lo storico o l'elenco delle conversazioni, deve usare contratti di lettura distinti dalle operazioni di scrittura e adatti ai dati richiesti dal caso d'uso.
+Quando Application del modulo «Conversazioni» consulta lo storico o l'elenco delle conversazioni, deve ottenere proiezioni con tipi di lettura propri tramite porte di lettura, senza usare il repository del turno né oggetti del Domain; quando un caso d'uso di comando richiede un fatto ausiliario, come l'esistenza della conversazione da continuare, deve ottenerlo tramite una porta di lookup specifica. Il repository del turno deve servire soltanto il ciclo di vita dell'aggregato, e i contratti di lettura, di lookup e del repository non devono essere uniti perché condividono l'adapter o il database.
 
 #### Details
-Origine: baseline Reqvire «Separate read contracts for queries», adottata.
+Origine: baseline Reqvire «Separate read contracts for queries», adottata; «Read-model, lookup and repository contracts kept separate», adottata.
 
 #### Metadata
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [conversation-history-read.ts](../../packages/conversations/src/application/conversation-history-read.ts)
-  * satisfiedBy: [conversation-list-read.ts](../../packages/conversations/src/application/conversation-list-read.ts)
+  * satisfiedBy: [conversation-history-read.port.ts](../../packages/conversations/src/application/conversation-history-read.port.ts)
+  * satisfiedBy: [conversation-list-read.port.ts](../../packages/conversations/src/application/conversation-list-read.port.ts)
+  * satisfiedBy: [conversation-lookup.port.ts](../../packages/conversations/src/application/conversation-lookup.port.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Contratto di scrittura dell'archivio conversazioni
 
-Quando Application del modulo «Conversazioni» conserva turni o esiti, deve usare un contratto di persistenza dedicato al modello di scrittura della conversazione, con semantica sufficiente alle transizioni richieste dai casi d'uso. Il contratto espone il salvataggio dell'aggregato oppure operazioni di transizione esplicite; non deve imporre un'interfaccia CRUD universale ai casi d'uso.
+Quando Application del modulo «Conversazioni» conserva turni o esiti, deve usare il repository dedicato all'aggregato `Turn`, che offre soltanto l'ammissione di un turno nuovo, il caricamento dei turni e il salvataggio del turno concluso o interrotto dal Domain; il contratto non deve esporre operazioni di transizione del turno né un'interfaccia CRUD universale ai casi d'uso.
 
 #### Details
-Origine: baseline Reqvire «Dedicated write contract without universal CRUD», adottata.
+Origine: baseline Reqvire «Dedicated write contract without universal CRUD», adattata: il contratto di scrittura è il repository dell'aggregato, senza operazioni di transizione esplicite, come richiedono «Changes through the aggregate Root» e «Repository without Domain decisions».
 
 #### Metadata
   * type: requirement
 
+#### Contract References
+  * [Garanzie di concorrenza del repository del turno](../Contracts/FamilyConversation.md#garanzie-di-concorrenza-del-repository-del-turno)
+
 #### Relations
-  * satisfiedBy: [conversation-write.ts](../../packages/conversations/src/application/conversation-write.ts)
+  * satisfiedBy: [turn-repository.port.ts](../../packages/conversations/src/application/turn-repository.port.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
@@ -466,7 +532,7 @@ Quando un client invia un turno senza identificativo di conversazione, Ambrogio 
   * [Occupazione della conversazione e ammissione dei turni](../Contracts/FamilyConversation.md#occupazione-della-conversazione-e-ammissione-dei-turni)
 
 #### Relations
-  * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
+  * satisfiedBy: [sqlite-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
@@ -501,7 +567,7 @@ Quando un caso d'uso del modulo «Conversazioni» riceve dati di ingresso o prod
 
 ### Descrizione degli agenti specializzati per l'orchestrazione
 
-Quando Ambrogio prepara un agente specializzato da un modulo TypeScript, deve rendere disponibile all'orchestratore una descrizione dell'agente per permettere la scelta della delega.
+Quando Ambrogio prepara un agente specializzato dal suo file, deve rendere disponibile all'orchestratore una descrizione dell'agente per permettere la scelta della delega.
 
 #### Metadata
   * type: requirement
@@ -569,12 +635,9 @@ Quando un client elabora un turno o ne riproduce la risposta, deve impedire nuov
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
-### Disponibilità degli agenti dai moduli TypeScript
+### Disponibilità degli agenti dai file della directory
 
-Quando il server avvia la conversazione con la directory degli agenti, deve rendere disponibile all'orchestratore ogni agente specializzato descritto da un file `<id>.ts` valido presente nella directory, con o senza connettore MCP, senza richiedere un elenco separato di agenti da abilitare, e non deve avviare la conversazione se la directory non contiene almeno un agente specializzato.
-
-#### Details
-Origine: baseline Reqvire «Configuration module per component reading environment variables», adattata: il modulo TypeScript di ogni componente è fornito dall'installazione fuori dalla build e può contenere i valori, oltre a leggerli dalle variabili d'ambiente.
+Quando il server avvia la conversazione con la directory degli agenti, deve rendere disponibile all'orchestratore ogni agente specializzato descritto da un file `<id>.json` valido presente nella directory, con o senza connettore MCP, senza richiedere un elenco separato di agenti da abilitare, e non deve avviare la conversazione se la directory non contiene almeno un agente specializzato.
 
 #### Metadata
   * type: requirement
@@ -588,6 +651,11 @@ Origine: baseline Reqvire «Configuration module per component reading environme
 ### Disponibilità dello storico dopo riavvio
 
 Quando Ambrogio viene riavviato, deve rendere nuovamente disponibili alla famiglia le conversazioni e gli scambi testuali conservati prima del riavvio.
+
+#### Details
+L'archivio è un database SQLite letto e scritto con Kysely secondo «Archivio SQLite con Kysely».
+
+Origine: baseline Reqvire «Kysely for SQLite access», adottata.
 
 #### Concept References
   * [Famiglia](../../../ambrogio-model/system-model/Thesaurus/Lessico.md#famiglia)
@@ -616,7 +684,7 @@ Quando riceve turni validi destinati a conversazioni diverse mentre è operativo
 
 #### Relations
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
-  * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
+  * satisfiedBy: [sqlite-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
@@ -631,7 +699,7 @@ Origine: baseline Reqvire «List or pagination chosen per query», adottata.
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
+  * satisfiedBy: [list-conversations.handler.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.handler.ts)
   * satisfiedBy: [sqlite-conversation-list-read.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-list-read.adapter.ts)
   * satisfiedBy: [list-conversations.use-case.ts](../../packages/conversations/src/application/list-conversations.use-case.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
@@ -639,15 +707,15 @@ Origine: baseline Reqvire «List or pagination chosen per query», adottata.
 
 ### Esempi degli agenti in inglese
 
-Quando il progetto distribuisce esempi di configurazione per generic.ts, orchestrator.ts o altri agenti specializzati, deve scrivere in inglese le istruzioni e le descrizioni degli agenti, senza fissare nelle istruzioni una lingua diversa da quella selezionata dall'installazione.
+Quando il progetto distribuisce file d'esempio di agenti, come `generic.json`, `orchestrator.json` o altri agenti specializzati, deve scrivere in inglese le istruzioni e le descrizioni degli agenti, senza fissare nelle istruzioni una lingua diversa da quella selezionata dall'installazione.
 
 #### Metadata
   * type: requirement
 
 #### Relations
   * derivedFrom: [Esempi distribuiti in inglese](../../../ambrogio-model/system-model/Requirements/ModelDrivenDevelopment.md#esempi-distribuiti-in-inglese)
-  * satisfiedBy: [generic.ts](../../examples/agents/generic.ts)
-  * satisfiedBy: [orchestrator.ts](../../examples/agents/orchestrator.ts)
+  * satisfiedBy: [generic.json](../../examples/agents/generic.json)
+  * satisfiedBy: [orchestrator.json](../../examples/agents/orchestrator.json)
   * specify: [Sviluppo governato dal modello](../../../ambrogio-model/system-model/Capabilities/Engineering.md#sviluppo-governato-dal-modello)
 ---
 
@@ -660,7 +728,7 @@ Quando Application del modulo «Conversazioni» dichiara una porta outbound a og
 
 #### Relations
   * derivedFrom: [Forma TypeScript dei contratti Application](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#forma-typescript-dei-contratti-application)
-  * satisfiedBy: [conversation-write.ts](../../packages/conversations/src/application/conversation-write.ts)
+  * satisfiedBy: [turn-repository.port.ts](../../packages/conversations/src/application/turn-repository.port.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -676,6 +744,36 @@ Origine: baseline Reqvire «External facts supplied by the Application», adotta
 
 #### Relations
   * derivedFrom: [Capacità dell'ambiente fornite dalla composition root](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#capacità-dellambiente-fornite-dalla-composition-root)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
+---
+
+### Garanzia di concorrenza dichiarata per ogni scrittura dell'archivio
+
+Quando un'operazione di scrittura dell'archivio delle conversazioni dipende da stato modificabile da richieste concorrenti, la sua porta deve dichiarare nel contratto la garanzia di concorrenza offerta, e l'adapter deve realizzarla con una protezione proporzionata ai dati da cui dipende la decisione, che copra ogni percorso di modifica di quei dati.
+
+#### Details
+Origine: baseline Reqvire «Declared concurrency guarantee per operation», adottata; «Protection proportionate to the decision», adottata.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [sqlite-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.ts)
+  * satisfiedBy: [turn-repository.port.ts](../../packages/conversations/src/application/turn-repository.port.ts)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
+---
+
+### Garanzie di concorrenza provate da esecuzioni concorrenti reali
+
+Quando una verifica prova una garanzia di concorrenza dell'archivio delle conversazioni, deve usare l'archivio SQLite reale con le migrazioni di produzione, esecuzioni indipendenti in processi distinti con connessioni proprie e una sincronizzazione esplicita, e deve confrontare esiti e stato finale con l'intera intenzione tramite una sonda indipendente; un avvio in parallelo nello stesso processo, il successo delle chiamate o la presenza di un blocco non devono essere considerati prova.
+
+#### Details
+Origine: baseline Reqvire «Concurrency guarantee proven by real concurrent executions», adottata.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -721,6 +819,38 @@ Origine: baseline Reqvire «Identifiers preserved by persistence», adottata; «
   * type: requirement
 
 #### Relations
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
+---
+
+### Identità distinte di conversazioni e turni
+
+Quando il Domain del modulo «Conversazioni» rappresenta l'identità di una conversazione o di un turno, deve usare tipi distinti e non intercambiabili per i due significati; il caso d'uso Application deve convertire esplicitamente gli identificativi semplici dei propri ingressi e delle proprie uscite da e verso le classi di identità, l'adapter di persistenza deve convertirli da e verso le colonne preservandone il valore, e la distinzione del tipo non deve essere trattata come prova che la conversazione o il turno esistano.
+
+#### Details
+Origine: baseline Reqvire «Distinct identity types by meaning», adottata.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [begin-turn.use-case.ts](../../packages/conversations/src/application/begin-turn.use-case.ts)
+  * satisfiedBy: [complete-turn.use-case.ts](../../packages/conversations/src/application/complete-turn.use-case.ts)
+  * satisfiedBy: [identities.ts](../../packages/conversations/src/domain/identities.ts)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
+---
+
+### Igiene delle migrazioni dell'archivio conversazioni
+
+Quando il backend evolve lo schema dell'archivio SQLite, le migrazioni devono formare un'unica sequenza ordinata con un solo registro nel database; una migrazione distribuita deve restare immutabile e disponibile nella sequenza, una migrazione non deve importare codice business soggetto a modifiche, e i dati di prova o di sviluppo non devono essere inseriti tramite le migrazioni.
+
+#### Details
+Origine: baseline Reqvire «Separate migration process», adattata: le migrazioni restano applicate all'avvio del backend secondo «Automatic schema migrations at startup»; del processo separato si adottano soltanto le regole sulla sequenza unica, sull'immutabilità e la disponibilità delle migrazioni distribuite, sugli import e sui dati di prova, senza processo, comandi di stato o annullamento delle migrazioni.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [migrations.ts](../../packages/conversations/src/adapters/out/sqlite/migrations.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
@@ -802,7 +932,7 @@ Quando un caso d'uso del modulo «Conversazioni» richiede una capacità tecnica
 Quando il modulo «Conversazioni» crea, modifica o ricostruisce lo stato di un turno, Domain deve ammettere soltanto stati e transizioni validi per quel turno, preservando identità e testo, e lasciare invariato lo stato se una transizione è rifiutata.
 
 #### Details
-Origine: baseline Reqvire «Entity by identity», adottata; «Invariants preserved on every Domain path», adottata.
+Origine: baseline Reqvire «Entity by identity», adottata; «Invariants preserved on every Domain path», adottata; «Distinct birth and reconstruction paths», adottata; «Invariant in the smallest owner», adottata; «Refused operation leaves the aggregate unchanged», adattata: il Domain non registra eventi, quindi la garanzia riguarda il solo stato del turno.
 
 #### Metadata
   * type: requirement
@@ -812,12 +942,28 @@ Origine: baseline Reqvire «Entity by identity», adottata; «Invariants preserv
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
+### Istanti distinti dai concetti di calendario nella conversazione
+
+Quando un adapter di ingresso del modulo «Conversazioni» riceve o restituisce un istante, deve convertirlo esplicitamente fra la stringa ISO 8601 in UTC del proprio formato e un `Date` valido ed esporre gli istanti nelle risposte in ISO UTC; il fuso orario con significato per la conversazione deve restare un valore distinto dagli istanti, e il nucleo non deve normalizzare una seconda volta il fuso di un istante.
+
+#### Details
+Origine: baseline Reqvire «Instants distinct from calendar concepts», adattata: l'unico istante ricevuto da un ingresso è quello del cursore opaco dell'elenco, prodotto dal backend, che accetta soltanto la forma canonica restituita da `toISOString()` invece di ogni offset RFC 3339 equivalente; il fuso orario è il nome IANA della configurazione conversazionale e serve soltanto alla data e all'ora correnti date agli agenti.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [get-conversation.handler.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.handler.ts)
+  * satisfiedBy: [list-conversations.handler.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.handler.ts)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
+---
+
 ### Istanti validi e protetti della conversazione
 
 Quando Application e Domain rappresentano un istante della conversazione, devono usare un `Date` valido. Gli oggetti Domain che ricevono o espongono un `Date` devono proteggerlo con copie difensive in ingresso e in uscita.
 
 #### Details
-Origine: baseline Reqvire «Domain state without shared mutable references», adottata; «Valid and protected Date values», adottata.
+Origine: baseline Reqvire «Valid and protected Date values», adottata.
 
 #### Metadata
   * type: requirement
@@ -844,12 +990,9 @@ Se la lettura dei prompt fallisce, Ambrogio deve concludere il turno con il guas
   * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
 ---
 
-### Istruzioni dell'agente nel modulo TypeScript dell'utente
+### Istruzioni dell'agente nel file dell'utente
 
-Quando il server attiva un agente, incluso l'orchestratore, deve leggere le istruzioni destinate a quell'agente dal suo modulo TypeScript locale gestito dall'utente e consegnarle soltanto al modello dell'agente interessato.
-
-#### Details
-Origine: baseline Reqvire «Configuration module per component reading environment variables», adattata: il modulo TypeScript di ogni componente è fornito dall'installazione fuori dalla build e può contenere i valori, oltre a leggerli dalle variabili d'ambiente.
+Quando il server attiva un agente, incluso l'orchestratore, deve leggere le istruzioni destinate a quell'agente dal suo file gestito dall'utente e consegnarle soltanto al modello dell'agente interessato.
 
 #### Metadata
   * type: requirement
@@ -870,10 +1013,13 @@ Quando un client della chat testuale consulta l'elenco delle conversazioni conse
 
 #### Contract References
   * [Pagine dell'elenco conversazioni](../Contracts/FamilyConversation.md#pagine-dellelenco-conversazioni)
+  * [Forma dei Problem Details dell'API HTTP](../Contracts/HttpApi.md#forma-dei-problem-details-dellapi-http)
+  * [Versioni dell'API HTTP pubblica](../Contracts/HttpApi.md#versioni-dellapi-http-pubblica)
 
 #### Relations
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
-  * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
+  * satisfiedBy: [list-conversations.handler.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.handler.ts)
+  * satisfiedBy: [list-conversations.route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.route.adapter.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
@@ -884,9 +1030,14 @@ Quando un client della chat testuale consulta una conversazione conservata, il b
 #### Metadata
   * type: requirement
 
+#### Contract References
+  * [Forma dei Problem Details dell'API HTTP](../Contracts/HttpApi.md#forma-dei-problem-details-dellapi-http)
+  * [Versioni dell'API HTTP pubblica](../Contracts/HttpApi.md#versioni-dellapi-http-pubblica)
+
 #### Relations
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
-  * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
+  * satisfiedBy: [get-conversation.handler.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.handler.ts)
+  * satisfiedBy: [get-conversation.route.adapter.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.route.adapter.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
@@ -918,10 +1069,13 @@ Quando un agente specializzato produce una risposta per la famiglia, il backend 
 
 ### Localizzazione dell'errore conversazionale inatteso
 
-Quando un turno ammesso termina con un guasto inatteso, Ambrogio deve comunicare e conservare lo stesso messaggio pubblico standard tradotto nella lingua scelta dall'utente nel modulo TypeScript locale del componente «Conversazioni».
+Quando un turno ammesso termina con un guasto inatteso, Ambrogio deve comunicare e conservare lo stesso messaggio pubblico standard tradotto nella lingua della configurazione del componente «Conversazioni».
 
 #### Metadata
   * type: requirement
+
+#### Contract References
+  * [Profilo dell'ambiente di esecuzione e del file d'ambiente locale](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#profilo-dellambiente-di-esecuzione-e-del-file-dambiente-locale)
 
 #### Relations
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
@@ -941,6 +1095,25 @@ Origine: baseline Reqvire «Automatic schema migrations at startup», adottata.
 
 #### Relations
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
+---
+
+### Modifiche del turno attraverso il Root
+
+Quando un caso d'uso Application conclude, fa fallire o interrompe un turno, deve caricare il Root `Turn` dal repository del turno, richiedere la transizione con l'operazione del Root e chiedere al repository il salvataggio del turno modificato; il rifiuto della transizione da parte del Domain deve essere un esito previsto del caso d'uso, senza salvataggio.
+
+#### Details
+Origine: baseline Reqvire «Changes through the aggregate Root», adottata.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Repository del turno](../Contracts/FamilyConversation.md#repository-del-turno)
+
+#### Relations
+  * satisfiedBy: [complete-turn.use-case.ts](../../packages/conversations/src/application/complete-turn.use-case.ts)
+  * satisfiedBy: [interrupt-pending-turns.use-case.ts](../../packages/conversations/src/application/interrupt-pending-turns.use-case.ts)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
 ### Modulo business unico per la conversazione
@@ -989,7 +1162,7 @@ Quando Application del modulo «Conversazioni» dichiara una porta verso una cap
 
 #### Relations
   * derivedFrom: [Contratti Application nei termini del componente](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#contratti-application-nei-termini-del-componente)
-  * satisfiedBy: [turn-capabilities.ts](../../packages/conversations/src/application/turn-capabilities.ts)
+  * satisfiedBy: [turn-capabilities.port.ts](../../packages/conversations/src/application/turn-capabilities.port.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -1016,8 +1189,8 @@ Quando l'orchestratore sceglie l'agente per un turno di una conversazione con tu
   * derivedFrom: [Orchestrazione della risposta conversazionale](#orchestrazione-della-risposta-conversazionale)
   * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
   * satisfiedBy: [migrations.ts](../../packages/conversations/src/adapters/out/sqlite/migrations.ts)
-  * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
   * satisfiedBy: [sqlite-turn-mapper.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-mapper.ts)
+  * satisfiedBy: [sqlite-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
   * satisfiedBy: [get-conversation.use-case.ts](../../packages/conversations/src/application/get-conversation.use-case.ts)
   * satisfiedBy: [turn.ts](../../packages/conversations/src/domain/turn.ts)
@@ -1051,7 +1224,7 @@ Origine: baseline Reqvire «Instants stored as Unix milliseconds», adottata.
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
+  * satisfiedBy: [sqlite-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
@@ -1116,6 +1289,25 @@ Quando Ambrogio accetta un turno rappresentato come testo dalla chat o dalla tra
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
+### Repository del turno senza decisioni di Domain
+
+Quando l'adapter SQLite del repository del turno ammette, carica o salva un turno, deve limitarsi a convertire e conservare lo stato già valido del Domain: non deve scegliere lo stato iniziale, generare identificativi, leggere l'ora corrente né invocare transizioni del turno, e la conversione in scrittura deve leggere lo stato tramite i getter del Root senza invocarne la creazione o la ricostruzione.
+
+#### Details
+Origine: baseline Reqvire «Repository without Domain decisions», adottata.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Repository del turno](../Contracts/FamilyConversation.md#repository-del-turno)
+
+#### Relations
+  * satisfiedBy: [sqlite-turn-mapper.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-mapper.ts)
+  * satisfiedBy: [sqlite-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.ts)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
+---
+
 ### Riconoscimento del turno interrotto dopo riavvio
 
 Quando il server si avvia e trova turni conservati come «In elaborazione» senza esito, Ambrogio deve contrassegnarli tutti come «Interrotti» prima di accettare nuovi turni e mostrarli come tali nelle rispettive conversazioni.
@@ -1141,7 +1333,7 @@ Origine: baseline Reqvire «Declared concurrency guarantee per operation», adot
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
+  * satisfiedBy: [sqlite-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
@@ -1304,7 +1496,7 @@ Quando la famiglia invia un turno, Ambrogio deve produrre una risposta testuale 
 
 ### Scoperta delle configurazioni degli agenti
 
-Quando il server prepara gli agenti attivi, deve cercare i rispettivi modulo TypeScript in una directory dedicata stabilita dal prodotto e distinguere la configurazione dell'orchestratore da quelle degli agenti specializzati.
+Quando il server prepara gli agenti attivi, deve cercare i rispettivi file nella directory degli agenti configurata e distinguere la configurazione dell'orchestratore da quelle degli agenti specializzati.
 
 #### Metadata
   * type: requirement
@@ -1319,15 +1511,15 @@ Quando il server prepara gli agenti attivi, deve cercare i rispettivi modulo Typ
 Quando Ambrogio accetta, conclude o interrompe un turno, deve confermare insieme lo stato persistente del turno e l'occupazione della conversazione interessata in una transazione SQLite.
 
 #### Details
-Origine: baseline Reqvire «Atomic persistent state transitions», adottata; «Declared concurrency guarantee per operation», adottata.
+Origine: baseline Reqvire «Atomic persistent state transitions», adottata.
 
 #### Metadata
   * type: requirement
 
 #### Relations
   * satisfiedBy: [migrations.ts](../../packages/conversations/src/adapters/out/sqlite/migrations.ts)
-  * satisfiedBy: [recover-pending-turns.ts](../../packages/conversations/src/adapters/out/sqlite/recover-pending-turns.ts)
-  * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
+  * satisfiedBy: [sqlite-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.ts)
+  * satisfiedBy: [interrupt-pending-turns.use-case.ts](../../packages/conversations/src/application/interrupt-pending-turns.use-case.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
@@ -1365,7 +1557,7 @@ Quando conferma il completamento di un turno, il backend deve indicare esplicita
 
 ### Selezione degli strumenti MCP offerti all'agente
 
-Dove il modulo TypeScript di un agente specializzato elenca gli strumenti MCP ammessi, Ambrogio deve offrire al modello di quell'agente soltanto gli strumenti elencati fra quelli scoperti sul suo server MCP e non deve inoltrare al server chiamate a strumenti non elencati.
+Dove il file di un agente specializzato elenca gli strumenti MCP ammessi, Ambrogio deve offrire al modello di quell'agente soltanto gli strumenti elencati fra quelli scoperti sul suo server MCP e non deve inoltrare al server chiamate a strumenti non elencati.
 
 #### Metadata
   * type: requirement
@@ -1379,28 +1571,30 @@ Dove il modulo TypeScript di un agente specializzato elenca gli strumenti MCP am
 
 ### Selezione dei modelli vocali inclusi per lingua
 
-Quando la voce è abilitata con profili vocali per lingua, Ambrogio deve selezionare il modello Vosk e la voce Piper o Kokoro indicati dai percorsi del profilo della lingua effettiva della conversazione, accettando sia modelli inclusi nell'immagine sia modelli montati dall'installazione. Deve conservare la compatibilità con il file vocale a profilo singolo e non deve caricare modelli vocali quando la voce è disabilitata.
+Quando la voce è abilitata con profili vocali per lingua, Ambrogio deve selezionare il modello Vosk e la voce Piper o Kokoro indicati dalle variabili del profilo della lingua effettiva della conversazione, accettando sia modelli inclusi nell'immagine sia modelli montati dall'installazione, e non deve caricare modelli vocali quando la voce è disabilitata.
 
 #### Metadata
   * type: requirement
 
 #### Relations
   * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
-  * satisfiedBy: [voice.ts](../../examples/voice.ts)
+  * satisfiedBy: [voice-config.spec.ts](../../packages/conversations/src/adapters/out/voice-config.spec.ts)
   * satisfiedBy: [voice-config.ts](../../packages/conversations/src/adapters/out/voice-config.ts)
-  * satisfiedBy: [voice-config.test.ts](../../packages/conversations/test/adapters/out/voice-config.test.ts)
   * specify: [Conversazione a voce](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-a-voce)
 ---
 
 ### Selezione dell'archivio conversazionale all'avvio
 
-Quando il server prepara l'ingresso conversazionale, deve aprire l'archivio SQLite al percorso dichiarato nella configurazione locale del componente «Conversazioni» e impedire l'avvio se il percorso manca o è invalido.
+Quando il server prepara l'ingresso conversazionale, deve aprire l'archivio SQLite al percorso dichiarato nella configurazione del componente «Conversazioni» e impedire l'avvio se il percorso manca o è invalido.
 
 #### Details
 Origine: baseline Reqvire «SQLite as embedded database», adottata.
 
 #### Metadata
   * type: requirement
+
+#### Contract References
+  * [Profilo dell'ambiente di esecuzione e del file d'ambiente locale](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#profilo-dellambiente-di-esecuzione-e-del-file-dambiente-locale)
 
 #### Relations
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
@@ -1436,6 +1630,39 @@ Il modulo business «Conversazioni» deve distinguere Domain, Application e adap
 
 #### Relations
   * derivedFrom: [Struttura in layer dei componenti](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#struttura-in-layer-dei-componenti)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
+---
+
+### Stato del turno senza riferimenti mutabili condivisi
+
+Quando un oggetto del Domain conversazionale espone il proprio stato, deve esporre soltanto le informazioni richieste dai chiamanti, senza un accesso generico all'intero stato, e deve isolare ogni riferimento mutabile ricevuto o restituito, così che i chiamanti non possano modificarne lo stato indirettamente.
+
+#### Details
+Origine: baseline Reqvire «Domain state without shared mutable references», adottata.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Classi del Domain conversazionale con TypeScript](../Contracts/FamilyConversation.md#classi-del-domain-conversazionale-con-typescript)
+
+#### Relations
+  * satisfiedBy: [turn.ts](../../packages/conversations/src/domain/turn.ts)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
+---
+
+### Streaming soltanto quando l'intenzione lo richiede
+
+Quando una porta Application del modulo «Conversazioni» consegna dati, deve esporre una consegna in streaming soltanto se l'intenzione richiede elaborazione incrementale, volumi non materializzabili o una fonte potenzialmente illimitata; le porte di lettura, la porta di lookup e il repository del turno devono restituire valori materializzati, e una porta in streaming deve produrre valori Application tramite `AsyncIterable` senza esporre stream del runtime, cursori del database o tipi di libreria.
+
+#### Details
+Origine: baseline Reqvire «Streaming only when the intention requires it», adottata. L'unica porta in streaming è `ProduceConversationReply`, che consegna le parti della risposta per la trasmissione progressiva; nessuna lettura dell'archivio è in streaming.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [produce-conversation-reply.port.ts](../../packages/conversations/src/application/produce-conversation-reply.port.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -1535,14 +1762,32 @@ Origine: baseline Reqvire «Shape validation in inbound adapters», adottata.
 Quando un ingresso HTTP riceve una richiesta per le operazioni conversazionali, deve verificare la forma dei dati ricevuti prima di invocare il caso d'uso, rifiutando le rappresentazioni non valide senza modificare implicitamente i valori.
 
 #### Details
-Origine: baseline Reqvire «Shape validation in inbound adapters», adottata; «Structural validation of HTTP requests», adottata.
+Origine: baseline Reqvire «Shape validation in inbound adapters», adottata; «Structural validation of HTTP requests», adottata; «Declared policy for unknown input fields», adottata; «Explicit field-wise conversion in inbound adapters», adottata.
 
 #### Metadata
   * type: requirement
 
 #### Relations
   * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
-  * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
-  * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
+  * satisfiedBy: [get-conversation.schemas.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.schemas.ts)
+  * satisfiedBy: [list-conversations.schemas.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.schemas.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
+---
+
+### Value Object immutabili con uguaglianza esplicita
+
+Quando il Domain del modulo «Conversazioni» rappresenta un concetto confrontato per valore con regole proprie, come un'identità, deve usare un Value Object che conserva il valore invariato dopo la costruzione e definisce l'uguaglianza esplicitamente sui componenti significativi, non sull'identità del riferimento, su una serializzazione generica o sull'enumerazione automatica delle proprietà.
+
+#### Details
+Origine: baseline Reqvire «Value Object for meaningful values», adottata; «Immutable Value Objects with explicit equality», adottata.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Classi di identità di conversazioni e turni](../Contracts/FamilyConversation.md#classi-di-identità-di-conversazioni-e-turni)
+
+#### Relations
+  * satisfiedBy: [identities.ts](../../packages/conversations/src/domain/identities.ts)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---

@@ -1,17 +1,18 @@
-import { startConversationServer } from './runtime/conversation-server.js';
-import { reportStartupFailure } from './runtime/startup-failure.js';
+import { installFatalPath } from './runtime/fatal-path.js';
 
-try {
-  const runtime = await startConversationServer();
-  let closing = false;
-  const shutdown = () => {
-    if (closing) return;
-    closing = true;
-    void runtime.close().then(() => process.exit(0), () => process.exit(1));
-  };
-  process.once('SIGINT', shutdown);
-  process.once('SIGTERM', shutdown);
-} catch (error) {
-  reportStartupFailure(error);
-  process.exitCode = 1;
-}
+// The fatal path is installed before any application code is loaded («Percorso fatale del server»).
+installFatalPath('Ambrogio backend stopped after a fatal error.');
+
+const [{ createBaseLogger }, { prepareConversationServer }, { listen, runServerProcess }] = await Promise.all([
+  import('./runtime/logger.js'), import('./runtime/conversation-server.js'), import('./runtime/server-process.js'),
+]);
+
+// The single base logger of the process, shared by every component of the graph.
+const log = createBaseLogger();
+const outcome = await runServerProcess({
+  build: () => prepareConversationServer(process.env, log),
+  activate: listen,
+  log,
+});
+if (outcome.force) process.exit(outcome.exitCode);
+process.exitCode = outcome.exitCode;

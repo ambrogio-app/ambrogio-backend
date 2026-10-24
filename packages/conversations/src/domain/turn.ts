@@ -1,94 +1,147 @@
-import { ProjectError } from '../project-error.js';
+import { ProjectError } from './project-error.js';
+import { ConversationId, TurnId } from './identities.js';
+import type { Result } from './result.js';
+
 export type TurnTransitionRejected = Readonly<{ kind: 'already_closed' }>;
 
-export type Result<T, E> = Readonly<{ ok: true; value: T }> | Readonly<{ ok: false; error: E }>;
+export type TurnStatus = 'pending' | 'answered' | 'failed' | 'interrupted';
 
-type Base = Readonly<{ id: string; text: string; acceptedAt: Date }>;
+/** What the Application supplies to the birth of a turn: identities and instant are never chosen here. */
+export type NewTurn = Readonly<{ id: TurnId; conversationId: ConversationId; text: string; acceptedAt: Date }>;
 
-export type TurnSnapshot =
-  | (Base & Readonly<{ status: 'pending' }>)
-  | (Base & Readonly<{ status: 'answered'; answer: string; finishedAt: Date;
-    /** The agent that formulated the answer, when known. */
-    agent?: string }>)
-  | (Base & Readonly<{ status: 'failed'; error: string; finishedAt: Date }>)
-  | (Base & Readonly<{ status: 'interrupted'; finishedAt: Date }>);
+/** The saved state of a turn, as rebuilt by persistence. */
+export type SavedTurn =
+  | (NewTurn & Readonly<{ status: 'pending' }>)
+  | (NewTurn & Readonly<{ status: 'answered'; answer: string; finishedAt: Date; agent?: string }>)
+  | (NewTurn & Readonly<{ status: 'failed'; error: string; finishedAt: Date }>)
+  | (NewTurn & Readonly<{ status: 'interrupted'; finishedAt: Date }>);
 
-function copyDate(value: Date): Date {
+function copyDate(value: unknown): Date {
   if (!(value instanceof Date) || !Number.isFinite(value.getTime())) {
     throw new ProjectError('Invalid conversation instant');
   }
   return new Date(value.getTime());
 }
 
-function checkAgent(agent: unknown): Readonly<{ agent?: string }> {
-  if (agent === undefined) return {};
+function checkAgent(agent: unknown): string | undefined {
+  if (agent === undefined) return undefined;
   if (typeof agent !== 'string' || agent.length === 0) throw new ProjectError('Invalid responding agent');
-  return { agent };
+  return agent;
 }
 
-function checkBase(value: Base): Base {
-  if (typeof value.id !== 'string' || value.id.length === 0) throw new ProjectError('Invalid turn identity');
+function checkBirth(value: NewTurn): NewTurn {
+  if (!(value.id instanceof TurnId)) throw new ProjectError('Invalid turn identity');
+  if (!(value.conversationId instanceof ConversationId)) throw new ProjectError('Invalid conversation identity');
   if (typeof value.text !== 'string' || value.text.trim().length === 0) throw new ProjectError('Invalid turn text');
-  return { id: value.id, text: value.text, acceptedAt: copyDate(value.acceptedAt) };
+  return { id: value.id, conversationId: value.conversationId, text: value.text, acceptedAt: copyDate(value.acceptedAt) };
 }
 
-function copySnapshot(value: TurnSnapshot): TurnSnapshot {
-  const base = checkBase(value);
+type Outcome = Readonly<{ answer?: string; error?: string; agent?: string; finishedAt?: Date }>;
+
+function checkOutcome(value: SavedTurn): Outcome {
+  const fields = value as Partial<Record<'answer' | 'error' | 'agent' | 'finishedAt', unknown>>;
   switch (value.status) {
     case 'pending':
-      if ('finishedAt' in value || 'answer' in value || 'error' in value || 'agent' in value) break;
-      return { ...base, status: 'pending' };
-    case 'answered':
-      if (typeof value.answer !== 'string' || 'error' in value) break;
-      return { ...base, status: 'answered', answer: value.answer, finishedAt: copyDate(value.finishedAt),
-        ...checkAgent(value.agent) };
+      if (fields.finishedAt !== undefined || fields.answer !== undefined || fields.error !== undefined
+        || fields.agent !== undefined) break;
+      return {};
+    case 'answered': {
+      if (typeof fields.answer !== 'string' || fields.error !== undefined) break;
+      const agent = checkAgent(fields.agent);
+      return { answer: fields.answer, finishedAt: copyDate(fields.finishedAt), ...(agent === undefined ? {} : { agent }) };
+    }
     case 'failed':
-      if (typeof value.error !== 'string' || 'answer' in value || 'agent' in value) break;
-      return { ...base, status: 'failed', error: value.error, finishedAt: copyDate(value.finishedAt) };
+      if (typeof fields.error !== 'string' || fields.answer !== undefined
+        || fields.agent !== undefined) break;
+      return { error: fields.error, finishedAt: copyDate(fields.finishedAt) };
     case 'interrupted':
-      if ('answer' in value || 'error' in value || 'agent' in value) break;
-      return { ...base, status: 'interrupted', finishedAt: copyDate(value.finishedAt) };
+      if (fields.answer !== undefined || fields.error !== undefined || fields.agent !== undefined) break;
+      return { finishedAt: copyDate(fields.finishedAt) };
   }
   throw new ProjectError('Invalid persisted turn state');
 }
 
-/** The state of one accepted turn. Installation-wide admission belongs to the archive. */
+/**
+ * The Root of the turn aggregate. It changes only through `answer`, `fail` and `interrupt`; the single
+ * active turn per conversation is not a Domain rule: the archive guarantees it.
+ */
 export class Turn {
-  private constructor(private state: TurnSnapshot) {}
+  readonly #id: TurnId;
+  readonly #conversationId: ConversationId;
+  readonly #text: string;
+  readonly #acceptedAt: Date;
+  #status: TurnStatus;
+  #answer: string | undefined;
+  #error: string | undefined;
+  #agent: string | undefined;
+  #finishedAt: Date | undefined;
 
-  static accept(value: Base): Turn {
-    return new Turn({ ...checkBase(value), status: 'pending' });
+  private constructor(birth: NewTurn, status: TurnStatus, outcome: Outcome) {
+    this.#id = birth.id;
+    this.#conversationId = birth.conversationId;
+    this.#text = birth.text;
+    this.#acceptedAt = birth.acceptedAt;
+    this.#status = status;
+    this.#answer = outcome.answer;
+    this.#error = outcome.error;
+    this.#agent = outcome.agent;
+    this.#finishedAt = outcome.finishedAt;
   }
 
-  static restore(value: TurnSnapshot): Turn {
-    return new Turn(copySnapshot(value));
+  /** The birth of an accepted turn: always pending, with the values supplied by the Application. */
+  static create(input: NewTurn): Turn {
+    return new Turn(checkBirth(input), 'pending', {});
   }
 
-  snapshot(): TurnSnapshot {
-    return copySnapshot(this.state);
+  /** Restores a saved turn, checking the current invariants without replaying its transitions. */
+  static rehydrate(state: SavedTurn): Turn {
+    const status: unknown = state.status;
+    if (status !== 'pending' && status !== 'answered' && status !== 'failed' && status !== 'interrupted') {
+      throw new ProjectError('Invalid persisted turn state');
+    }
+    return new Turn(checkBirth(state), state.status, checkOutcome(state));
+  }
+
+  get id(): TurnId { return this.#id; }
+  get conversationId(): ConversationId { return this.#conversationId; }
+  get text(): string { return this.#text; }
+  get acceptedAt(): Date { return new Date(this.#acceptedAt.getTime()); }
+  get status(): TurnStatus { return this.#status; }
+  get answerText(): string | undefined { return this.#answer; }
+  get errorMessage(): string | undefined { return this.#error; }
+  /** The agent that formulated the answer, when known. */
+  get respondingAgent(): string | undefined { return this.#agent; }
+  get finishedAt(): Date | undefined {
+    return this.#finishedAt === undefined ? undefined : new Date(this.#finishedAt.getTime());
   }
 
   answer(answer: string, finishedAt: Date, agent?: string): Result<void, TurnTransitionRejected> {
-    if (this.state.status !== 'pending') return { ok: false, error: { kind: 'already_closed' } };
+    if (this.#status !== 'pending') return { ok: false, error: { kind: 'already_closed' } };
     if (typeof answer !== 'string') throw new ProjectError('Invalid turn answer');
     const responder = checkAgent(agent);
     const instant = copyDate(finishedAt);
-    this.state = { ...this.state, status: 'answered', answer, finishedAt: instant, ...responder };
+    this.#status = 'answered';
+    this.#answer = answer;
+    this.#agent = responder;
+    this.#finishedAt = instant;
     return { ok: true, value: undefined };
   }
 
   fail(error: string, finishedAt: Date): Result<void, TurnTransitionRejected> {
-    if (this.state.status !== 'pending') return { ok: false, error: { kind: 'already_closed' } };
+    if (this.#status !== 'pending') return { ok: false, error: { kind: 'already_closed' } };
     if (typeof error !== 'string' || error.length === 0) throw new ProjectError('Invalid public error');
     const instant = copyDate(finishedAt);
-    this.state = { ...this.state, status: 'failed', error, finishedAt: instant };
+    this.#status = 'failed';
+    this.#error = error;
+    this.#finishedAt = instant;
     return { ok: true, value: undefined };
   }
 
   interrupt(finishedAt: Date): Result<void, TurnTransitionRejected> {
-    if (this.state.status !== 'pending') return { ok: false, error: { kind: 'already_closed' } };
+    if (this.#status !== 'pending') return { ok: false, error: { kind: 'already_closed' } };
     const instant = copyDate(finishedAt);
-    this.state = { ...this.state, status: 'interrupted', finishedAt: instant };
+    this.#status = 'interrupted';
+    this.#finishedAt = instant;
     return { ok: true, value: undefined };
   }
 }

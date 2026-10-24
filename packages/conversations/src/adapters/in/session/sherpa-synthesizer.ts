@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
 import { availableParallelism } from 'node:os';
-import { ProjectError } from '../../../project-error.js';
+import { ProjectError } from '../../../application/project-error.js';
 import { type KokoroModelFiles, type VoiceModel, type VoiceModelFiles } from '../../out/voice-config.js';
 import { spokenSentence, takeSentences } from './sentences.js';
 import type { Synthesizer } from './speech-components.js';

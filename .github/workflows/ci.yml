@@ -21,6 +21,7 @@ jobs:
     timeout-minutes: 20
     env:
       BRANCH: ${{ github.head_ref || github.ref_name }}
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
     steps:
       - name: Check out repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -53,21 +54,27 @@ jobs:
       - name: Check the model of the workspace
         run: workspace/ambrogio-model/scripts/model-checks --workspace workspace
 
-      - name: Install pnpm
-        run: npm install --global pnpm@12.11.2
+      # Corepack runs the pnpm version declared in packageManager.
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Install dependencies
         working-directory: workspace/ambrogio-backend
         run: pnpm install --frozen-lockfile
 
-      - name: Check TypeScript
+      - name: Audit dependencies
         working-directory: workspace/ambrogio-backend
-        run: pnpm typecheck
+        run: pnpm audit --audit-level high
 
-      # The workspace packages export their compiled dist/, so tests need the build first.
+      # The workspace packages export their compiled dist/, which the server application and
+      # its tests import: the build precedes the type check and the tests.
       - name: Build
         working-directory: workspace/ambrogio-backend
         run: pnpm build
+
+      - name: Check TypeScript
+        working-directory: workspace/ambrogio-backend
+        run: pnpm typecheck
 
       # The test suite exercises the pre-commit hook, which needs gitleaks on PATH.
       - name: Install verified gitleaks
@@ -84,3 +91,11 @@ jobs:
       - name: Run tests
         working-directory: workspace/ambrogio-backend
         run: pnpm test
+
+      - name: Run integration tests
+        working-directory: workspace/ambrogio-backend
+        run: pnpm test:integration
+
+      - name: Run compiled process tests
+        working-directory: workspace/ambrogio-backend
+        run: pnpm test:e2e

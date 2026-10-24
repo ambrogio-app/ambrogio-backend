@@ -1,5 +1,24 @@
 # Elements
 
+### Ambiente di esecuzione dichiarato del backend
+
+Il processo del backend deve leggere l'ambiente di esecuzione da `AMBROGIO_ENV` prima di ogni altra configurazione, rifiutare l'avvio se la variabile manca o non è valida, e applicare i valori predefiniti di sviluppo del componente HTTP soltanto nell'ambiente `development`, richiedendone il valore esplicito in `test` e `production`.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Profilo dell'ascolto HTTP](../Contracts/ServerFoundation.md#profilo-dellascolto-http)
+  * [Profilo dell'ambiente di esecuzione e del file d'ambiente locale](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#profilo-dellambiente-di-esecuzione-e-del-file-dambiente-locale)
+
+#### Relations
+  * derivedFrom: [Ambiente di esecuzione dichiarato](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#ambiente-di-esecuzione-dichiarato)
+  * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
+  * satisfiedBy: [http-config.ts](../../apps/server/src/runtime/http-config.ts)
+  * satisfiedBy: [environment-variables.ts](../../packages/conversations/src/adapters/out/environment-variables.ts)
+  * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
+---
+
 ### Arresto controllato dei nuovi turni
 
 Quando il server riceve una richiesta di arresto ordinato, deve smettere di accettare nuovi turni prima di interrompere quelli attivi e chiudere le risorse.
@@ -19,9 +38,32 @@ Origine: baseline Reqvire «New work refused on shutdown», adottata.
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
 ---
 
+### Arresto unico e ordinato del server
+
+Quando riceve `SIGINT` o `SIGTERM`, il server deve avviare un solo arresto, smettere di accettare turni, interrompere quelli in corso, chiudere le sessioni conversazionali e poi, ciascuna una sola volta e in ordine inverso di acquisizione, il listener HTTP, i componenti vocali, l'archivio e le connessioni MCP degli agenti, e deve concludere l'arresto entro il tempo massimo del contratto «Finestra di arresto del server».
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Politica di interruzione nell'arresto ordinato](../Contracts/ServerFoundation.md#politica-di-interruzione-nellarresto-ordinato)
+  * [Ciclo di vita dei processi di servizio con Node.js](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#ciclo-di-vita-dei-processi-di-servizio-con-nodejs)
+
+#### Relations
+  * derivedFrom: [Arresto unico, ordinato e limitato nel tempo](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#arresto-unico-ordinato-e-limitato-nel-tempo)
+  * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
+  * satisfiedBy: [http-surface.ts](../../apps/server/src/composition/http-surface.ts)
+  * satisfiedBy: [main.ts](../../apps/server/src/main.ts)
+  * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
+  * satisfiedBy: [lifecycle.ts](../../apps/server/src/runtime/lifecycle.ts)
+  * satisfiedBy: [server-process.ts](../../apps/server/src/runtime/server-process.ts)
+  * satisfiedBy: [compose.example.yaml](../../compose.example.yaml)
+  * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
+---
+
 ### Assenza dei log HTTP automatici
 
-Quando il runtime HTTP del server abilita il logger di Fastify, non deve emettere automaticamente eventi diagnostici di ricezione della richiesta o invio della risposta.
+Il runtime HTTP del server non deve emettere automaticamente eventi diagnostici di ricezione della richiesta o invio della risposta: il logger interno di Fastify deve restare disattivato e gli eventi diagnostici HTTP devono passare soltanto dal logger minimo del backend.
 
 #### Details
 Origine: baseline Reqvire «No automatic HTTP request logs», adottata.
@@ -100,6 +142,25 @@ Origine: baseline Reqvire «No global catalog of use case rejections», adottata
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
+### Audit delle dipendenze nella CI del backend
+
+Quando la CI del backend viene eseguita, il job `Backend checks` di `.github/workflows/ci.yml` deve eseguire l'audit delle dipendenze del backend secondo «Audit delle dipendenze con pnpm», subito dopo l'installazione congelata, e deve fallire se l'audit fallisce.
+
+#### Details
+`pnpm-workspace.yaml` non dichiara `auditConfig`: il backend non ha avvisi accettati. Quando un avviso riguarda una dipendenza transitiva con una versione corretta compatibile con gli intervalli dichiarati, il lockfile si aggiorna con `pnpm update -r <pacchetto>`.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Audit delle dipendenze con pnpm](../../../ambrogio-model/system-model/Contracts/ModelDrivenDevelopment.md#audit-delle-dipendenze-con-pnpm)
+
+#### Relations
+  * derivedFrom: [Audit delle vulnerabilità delle dipendenze](../../../ambrogio-model/system-model/Requirements/ModelDrivenDevelopment.md#audit-delle-vulnerabilità-delle-dipendenze)
+  * satisfiedBy: [ci.yml](../../.github/workflows/ci.yml)
+  * satisfiedBy: [pnpm-workspace.yaml](../../pnpm-workspace.yaml)
+---
+
 ### Blocco locale dei commit con segreti
 
 Il repository backend deve realizzare il controllo dei segreti prima del commit con l'hook versionato `.githooks/pre-commit`, eseguito quando il clone ha attivato gli hook con `git config core.hooksPath .githooks`.
@@ -131,22 +192,26 @@ Origine: baseline Reqvire «Rejection-specific fields only», adottata.
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
-### Caricamento iniziale delle configurazioni TypeScript
+### Caricamento iniziale della configurazione del backend
 
-Quando un processo del server avvia un ingresso, deve caricare una volta i moduli TypeScript locali dei componenti necessari prima di attivarli. I moduli devono ammettere valori letti dalle variabili d'ambiente fornite dal deployment.
+Quando un processo del backend avvia un ingresso, deve leggere una sola volta, all'avvio e prima di attivarli, la configurazione dei componenti necessari a quell'ingresso dalle variabili d'ambiente del processo, tramite il modulo di configurazione di ciascun componente, e non deve rileggerla durante il lavoro.
 
 #### Details
-Origine: baseline Reqvire «Configuration module per component reading environment variables», adattata: il modulo TypeScript di ogni componente è fornito dall'installazione fuori dalla build e può contenere i valori, oltre a leggerli dalle variabili d'ambiente; «One-time configuration load at startup», adottata; «Ordered startup before accepting work», adottata.
+Origine: baseline Reqvire «One-time configuration load at startup», adottata; «Ordered startup before accepting work», adottata.
 
 #### Metadata
   * type: requirement
 
+#### Contract References
+  * [Profilo dell'ambiente di esecuzione e del file d'ambiente locale](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#profilo-dellambiente-di-esecuzione-e-del-file-dambiente-locale)
+
 #### Relations
+  * derivedFrom: [Modulo di configurazione per componente dalle variabili d'ambiente](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#modulo-di-configurazione-per-componente-dalle-variabili-dambiente)
   * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
   * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
   * satisfiedBy: [http-config.ts](../../apps/server/src/runtime/http-config.ts)
-  * satisfiedBy: [compose.example.yaml](../../compose.example.yaml)
   * satisfiedBy: [conversation-config.ts](../../packages/conversations/src/adapters/out/conversation-config.ts)
+  * satisfiedBy: [environment-variables.ts](../../packages/conversations/src/adapters/out/environment-variables.ts)
   * satisfiedBy: [voice-config.ts](../../packages/conversations/src/adapters/out/voice-config.ts)
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
 ---
@@ -170,6 +235,24 @@ Origine: baseline Reqvire «Interrupted state persisted before closing resources
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
 ---
 
+### Comando di verifica completo del backend
+
+Il backend deve offrire `pnpm verify` secondo «Comando di verifica completo con pnpm», con i comandi dei controlli successivi all'installazione nell'ordine del job `Backend checks` della CI.
+
+#### Details
+I comandi del punto 5 del contratto sono, in quest'ordine, `pnpm build`, `pnpm typecheck`, `pnpm test`, `pnpm test:integration` e `pnpm test:e2e`; la build precede il controllo TypeScript e i test perché i package del workspace esportano la propria cartella `dist/`, che l'applicazione server e i suoi test importano. La suite di test prova l'hook pre-commit e richiede gitleaks nel `PATH`.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Comando di verifica completo con pnpm](../../../ambrogio-model/system-model/Contracts/ModelDrivenDevelopment.md#comando-di-verifica-completo-con-pnpm)
+
+#### Relations
+  * derivedFrom: [Comando di verifica completo](../../../ambrogio-model/system-model/Requirements/ModelDrivenDevelopment.md#comando-di-verifica-completo)
+  * satisfiedBy: [package.json](../../package.json)
+---
+
 ### Compilazione TypeScript strict del server
 
 La compilazione TypeScript del server deve avere l'opzione effettiva `strict` abilitata.
@@ -186,13 +269,16 @@ Origine: baseline Reqvire «Strict TypeScript compilation», adottata.
 
 ### Configurazione esplicita dell'ascolto HTTP
 
-Quando il processo avvia l'ingresso HTTP, deve usare un indirizzo host e una porta dichiarati esplicitamente nel configurazione locale del componente HTTP e impedire l'avvio se tali valori sono assenti o invalidi.
+Quando il processo avvia l'ingresso HTTP, deve ascoltare all'indirizzo host e alla porta dichiarati esplicitamente nella configurazione del componente HTTP e rifiutare l'avvio quando uno dei due valori manca o non è valido; soltanto nell'ambiente `development` i valori assenti devono assumere i valori predefiniti di sviluppo dichiarati dal componente.
 
 #### Details
-Origine: baseline Reqvire «Explicit HTTP listener configuration», adattata: il caricatore non applica valori predefiniti, nemmeno in sviluppo.
+Origine: baseline Reqvire «Explicit HTTP listener configuration», adottata.
 
 #### Metadata
   * type: requirement
+
+#### Contract References
+  * [Profilo dell'ambiente di esecuzione e del file d'ambiente locale](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#profilo-dellambiente-di-esecuzione-e-del-file-dambiente-locale)
 
 #### Relations
   * satisfiedBy: [http-config.ts](../../apps/server/src/runtime/http-config.ts)
@@ -228,7 +314,7 @@ Quando un `catch` del server aggiunge un contesto operativo concreto a un guasto
 
 ### Controlli CI delle modifiche funzionali del server
 
-Quando la CI del backend viene eseguita, il job `Backend checks` di `.github/workflows/ci.yml` deve eseguire il checkout del repository in `workspace/ambrogio-backend`, scaricare affiancati gli altri repository del modello con `ambrogio-model/scripts/checkout-workspace`, eseguire `ambrogio-model/scripts/model-checks` sulla cartella `workspace` e poi, nella cartella del backend, il controllo TypeScript, la build e la suite backend con Vitest, comprendente prove degli adapter di persistenza su SQLite reale quando tali adapter esistono e la prova dell'hook dei segreti con lo scanner installato e verificato, e deve fallire se uno di questi controlli fallisce.
+Quando la CI del backend viene eseguita, il job `Backend checks` di `.github/workflows/ci.yml` deve eseguire il checkout del repository in `workspace/ambrogio-backend`, scaricare affiancati gli altri repository del modello con `ambrogio-model/scripts/checkout-workspace`, eseguire `ambrogio-model/scripts/model-checks` sulla cartella `workspace` e poi, nella cartella del backend, l'installazione delle dipendenze, l'audit delle dipendenze, la build, il controllo TypeScript e la suite backend con Vitest nella selezione veloce, con la prova dell'hook dei segreti e lo scanner installato e verificato, nella selezione di integrazione, con le prove degli adapter di persistenza su SQLite reale quando tali adapter esistono, e nella selezione dei processi compilati, e deve fallire se uno di questi controlli fallisce.
 
 #### Details
 Origine: baseline Reqvire «Persistence adapter tests against a real database», adottata.
@@ -245,6 +331,21 @@ Origine: baseline Reqvire «Persistence adapter tests against a real database»,
   * derivedFrom: [Controlli CI dei repository di Ambrogio](../../../ambrogio-model/system-model/Requirements/ModelDrivenDevelopment.md#controlli-ci-dei-repository-di-ambrogio)
   * satisfiedBy: [ci.yml](../../.github/workflows/ci.yml)
   * specify: [Sviluppo governato dal modello](../../../ambrogio-model/system-model/Capabilities/Engineering.md#sviluppo-governato-dal-modello)
+---
+
+### Controlli del modello prima del commit del backend
+
+Quando si crea un commit in un clone del backend con gli hook versionati attivi, l'hook `.githooks/pre-commit` del backend deve eseguire i controlli del modello di `ambrogio-model` affiancato dopo la scansione dei segreti, secondo «Controlli del modello nell'hook pre-commit».
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Controlli del modello nell'hook pre-commit](../../../ambrogio-model/system-model/Contracts/ModelDrivenDevelopment.md#controlli-del-modello-nellhook-pre-commit)
+
+#### Relations
+  * derivedFrom: [Controlli del modello prima del commit](../../../ambrogio-model/system-model/Requirements/ModelDrivenDevelopment.md#controlli-del-modello-prima-del-commit)
+  * satisfiedBy: [pre-commit](../../.githooks/pre-commit)
 ---
 
 ### Controlli obbligatori prima del merge del backend
@@ -273,21 +374,59 @@ Quando l'MVP è installato senza autenticazione applicativa, il deployment deve 
   * specify: [Assistenza personale domestica](../../../ambrogio-model/system-model/Capabilities/Product.md#assistenza-personale-domestica)
 ---
 
-### Credenziali API nel modulo TypeScript del componente
+### Costruzione del server separata dall'ascolto
 
-Quando un componente del server usa credenziali per un'API esterna, deve riceverle dal proprio modulo TypeScript di configurazione; il modulo ammette di leggerle dall'ambiente del processo.
-
-#### Details
-Origine: baseline Reqvire «Configuration module per component reading environment variables», adattata: il modulo TypeScript di ogni componente è fornito dall'installazione fuori dalla build e può contenere i valori, oltre a leggerli dalle variabili d'ambiente.
+La costruzione del server conversazionale deve preparare configurazione, agenti, archivio, componenti vocali e server HTTP e restituire il server, l'indirizzo di ascolto validato e la funzione di chiusura senza mettersi in ascolto, e l'entrypoint del processo deve aprire l'ascolto e decidere l'esito del processo; l'ingresso di prova pubblico deve seguire la stessa separazione.
 
 #### Metadata
   * type: requirement
 
 #### Contract References
-  * [Profilo di bootstrap delle configurazioni TypeScript](../Contracts/ServerFoundation.md#profilo-di-bootstrap-delle-configurazioni-typescript)
+  * [Ciclo di vita dei processi di servizio con Node.js](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#ciclo-di-vita-dei-processi-di-servizio-con-nodejs)
 
 #### Relations
+  * derivedFrom: [Costruzione separata dall'attivazione](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#costruzione-separata-dallattivazione)
+  * satisfiedBy: [main.ts](../../apps/server/src/main.ts)
+  * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
+  * satisfiedBy: [server-process.ts](../../apps/server/src/runtime/server-process.ts)
+  * satisfiedBy: [test-server.ts](../../apps/server/src/runtime/test-server.ts)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
+---
+
+### Credenziali API dalle variabili d'ambiente
+
+Quando un componente del backend usa credenziali per un'API esterna, deve riceverle dalle variabili d'ambiente del processo tramite il proprio modulo di configurazione, e nessun file di configurazione del backend deve contenere una credenziale.
+
+#### Details
+Le credenziali degli agenti sono indicate nei file degli agenti con il nome della variabile d'ambiente che le contiene.
+
+Origine: baseline Reqvire «Configuration module per component reading environment variables», adottata.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Formato JSON dei file degli agenti](../Contracts/FamilyConversation.md#formato-json-dei-file-degli-agenti)
+
+#### Relations
+  * derivedFrom: [Modulo di configurazione per componente dalle variabili d'ambiente](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#modulo-di-configurazione-per-componente-dalle-variabili-dambiente)
+  * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
+---
+
+### Database di prova isolati del backend
+
+Le prove del backend che usano un database SQLite devono usare soltanto database che creano, in memoria o in una cartella temporanea propria, costruiti con le migrazioni di produzione, devono cancellare soltanto le cartelle che hanno creato e non devono leggere la configurazione dell'installazione né ripiegare su un archivio di sviluppo o di produzione.
+
+#### Details
+Origine: baseline Reqvire «Isolated and guarded test databases», adattata: con SQLite incorporato ogni prova crea il proprio database invece di un database per worker su un server, quindi non servono il controllo del bersaglio, la pulizia dei dati fra i casi né un servizio di database da cui la suite dipenda.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [sqlite-turn-repository.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.integration.spec.ts)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
 ### Definizione locale del tipo Result
@@ -321,19 +460,18 @@ Origine: baseline Reqvire «Diagnostics of unexpected failures in technical comp
 
 ### Diagnostica del mancato avvio del server
 
-Se la preparazione del processo server fallisce prima che il server sia in ascolto, il processo deve emettere un unico log diagnostico definitivo che identifichi la causa del mancato avvio senza riprodurre valori segreti, comunicare il mancato avvio su stderr e terminare con un codice di uscita non riuscito.
-
-#### Details
-Origine: baseline Reqvire «Startup failure diagnostics», adottata.
+Se la preparazione del processo server o l'apertura dell'ascolto HTTP falliscono, il processo deve emettere un unico log diagnostico definitivo `server_startup_failed` che identifichi la causa del mancato avvio senza riprodurre valori segreti, comunicare il mancato avvio su stderr e terminare con un codice di uscita non riuscito, secondo il contratto «Evento diagnostico del mancato avvio del server».
 
 #### Metadata
   * type: requirement
 
 #### Relations
+  * derivedFrom: [Diagnostica del mancato avvio](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#diagnostica-del-mancato-avvio)
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
+  * satisfiedBy: [http-surface.ts](../../apps/server/src/composition/http-surface.ts)
   * satisfiedBy: [main.ts](../../apps/server/src/main.ts)
   * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
-  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
+  * satisfiedBy: [server-process.ts](../../apps/server/src/runtime/server-process.ts)
   * satisfiedBy: [startup-failure.ts](../../apps/server/src/runtime/startup-failure.ts)
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
 ---
@@ -349,7 +487,7 @@ Origine: baseline Reqvire «Use case declarations in a single file», adottata.
   * type: requirement
 
 #### Contract References
-  * [Convenzione dei nomi di casi d'uso e adapter](../../../ambrogio-model/system-model/Contracts/CodeArchitecture.md#convenzione-dei-nomi-di-casi-duso-e-adapter)
+  * [Convenzione dei nomi di casi d'uso, porte e adapter](../../../ambrogio-model/system-model/Contracts/CodeArchitecture.md#convenzione-dei-nomi-di-casi-duso-porte-e-adapter)
 
 #### Relations
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
@@ -399,10 +537,12 @@ Origine: baseline Reqvire «Rejection variants without classes or instanceof», 
 
 ### Distribuzione del server come immagine Docker
 
-Quando il progetto distribuisce il server, deve fornire un'immagine Docker eseguibile del server.
+Quando il progetto distribuisce il server, deve fornire un'immagine Docker eseguibile del server, il cui filesystem non contiene i valori effettivi della configurazione né i dati persistenti, costruita da un contesto di build che esclude storia Git, dipendenze installate, risultati di build, modello, test, file di database e file d'ambiente.
 
 #### Details
-Origine: baseline Reqvire «Server distributed as a container image», adottata.
+I modelli vocali inclusi sono risorse in sola lettura sostituibili con un mount, non configurazione.
+
+Origine: baseline Reqvire «Server distributed as a container image», adottata; «Configuration and data outside the container image», adottata; «Minimal container build context», adottata.
 
 #### Metadata
   * type: requirement
@@ -411,19 +551,20 @@ Origine: baseline Reqvire «Server distributed as a container image», adottata.
   * [Catalogo bilingue dei modelli vocali nell'immagine backend](../Contracts/ServerFoundation.md#catalogo-bilingue-dei-modelli-vocali-nellimmagine-backend)
 
 #### Relations
+  * satisfiedBy: [.dockerignore](../../.dockerignore)
   * satisfiedBy: [Dockerfile](../../Dockerfile)
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
 ---
 
 ### Distribuzione mirata della configurazione validata
 
-Quando il processo ha validato le configurazioni TypeScript dei componenti attivi, la composition root deve fornire a ciascun componente soltanto i valori di configurazione che gli servono, già convertiti nei tipi previsti, senza far leggere direttamente file o variabili d'ambiente a Domain e ai casi d'uso Application.
+Quando il processo ha validato la configurazione dei componenti attivi, la composition root deve fornire a ciascun componente soltanto i valori di configurazione che gli servono, già convertiti nei tipi previsti, senza far leggere direttamente file o variabili d'ambiente a Domain e ai casi d'uso Application.
 
 #### Metadata
   * type: requirement
 
 #### Contract References
-  * [Profilo di bootstrap delle configurazioni TypeScript](../Contracts/ServerFoundation.md#profilo-di-bootstrap-delle-configurazioni-typescript)
+  * [Profilo di bootstrap della configurazione del backend](../Contracts/ServerFoundation.md#profilo-di-bootstrap-della-configurazione-del-backend)
 
 #### Relations
   * derivedFrom: [Validazione della configurazione prima delle risorse](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#validazione-della-configurazione-prima-delle-risorse)
@@ -471,15 +612,15 @@ Origine: baseline Reqvire «No technical details in public failure messages», a
 
 #### Relations
   * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
-  * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
-  * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
+  * satisfiedBy: [get-conversation.unversioned-route.adapter.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.unversioned-route.adapter.ts)
+  * satisfiedBy: [list-conversations.unversioned-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.unversioned-route.adapter.ts)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Esclusione dei file di configurazione effettivi dagli artefatti
 
-Quando il server usa file di configurazione locali effettivi, tali file devono restare esterni al repository Git e all'immagine container.
+Quando il backend usa file di configurazione effettivi, come il file `.env` di sviluppo o i file degli agenti di un'installazione, tali file devono restare esterni al repository Git e all'immagine container.
 
 #### Metadata
   * type: requirement
@@ -523,33 +664,77 @@ Origine: baseline Reqvire «Container start without Compose», adottata.
 
 ### Esempi di configurazione privi di credenziali
 
-Quando il repository fornisce esempi di file di configurazione TypeScript, tali esempi non devono contenere credenziali effettive.
+Quando il repository fornisce esempi di configurazione, come `.env.example`, `compose.example.yaml` e i file degli agenti d'esempio, tali esempi non devono contenere credenziali effettive.
 
 #### Metadata
   * type: requirement
 
 #### Relations
   * derivedFrom: [Configurazioni effettive escluse dagli artefatti](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#configurazioni-effettive-escluse-dagli-artefatti)
-  * satisfiedBy: [home-assistant.ts](../../examples/agents/home-assistant.ts)
+  * satisfiedBy: [.env.example](../../.env.example)
+  * satisfiedBy: [compose.example.yaml](../../compose.example.yaml)
+  * satisfiedBy: [generic.json](../../examples/agents/generic.json)
+  * satisfiedBy: [home-assistant.json](../../examples/agents/home-assistant.json)
+  * satisfiedBy: [orchestrator.json](../../examples/agents/orchestrator.json)
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
 ---
 
-### File TypeScript separato per componente configurabile
+### Esito del ciclo di vita del server conservato nei guasti
 
-Quando un componente del server richiede configurazione locale, la sua configurazione deve risiedere in un modulo TypeScript dedicato, separato dai moduli degli altri componenti.
-
-#### Details
-Origine: baseline Reqvire «Configuration module per component reading environment variables», adattata: il modulo TypeScript di ogni componente è fornito dall'installazione fuori dalla build e può contenere i valori, oltre a leggerli dalle variabili d'ambiente.
+Quando l'avvio o l'arresto del server falliscono, il server deve conservare il guasto dell'avvio come primo guasto, raccogliere i guasti di pulizia e di chiusura senza perderli né presentarli come cause l'uno dell'altro, ed emetterli nell'unico log diagnostico definitivo dell'avvio o dell'arresto, terminando con codice di uscita 1 anche quando soltanto la chiusura di una risorsa è fallita.
 
 #### Metadata
   * type: requirement
 
 #### Contract References
-  * [Profilo di bootstrap delle configurazioni TypeScript](../Contracts/ServerFoundation.md#profilo-di-bootstrap-delle-configurazioni-typescript)
+  * [Finestra di arresto del server](../Contracts/ServerFoundation.md#finestra-di-arresto-del-server)
+  * [Ciclo di vita dei processi di servizio con Node.js](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#ciclo-di-vita-dei-processi-di-servizio-con-nodejs)
 
 #### Relations
-  * satisfiedBy: [conversations.ts](../../examples/conversations.ts)
-  * satisfiedBy: [http.ts](../../examples/http.ts)
+  * derivedFrom: [Esito del ciclo di vita conservato nei guasti](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#esito-del-ciclo-di-vita-conservato-nei-guasti)
+  * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
+  * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
+  * satisfiedBy: [lifecycle.ts](../../apps/server/src/runtime/lifecycle.ts)
+  * satisfiedBy: [server-process.ts](../../apps/server/src/runtime/server-process.ts)
+  * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
+---
+
+### File JSON di soli dati per gli agenti
+
+Il backend deve leggere la configurazione di ogni agente da un file JSON di soli dati nella directory degli agenti, validarla con lo schema degli agenti prima di attivare l'agente, e rifiutare un file che contiene una credenziale invece del nome della variabile d'ambiente che la fornisce.
+
+#### Details
+L'insieme degli agenti resta aperto: chi installa aggiunge o toglie un agente aggiungendo o togliendo il suo file, senza scrivere codice.
+
+Origine: baseline Reqvire «Configuration module per component reading environment variables», adattata: la configurazione degli agenti è un file JSON di soli dati montato nella directory degli agenti e letto dal modulo di configurazione degli agenti, invece di sole variabili d'ambiente; le credenziali restano variabili d'ambiente, riferite nel file per nome.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Profilo dell'ambiente di esecuzione e del file d'ambiente locale](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#profilo-dellambiente-di-esecuzione-e-del-file-dambiente-locale)
+
+#### Relations
+  * derivedFrom: [Modulo di configurazione per componente dalle variabili d'ambiente](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#modulo-di-configurazione-per-componente-dalle-variabili-dambiente)
+  * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
+  * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
+---
+
+### File d'ambiente locale del backend
+
+Il backend deve caricare il file `.env` della radice soltanto con lo script di sviluppo `dev`, che avvia il server compilato con `node --env-file=.env`, deve fornire `.env.example` secondo il profilo comune, e il suo codice non deve caricare file d'ambiente.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Profilo dell'ambiente di esecuzione e del file d'ambiente locale](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#profilo-dellambiente-di-esecuzione-e-del-file-dambiente-locale)
+
+#### Relations
+  * derivedFrom: [Caricamento esplicito del file d'ambiente locale](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#caricamento-esplicito-del-file-dambiente-locale)
+  * satisfiedBy: [.env.example](../../.env.example)
+  * satisfiedBy: [.gitignore](../../.gitignore)
+  * satisfiedBy: [package.json](../../package.json)
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
 ---
 
@@ -729,6 +914,24 @@ Quando è richiesta la raccolta centralizzata dei log tecnici del server HTTP, l
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
+### Installazione delle dipendenze del backend con pnpm e Corepack
+
+Il backend deve dichiarare in `package.json` `"packageManager": "pnpm@12.11.2"` e il job `Backend checks` della CI e la fase di build del `Dockerfile` devono attivare quella versione con Corepack e installare le dipendenze del workspace con `pnpm install --frozen-lockfile`, secondo «Profilo di installazione con pnpm e Corepack», con le versioni esatte, gli script di build ammessi e l'attesa per le nuove versioni di «Profilo di installazione delle dipendenze del backend».
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Profilo di installazione con pnpm e Corepack](../../../ambrogio-model/system-model/Contracts/ModelDrivenDevelopment.md#profilo-di-installazione-con-pnpm-e-corepack)
+
+#### Relations
+  * derivedFrom: [Installazione delle dipendenze con pnpm attivato da Corepack](../../../ambrogio-model/system-model/Requirements/ModelDrivenDevelopment.md#installazione-delle-dipendenze-con-pnpm-attivato-da-corepack)
+  * satisfiedBy: [ci.yml](../../.github/workflows/ci.yml)
+  * satisfiedBy: [Dockerfile](../../Dockerfile)
+  * satisfiedBy: [package.json](../../package.json)
+  * satisfiedBy: [pnpm-workspace.yaml](../../pnpm-workspace.yaml)
+---
+
 ### Interruzione dei turni durante l'arresto
 
 Quando il server riceve una richiesta di arresto ordinato, deve interrompere i turni attivi senza attendere che completino la risposta.
@@ -807,6 +1010,30 @@ Origine: baseline Reqvire «Error log at the public fallback», adottata.
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
+### Logger minimo del backend
+
+I componenti tecnici del backend che registrano eventi diagnostici devono ricevere il logger minimo creato una sola volta da `main.ts` con Pino al livello minimo `warn`, o dall'ingresso di prova pubblico per il proprio processo, e il confine HTTP deve passare alle rotte e alle sessioni conversazionali un logger derivato con il `correlationId` della richiesta.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Profilo del logger con Pino](../../../ambrogio-model/system-model/Contracts/CodeArchitecture.md#profilo-del-logger-con-pino)
+
+#### Relations
+  * derivedFrom: [Interfaccia minima del logger con un solo logger di base](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#interfaccia-minima-del-logger-con-un-solo-logger-di-base)
+  * satisfiedBy: [session-route.adapter.ts](../../apps/server/src/adapters/in/session-route.adapter.ts)
+  * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
+  * satisfiedBy: [main.ts](../../apps/server/src/main.ts)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
+  * satisfiedBy: [logger.ts](../../apps/server/src/runtime/logger.ts)
+  * satisfiedBy: [test-server.ts](../../apps/server/src/runtime/test-server.ts)
+  * satisfiedBy: [conversation-routes.ts](../../packages/conversations/src/adapters/in/http/conversation-routes.ts)
+  * satisfiedBy: [logger.ts](../../packages/conversations/src/adapters/in/logger.ts)
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
+---
+
 ### Mapping esaustivo dei rifiuti previsti
 
 Quando un mapping del server deve gestire tutte le varianti di un'unione di rifiuti previsti, il codice TypeScript deve usare uno `switch` su `kind` con un ramo per ogni variante e un `default` che passi il valore completo della variante a `assertNever`.
@@ -835,6 +1062,25 @@ Quando il progetto distribuisce l'immagine Docker del backend, deve includere mo
   * specify: [Conversazione a voce](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-a-voce)
 ---
 
+### Modulo di configurazione per componente del backend
+
+Ogni componente configurabile del backend, cioè HTTP, Conversazioni, Voce e Agenti, deve avere un proprio modulo di configurazione TypeScript nella build, che legge soltanto le variabili d'ambiente del componente e le valida con lo schema del componente, senza contenere valori effettivi; chi installa deve configurare il backend con variabili d'ambiente e con i file di dati degli agenti, senza fornire codice.
+
+#### Details
+Origine: baseline Reqvire «Configuration module per component reading environment variables», adottata, con l'adattamento dei file degli agenti registrato in «File JSON di soli dati per gli agenti».
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * derivedFrom: [Modulo di configurazione per componente dalle variabili d'ambiente](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#modulo-di-configurazione-per-componente-dalle-variabili-dambiente)
+  * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
+  * satisfiedBy: [http-config.ts](../../apps/server/src/runtime/http-config.ts)
+  * satisfiedBy: [conversation-config.ts](../../packages/conversations/src/adapters/out/conversation-config.ts)
+  * satisfiedBy: [voice-config.ts](../../packages/conversations/src/adapters/out/voice-config.ts)
+  * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
+---
+
 ### Nessun log automatico per esiti previsti
 
 Quando il server gestisce un rifiuto previsto di Domain o Application, un errore di protocollo previsto o un guasto tecnico tradotto in un esito previsto, non deve emettere automaticamente un log dedicato di livello `warn` o `error` per il solo verificarsi di tale esito.
@@ -861,22 +1107,23 @@ Quando il logger del server HTTP emette un evento diagnostico, la riga JSON deve
 
 ### Nomi dei file secondo il ruolo architetturale nel backend
 
-I file del codice di produzione dell'applicazione server e dei package business del backend devono seguire «Convenzione dei nomi di casi d'uso e adapter».
+I file del codice di produzione dell'applicazione server e dei package business del backend devono seguire «Convenzione dei nomi di casi d'uso, porte e adapter».
 
 #### Details
-Esempi nel backend: il caso d'uso che scambia un turno si chiama `exchange-turn.use-case.ts`; l'implementazione SQLite di una porta di lettura dello storico si chiama `sqlite-conversation-history-read.adapter.ts`. Le regole sulla dichiarazione di firme, factory ed esiti restano applicabili nel loro ambito.
+Esempi nel backend: il caso d'uso che scambia un turno si chiama `exchange-turn.use-case.ts`; la porta di lettura dello storico si chiama `conversation-history-read.port.ts` e la sua implementazione SQLite `sqlite-conversation-history-read.adapter.ts`. Le regole sulla dichiarazione di firme, factory ed esiti restano applicabili nel loro ambito.
 
 #### Metadata
   * type: requirement
 
 #### Contract References
-  * [Convenzione dei nomi di casi d'uso e adapter](../../../ambrogio-model/system-model/Contracts/CodeArchitecture.md#convenzione-dei-nomi-di-casi-duso-e-adapter)
+  * [Convenzione dei nomi di casi d'uso, porte e adapter](../../../ambrogio-model/system-model/Contracts/CodeArchitecture.md#convenzione-dei-nomi-di-casi-duso-porte-e-adapter)
 
 #### Relations
   * derivedFrom: [Nomi dei file secondo il ruolo architetturale](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#nomi-dei-file-secondo-il-ruolo-architetturale)
   * satisfiedBy: [session-route.adapter.ts](../../apps/server/src/adapters/in/session-route.adapter.ts)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
+  * satisfiedBy: [conversation-history-read.port.ts](../../packages/conversations/src/application/conversation-history-read.port.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
@@ -894,8 +1141,8 @@ Origine: baseline Reqvire «Diagnostic normalization at the definitive boundary�
 #### Relations
   * derivedFrom: [Diagnosi definitiva unica dei guasti inattesi](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#diagnosi-definitiva-unica-dei-guasti-inattesi)
   * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
-  * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
-  * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
+  * satisfiedBy: [get-conversation.unversioned-route.adapter.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.unversioned-route.adapter.ts)
+  * satisfiedBy: [list-conversations.unversioned-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.unversioned-route.adapter.ts)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
@@ -926,6 +1173,23 @@ Origine: baseline Reqvire «Explicitly configured CORS origins», adottata.
 #### Relations
   * satisfiedBy: [http-config.ts](../../apps/server/src/runtime/http-config.ts)
   * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
+  * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
+---
+
+### Percorso fatale del server
+
+Quando un errore sfugge a ogni confine controllato del processo server, compreso un rifiuto di promessa non gestito, il processo deve scrivere su stderr soltanto la riga fissa `Ambrogio backend stopped after a fatal error.` e terminare con codice di uscita 1, senza serializzare il valore sollevato né emettere log ordinari.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Ciclo di vita dei processi di servizio con Node.js](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#ciclo-di-vita-dei-processi-di-servizio-con-nodejs)
+
+#### Relations
+  * derivedFrom: [Percorso fatale separato](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#percorso-fatale-separato)
+  * satisfiedBy: [main.ts](../../apps/server/src/main.ts)
+  * satisfiedBy: [fatal-path.ts](../../apps/server/src/runtime/fatal-path.ts)
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
 ---
 
@@ -1011,8 +1275,8 @@ Quando un componente del server decide definitivamente l'esito esterno di un gua
 #### Relations
   * derivedFrom: [Diagnosi definitiva unica dei guasti inattesi](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#diagnosi-definitiva-unica-dei-guasti-inattesi)
   * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
-  * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
-  * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
+  * satisfiedBy: [get-conversation.unversioned-route.adapter.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.unversioned-route.adapter.ts)
+  * satisfiedBy: [list-conversations.unversioned-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.unversioned-route.adapter.ts)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
@@ -1037,18 +1301,19 @@ Quando viene creato un tag di release `v*` del backend, il progetto deve pubblic
 
 ### Rappresentazione di err nel log JSON
 
-Quando il logger del server emette la riga JSON di un log diagnostico definitivo HTTP, la riga deve contenere una rappresentazione serializzata del campo `err` conforme al profilo controllato di serializzazione.
-
-#### Details
-Origine: baseline Reqvire «Controlled serialization of err», adottata.
+Quando il logger del server emette la riga JSON di un log diagnostico definitivo, la riga deve contenere una rappresentazione del campo `err` conforme al profilo controllato di serializzazione, con `ProjectError` come errore del progetto e `Unexpected backend failure` come descrizione costante di ogni altro valore.
 
 #### Metadata
   * type: requirement
 
+#### Contract References
+  * [Profilo controllato di serializzazione di err](../../../ambrogio-model/system-model/Contracts/CodeArchitecture.md#profilo-controllato-di-serializzazione-di-err)
+
 #### Relations
-  * derivedFrom: [Diagnosi definitiva unica dei guasti inattesi](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#diagnosi-definitiva-unica-dei-guasti-inattesi)
-  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
-  * satisfiedBy: [project-error.ts](../../packages/conversations/src/project-error.ts)
+  * derivedFrom: [Serializzazione controllata di err](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#serializzazione-controllata-di-err)
+  * satisfiedBy: [lifecycle.ts](../../apps/server/src/runtime/lifecycle.ts)
+  * satisfiedBy: [logger.ts](../../apps/server/src/runtime/logger.ts)
+  * satisfiedBy: [project-error.ts](../../packages/conversations/src/domain/project-error.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -1076,7 +1341,7 @@ Quando un'operazione Domain, un caso d'uso Application o una porta Application d
 
 #### Relations
   * derivedFrom: [Esiti previsti come valori tipizzati](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#esiti-previsti-come-valori-tipizzati)
-  * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
+  * satisfiedBy: [sqlite-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.ts)
   * satisfiedBy: [begin-turn.use-case.ts](../../packages/conversations/src/application/begin-turn.use-case.ts)
   * satisfiedBy: [complete-turn.use-case.ts](../../packages/conversations/src/application/complete-turn.use-case.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
@@ -1111,8 +1376,8 @@ Quando il runtime HTTP del server emette un evento diagnostico applicativo, la r
 #### Relations
   * derivedFrom: [Log tecnici JSON con Pino](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#log-tecnici-json-con-pino)
   * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
-  * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
-  * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
+  * satisfiedBy: [get-conversation.unversioned-route.adapter.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.unversioned-route.adapter.ts)
+  * satisfiedBy: [list-conversations.unversioned-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.unversioned-route.adapter.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -1128,9 +1393,29 @@ Origine: baseline Reqvire «Public message separated from technical diagnosis»,
 
 #### Relations
   * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
-  * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
-  * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
+  * satisfiedBy: [get-conversation.unversioned-route.adapter.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.unversioned-route.adapter.ts)
+  * satisfiedBy: [list-conversations.unversioned-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.unversioned-route.adapter.ts)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
+---
+
+### Server compilato provato come processo
+
+La selezione `e2e` del backend deve avviare il punto d'ingresso compilato del server come processo figlio e verificare che risolva i propri moduli, si avvii in produzione su un archivio SQLite nuovo, risponda all'elenco delle conversazioni di `/api/v1`, termini con codice 0 a `SIGTERM` e, senza ambiente di esecuzione, termini con codice 1, un solo evento `server_startup_failed` e la riga fissa su stderr.
+
+#### Details
+Le matrici dei casi di configurazione, delle rotte e del ciclo di vita restano nelle prove dei singoli confini.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Suite di test del backend](../Contracts/ServerFoundation.md#suite-di-test-del-backend)
+
+#### Relations
+  * derivedFrom: [Artefatti compilati provati come processi](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#artefatti-compilati-provati-come-processi)
+  * satisfiedBy: [main.e2e.spec.ts](../../apps/server/src/main.e2e.spec.ts)
+  * satisfiedBy: [vitest.config.ts](../../vitest.config.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -1193,7 +1478,7 @@ Quando il server HTTP emette un evento diagnostico tecnico, deve usare Pino come
 
 ### Validazione preventiva della configurazione attiva
 
-Quando un processo del server prepara un ingresso, deve verificare presenza, formato e valori richiesti dei moduli TypeScript dei componenti effettivamente attivi prima di creare o attivare le risorse che li usano; una configurazione non valida deve impedire l'attivazione dell'ingresso e produrre un errore sicuro al confine di avvio.
+Quando un processo del server prepara un ingresso, deve verificare presenza, formato e valori richiesti della configurazione dei componenti effettivamente attivi, letta dai rispettivi moduli di configurazione, prima di creare o attivare le risorse che la usano; una configurazione non valida deve impedire l'attivazione dell'ingresso e produrre un errore sicuro al confine di avvio.
 
 #### Details
 Origine: baseline Reqvire «Ordered startup before accepting work», adottata.
@@ -1202,11 +1487,31 @@ Origine: baseline Reqvire «Ordered startup before accepting work», adottata.
   * type: requirement
 
 #### Contract References
-  * [Profilo di bootstrap delle configurazioni TypeScript](../Contracts/ServerFoundation.md#profilo-di-bootstrap-delle-configurazioni-typescript)
+  * [Profilo di bootstrap della configurazione del backend](../Contracts/ServerFoundation.md#profilo-di-bootstrap-della-configurazione-del-backend)
 
 #### Relations
   * derivedFrom: [Validazione della configurazione prima delle risorse](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#validazione-della-configurazione-prima-delle-risorse)
   * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
+  * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
+---
+
+### Valori predefiniti del backend applicati dal proprietario
+
+Ogni valore predefinito della configurazione del backend deve essere dichiarato e applicato soltanto dal modulo di configurazione del componente che lo possiede, e l'ingresso di prova, i file d'esempio, `.env.example` e `compose.example.yaml` non devono ripeterlo.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Profilo di bootstrap della configurazione del backend](../Contracts/ServerFoundation.md#profilo-di-bootstrap-della-configurazione-del-backend)
+
+#### Relations
+  * derivedFrom: [Valori predefiniti applicati dal proprietario](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#valori-predefiniti-applicati-dal-proprietario)
+  * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
+  * satisfiedBy: [http-config.ts](../../apps/server/src/runtime/http-config.ts)
+  * satisfiedBy: [test-server.ts](../../apps/server/src/runtime/test-server.ts)
+  * satisfiedBy: [compose.example.yaml](../../compose.example.yaml)
+  * satisfiedBy: [conversation-config.ts](../../packages/conversations/src/adapters/out/conversation-config.ts)
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
 ---
 
@@ -1224,14 +1529,17 @@ Quando un adapter inbound del server rappresenta un rifiuto di un caso d'uso, de
 
 ### Vitest come runner del backend
 
-Quando la suite automatica del backend esegue le verifiche implementate nei package e nell'app server, deve usare Vitest come runner.
-
-#### Details
-Origine: baseline Reqvire «Vitest as test runner», adattata: i test sono file `*.test.ts` sotto `test/<layer>/` invece di file `*.spec.ts` accanto al codice.
+Quando la suite automatica del backend esegue le verifiche dei package business, dell'applicazione server e del repository, deve usare Vitest come unico runner con i test accanto al codice e le selezioni del contratto «Suite di test del backend».
 
 #### Metadata
   * type: requirement
 
+#### Contract References
+  * [Suite di test con Vitest](../../../ambrogio-model/system-model/Contracts/CodeArchitecture.md#suite-di-test-con-vitest)
+
 #### Relations
+  * derivedFrom: [Suite di test con Vitest accanto al codice](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#suite-di-test-con-vitest-accanto-al-codice)
+  * satisfiedBy: [package.json](../../package.json)
+  * satisfiedBy: [vitest.config.ts](../../vitest.config.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---

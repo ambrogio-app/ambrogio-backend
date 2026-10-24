@@ -1,5 +1,5 @@
 import Ajv2020Module from 'ajv/dist/2020.js';
-import { ProjectError } from '../../../project-error.js';
+import { ProjectError } from '../../../application/project-error.js';
 
 export type SessionHello = Readonly<{ type: 'session.hello'; clientId: string; name: string }>;
 export type InputStart = Readonly<{

@@ -6,6 +6,7 @@ import { aiSdkOptions, AiSdkKnowledgeAgentReply, AiSdkOrchestratorReply, AiSdkTo
 import { loadAgentConfigs } from '../runtime/agent-config.js';
 import type { AgentConfig } from '../runtime/agent-config.js';
 import { ProjectError } from '@ambrogio/conversations/application/project-error';
+import { createResourceStack, startupWithCleanup } from '../runtime/lifecycle.js';
 
 type ToolConnection = Pick<McpToolClient, 'listTools' | 'listPrompts' | 'getPrompt' | 'callTool' | 'close'>;
 
@@ -21,7 +22,9 @@ function settingsFor(config: AgentConfig, currentTime?: CurrentTime, responseLan
 
 /** Prepare each user-defined agent for the future conversational entrypoint. */
 export async function prepareAgents(
-  directory = '/etc/ambrogio/agents',
+  directory: string,
+  /** The process environment, where the credentials named by the agent files are read. */
+  environment: NodeJS.ProcessEnv,
   connect: (connection: McpConnection) => Promise<ToolConnection> = McpToolClient.connect,
   // Specialists only: the orchestrator chooses the agent and does not need the date.
   currentTime: CurrentTime = { timeZone: 'UTC', clock: new SystemCurrentTime() },
@@ -33,12 +36,13 @@ export async function prepareAgents(
     tools: readonly AvailableMcpTool[]; mcp?: ToolConnection }>[];
   close(): Promise<void>;
 }>> {
-  const configs = await loadAgentConfigs(directory);
+  const configs = await loadAgentConfigs(directory, environment);
   for (const config of [configs.orchestrator, ...configs.specialists]) {
     try { aiSdkOptions(config.llm.options); }
     catch (error) { throw new ProjectError(`Invalid agent options: ${config.id}`, { cause: error }); }
   }
-  const opened: ToolConnection[] = [];
+  // Each MCP connection is closed once, in reverse order of opening, keeping every closing fault.
+  const connections = createResourceStack('Agent MCP connections could not be closed');
   try {
     const specialists = [];
     for (const config of configs.specialists) {
@@ -53,7 +57,8 @@ export async function prepareAgents(
       let prompts: readonly string[];
       try {
         mcp = await connect(config.mcp);
-        opened.push(mcp);
+        const opened = mcp;
+        connections.defer(`Agent MCP connection could not be closed: ${config.id}`, () => opened.close());
         tools = await mcp.listTools();
         prompts = await mcp.listPrompts();
       } catch (error) {
@@ -73,9 +78,9 @@ export async function prepareAgents(
     }
     const orchestrator = new AiSdkOrchestratorReply(settingsFor(configs.orchestrator), specialists);
     return { orchestrator, specialists,
-      async close() { await Promise.all(opened.map((mcp) => mcp.close())); } };
+      close: () => connections.close() };
   } catch (error) {
-    await Promise.allSettled(opened.map((mcp) => mcp.close()));
-    throw error;
+    const cleanup = await connections.close().then(() => [], () => connections.faults);
+    throw startupWithCleanup('Agents could not be prepared', error, cleanup);
   }
 }

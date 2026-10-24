@@ -11,8 +11,8 @@
   },
   "exports": {
     "./application/project-error": {
-      "types": "./dist/project-error.d.ts",
-      "import": "./dist/project-error.js"
+      "types": "./dist/application/project-error.d.ts",
+      "import": "./dist/application/project-error.js"
     },
     "./application/begin-turn": {
       "types": "./dist/application/begin-turn.use-case.d.ts",
@@ -22,25 +22,33 @@
       "types": "./dist/application/complete-turn.use-case.d.ts",
       "import": "./dist/application/complete-turn.use-case.js"
     },
+    "./application/interrupt-pending-turns": {
+      "types": "./dist/application/interrupt-pending-turns.use-case.d.ts",
+      "import": "./dist/application/interrupt-pending-turns.use-case.js"
+    },
     "./application/exchange-turn": {
       "types": "./dist/application/exchange-turn.use-case.d.ts",
       "import": "./dist/application/exchange-turn.use-case.js"
     },
     "./application/produce-conversation-reply": {
-      "types": "./dist/application/produce-conversation-reply.d.ts",
-      "import": "./dist/application/produce-conversation-reply.js"
-    },
-    "./application/conversation-write": {
-      "types": "./dist/application/conversation-write.d.ts",
-      "import": "./dist/application/conversation-write.js"
+      "types": "./dist/application/produce-conversation-reply.port.d.ts",
+      "import": "./dist/application/produce-conversation-reply.port.js"
     },
     "./application/conversation-history-read": {
-      "types": "./dist/application/conversation-history-read.d.ts",
-      "import": "./dist/application/conversation-history-read.js"
+      "types": "./dist/application/conversation-history-read.port.d.ts",
+      "import": "./dist/application/conversation-history-read.port.js"
     },
     "./application/conversation-list-read": {
-      "types": "./dist/application/conversation-list-read.d.ts",
-      "import": "./dist/application/conversation-list-read.js"
+      "types": "./dist/application/conversation-list-read.port.d.ts",
+      "import": "./dist/application/conversation-list-read.port.js"
+    },
+    "./application/turn-repository": {
+      "types": "./dist/application/turn-repository.port.d.ts",
+      "import": "./dist/application/turn-repository.port.js"
+    },
+    "./application/conversation-lookup": {
+      "types": "./dist/application/conversation-lookup.port.d.ts",
+      "import": "./dist/application/conversation-lookup.port.js"
     },
     "./application/get-conversation": {
       "types": "./dist/application/get-conversation.use-case.d.ts",
@@ -51,8 +59,8 @@
       "import": "./dist/application/list-conversations.use-case.js"
     },
     "./application/turn-capabilities": {
-      "types": "./dist/application/turn-capabilities.d.ts",
-      "import": "./dist/application/turn-capabilities.js"
+      "types": "./dist/application/turn-capabilities.port.d.ts",
+      "import": "./dist/application/turn-capabilities.port.js"
     },
     "./adapters/out/sqlite/migrations": {
       "types": "./dist/adapters/out/sqlite/migrations.d.ts",
@@ -62,9 +70,13 @@
       "types": "./dist/adapters/out/sqlite/conversation-archive.d.ts",
       "import": "./dist/adapters/out/sqlite/conversation-archive.js"
     },
-    "./adapters/out/sqlite/write": {
-      "types": "./dist/adapters/out/sqlite/sqlite-conversation-write.adapter.d.ts",
-      "import": "./dist/adapters/out/sqlite/sqlite-conversation-write.adapter.js"
+    "./adapters/out/sqlite/turn-repository": {
+      "types": "./dist/adapters/out/sqlite/sqlite-turn-repository.adapter.d.ts",
+      "import": "./dist/adapters/out/sqlite/sqlite-turn-repository.adapter.js"
+    },
+    "./adapters/out/sqlite/conversation-lookup": {
+      "types": "./dist/adapters/out/sqlite/sqlite-conversation-lookup.adapter.d.ts",
+      "import": "./dist/adapters/out/sqlite/sqlite-conversation-lookup.adapter.js"
     },
     "./adapters/out/sqlite/history-read": {
       "types": "./dist/adapters/out/sqlite/sqlite-conversation-history-read.adapter.d.ts",
@@ -78,6 +90,10 @@
       "types": "./dist/adapters/out/conversation-config.d.ts",
       "import": "./dist/adapters/out/conversation-config.js"
     },
+    "./adapters/out/environment-variables": {
+      "types": "./dist/adapters/out/environment-variables.d.ts",
+      "import": "./dist/adapters/out/environment-variables.js"
+    },
     "./adapters/out/voice-config": {
       "types": "./dist/adapters/out/voice-config.d.ts",
       "import": "./dist/adapters/out/voice-config.js"
@@ -90,21 +106,17 @@
       "types": "./dist/adapters/out/mcp-tool-client.d.ts",
       "import": "./dist/adapters/out/mcp-tool-client.js"
     },
-    "./adapters/in/http/history-route": {
-      "types": "./dist/adapters/in/http/history-route.adapter.d.ts",
-      "import": "./dist/adapters/in/http/history-route.adapter.js"
+    "./adapters/in/http/conversation-routes": {
+      "types": "./dist/adapters/in/http/conversation-routes.d.ts",
+      "import": "./dist/adapters/in/http/conversation-routes.js"
     },
-    "./adapters/in/http/list-route": {
-      "types": "./dist/adapters/in/http/list-route.adapter.d.ts",
-      "import": "./dist/adapters/in/http/list-route.adapter.js"
+    "./adapters/in/http/problem-details": {
+      "types": "./dist/adapters/in/http/problem-details.d.ts",
+      "import": "./dist/adapters/in/http/problem-details.js"
     },
-    "./adapters/in/http/http-validation": {
-      "types": "./dist/adapters/in/http/http-validation.d.ts",
-      "import": "./dist/adapters/in/http/http-validation.js"
-    },
-    "./adapters/out/sqlite/recover-pending-turns": {
-      "types": "./dist/adapters/out/sqlite/recover-pending-turns.d.ts",
-      "import": "./dist/adapters/out/sqlite/recover-pending-turns.js"
+    "./adapters/in/logger": {
+      "types": "./dist/adapters/in/logger.d.ts",
+      "import": "./dist/adapters/in/logger.js"
     },
     "./adapters/out/sqlite/schema": {
       "types": "./dist/adapters/out/sqlite/schema.d.ts",

@@ -12,7 +12,7 @@ La prova passa se ogni caso riceve una trasmissione del messaggio pubblico nel t
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](ConversationProtocol.md#verifica-del-protocollo-conversazionale)
-  * satisfiedBy: [session-rejections.test.ts](../../apps/server/test/runtime/session-rejections.test.ts)
+  * satisfiedBy: [http-server.session-rejections.spec.ts](../../apps/server/src/runtime/http-server.session-rejections.spec.ts)
   * verify: [Rifiuto del turno prima dell'ammissione](../Requirements/FamilyConversation.md#rifiuto-del-turno-prima-dellammissione)
 ---
 
@@ -28,7 +28,7 @@ La prova passa se la chiusura di una sessione rilascia soltanto le sue risorse: 
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](ConversationProtocol.md#verifica-del-protocollo-conversazionale)
-  * satisfiedBy: [session-lifecycle.test.ts](../../apps/server/test/runtime/session-lifecycle.test.ts)
+  * satisfiedBy: [conversation-server.session-lifecycle.spec.ts](../../apps/server/src/runtime/conversation-server.session-lifecycle.spec.ts)
   * verify: [Chiusura della sessione conversazionale](../Requirements/FamilyConversation.md#chiusura-della-sessione-conversazionale)
   * verify: [Creazione della conversazione all'ammissione del turno](../Requirements/FamilyConversation.md#creazione-della-conversazione-allammissione-del-turno)
 ---
@@ -45,7 +45,7 @@ La prova passa se `turn.completed` arriva una sola volta come ultimo messaggio d
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](ConversationProtocol.md#verifica-del-protocollo-conversazionale)
-  * satisfiedBy: [session-turns.test.ts](../../apps/server/test/runtime/session-turns.test.ts)
+  * satisfiedBy: [http-server.session-turns.spec.ts](../../apps/server/src/runtime/http-server.session-turns.spec.ts)
   * verify: [Conferma del completamento del turno](../Requirements/FamilyConversation.md#conferma-del-completamento-del-turno)
 ---
 
@@ -61,8 +61,8 @@ La prova passa se l'agente produce il booleano strutturato `expectsReply` durant
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](ConversationProtocol.md#verifica-del-protocollo-conversazionale)
-  * satisfiedBy: [session-turns.test.ts](../../apps/server/test/runtime/session-turns.test.ts)
-  * satisfiedBy: [exchange-turn.test.ts](../../packages/conversations/test/application/exchange-turn.test.ts)
+  * satisfiedBy: [http-server.session-turns.spec.ts](../../apps/server/src/runtime/http-server.session-turns.spec.ts)
+  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
   * verify: [Determinazione della replica attesa](../Requirements/FamilyConversation.md#determinazione-della-replica-attesa)
   * verify: [Segnalazione della replica attesa](../Requirements/FamilyConversation.md#segnalazione-della-replica-attesa)
 ---
@@ -79,7 +79,7 @@ La prova passa se, dopo `turn.accepted`, il server apre una trasmissione con `ou
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](ConversationProtocol.md#verifica-del-protocollo-conversazionale)
-  * satisfiedBy: [session-turns.test.ts](../../apps/server/test/runtime/session-turns.test.ts)
+  * satisfiedBy: [http-server.session-turns.spec.ts](../../apps/server/src/runtime/http-server.session-turns.spec.ts)
   * verify: [Trasmissione progressiva della risposta del turno](../Requirements/FamilyConversation.md#trasmissione-progressiva-della-risposta-del-turno)
 ---
 
@@ -103,7 +103,7 @@ La prova passa se ogni turno nasce in elaborazione, raggiunge una sola volta uno
 
 #### Relations
   * derivedFrom: [Verifica degli invarianti dei turni](#verifica-degli-invarianti-dei-turni)
-  * satisfiedBy: [turn.test.ts](../../packages/conversations/test/domain/turn.test.ts)
+  * satisfiedBy: [turn.spec.ts](../../packages/conversations/src/domain/turn.spec.ts)
   * verify: [Integrità dello stato del turno nel Domain](../Requirements/FamilyConversation.md#integrità-dello-stato-del-turno-nel-domain)
 ---
 
@@ -117,7 +117,7 @@ Raggruppa le prove di connessione, scoperta e invocazione dei tool tramite il cl
 
 ### Dimostrazione del connettore Home Assistant su un'installazione reale
 
-Su un'installazione Home Assistant reale abilitare l'integrazione «Model Context Protocol Server», esporre ad Assist almeno due luci in aree diverse e un sensore, creare un token di accesso di lunga durata e installare `examples/agents/home-assistant.ts` completato con indirizzo, token e chiave API. Avviare il backend e chiedere in conversazione lo stato del sensore, se una luce di un'area è accesa, poi di accendere e spegnere quella luce e di spegnere tutte le luci; chiedere infine di comandare un'entità non esposta. Ripetere l'avvio con un token errato.
+Su un'installazione Home Assistant reale abilitare l'integrazione «Model Context Protocol Server», esporre ad Assist almeno due luci in aree diverse e un sensore, creare un token di accesso di lunga durata e installare `examples/agents/home-assistant.json` completato con l'indirizzo, impostando le variabili d'ambiente del token e della chiave API. Avviare il backend e chiedere in conversazione lo stato del sensore, se una luce di un'area è accesa, poi di accendere e spegnere quella luce e di spegnere tutte le luci; chiedere infine di comandare un'entità non esposta. Ripetere l'avvio con un token errato.
 
 #### Details
 La dimostrazione passa se il backend si avvia scoprendo gli strumenti di Home Assistant, la risposta riporta lo stato effettivo del sensore, la domanda sullo stato della luce riceve lo stato effettivo senza che alcun dispositivo cambi stato, la luce cambia stato in Home Assistant e la risposta lo dichiara solo dopo la conferma dello strumento, la richiesta di spegnere tutte le luci spegne tutte le luci esposte, l'entità non esposta non viene comandata e, con il token errato, l'avvio fallisce con l'evento `server_startup_failed` che indica `Agent MCP connection failed: home-assistant` senza mostrare il token. Fallisce se uno di questi esiti non si verifica.
@@ -144,7 +144,7 @@ La prova passa se `HassTurnOff`, `GetLiveContext` e `_private` sono offerti con 
 
 #### Relations
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
-  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
   * verify: [Nomi degli strumenti MCP offerti al modello](../Requirements/FamilyConversation.md#nomi-degli-strumenti-mcp-offerti-al-modello)
 ---
 
@@ -160,13 +160,13 @@ La prova passa se ogni richiesta MCP dell'agente autenticato invia `Authorizatio
 
 #### Relations
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
-  * satisfiedBy: [mcp-tool-client.test.ts](../../packages/conversations/test/adapters/out/mcp-tool-client.test.ts)
+  * satisfiedBy: [mcp-tool-client.spec.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.spec.ts)
   * verify: [Autenticazione Bearer del client MCP](../Requirements/FamilyConversation.md#autenticazione-bearer-del-client-mcp)
 ---
 
 ### Prova del client MCP comune
 
-Configurare due agenti specializzati in modulo TypeScript distinti, ciascuno con `mcp.url` di un server MCP di prova che usa Streamable HTTP ed espone tool con nomi e schemi diversi. Le configurazioni non contengono un campo `transport`. Avviare gli agenti tramite la stessa implementazione client, completare l'inizializzazione MCP via HTTP, scoprire i rispettivi tool e invocarne uno con argomenti validi. Ripetere con `mcp.url` assente e con un URL non HTTP o HTTPS.
+Configurare due agenti specializzati in file distinti, ciascuno con `mcp.url` di un server MCP di prova che usa Streamable HTTP ed espone tool con nomi e schemi diversi. Le configurazioni non contengono un campo `transport`. Avviare gli agenti tramite la stessa implementazione client, completare l'inizializzazione MCP via HTTP, scoprire i rispettivi tool e invocarne uno con argomenti validi. Ripetere con `mcp.url` assente e con un URL non HTTP o HTTPS.
 
 #### Details
 La prova passa se ogni agente riceve soltanto l'endpoint MCP definito nel proprio file, entrambe le connessioni usano il client comune e Streamable HTTP, ciascuna espone i tool del proprio server e le invocazioni raggiungono il server corretto senza un campo `transport`. Una configurazione invalida impedisce l'attivazione dell'agente interessato prima di contattare un server. Fallisce se serve un client specifico per un server, se le connessioni o i tool si confondono tra agenti oppure se la configurazione invalida raggiunge un server.
@@ -176,7 +176,7 @@ La prova passa se ogni agente riceve soltanto l'endpoint MCP definito nel propri
 
 #### Relations
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
-  * satisfiedBy: [mcp-tool-client.test.ts](../../packages/conversations/test/adapters/out/mcp-tool-client.test.ts)
+  * satisfiedBy: [mcp-tool-client.spec.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.spec.ts)
   * verify: [Client MCP comune ai connettori](../Requirements/FamilyConversation.md#client-mcp-comune-ai-connettori)
   * verify: [Configurazione MCP dell'agente specializzato](../Requirements/FamilyConversation.md#configurazione-mcp-dellagente-specializzato)
   * verify: [Trasporto HTTP dei connettori MCP](../Requirements/FamilyConversation.md#trasporto-http-dei-connettori-mcp)
@@ -194,29 +194,29 @@ La prova passa se ciascun agente usa il proprio limite, nessuna chiamata viene i
 
 #### Relations
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
-  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
   * verify: [Limite delle chiamate agli strumenti per agente](../Requirements/FamilyConversation.md#limite-delle-chiamate-agli-strumenti-per-agente)
 ---
 
 ### Prova della configurazione pronta di Home Assistant
 
-Copiare `examples/agents/home-assistant.ts` in una directory degli agenti di prova insieme a un orchestratore valido e caricarla con la validazione delle configurazioni degli agenti usata all'avvio. Esaminare i valori del file e cercare nei campi delle credenziali valori diversi dai segnaposto previsti.
+Copiare `examples/agents/home-assistant.json` in una directory degli agenti di prova insieme a un orchestratore valido e caricarla con la validazione dei file degli agenti usata all'avvio, fornendo valori segnaposto alle variabili d'ambiente nominate. Esaminare i valori del file e cercare credenziali scritte nel file.
 
 #### Details
-La prova passa se il file è accettato senza modifiche come agente specializzato `home-assistant` con connettore MCP, `mcp.url` termina con `/api/mcp`, `mcp.auth` è di tipo `bearer`, `maxToolCalls` vale 5, `llm` usa il provider `mistral` con il modello `mistral-medium-latest`, `description` e `instructions` corrispondono al contratto e le credenziali sono esattamente i segnaposto `<MISTRAL_API_KEY>` e `<HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN>`. Fallisce se il file viene rifiutato, se un campo differisce dal contratto o se contiene un valore che può essere una credenziale effettiva.
+La prova passa se il file è accettato senza modifiche come agente specializzato `home-assistant` con connettore MCP, `mcp.url` termina con `/api/mcp`, `mcp.auth` è di tipo `bearer`, `maxToolCalls` vale 5, `llm` usa il provider `mistral` con il modello `mistral-medium-latest`, `description` e `instructions` corrispondono al contratto e le credenziali sono i valori delle variabili `MISTRAL_API_KEY` e `HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN` nominate dal file. Fallisce se il file viene rifiutato, se un campo differisce dal contratto o se contiene una credenziale.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
-  * satisfiedBy: [home-assistant-example.test.ts](../../apps/server/test/runtime/home-assistant-example.test.ts)
+  * satisfiedBy: [home-assistant-example.spec.ts](../../apps/server/test/examples/home-assistant-example.spec.ts)
   * verify: [Configurazione pronta del connettore Home Assistant](../Requirements/FamilyConversation.md#configurazione-pronta-del-connettore-home-assistant)
 ---
 
-### Prova della disponibilità degli agenti dai moduli TypeScript
+### Prova della disponibilità degli agenti dai file della directory
 
-Avviare il server con `orchestrator.ts` e un file specializzato valido in `/etc/ambrogio/agents`, usando agenti di prova osservabili dall'orchestratore. Aggiungere un secondo file `<id>.ts` valido e riavviare; rimuovere il primo file e riavviare ancora, senza modificare altri elenchi di abilitazione.
+Avviare il server con `orchestrator.json` e un file specializzato valido nella directory degli agenti, usando agenti di prova osservabili dall'orchestratore. Aggiungere un secondo file `<id>.json` valido e riavviare; rimuovere il primo file e riavviare ancora, senza modificare altri elenchi di abilitazione.
 
 #### Details
 La prova passa se al primo avvio l'orchestratore può scegliere il primo agente, al secondo entrambi e al terzo soltanto il secondo. Fallisce se un file presente richiede registrazione altrove, se un agente rimosso resta disponibile dopo il riavvio o se un file viene associato all'identificativo sbagliato.
@@ -226,8 +226,8 @@ La prova passa se al primo avvio l'orchestratore può scegliere il primo agente,
 
 #### Relations
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
-  * satisfiedBy: [agents.test.ts](../../apps/server/test/composition/agents.test.ts)
-  * verify: [Disponibilità degli agenti dai moduli TypeScript](../Requirements/FamilyConversation.md#disponibilità-degli-agenti-dai-moduli-typescript)
+  * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
+  * verify: [Disponibilità degli agenti dai file della directory](../Requirements/FamilyConversation.md#disponibilità-degli-agenti-dai-file-della-directory)
 ---
 
 ### Prova della selezione degli strumenti MCP
@@ -242,16 +242,16 @@ La prova passa se l'agente senza `mcp.tools` riceve tutti e quattro gli strument
 
 #### Relations
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
-  * satisfiedBy: [agents.test.ts](../../apps/server/test/composition/agents.test.ts)
-  * satisfiedBy: [agent-config.test.ts](../../apps/server/test/runtime/agent-config.test.ts)
-  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
+  * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
+  * satisfiedBy: [agent-config.spec.ts](../../apps/server/src/runtime/agent-config.spec.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
   * verify: [Rifiuto dell'avvio con uno strumento MCP elencato non disponibile](../Requirements/FamilyConversation.md#rifiuto-dellavvio-con-uno-strumento-mcp-elencato-non-disponibile)
   * verify: [Selezione degli strumenti MCP offerti all'agente](../Requirements/FamilyConversation.md#selezione-degli-strumenti-mcp-offerti-allagente)
 ---
 
 ### Prova delle configurazioni degli agenti con e senza MCP
 
-Caricare la directory degli agenti con un agente con `mcp` e `maxToolCalls` e un agente senza `mcp` e senza `maxToolCalls`. In tentativi separati usare un agente senza `mcp` ma con `maxToolCalls`, un agente con `mcp` senza `maxToolCalls` e una directory con il solo `orchestrator.ts`; avviare inoltre il server con la directory priva di agenti specializzati.
+Caricare la directory degli agenti con un agente con `mcp` e `maxToolCalls` e un agente senza `mcp` e senza `maxToolCalls`. In tentativi separati usare un agente senza `mcp` ma con `maxToolCalls`, un agente con `mcp` senza `maxToolCalls` e una directory con il solo `orchestrator.json`; avviare inoltre il server con la directory priva di agenti specializzati.
 
 #### Details
 La prova passa se la prima directory viene caricata con entrambi gli agenti disponibili all'orchestratore, l'agente senza MCP privo di connettore e di limite; se ciascun tentativo invalido viene rifiutato prima dell'attivazione, senza aprire connessioni MCP; e se il server senza agenti specializzati non si mette in ascolto e chiude le risorse già preparate. Fallisce se un file invalido viene accettato, se l'agente senza MCP viene rifiutato o se il server si avvia senza agenti specializzati.
@@ -261,11 +261,11 @@ La prova passa se la prima directory viene caricata con entrambi gli agenti disp
 
 #### Relations
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
-  * satisfiedBy: [agents.test.ts](../../apps/server/test/composition/agents.test.ts)
-  * satisfiedBy: [agent-config.test.ts](../../apps/server/test/runtime/agent-config.test.ts)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
+  * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
+  * satisfiedBy: [agent-config.spec.ts](../../apps/server/src/runtime/agent-config.spec.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
   * verify: [Agente specializzato senza connettore MCP](../Requirements/FamilyConversation.md#agente-specializzato-senza-connettore-mcp)
-  * verify: [Disponibilità degli agenti dai moduli TypeScript](../Requirements/FamilyConversation.md#disponibilità-degli-agenti-dai-moduli-typescript)
+  * verify: [Disponibilità degli agenti dai file della directory](../Requirements/FamilyConversation.md#disponibilità-degli-agenti-dai-file-della-directory)
 ---
 
 ### Prova delle istruzioni del server MCP
@@ -273,22 +273,22 @@ La prova passa se la prima directory viene caricata con entrambi gli agenti disp
 Con un server MCP Streamable HTTP di prova che dichiara la capacità `prompts` ed espone un prompt senza argomenti, un prompt con un argomento obbligatorio e uno strumento, preparare un agente specializzato con connettore MCP e un modello controllato che registra le istruzioni ricevute. Elaborare due turni cambiando il testo del prompt fra il primo e il secondo. Ripetere con un server che non dichiara la capacità `prompts`, con un server la cui lista dei prompt fallisce all'avvio e con un server la cui lettura del prompt fallisce durante il turno.
 
 #### Details
-La prova passa se all'avvio il backend conserva soltanto il prompt senza argomenti obbligatori; a ogni turno il modello riceve le istruzioni del modulo TypeScript, l'intestazione `Instructions and context from the connected MCP server:` e il testo corrente del prompt, prima delle indicazioni sul formato della risposta, e il secondo turno vede il testo aggiornato senza riavvio; il server senza capacità `prompts` non riceve `prompts/list` e il modello riceve soltanto le istruzioni del modulo TypeScript con le indicazioni sul formato; l'errore della lista all'avvio impedisce l'attivazione con `Agent MCP connection failed: <id>`; l'errore di lettura durante il turno termina il turno con il guasto `MCP prompt retrieval failed` senza chiamare il modello. Le letture dei prompt non contano per `maxToolCalls`. Fallisce se uno di questi esiti non si verifica.
+La prova passa se all'avvio il backend conserva soltanto il prompt senza argomenti obbligatori; a ogni turno il modello riceve le istruzioni del file dell'agente, l'intestazione `Instructions and context from the connected MCP server:` e il testo corrente del prompt, prima delle indicazioni sul formato della risposta, e il secondo turno vede il testo aggiornato senza riavvio; il server senza capacità `prompts` non riceve `prompts/list` e il modello riceve soltanto le istruzioni del file dell'agente con le indicazioni sul formato; l'errore della lista all'avvio impedisce l'attivazione con `Agent MCP connection failed: <id>`; l'errore di lettura durante il turno termina il turno con il guasto `MCP prompt retrieval failed` senza chiamare il modello. Le letture dei prompt non contano per `maxToolCalls`. Fallisce se uno di questi esiti non si verifica.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
-  * satisfiedBy: [agents.test.ts](../../apps/server/test/composition/agents.test.ts)
-  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
-  * satisfiedBy: [mcp-tool-client.test.ts](../../packages/conversations/test/adapters/out/mcp-tool-client.test.ts)
+  * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
+  * satisfiedBy: [mcp-tool-client.spec.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.spec.ts)
   * verify: [Istruzioni del server MCP per l'agente](../Requirements/FamilyConversation.md#istruzioni-del-server-mcp-per-lagente)
 ---
 
 ### Prova di OAuth tra servizi per i connettori MCP
 
-Configurare un agente con `mcp.auth` di tipo `oauth_client_credentials`, `clientId`, `clientSecret`, `issuer` e `scope` facoltativo. Usare un server MCP di prova che pubblica i metadata OAuth e un authorization server di prova associato all'issuer configurato. Eseguire inizializzazione, scoperta e invocazione di un tool; ripetere dopo la scadenza del token e con un secondo agente dotato di credenziali distinte. Ripetere con un issuer pubblicato diverso da quello configurato e con campi obbligatori mancanti o vuoti; osservare richieste, log e messaggi inviati al modello.
+Configurare un agente con `mcp.auth` di tipo `oauth_client_credentials`, `clientId`, `clientSecretEnv`, `issuer` e `scope` facoltativo, con il segreto nella variabile d'ambiente nominata. Usare un server MCP di prova che pubblica i metadata OAuth e un authorization server di prova associato all'issuer configurato. Eseguire inizializzazione, scoperta e invocazione di un tool; ripetere dopo la scadenza del token e con un secondo agente dotato di credenziali distinte. Ripetere con un issuer pubblicato diverso da quello configurato e con campi obbligatori mancanti o vuoti; osservare richieste, log e messaggi inviati al modello.
 
 #### Details
 La prova passa se il client ottiene un token con `client_credentials` senza login interattivo, usa l'eventuale scope configurato, invia il token solo al server MCP dell'agente e rinnova le credenziali secondo il comportamento del SDK. Un issuer diverso impedisce l'invio del segreto; una configurazione invalida impedisce l'attivazione prima della connessione. Credenziali e token non si mescolano tra agenti e non compaiono in log o messaggi al modello. Fallisce se il segreto raggiunge un issuer diverso, se il token viene usato per un altro agente o se l'agente espone tool dopo un fallimento di autenticazione.
@@ -298,9 +298,133 @@ La prova passa se il client ottiene un token con `client_credentials` senza logi
 
 #### Relations
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
-  * satisfiedBy: [agent-config.test.ts](../../apps/server/test/runtime/agent-config.test.ts)
-  * satisfiedBy: [mcp-tool-client.test.ts](../../packages/conversations/test/adapters/out/mcp-tool-client.test.ts)
+  * satisfiedBy: [agent-config.spec.ts](../../apps/server/src/runtime/agent-config.spec.ts)
+  * satisfiedBy: [mcp-tool-client.spec.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.spec.ts)
   * verify: [Autenticazione OAuth tra servizi del client MCP](../Requirements/FamilyConversation.md#autenticazione-oauth-tra-servizi-del-client-mcp)
+---
+
+### Verifica del modello Domain conversazionale
+
+Raggruppa le verifiche dei ruoli, delle classi, delle identità e del caricamento degli oggetti del Domain conversazionale.
+
+#### Metadata
+  * type: verification-objective
+---
+
+### Analisi dei ruoli del Domain conversazionale
+
+Per ogni concetto del Domain di «Conversazioni», registrare se è Root, Entità, Value Object o campo semplice, l'identità o il valore che giustifica il ruolo e le regole che porta; per l'aggregato del turno elencare gli invarianti che richiedono coerenza congiunta e lo stato coinvolto, e per ogni regola che supera il turno il componente che la garantisce.
+
+#### Details
+L'analisi passa se il `Turn` ha un'identità che sopravvive ai cambi di stato, le identità sono Value Object con regole proprie, i campi senza regole restano campi semplici, tutto lo stato coinvolto da un invariante del turno sta nell'aggregato e l'unicità del turno attivo per conversazione è attribuita all'archivio. Fallisce se un ruolo deriva soltanto dalla chiave primaria di una tabella, se un Value Object avvolge un campo senza regole, se l'aggregato segue le relazioni fra i dati invece degli invarianti o se un invariante coinvolge stato di aggregati separati.
+
+Non automatizzabile: stabilire se un concetto richiede un'identità duratura e quale stato coinvolge un invariante dipende dal significato del dominio e richiede giudizio umano.
+
+#### Metadata
+  * type: analysis-verification
+
+#### Relations
+  * derivedFrom: [Verifica del modello Domain conversazionale](#verifica-del-modello-domain-conversazionale)
+  * verify: [Confine dell'aggregato del turno secondo gli invarianti](../Requirements/FamilyConversation.md#confine-dellaggregato-del-turno-secondo-gli-invarianti)
+---
+
+### Prova del caricamento completo del turno
+
+Su un archivio SQLite reale preparato con le migrazioni dell'applicazione, conservare tramite il repository un turno in elaborazione e uno concluso; preparare poi direttamente nell'archivio un turno senza la propria conversazione, un turno in elaborazione senza occupazione, un turno in elaborazione occupato anche da un'altra conversazione, un turno concluso che occupa ancora la conversazione e un turno con un valore incompatibile; caricare ogni caso con `find` e con `findPending`.
+
+#### Details
+La prova passa se l'identità assente produce `undefined`, i turni completi sono ricostruiti con identità, conversazione, testo, istanti ed esito conservati, e ogni caso mancante, duplicato, non associabile o incompatibile interrompe il caricamento con un guasto. Fallisce se un caso parziale o incompatibile è presentato come assenza, come rifiuto previsto o come turno valido, oppure se un valore è corretto durante il caricamento.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica del modello Domain conversazionale](#verifica-del-modello-domain-conversazionale)
+  * satisfiedBy: [sqlite-turn-repository.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.integration.spec.ts)
+  * verify: [Caricamento completo del turno](../Requirements/FamilyConversation.md#caricamento-completo-del-turno)
+---
+
+### Prova del comportamento dei Value Object di identità
+
+Costruire `ConversationId` e `TurnId` da UUID v4 canonici uguali e diversi e da valori non validi, compresi UUID di altre versioni, in maiuscolo o con spazi; confrontare le istanze con `equals` e provare a modificarne il valore.
+
+#### Details
+La prova passa se istanze distinte con lo stesso valore sono uguali, istanze con valori diversi non lo sono, i valori non validi sono rifiutati da `create` e riconosciuti da `isValid`, e il valore non cambia dopo la costruzione. Fallisce se l'uguaglianza dipende dal riferimento o se un valore non valido diventa un'identità.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica del modello Domain conversazionale](#verifica-del-modello-domain-conversazionale)
+  * satisfiedBy: [identities.spec.ts](../../packages/conversations/src/domain/identities.spec.ts)
+  * verify: [Value Object immutabili con uguaglianza esplicita](../Requirements/FamilyConversation.md#value-object-immutabili-con-uguaglianza-esplicita)
+---
+
+### Prova dell'isolamento dello stato del turno
+
+Creare e ricostruire turni da istanti e dati posseduti dal chiamante, poi modificare gli istanti passati in ingresso e quelli restituiti dai getter; elencare i membri pubblici del turno.
+
+#### Details
+La prova passa se nessuna modifica dei dati in ingresso o restituiti cambia lo stato del turno e il turno espone soltanto i getter mirati e le operazioni del Domain, senza un accesso all'intero stato. Fallisce se un chiamante cambia lo stato tramite un riferimento trattenuto o restituito, oppure se esiste un getter dell'intero stato.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica del modello Domain conversazionale](#verifica-del-modello-domain-conversazionale)
+  * satisfiedBy: [turn.spec.ts](../../packages/conversations/src/domain/turn.spec.ts)
+  * verify: [Stato del turno senza riferimenti mutabili condivisi](../Requirements/FamilyConversation.md#stato-del-turno-senza-riferimenti-mutabili-condivisi)
+---
+
+### Prova della struttura TypeScript del Domain
+
+Leggere come testo le classi del Domain di «Conversazioni»: per ogni classe annotare costruttore, ingressi statici, campi, setter, classi base e la firma di `equals`; controllare l'assegnabilità reciproca delle classi di identità con asserzioni di tipo verificate dal typecheck; elencare gli import delle classi di identità negli adapter di ingresso e i tipi degli identificativi negli ingressi e nelle uscite dei casi d'uso.
+
+#### Details
+La prova passa se ogni classe del Domain ha costruttore privato e gli ingressi statici del proprio ruolo, lo stato è in campi `#private`, il `Turn` non espone campi pubblici, setter né un getter dell'intero stato, ogni Value Object ha `equals` tipizzato non ereditato, `ConversationId` e `TurnId` non sono assegnabili l'uno all'altro, nessun adapter di ingresso importa una classe di identità e gli ingressi e le uscite dei casi d'uso portano gli identificativi come stringhe. Fallisce a ogni deviazione.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica del modello Domain conversazionale](#verifica-del-modello-domain-conversazionale)
+  * satisfiedBy: [identities.spec.ts](../../packages/conversations/src/domain/identities.spec.ts)
+  * satisfiedBy: [domain-model.spec.ts](../../test/repository/domain-model.spec.ts)
+  * verify: [Classi TypeScript del Domain conversazionale](../Requirements/FamilyConversation.md#classi-typescript-del-domain-conversazionale)
+  * verify: [Identità distinte di conversazioni e turni](../Requirements/FamilyConversation.md#identità-distinte-di-conversazioni-e-turni)
+---
+
+### Prova delle responsabilità del repository del turno
+
+Leggere come testo, senza commenti e letterali, l'adapter SQLite del repository del turno e il mapper delle righe dei turni, e cercare chiamate alle operazioni del Root, ai suoi ingressi di creazione, alla generazione di identificativi e all'orologio.
+
+#### Details
+La prova passa se l'adapter non invoca `answer`, `fail`, `interrupt` né `Turn.create`, il mapper usa `Turn.rehydrate` soltanto nella ricostruzione e la conversione in scrittura legge i getter del Root, e nessuno dei due legge l'orologio o genera identificativi. Fallisce se una di queste chiamate compare nell'adapter o nella conversione in scrittura.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica del modello Domain conversazionale](#verifica-del-modello-domain-conversazionale)
+  * satisfiedBy: [domain-model.spec.ts](../../test/repository/domain-model.spec.ts)
+  * verify: [Repository del turno senza decisioni di Domain](../Requirements/FamilyConversation.md#repository-del-turno-senza-decisioni-di-domain)
+---
+
+### Prova delle transizioni del turno attraverso il Root
+
+Con un repository del turno sostituito da un doppio che registra le chiamate, concludere un turno caricato `in elaborazione` con risposta, errore e interruzione; ripetere con un turno caricato già concluso, con un salvataggio rifiutato per turno già concluso e con un turno assente. Eseguire anche il caso d'uso di interruzione dei turni in elaborazione con più turni caricati.
+
+#### Details
+La prova passa se ogni caso d'uso carica il turno, invoca l'operazione del Root, salva il turno modificato e restituisce lo stato conservato; il rifiuto della transizione e il rifiuto del salvataggio sono restituiti come esito previsto `turn_already_closed`, senza salvataggio dopo il rifiuto del Domain; il turno assente è un guasto; l'interruzione salva ogni turno caricato e conta soltanto quelli salvati. Fallisce se un caso d'uso chiede al repository una transizione, salva dopo un rifiuto del Domain o trasforma un rifiuto in guasto.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica del modello Domain conversazionale](#verifica-del-modello-domain-conversazionale)
+  * satisfiedBy: [complete-turn.use-case.spec.ts](../../packages/conversations/src/application/complete-turn.use-case.spec.ts)
+  * satisfiedBy: [interrupt-pending-turns.use-case.spec.ts](../../packages/conversations/src/application/interrupt-pending-turns.use-case.spec.ts)
+  * verify: [Modifiche del turno attraverso il Root](../Requirements/FamilyConversation.md#modifiche-del-turno-attraverso-il-root)
 ---
 
 ### Verifica dell'organizzazione delle conversazioni
@@ -345,24 +469,6 @@ Non automatizzabile: confrontare il bisogno del caso d'uso con l'API del fornito
   * verify: [Contratti delle porte nei termini di Conversazioni](../Requirements/FamilyConversation.md#contratti-delle-porte-nei-termini-di-conversazioni)
 ---
 
-### Analisi statica dei confini degli import
-
-Analizzare il grafo degli import del codice TypeScript di produzione del modulo «Conversazioni», includendo gli import di valori, gli `import type` e le riesportazioni.
-
-#### Details
-L'analisi passa se ogni import originato da Domain punta a Domain dello stesso modulo e ogni import originato da Application punta a Domain o Application dello stesso modulo. Fallisce se è presente anche un solo collegamento verso un componente o modulo non ammesso, compresi quelli che importano soltanto tipi.
-
-Non automatizzabile: Domain e Application importano `src/project-error.ts`, che si trova fuori dalle cartelle dei layer; è una deviazione nota in attesa di una decisione sulla collocazione di `ProjectError`, e finché quella decisione manca un controllo automatico fallirebbe su ogni import di quel file.
-
-#### Metadata
-  * type: analysis-verification
-
-#### Relations
-  * derivedFrom: [Verifica dell'organizzazione delle conversazioni](#verifica-dellorganizzazione-delle-conversazioni)
-  * verify: [Import del Domain entro il proprio componente](../Requirements/FamilyConversation.md#import-del-domain-entro-il-proprio-componente)
-  * verify: [Import dell'Application entro il proprio modulo](../Requirements/FamilyConversation.md#import-dellapplication-entro-il-proprio-modulo)
----
-
 ### Controllo degli adapter per componenti tecnici esterni
 
 Esaminare gli ingressi e le implementazioni delle porte Application del modulo «Conversazioni» che integrano componenti tecnici esterni.
@@ -382,12 +488,12 @@ Non automatizzabile: stabilire quali componenti integrano tecnologie esterne e q
 
 ### Controllo dei contratti di archivio della conversazione
 
-Esaminare i contratti Application usati per accettare turni, conservare esiti e interruzioni, recuperare lo storico e produrre l'elenco delle conversazioni; seguire i relativi adapter di persistenza.
+Esaminare i contratti Application usati per accettare turni, conservare esiti e interruzioni, verificare l'esistenza della conversazione, recuperare lo storico e produrre l'elenco delle conversazioni; seguire i casi d'uso che li usano e i relativi adapter di persistenza.
 
 #### Details
-Il controllo passa se il contratto di scrittura dedicato esprime le transizioni richieste dai casi d'uso, anche tramite il salvataggio coerente dell'aggregato, le letture hanno contratti separati adatti a storico ed elenco e nessuna interfaccia CRUD universale è imposta ai casi d'uso. Fallisce se Application dipende da un repository generico con sole operazioni create/get/update/delete o se le proiezioni di lettura sono accoppiate alle operazioni di scrittura.
+Il controllo passa se il repository del turno offre soltanto ammissione, caricamento e salvataggio dell'aggregato senza operazioni di transizione, le query usano soltanto porte di lettura con proiezioni raggruppate per capacità informativa coesa, i comandi ottengono i fatti ausiliari da porte di lookup specifiche e nessun contratto è unito a un altro per ragioni tecniche. Fallisce se Application dipende da un repository generico con sole operazioni create/get/update/delete, se una query usa il repository o il modello di scrittura, se un comando verifica un fatto ausiliario tramite una porta di lettura o se un contratto espone filtri tecnici.
 
-Non automatizzabile: giudicare se un contratto esprime le transizioni richieste o un'interfaccia CRUD generica richiede giudizio umano.
+Non automatizzabile: giudicare se una porta raggruppa una capacità informativa coesa e se un fatto è una verifica ausiliaria di un comando richiede di leggere l'intenzione dei casi d'uso.
 
 #### Metadata
   * type: inspection-verification
@@ -518,6 +624,23 @@ Non automatizzabile: distinguere un adapter di ingresso da uno che implementa un
   * verify: [Separazione degli adapter di ingresso e uscita](../Requirements/FamilyConversation.md#separazione-degli-adapter-di-ingresso-e-uscita)
 ---
 
+### Prova degli istanti ai confini HTTP
+
+Leggere tramite le rotte HTTP lo storico di una conversazione e una pagina dell'elenco con istanti noti; ripetere la richiesta della pagina successiva con il cursore restituito e con cursori che portano lo stesso istante con un offset diverso da UTC o in forma non canonica.
+
+#### Details
+La prova passa se ogni istante delle risposte è una stringa ISO 8601 in UTC terminata da `Z` uguale a `toISOString()` dell'istante conservato, il cursore restituito riprende dallo stesso istante e i cursori in forma non canonica sono rifiutati come richiesta non valida. Fallisce se un istante esce con un offset locale, se il cursore cambia l'istante o se un cursore non canonico è accettato.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dell'organizzazione delle conversazioni](#verifica-dellorganizzazione-delle-conversazioni)
+  * satisfiedBy: [get-conversation.route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.route.adapter.spec.ts)
+  * satisfiedBy: [list-conversations.route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.route.adapter.spec.ts)
+  * verify: [Istanti distinti dai concetti di calendario nella conversazione](../Requirements/FamilyConversation.md#istanti-distinti-dai-concetti-di-calendario-nella-conversazione)
+---
+
 ### Prova dell'indipendenza tecnica di Domain e Application
 
 Eseguire il comando `tsc` della dipendenza `typescript` del repository su un `tsconfig` temporaneo che compila senza emissione i file di `src/domain/` e `src/application/` del package «Conversazioni», con le sole librerie standard ECMAScript (`lib` uguale a `ESNext`) e senza dichiarazioni di tipo dell'ambiente (`types` vuoto); leggere inoltre come testo, tolti i commenti, gli specificatori di `import … from`, `export … from`, `import '…'` e `import('…')` di quei file e dei file che importano.
@@ -530,8 +653,59 @@ La prova passa se `tsc` termina con stato 0 senza diagnostiche e se ogni import 
 
 #### Relations
   * derivedFrom: [Verifica dell'organizzazione delle conversazioni](#verifica-dellorganizzazione-delle-conversazioni)
-  * satisfiedBy: [domain-application-independence.test.ts](../../test/repository/domain-application-independence.test.ts)
+  * satisfiedBy: [domain-application-independence.spec.ts](../../test/repository/domain-application-independence.spec.ts)
+  * satisfiedBy: [import-boundaries.spec.ts](../../test/repository/import-boundaries.spec.ts)
   * verify: [Indipendenza tecnica di Domain e Application nel backend](../Requirements/FamilyConversation.md#indipendenza-tecnica-di-domain-e-application-nel-backend)
+---
+
+### Prova della separazione dei contratti di lettura
+
+Leggere come testo le porte Application di «Conversazioni» e i casi d'uso di lettura e di inizio del turno, ed estrarne gli import.
+
+#### Details
+La prova passa se le porte di lettura e i casi d'uso di storico ed elenco non importano il Domain né il repository del turno, l'inizio del turno verifica l'esistenza della conversazione tramite la porta di lookup e non tramite una porta di lettura, e il repository del turno non dichiara letture di storico o elenco. Fallisce a ogni deviazione.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dell'organizzazione delle conversazioni](#verifica-dellorganizzazione-delle-conversazioni)
+  * satisfiedBy: [domain-model.spec.ts](../../test/repository/domain-model.spec.ts)
+  * verify: [Contratti di lettura separati dell'archivio conversazioni](../Requirements/FamilyConversation.md#contratti-di-lettura-separati-dellarchivio-conversazioni)
+---
+
+### Prova delle porte senza streaming dell'archivio
+
+Leggere come testo le porte Application di «Conversazioni» e cercare tipi di consegna incrementale: `AsyncIterable`, `AsyncIterator`, `AsyncGenerator`, stream di Node.js, `ReadableStream` e cursori del database.
+
+#### Details
+La prova passa se l'unica porta con consegna incrementale è `ProduceConversationReply`, che usa `AsyncIterable` di valori Application, e nessuna porta espone stream del runtime, cursori o tipi Kysely. Fallisce se una porta di lettura, di lookup o il repository del turno consegna in streaming o se una porta espone un tipo tecnico di stream.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dell'organizzazione delle conversazioni](#verifica-dellorganizzazione-delle-conversazioni)
+  * satisfiedBy: [domain-model.spec.ts](../../test/repository/domain-model.spec.ts)
+  * verify: [Streaming soltanto quando l'intenzione lo richiede](../Requirements/FamilyConversation.md#streaming-soltanto-quando-lintenzione-lo-richiede)
+---
+
+### Prova statica dei confini degli import
+
+Eseguire la regola `domain-application-own-package` di «Regole di architettura del backend» sul grafo degli import del codice TypeScript di produzione del modulo «Conversazioni», compresi gli import di valori, gli `import type` e le riesportazioni, e sulle sue fixture negative.
+
+#### Details
+La prova passa se ogni import originato da Domain punta a Domain dello stesso modulo, ogni import originato da Application punta a Domain o Application dello stesso modulo e le fixture negative della regola falliscono con il suo nome. Fallisce se è presente anche un solo collegamento verso un componente, un modulo o un file del package fuori da quei layer, compresi quelli che importano soltanto tipi.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dell'organizzazione delle conversazioni](#verifica-dellorganizzazione-delle-conversazioni)
+  * satisfiedBy: [architecture-rules.ts](../../test/repository/architecture-rules.ts)
+  * satisfiedBy: [import-boundaries.spec.ts](../../test/repository/import-boundaries.spec.ts)
+  * verify: [Import del Domain entro il proprio componente](../Requirements/FamilyConversation.md#import-del-domain-entro-il-proprio-componente)
+  * verify: [Import dell'Application entro il proprio modulo](../Requirements/FamilyConversation.md#import-dellapplication-entro-il-proprio-modulo)
 ---
 
 ### Verifica della concorrenza dei turni
@@ -540,6 +714,23 @@ Raggruppa le verifiche sul singolo turno attivo per conversazione, sull'elaboraz
 
 #### Metadata
   * type: verification-objective
+---
+
+### Ispezione delle suite di concorrenza dell'archivio
+
+Esaminare le prove di ogni garanzia di concorrenza dichiarata dall'archivio delle conversazioni: database usato, processi e connessioni, sincronizzazione delle esecuzioni concorrenti e sonda dello stato finale.
+
+#### Details
+L'ispezione passa se ogni garanzia dichiarata ha una prova sull'archivio SQLite reale con processi e connessioni indipendenti, sincronizzazione esplicita e una sonda indipendente che confronta lo stato finale con l'intera intenzione. Fallisce se una prova si basa su un avvio in parallelo nello stesso processo, sul successo delle chiamate o sulla presenza di un blocco, oppure se una garanzia dichiarata non ha prova.
+
+Non automatizzabile: giudicare se la sincronizzazione impone davvero la sovrapposizione che la garanzia riguarda richiede di leggere ogni prova rispetto alla garanzia che dimostra.
+
+#### Metadata
+  * type: inspection-verification
+
+#### Relations
+  * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
+  * verify: [Garanzie di concorrenza provate da esecuzioni concorrenti reali](../Requirements/FamilyConversation.md#garanzie-di-concorrenza-provate-da-esecuzioni-concorrenti-reali)
 ---
 
 ### Prova degli ingressi disabilitati durante un turno
@@ -554,8 +745,8 @@ La prova passa se, finché il turno di A non ha un esito conservato, ogni nuovo 
 
 #### Relations
   * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [session-rejections.test.ts](../../apps/server/test/runtime/session-rejections.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [http-server.session-rejections.spec.ts](../../apps/server/src/runtime/http-server.session-rejections.spec.ts)
   * verify: [Disabilitazione degli ingressi durante un turno](../Requirements/FamilyConversation.md#disabilitazione-degli-ingressi-durante-un-turno)
 ---
 
@@ -571,7 +762,7 @@ Nella stessa conversazione viene ammesso al massimo un turno; gli altri ricevono
 
 #### Relations
   * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
-  * satisfiedBy: [session-rejections.test.ts](../../apps/server/test/runtime/session-rejections.test.ts)
+  * satisfiedBy: [http-server.session-rejections.spec.ts](../../apps/server/src/runtime/http-server.session-rejections.spec.ts)
   * verify: [Elaborazione parallela di conversazioni diverse](../Requirements/FamilyConversation.md#elaborazione-parallela-di-conversazioni-diverse)
   * verify: [Rifiuto dei turni concorrenti nella stessa conversazione](../Requirements/FamilyConversation.md#rifiuto-dei-turni-concorrenti-nella-stessa-conversazione)
   * verify: [Rifiuto del turno nella conversazione occupata](../Requirements/FamilyConversation.md#rifiuto-del-turno-nella-conversazione-occupata)
@@ -589,8 +780,8 @@ La prova passa se il secondo turno è rifiutato subito, non viene conservato e n
 
 #### Relations
   * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [session-rejections.test.ts](../../apps/server/test/runtime/session-rejections.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [http-server.session-rejections.spec.ts](../../apps/server/src/runtime/http-server.session-rejections.spec.ts)
   * verify: [Assenza di accodamento dei turni](../Requirements/FamilyConversation.md#assenza-di-accodamento-dei-turni)
 ---
 
@@ -606,8 +797,25 @@ La prova passa se solo l'ammissione concorrente accertata produce il rifiuto pre
 
 #### Relations
   * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
-  * satisfiedBy: [sqlite-conversation-write.test.ts](../../packages/conversations/test/adapters/out/sqlite-conversation-write.test.ts)
+  * satisfiedBy: [sqlite-turn-repository.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.integration.spec.ts)
   * verify: [Classificazione degli esiti delle scritture conversazionali](../Requirements/FamilyConversation.md#classificazione-degli-esiti-delle-scritture-conversazionali)
+---
+
+### Prova delle garanzie di concorrenza con esecuzioni reali
+
+Su un file SQLite preparato con le migrazioni di produzione, avviare processi Node.js distinti, ciascuno con la propria connessione, il proprio repository del turno e la propria porta di lookup, coordinati dal test con messaggi espliciti. Ammissione: due processi verificano l'esistenza della stessa conversazione e poi ammettono turni distinti, prima in un ordine imposto e poi in più giri nello stesso istante concordato. Conclusione: due processi caricano lo stesso turno in elaborazione; quando entrambi l'hanno caricato, uno salva una risposta e poi l'altro un'interruzione, e in altri giri salvano nello stesso istante concordato. Dopo ogni giro una connessione indipendente legge lo stato finale.
+
+#### Details
+La prova passa se ogni ammissione concorrente produce un solo successo, l'altra riceve `conversation_occupied` nell'ordine imposto oppure `conversation_occupied` o `archive_busy` nello stesso istante, e la sonda trova nella conversazione il solo turno ammesso in elaborazione, indicato come occupante, senza turni rifiutati conservati; se ogni conclusione concorrente produce al più un successo, l'altra riceve `turn_already_closed` nell'ordine imposto oppure `turn_already_closed` o un guasto tecnico nello stesso istante, mai un successo, e la sonda trova l'esito del solo vincitore con l'occupazione liberata. Fallisce se due esiti riusciti coesistono, se un esito dichiarato contraddice lo stato letto dalla sonda o se un aggiornamento perso sostituisce l'esito conservato.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
+  * satisfiedBy: [sqlite-turn-repository.adapter.concurrency.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.concurrency.integration.spec.ts)
+  * verify: [Garanzia di concorrenza dichiarata per ogni scrittura dell'archivio](../Requirements/FamilyConversation.md#garanzia-di-concorrenza-dichiarata-per-ogni-scrittura-dellarchivio)
+  * verify: [Rifiuto dei turni concorrenti nella stessa conversazione](../Requirements/FamilyConversation.md#rifiuto-dei-turni-concorrenti-nella-stessa-conversazione)
 ---
 
 ### Prova delle transazioni brevi del turno
@@ -622,7 +830,7 @@ La prova passa se nessuna transazione del turno resta aperta durante l'attesa de
 
 #### Relations
   * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
   * verify: [Transazioni brevi dell'archivio conversazioni](../Requirements/FamilyConversation.md#transazioni-brevi-dellarchivio-conversazioni)
 ---
 
@@ -638,8 +846,8 @@ La prova passa se un errore non lascia transizioni parziali e il chiamante non r
 
 #### Relations
   * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [sqlite-conversation-write.test.ts](../../packages/conversations/test/adapters/out/sqlite-conversation-write.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [sqlite-turn-repository.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.integration.spec.ts)
   * verify: [Scritture atomiche dello stato dei turni](../Requirements/FamilyConversation.md#scritture-atomiche-dello-stato-dei-turni)
 ---
 
@@ -663,7 +871,7 @@ La prova passa se l'ingresso conversazionale si avvia e completa un turno testua
 
 #### Relations
   * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
-  * satisfiedBy: [config-bootstrap.test.ts](../../apps/server/test/runtime/config-bootstrap.test.ts)
+  * satisfiedBy: [conversation-server.config-bootstrap.spec.ts](../../apps/server/src/runtime/conversation-server.config-bootstrap.spec.ts)
   * verify: [Ingressi testuali indipendenti dalla voce](../Requirements/FamilyConversation.md#ingressi-testuali-indipendenti-dalla-voce)
 ---
 
@@ -679,43 +887,43 @@ La prova passa se lo storico conserva solo testo e dati non audio e se nessuna r
 
 #### Relations
   * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
-  * satisfiedBy: [session-lifecycle.test.ts](../../apps/server/test/runtime/session-lifecycle.test.ts)
+  * satisfiedBy: [conversation-server.session-lifecycle.spec.ts](../../apps/server/src/runtime/conversation-server.session-lifecycle.spec.ts)
   * verify: [Conservazione solo testuale della conversazione](../Requirements/FamilyConversation.md#conservazione-solo-testuale-della-conversazione)
 ---
 
 ### Prova della scelta del motore di sintesi
 
-Caricare file vocali di prova con directory di voce fittizie per entrambi i motori: `voiceEngine` uguale a `piper` senza `voiceSpeaker` né `voiceLanguage`; uguale a `kokoro` con `voiceSpeaker` 0, 35 e 52 e `voiceLanguage` `it`, `en` e `pt-br`; directory Kokoro con `model.onnx` e con un unico `model.int8.onnx`. Provare poi i casi invalidi: `voiceEngine` assente, vuoto o sconosciuto; `voiceSpeaker` o `voiceLanguage` presenti con `piper`; uno dei due assente con `kokoro`; `voiceSpeaker` negativo, decimale, stringa numerica o nome di voce come `if_sara`; `voiceLanguage` vuoto o non stringa; directory Kokoro priva di file `.onnx`, con due file `.onnx` o priva di `voices.bin`, `tokens.txt` o `espeak-ng-data/`. Con il motore di sintesi controllato costruire il sintetizzatore per ciascun motore, sintetizzare una frase e registrare la configurazione passata a `createAsync` e il `sid` di ogni generazione; ripetere con un motore controllato che dichiara meno voci del `voiceSpeaker` configurato. Quando la variabile d'ambiente che indica una directory Kokoro reale è presente, sintetizzare inoltre una breve frase italiana con le voci 35 e 36 e una breve frase inglese con la voce 0 e lingua `en`.
+Leggere configurazioni vocali di prova con directory di voce fittizie per entrambi i motori: `AMBROGIO_VOICE_<LINGUA>_ENGINE` uguale a `piper` senza `SPEAKER` né `LANGUAGE`; uguale a `kokoro` con `SPEAKER` 0, 35 e 52 e `LANGUAGE` `it`, `en` e `pt-br`; directory Kokoro con `model.onnx` e con un unico `model.int8.onnx`. Provare poi i casi invalidi: motore assente o sconosciuto; `SPEAKER` o `LANGUAGE` presenti con `piper`; uno dei due assente con `kokoro`; `SPEAKER` negativo, decimale o nome di voce come `if_sara`; directory Kokoro priva di file `.onnx`, con due file `.onnx` o priva di `voices.bin`, `tokens.txt` o `espeak-ng-data/`. Con il motore di sintesi controllato costruire il sintetizzatore per ciascun motore, sintetizzare una frase e registrare la configurazione passata a `createAsync` e il `sid` di ogni generazione; ripetere con un motore controllato che dichiara meno voci dello `SPEAKER` configurato. Quando la variabile d'ambiente che indica una directory Kokoro reale è presente, sintetizzare inoltre una breve frase italiana con le voci 35 e 36 e una breve frase inglese con la voce 0 e lingua `en`.
 
 #### Details
-La prova passa se i file validi sono accettati con il motore, la voce e la lingua indicati; ogni caso invalido rende il file vocale invalido oppure la directory della voce non disponibile prima della costruzione del sintetizzatore; con `piper` la configurazione contiene la sola sezione `vits` con i file della directory e ogni generazione usa `sid` 0; con `kokoro` la configurazione contiene la sola sezione `kokoro` con l'unico file `.onnx`, `voices.bin`, `tokens.txt`, `espeak-ng-data/` e `lang` uguale a `voiceLanguage`, e ogni generazione usa `sid` uguale a `voiceSpeaker`; un `voiceSpeaker` non inferiore a `numSpeakers` impedisce la costruzione del sintetizzatore; caricamento unico, `numThreads` e formato dell'audio restano quelli della prova della sintesi nel processo backend. Con il modello Kokoro reale la prova passa se l'audio di ogni voce provata è non vuoto alla frequenza del modello. Fallisce se un file invalido è accettato, se il motore, la voce o la lingua usati differiscono da quelli configurati, se la lingua o la voce sono imposte dal backend o se una voce fuori intervallo raggiunge la sintesi.
+La prova passa se le configurazioni valide sono accettate con il motore, la voce e la lingua indicati; ogni caso invalido rende invalida la configurazione vocale oppure la directory della voce non disponibile prima della costruzione del sintetizzatore; con `piper` la configurazione contiene la sola sezione `vits` con i file della directory e ogni generazione usa `sid` 0; con `kokoro` la configurazione contiene la sola sezione `kokoro` con l'unico file `.onnx`, `voices.bin`, `tokens.txt`, `espeak-ng-data/` e `lang` uguale alla lingua configurata, e ogni generazione usa `sid` uguale allo `SPEAKER` configurato; uno `SPEAKER` non inferiore a `numSpeakers` impedisce la costruzione del sintetizzatore; caricamento unico, `numThreads` e formato dell'audio restano quelli della prova della sintesi nel processo backend. Con il modello Kokoro reale la prova passa se l'audio di ogni voce provata è non vuoto alla frequenza del modello. Fallisce se una configurazione invalida è accettata, se il motore, la voce o la lingua usati differiscono da quelli configurati, se la lingua o la voce sono imposte dal backend o se una voce fuori intervallo raggiunge la sintesi.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
-  * satisfiedBy: [sherpa-synthesizer.test.ts](../../packages/conversations/test/adapters/in/sherpa-synthesizer.test.ts)
-  * satisfiedBy: [voice-config.test.ts](../../packages/conversations/test/adapters/out/voice-config.test.ts)
+  * satisfiedBy: [sherpa-synthesizer.spec.ts](../../packages/conversations/src/adapters/in/session/sherpa-synthesizer.spec.ts)
+  * satisfiedBy: [voice-config.spec.ts](../../packages/conversations/src/adapters/out/voice-config.spec.ts)
   * verify: [Scelta del motore di sintesi vocale](../Requirements/FamilyConversation.md#scelta-del-motore-di-sintesi-vocale)
 ---
 
 ### Prova della selezione vocale per lingua
 
-Preparare un file con profili italiani e inglesi che indicano percorsi espliciti alle directory incluse e a directory esterne montate, scegliendo tra più voci della stessa lingua, Piper e Kokoro. Provare la lingua effettiva italiana e inglese, il profilo attivo mancante, i campi invalidi nell'altro profilo, il formato precedente a profilo singolo e la voce disabilitata. Osservare risorse caricate, lingua Vosk, voce e lingua di fonetizzazione Kokoro.
+Preparare profili vocali italiani e inglesi con variabili che indicano percorsi espliciti alle directory incluse e a directory esterne montate, scegliendo tra più voci della stessa lingua, Piper e Kokoro. Provare la lingua effettiva italiana e inglese, la lingua effettiva assente da `AMBROGIO_VOICE_LANGUAGES`, una lingua sconosciuta o ripetuta nell'elenco, variabili invalide nell'altro profilo elencato e la voce disabilitata con `AMBROGIO_VOICE_LANGUAGES` assente o vuota. Osservare risorse caricate, lingua Vosk, voce e lingua di fonetizzazione Kokoro.
 
 #### Details
-La prova passa se ciascuna lingua seleziona esattamente i percorsi indicati, anche quando provengono da un mount o quando esistono più voci della stessa lingua; il profilo mancante o strutturalmente invalido rende il file invalido, l'altro profilo non carica i modelli, il formato precedente funziona e la voce disabilitata non carica modelli. Fallisce se una lingua carica percorsi diversi da quelli indicati, se un profilo mancante o invalido è accettato o se vengono caricati modelli di un profilo non attivo o della voce disabilitata.
+La prova passa se ciascuna lingua seleziona esattamente i percorsi indicati, anche quando provengono da un mount o quando esistono più voci della stessa lingua; un elenco invalido o un profilo elencato con variabili invalide rende invalida la configurazione, l'altro profilo non carica i modelli e la voce disabilitata non legge altre variabili né carica modelli. Fallisce se una lingua carica percorsi diversi da quelli indicati, se un elenco o un profilo invalido è accettato o se vengono caricati modelli di un profilo non attivo o della voce disabilitata.
 
-I casi di configurazione sono provati da `voice-config.test.ts`, la selezione dei profili e della voce montata con i modelli dell'immagine da `scripts/verify-docker-image.mjs` e l'avvio senza voce da `config-bootstrap.test.ts`.
+I casi di configurazione sono provati da `voice-config.spec.ts`, la selezione dei profili e della voce montata con i modelli dell'immagine da `scripts/verify-docker-image.mjs` e l'avvio senza voce da `conversation-server.config-bootstrap.spec.ts`.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
-  * satisfiedBy: [config-bootstrap.test.ts](../../apps/server/test/runtime/config-bootstrap.test.ts)
-  * satisfiedBy: [voice-config.test.ts](../../packages/conversations/test/adapters/out/voice-config.test.ts)
+  * satisfiedBy: [conversation-server.config-bootstrap.spec.ts](../../apps/server/src/runtime/conversation-server.config-bootstrap.spec.ts)
+  * satisfiedBy: [voice-config.spec.ts](../../packages/conversations/src/adapters/out/voice-config.spec.ts)
   * satisfiedBy: [verify-docker-image.mjs](../../scripts/verify-docker-image.mjs)
   * verify: [Selezione dei modelli vocali inclusi per lingua](../Requirements/FamilyConversation.md#selezione-dei-modelli-vocali-inclusi-per-lingua)
 ---
@@ -732,7 +940,7 @@ La prova passa se i testi consegnati al motore non contengono asterischi, tilde 
 
 #### Relations
   * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
-  * satisfiedBy: [sherpa-synthesizer.test.ts](../../packages/conversations/test/adapters/in/sherpa-synthesizer.test.ts)
+  * satisfiedBy: [sherpa-synthesizer.spec.ts](../../packages/conversations/src/adapters/in/session/sherpa-synthesizer.spec.ts)
   * verify: [Risposta parlata senza marcatura testuale](../Requirements/FamilyConversation.md#risposta-parlata-senza-marcatura-testuale)
 ---
 
@@ -748,7 +956,7 @@ La prova passa se la voce è caricata una sola volta per tutte le trasmissioni, 
 
 #### Relations
   * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
-  * satisfiedBy: [sherpa-synthesizer.test.ts](../../packages/conversations/test/adapters/in/sherpa-synthesizer.test.ts)
+  * satisfiedBy: [sherpa-synthesizer.spec.ts](../../packages/conversations/src/adapters/in/session/sherpa-synthesizer.spec.ts)
   * verify: [Risposta parlata su richiesta del client](../Requirements/FamilyConversation.md#risposta-parlata-su-richiesta-del-client)
 ---
 
@@ -764,8 +972,8 @@ La prova passa se il turno conservato contiene la trascrizione testuale attesa, 
 
 #### Relations
   * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
-  * satisfiedBy: [session-lifecycle.test.ts](../../apps/server/test/runtime/session-lifecycle.test.ts)
-  * satisfiedBy: [sherpa-synthesizer.test.ts](../../packages/conversations/test/adapters/in/sherpa-synthesizer.test.ts)
+  * satisfiedBy: [conversation-server.session-lifecycle.spec.ts](../../apps/server/src/runtime/conversation-server.session-lifecycle.spec.ts)
+  * satisfiedBy: [sherpa-synthesizer.spec.ts](../../packages/conversations/src/adapters/in/session/sherpa-synthesizer.spec.ts)
   * verify: [Risposta parlata su richiesta del client](../Requirements/FamilyConversation.md#risposta-parlata-su-richiesta-del-client)
   * verify: [Trascrizione del turno vocale](../Requirements/FamilyConversation.md#trascrizione-del-turno-vocale)
 ---
@@ -782,7 +990,7 @@ La prova passa se entrambi i tentativi ricevono la trasmissione del messaggio pu
 
 #### Relations
   * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
-  * satisfiedBy: [session-rejections.test.ts](../../apps/server/test/runtime/session-rejections.test.ts)
+  * satisfiedBy: [http-server.session-rejections.spec.ts](../../apps/server/src/runtime/http-server.session-rejections.spec.ts)
   * verify: [Trascrizione vocale non riuscita](../Requirements/FamilyConversation.md#trascrizione-vocale-non-riuscita)
 ---
 
@@ -831,10 +1039,10 @@ Non automatizzabile: stabilire che ogni percorso applicativo dell'archivio passa
 
 ### Ispezione degli esempi inglesi degli agenti
 
-Esaminare tutti gli esempi distribuiti di generic.ts, orchestrator.ts e agenti specializzati, incluse istruzioni e descrizioni.
+Esaminare tutti i file d'esempio degli agenti distribuiti, `generic.json`, `orchestrator.json` e gli agenti specializzati, incluse istruzioni e descrizioni.
 
 #### Details
-L'ispezione passa se i testi sono in inglese, generic.ts non prescrive una lingua fissa per la risposta e l'orchestratore è descritto soltanto come selettore dell'agente.
+L'ispezione passa se i testi sono in inglese, `generic.json` non prescrive una lingua fissa per la risposta e l'orchestratore è descritto soltanto come selettore dell'agente.
 
 Non automatizzabile: giudicare la lingua dei testi e il ruolo descritto per l'orchestratore richiede la lettura umana.
 
@@ -858,7 +1066,7 @@ La prova passa se `turn.accepted` arriva prima di qualsiasi trasmissione della r
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [session-turns.test.ts](../../apps/server/test/runtime/session-turns.test.ts)
+  * satisfiedBy: [http-server.session-turns.spec.ts](../../apps/server/src/runtime/http-server.session-turns.spec.ts)
   * verify: [Comunicazione degli identificativi del turno ammesso](../Requirements/FamilyConversation.md#comunicazione-degli-identificativi-del-turno-ammesso)
 ---
 
@@ -874,9 +1082,9 @@ La prova passa se gli schemi TypeBox sono applicati da Fastify/Ajv prima dei ges
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
-  * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [get-conversation.route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.route.adapter.spec.ts)
+  * satisfiedBy: [list-conversations.route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.route.adapter.spec.ts)
   * verify: [Validazione strutturale delle richieste conversazionali HTTP](../Requirements/FamilyConversation.md#validazione-strutturale-delle-richieste-conversazionali-http)
 ---
 
@@ -892,23 +1100,23 @@ La prova passa se, in tutti i casi, il backend prosegue l'elaborazione dopo la c
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [session-lifecycle.test.ts](../../apps/server/test/runtime/session-lifecycle.test.ts)
+  * satisfiedBy: [conversation-server.session-lifecycle.spec.ts](../../apps/server/src/runtime/conversation-server.session-lifecycle.spec.ts)
   * verify: [Completamento del turno accettato dopo disconnessione](../Requirements/FamilyConversation.md#completamento-del-turno-accettato-dopo-disconnessione)
 ---
 
 ### Prova del fuso orario configurato
 
-Caricare il modulo TypeScript del componente «Conversazioni» senza `timeZone`, con `timeZone` uguale a `Europe/Rome` e, in tentativi separati, con un numero, con una stringa vuota e con `Mars/Olympus`.
+Leggere la configurazione del componente «Conversazioni» senza `AMBROGIO_TIME_ZONE`, con `AMBROGIO_TIME_ZONE` uguale a `Europe/Rome`, vuota e, in un tentativo separato, uguale a `Mars/Olympus`.
 
 #### Details
-La prova passa se senza il campo il fuso effettivo è `UTC`, con `Europe/Rome` è `Europe/Rome`, e ciascun valore invalido rende invalida la configurazione con il messaggio `Invalid conversation time zone`. Fallisce se un valore invalido viene accettato o se il fuso effettivo differisce da quello atteso.
+La prova passa se senza la variabile o con la variabile vuota il fuso effettivo è `UTC`, con `Europe/Rome` è `Europe/Rome`, e il valore invalido rende invalida la configurazione con il messaggio `Invalid environment variable AMBROGIO_TIME_ZONE: expected an IANA time zone name`, senza riportare il valore. Fallisce se un valore invalido viene accettato o se il fuso effettivo differisce da quello atteso.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-config.test.ts](../../packages/conversations/test/adapters/out/conversation-config.test.ts)
+  * satisfiedBy: [conversation-config.spec.ts](../../packages/conversations/src/adapters/out/conversation-config.spec.ts)
   * verify: [Configurazione del fuso orario della conversazione](../Requirements/FamilyConversation.md#configurazione-del-fuso-orario-della-conversazione)
 ---
 
@@ -924,7 +1132,7 @@ La prova passa se ogni turno riceve la trasmissione del messaggio pubblico e `tu
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [session-rejections.test.ts](../../apps/server/test/runtime/session-rejections.test.ts)
+  * satisfiedBy: [http-server.session-rejections.spec.ts](../../apps/server/src/runtime/http-server.session-rejections.spec.ts)
   * verify: [Rifiuto del turno testuale vuoto](../Requirements/FamilyConversation.md#rifiuto-del-turno-testuale-vuoto)
 ---
 
@@ -940,10 +1148,10 @@ La prova passa se il caso d'uso chiede alla porta una scadenza di 30 secondi; se
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
-  * satisfiedBy: [mcp-tool-client.test.ts](../../packages/conversations/test/adapters/out/mcp-tool-client.test.ts)
-  * satisfiedBy: [turn-capabilities.test.ts](../../packages/conversations/test/adapters/out/turn-capabilities.test.ts)
-  * satisfiedBy: [exchange-turn.test.ts](../../packages/conversations/test/application/exchange-turn.test.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
+  * satisfiedBy: [mcp-tool-client.spec.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.spec.ts)
+  * satisfiedBy: [system-deadlines.adapter.spec.ts](../../packages/conversations/src/adapters/out/system-deadlines.adapter.spec.ts)
+  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
   * verify: [Tempo massimo della produzione della risposta](../Requirements/FamilyConversation.md#tempo-massimo-della-produzione-della-risposta)
 ---
 
@@ -959,9 +1167,9 @@ La prova passa se l'agente senza MCP viene attivato senza aprire connessioni MCP
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [agents.test.ts](../../apps/server/test/composition/agents.test.ts)
-  * satisfiedBy: [config-bootstrap.test.ts](../../apps/server/test/runtime/config-bootstrap.test.ts)
-  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
+  * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
+  * satisfiedBy: [conversation-server.config-bootstrap.spec.ts](../../apps/server/src/runtime/conversation-server.config-bootstrap.spec.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
   * verify: [Agente specializzato senza connettore MCP](../Requirements/FamilyConversation.md#agente-specializzato-senza-connettore-mcp)
 ---
 
@@ -977,8 +1185,8 @@ La prova passa se l'adapter rifiuta ciascun messaggio al proprio confine con `se
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [ambrogio-v1-schema.test.ts](../../apps/server/test/protocol/ambrogio-v1-schema.test.ts)
-  * satisfiedBy: [session-opening.test.ts](../../apps/server/test/runtime/session-opening.test.ts)
+  * satisfiedBy: [http-server.session-opening.spec.ts](../../apps/server/src/runtime/http-server.session-opening.spec.ts)
+  * satisfiedBy: [ambrogio-v1-schema.spec.ts](../../apps/server/test/protocol/ambrogio-v1-schema.spec.ts)
   * verify: [Validazione del formato negli ingressi conversazionali](../Requirements/FamilyConversation.md#validazione-del-formato-negli-ingressi-conversazionali)
 ---
 
@@ -994,14 +1202,14 @@ La prova passa se il server chiude la trasmissione in corso con `output.end`, ap
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [session-lifecycle.test.ts](../../apps/server/test/runtime/session-lifecycle.test.ts)
+  * satisfiedBy: [conversation-server.session-lifecycle.spec.ts](../../apps/server/src/runtime/conversation-server.session-lifecycle.spec.ts)
   * verify: [Conservazione dell'errore dopo risposta parziale](../Requirements/FamilyConversation.md#conservazione-dellerrore-dopo-risposta-parziale)
   * verify: [Segnalazione dell'errore dopo l'ammissione](../Requirements/FamilyConversation.md#segnalazione-dellerrore-dopo-lammissione)
 ---
 
 ### Prova dell'ingresso dei turni con agenti configurati
 
-Avviare il processo con i moduli TypeScript HTTP, Conversazioni, orchestratore e almeno un agente specializzato validi, usando un provider e un connettore MCP controllati. Aprire una sessione su `/api/session`, inviare un turno e leggere trasmissioni, esito e storico; richiedere anche i due GET. Ripetere con un modulo agente invalido e con un connettore non disponibile prima dell'ascolto.
+Avviare il processo con la configurazione HTTP e Conversazioni, l'orchestratore e almeno un agente specializzato validi, usando un provider e un connettore MCP controllati. Aprire una sessione su `/api/session`, inviare un turno e leggere trasmissioni, esito e storico; richiedere anche i due GET. Ripetere con un file di agente invalido e con un connettore non disponibile prima dell'ascolto.
 
 #### Details
 La prova passa se l'avvio valido espone il canale conversazionale e i GET, il turno usa il produttore orchestratore e produce trasmissioni, esito e storico previsti; l'avvio invalido non apre il listener e chiude le risorse già preparate. Le risposte GET conservano gli header di sicurezza, `Cache-Control: no-store` e l'identificativo di correlazione. Fallisce se il canale manca, usa un produttore diverso, espone dettagli segreti o lascia risorse aperte. Verifica definita per il protocollo `ambrogio.v1`.
@@ -1011,8 +1219,8 @@ La prova passa se l'avvio valido espone il canale conversazionale e i GET, il tu
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [config-bootstrap.test.ts](../../apps/server/test/runtime/config-bootstrap.test.ts)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
+  * satisfiedBy: [conversation-server.config-bootstrap.spec.ts](../../apps/server/src/runtime/conversation-server.config-bootstrap.spec.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
   * verify: [Avvio dell'ingresso dei turni conversazionali](../Requirements/FamilyConversation.md#avvio-dellingresso-dei-turni-conversazionali)
 ---
 
@@ -1028,8 +1236,8 @@ La prova passa se l'adapter usa il pacchetto AI SDK del provider indicato, l'end
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [api-credentials.test.ts](../../apps/server/test/composition/api-credentials.test.ts)
-  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
+  * satisfiedBy: [agents.api-credentials.spec.ts](../../apps/server/src/composition/agents.api-credentials.spec.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
   * verify: [Risposta testuale nella conversazione](../Requirements/FamilyConversation.md#risposta-testuale-nella-conversazione)
   * verify: [Validazione preventiva della configurazione attiva](../Requirements/ServerFoundation.md#validazione-preventiva-della-configurazione-attiva)
 ---
@@ -1046,7 +1254,7 @@ La prova passa se ogni turno accettato compare nello storico con il testo identi
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
+  * satisfiedBy: [conversations.spec.ts](../../apps/server/src/composition/conversations.spec.ts)
   * verify: [Conservazione del testo originale del turno](../Requirements/FamilyConversation.md#conservazione-del-testo-originale-del-turno)
 ---
 
@@ -1062,7 +1270,7 @@ La prova passa se entrambi i turni ricevono la trasmissione del messaggio pubbli
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [session-rejections.test.ts](../../apps/server/test/runtime/session-rejections.test.ts)
+  * satisfiedBy: [http-server.session-rejections.spec.ts](../../apps/server/src/runtime/http-server.session-rejections.spec.ts)
   * verify: [Precondizioni contestuali nel caso d'uso conversazionale](../Requirements/FamilyConversation.md#precondizioni-contestuali-nel-caso-duso-conversazionale)
   * verify: [Rifiuto della continuazione con conversazione inesistente](../Requirements/FamilyConversation.md#rifiuto-della-continuazione-con-conversazione-inesistente)
 ---
@@ -1079,7 +1287,7 @@ La prova passa se, per ogni origine e per ogni tipo di contenuto, il backend rec
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [session-turns.test.ts](../../apps/server/test/runtime/session-turns.test.ts)
+  * satisfiedBy: [http-server.session-turns.spec.ts](../../apps/server/src/runtime/http-server.session-turns.spec.ts)
   * verify: [Continuazione di ogni conversazione da qualunque client](../Requirements/FamilyConversation.md#continuazione-di-ogni-conversazione-da-qualunque-client)
   * verify: [Recupero dello storico per il turno](../Requirements/FamilyConversation.md#recupero-dello-storico-per-il-turno)
 ---
@@ -1096,11 +1304,11 @@ La prova passa se nel secondo turno la risposta precedente compare nel contesto 
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
-  * satisfiedBy: [sqlite-history.test.ts](../../packages/conversations/test/adapters/out/sqlite-history.test.ts)
-  * satisfiedBy: [exchange-turn.test.ts](../../packages/conversations/test/application/exchange-turn.test.ts)
-  * satisfiedBy: [turn.test.ts](../../packages/conversations/test/domain/turn.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
+  * satisfiedBy: [sqlite-conversation-history-read.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-history-read.adapter.integration.spec.ts)
+  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
+  * satisfiedBy: [turn.spec.ts](../../packages/conversations/src/domain/turn.spec.ts)
   * verify: [Continuità dell'agente nella conversazione](../Requirements/FamilyConversation.md#continuità-dellagente-nella-conversazione)
 ---
 
@@ -1116,8 +1324,8 @@ La prova passa se in entrambi i casi la produzione prosegue fino al proprio esit
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
-  * satisfiedBy: [exchange-turn.test.ts](../../packages/conversations/test/application/exchange-turn.test.ts)
+  * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
+  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
   * verify: [Continuità del turno dopo un guasto di consegna](../Requirements/FamilyConversation.md#continuità-del-turno-dopo-un-guasto-di-consegna)
 ---
 
@@ -1133,8 +1341,8 @@ La prova passa se entrambi gli agenti specializzati ricevono, subito dopo le pro
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [agents.test.ts](../../apps/server/test/composition/agents.test.ts)
-  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
+  * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
   * verify: [Data e ora correnti per gli agenti specializzati](../Requirements/FamilyConversation.md#data-e-ora-correnti-per-gli-agenti-specializzati)
 ---
 
@@ -1150,8 +1358,8 @@ La prova passa se l'orchestratore riceve per ciascun agente attivo solo identifi
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [agents.test.ts](../../apps/server/test/composition/agents.test.ts)
-  * satisfiedBy: [agent-config.test.ts](../../apps/server/test/runtime/agent-config.test.ts)
+  * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
+  * satisfiedBy: [agent-config.spec.ts](../../apps/server/src/runtime/agent-config.spec.ts)
   * verify: [Descrizione degli agenti specializzati per l'orchestrazione](../Requirements/FamilyConversation.md#descrizione-degli-agenti-specializzati-per-lorchestrazione)
 ---
 
@@ -1167,8 +1375,8 @@ La prova passa se il guasto tecnico inatteso è registrato dal componente tecnic
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
   * verify: [Diagnostica del guasto tecnico di consegna](../Requirements/FamilyConversation.md#diagnostica-del-guasto-tecnico-di-consegna)
 ---
 
@@ -1184,8 +1392,8 @@ La prova passa se per ogni guasto esiste un solo evento `conversation_reply_fail
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
-  * satisfiedBy: [exchange-turn.test.ts](../../packages/conversations/test/application/exchange-turn.test.ts)
+  * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
+  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
   * verify: [Diagnostica del guasto nella produzione della risposta](../Requirements/FamilyConversation.md#diagnostica-del-guasto-nella-produzione-della-risposta)
 ---
 
@@ -1201,7 +1409,7 @@ La prova passa se, dopo il riavvio, la famiglia può recuperare la conversazione
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
   * verify: [Disponibilità dello storico dopo riavvio](../Requirements/FamilyConversation.md#disponibilità-dello-storico-dopo-riavvio)
 ---
 
@@ -1210,15 +1418,15 @@ La prova passa se, dopo il riavvio, la famiglia può recuperare la conversazione
 Leggere via GET una conversazione con turni conclusi con risposta ed errore, un turno in elaborazione e un turno interrotto. Ripetere la lettura dopo la conclusione del turno in elaborazione e verificare anche conversazione assente e guasto tecnico dell'archivio.
 
 #### Details
-La prova passa se la risposta `200` è JSON senza cache, conserva identità, testi, ordine e istanti ISO 8601 UTC e presenta solo i campi di esito pertinenti a ciascuno stato. La seconda lettura presenta l'esito persistente del turno prima in elaborazione senza duplicarlo; la lettura non usa SSE né recupera frammenti parziali. La conversazione assente restituisce `404` e il guasto tecnico `500`, entrambi con un messaggio pubblico sicuro tradotto e senza dettagli tecnici. Fallisce se uno stato o un testo è alterato, se un frammento parziale compare nello storico o se un guasto espone dettagli interni.
+La prova passa se la risposta `200` è JSON senza cache, conserva identità, testi, ordine e istanti ISO 8601 UTC e presenta solo i campi di esito pertinenti a ciascuno stato. La seconda lettura presenta l'esito persistente del turno prima in elaborazione senza duplicarlo; la lettura non usa SSE né recupera frammenti parziali. Le letture usano `GET /api/v1/conversations/:conversationId`. La conversazione assente restituisce `404` con il problema `/problems/conversation-not-found` e il guasto tecnico `500` con la risposta opaca, entrambi `application/problem+json` conformi ai propri schemi e senza dettagli tecnici. Fallisce se uno stato o un testo è alterato, se un frammento parziale compare nello storico o se un guasto espone dettagli interni.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
-  * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
+  * satisfiedBy: [conversations.spec.ts](../../apps/server/src/composition/conversations.spec.ts)
+  * satisfiedBy: [get-conversation.route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.route.adapter.spec.ts)
   * verify: [Lettura HTTP dello storico conversazionale](../Requirements/FamilyConversation.md#lettura-http-dello-storico-conversazionale)
 ---
 
@@ -1234,23 +1442,23 @@ La prova passa se ogni specialista, con e senza MCP, riceve la direttiva della l
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [agents.test.ts](../../apps/server/test/composition/agents.test.ts)
+  * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
   * verify: [Lingua configurata nelle risposte degli agenti](../Requirements/FamilyConversation.md#lingua-configurata-nelle-risposte-degli-agenti)
 ---
 
 ### Prova della ricerca delle configurazioni degli agenti
 
-Preparare in `/etc/ambrogio/agents` `orchestrator.ts`, `memory.ts` e `home-assistant.ts` con valori distinguibili. Per la prova isolata usare un filesystem controllato che rappresenti lo stesso percorso visto dal processo. Osservare i file scoperti e le associazioni; verificare separatamente nomi di file con identificativo invalido, come `Home.ts` e `home_assistant.ts`, e l'assenza di `orchestrator.ts`.
+Preparare in una directory degli agenti di prova `orchestrator.json`, `memory.json`, `home-assistant.json` e un file di altro tipo con valori distinguibili, indicandola con `AMBROGIO_AGENTS_DIR`; verificare anche che senza la variabile la directory è `/etc/ambrogio/agents`. Osservare i file scoperti e le associazioni; verificare separatamente nomi di file con identificativo invalido, come `Home.json` e `home_assistant.json`, e l'assenza di `orchestrator.json`.
 
 #### Details
-La prova passa se il server cerca nel percorso previsto, riconosce `orchestrator.ts` come orchestratore e ricava `memory` e `home-assistant` dai rispettivi file. Nomi che non rispettano `^[a-z][a-z0-9-]*$` non identificano agenti specializzati. Senza `orchestrator.ts` l'orchestratore non viene attivato e l'avvio interessato segnala l'errore secondo il contratto di configurazione. Fallisce se un file è associato all'agente sbagliato o se un nome invalido è accettato come identificativo.
+La prova passa se il server cerca nel percorso previsto, riconosce `orchestrator.json` come orchestratore, ricava `memory` e `home-assistant` dai rispettivi file e ignora il file di altro tipo. Nomi che non rispettano `^[a-z][a-z0-9-]*$` non identificano agenti specializzati. Senza `orchestrator.json` l'orchestratore non viene attivato e l'avvio interessato segnala l'errore secondo il contratto di configurazione. Fallisce se un file è associato all'agente sbagliato o se un nome invalido è accettato come identificativo.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [agent-config.test.ts](../../apps/server/test/runtime/agent-config.test.ts)
+  * satisfiedBy: [agent-config.spec.ts](../../apps/server/src/runtime/agent-config.spec.ts)
   * verify: [Scoperta delle configurazioni degli agenti](../Requirements/FamilyConversation.md#scoperta-delle-configurazioni-degli-agenti)
 ---
 
@@ -1266,8 +1474,8 @@ La prova passa se ogni turno riceve l'esito testuale nella conversazione corrett
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [sqlite-history.test.ts](../../packages/conversations/test/adapters/out/sqlite-history.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [sqlite-conversation-history-read.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-history-read.adapter.integration.spec.ts)
   * verify: [Conservazione dello scambio testuale](../Requirements/FamilyConversation.md#conservazione-dello-scambio-testuale)
   * verify: [Risposta testuale nella conversazione](../Requirements/FamilyConversation.md#risposta-testuale-nella-conversazione)
 ---
@@ -1284,31 +1492,31 @@ La prova passa se la richiesta all'orchestratore non offre strumenti, dichiara c
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
   * verify: [Orchestrazione della risposta conversazionale](../Requirements/FamilyConversation.md#orchestrazione-della-risposta-conversazionale)
 ---
 
 ### Prova della selezione del modello per agente
 
-Preparare due modulo TypeScript di agenti attivi, uno per l'orchestratore e uno per un agente specializzato, con oggetti `llm` distinguibili, provider diversi e i campi `provider`, `model`, `apiKey` e `options`; ripetere con un agente `openai-compatible` che indica `baseURL`. Avviare il processo con adapter di prova e osservare i valori consegnati a ciascuno; ripetere con `llm` mancante, con uno dei suoi campi richiesti invalido, con un `provider` non ammesso, con `openai-compatible` senza `baseURL` o con un `baseURL` che non è un URL HTTP o HTTPS assoluto, con `baseURL` per un altro provider e con opzioni specifiche non valide.
+Preparare due file di agenti attivi, uno per l'orchestratore e uno per un agente specializzato, con oggetti `llm` distinguibili, provider diversi e i campi `provider`, `model`, `apiKeyEnv` e `options`, con chiavi distinte nelle variabili nominate; ripetere con un agente `openai-compatible` che indica `baseURL`. Avviare il processo con adapter di prova e osservare i valori consegnati a ciascuno; ripetere con `llm` mancante, con uno dei suoi campi richiesti invalido, con un `provider` non ammesso, con `openai-compatible` senza `baseURL` o con un `baseURL` che non è un URL HTTP o HTTPS assoluto, con `baseURL` per un altro provider e con opzioni specifiche non valide.
 
 #### Details
-La prova passa se ciascun agente usa soltanto provider, modello, chiave, `baseURL` quando previsto e opzioni validate del proprio oggetto `llm`, ogni valore ammesso di `provider` viene accettato e il processo non attiva un agente con configurazione necessaria mancante o invalida. I moduli possono leggere le variabili d'ambiente. Fallisce se i valori si mescolano tra agenti, se un provider non ammesso o un `baseURL` mancante, invalido o superfluo vengono accettati o se una configurazione invalida raggiunge l'adapter.
+La prova passa se ciascun agente usa soltanto provider, modello, chiave, `baseURL` quando previsto e opzioni validate del proprio oggetto `llm`, ogni valore ammesso di `provider` viene accettato e il processo non attiva un agente con configurazione necessaria mancante o invalida. Fallisce se i valori si mescolano tra agenti, se un provider non ammesso o un `baseURL` mancante, invalido o superfluo vengono accettati o se una configurazione invalida raggiunge l'adapter.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [agents.test.ts](../../apps/server/test/composition/agents.test.ts)
-  * satisfiedBy: [agent-config.test.ts](../../apps/server/test/runtime/agent-config.test.ts)
+  * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
+  * satisfiedBy: [agent-config.spec.ts](../../apps/server/src/runtime/agent-config.spec.ts)
   * verify: [Configurazione del modello per agente](../Requirements/FamilyConversation.md#configurazione-del-modello-per-agente)
 ---
 
 ### Prova delle istruzioni per agente
 
-Preparare due moduli TypeScript locali dell'utente con istruzioni riconoscibili e diverse, uno per l'orchestratore e uno per un agente specializzato. Attivare entrambi con modelli di prova e osservare le istruzioni consegnate a ciascuno durante un turno delegato; modificare poi le istruzioni di uno solo dei file e ripetere.
+Preparare due file di agenti dell'utente con istruzioni riconoscibili e diverse, uno per l'orchestratore e uno per un agente specializzato. Attivare entrambi con modelli di prova e osservare le istruzioni consegnate a ciascuno durante un turno delegato; modificare poi le istruzioni di uno solo dei file e ripetere.
 
 #### Details
 La prova passa se ogni modello riceve le istruzioni del proprio file e la modifica di un file cambia soltanto le istruzioni dell'agente corrispondente. Fallisce se le istruzioni sono scambiate, condivise tra agenti o ignorate.
@@ -1318,8 +1526,8 @@ La prova passa se ogni modello riceve le istruzioni del proprio file e la modifi
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * verify: [Istruzioni dell'agente nel modulo TypeScript dell'utente](../Requirements/FamilyConversation.md#istruzioni-dellagente-nel-modulo-typescript-dellutente)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * verify: [Istruzioni dell'agente nel file dell'utente](../Requirements/FamilyConversation.md#istruzioni-dellagente-nel-file-dellutente)
 ---
 
 ### Verifica della risorsa SQLite conversazionale
@@ -1359,8 +1567,8 @@ La prova passa se l'archivio è preparato prima degli ingressi, ogni risorsa cre
 
 #### Relations
   * derivedFrom: [Verifica della risorsa SQLite conversazionale](#verifica-della-risorsa-sqlite-conversazionale)
-  * satisfiedBy: [conversation-resource-lifecycle.test.ts](../../apps/server/test/runtime/conversation-resource-lifecycle.test.ts)
-  * satisfiedBy: [sqlite-archive-startup.test.ts](../../packages/conversations/test/adapters/out/sqlite-archive-startup.test.ts)
+  * satisfiedBy: [conversation-server.resource-lifecycle.spec.ts](../../apps/server/src/runtime/conversation-server.resource-lifecycle.spec.ts)
+  * satisfiedBy: [conversation-archive.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/conversation-archive.integration.spec.ts)
   * verify: [Chiusura della risorsa SQLite conversazionale](../Requirements/FamilyConversation.md#chiusura-della-risorsa-sqlite-conversazionale)
 ---
 
@@ -1401,8 +1609,8 @@ La prova passa se le colonne contengono interi pari ai rispettivi `getTime()`, l
 
 #### Relations
   * derivedFrom: [Verifica delle conversioni di persistenza](#verifica-delle-conversioni-di-persistenza)
-  * satisfiedBy: [sqlite-history.test.ts](../../packages/conversations/test/adapters/out/sqlite-history.test.ts)
-  * satisfiedBy: [sqlite-turn-mapper.test.ts](../../packages/conversations/test/adapters/out/sqlite-turn-mapper.test.ts)
+  * satisfiedBy: [sqlite-conversation-history-read.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-history-read.adapter.integration.spec.ts)
+  * satisfiedBy: [sqlite-turn-mapper.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-mapper.spec.ts)
   * verify: [Persistenza degli istanti conversazionali in millisecondi Unix](../Requirements/FamilyConversation.md#persistenza-degli-istanti-conversazionali-in-millisecondi-unix)
 ---
 
@@ -1418,8 +1626,8 @@ La prova passa se i valori recuperati preservano identità, ordine, testo origin
 
 #### Relations
   * derivedFrom: [Verifica delle conversioni di persistenza](#verifica-delle-conversioni-di-persistenza)
-  * satisfiedBy: [sqlite-history.test.ts](../../packages/conversations/test/adapters/out/sqlite-history.test.ts)
-  * satisfiedBy: [sqlite-turn-mapper.test.ts](../../packages/conversations/test/adapters/out/sqlite-turn-mapper.test.ts)
+  * satisfiedBy: [sqlite-conversation-history-read.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-history-read.adapter.integration.spec.ts)
+  * satisfiedBy: [sqlite-turn-mapper.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-mapper.spec.ts)
   * verify: [Conversione esplicita dei dati conversazionali persistenti](../Requirements/FamilyConversation.md#conversione-esplicita-dei-dati-conversazionali-persistenti)
 ---
 
@@ -1460,8 +1668,8 @@ La prova passa se ogni nuovo identificativo è un UUID v4, gli identificativi cr
 
 #### Relations
   * derivedFrom: [Verifica delle identità conversazionali](#verifica-delle-identità-conversazionali)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [sqlite-conversation-write.test.ts](../../packages/conversations/test/adapters/out/sqlite-conversation-write.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [sqlite-turn-repository.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.integration.spec.ts)
   * verify: [Identificativi UUID v4 di conversazioni e turni](../Requirements/FamilyConversation.md#identificativi-uuid-v4-di-conversazioni-e-turni)
 ---
 
@@ -1502,7 +1710,7 @@ La prova passa se ogni turno e l'ultima attività della sua conversazione usano 
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [sqlite-conversation-write.test.ts](../../packages/conversations/test/adapters/out/sqlite-conversation-write.test.ts)
+  * satisfiedBy: [sqlite-turn-repository.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.integration.spec.ts)
   * verify: [Fornitura esplicita dell'ora corrente alla conversazione](../Requirements/FamilyConversation.md#fornitura-esplicita-dellora-corrente-alla-conversazione)
 ---
 
@@ -1518,8 +1726,24 @@ La prova passa se la risposta non viene prodotta, una conclusione riuscita conse
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
   * verify: [Gestione del turno ammesso senza storico utilizzabile](../Requirements/FamilyConversation.md#gestione-del-turno-ammesso-senza-storico-utilizzabile)
+---
+
+### Prova del registro delle migrazioni
+
+Leggere l'elenco delle migrazioni di `migrations.ts`, i file della cartella delle migrazioni e il registro delle impronte; calcolare l'impronta SHA-256 di ogni file ed estrarne gli import. Su un archivio SQLite in memoria applicare le migrazioni e poi provare l'avvio con un elenco privato di una migrazione già applicata.
+
+#### Details
+La prova passa se i nomi dell'elenco sono in ordine strettamente crescente e coincidono, nello stesso ordine, con i file della cartella e con le voci del registro, ogni impronta coincide con il contenuto del file, ogni migrazione importa soltanto `kysely` o i suoi sottopercorsi, la cartella non contiene altri file e l'avvio senza una migrazione già applicata fallisce. Fallisce se una migrazione registrata è stata modificata, rinominata, rimossa o riordinata, se una migrazione importa altro codice o se la cartella contiene dati di prova.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
+  * satisfiedBy: [migrations.spec.ts](../../packages/conversations/src/adapters/out/sqlite/migrations.spec.ts)
+  * verify: [Igiene delle migrazioni dell'archivio conversazioni](../Requirements/FamilyConversation.md#igiene-delle-migrazioni-dellarchivio-conversazioni)
 ---
 
 ### Prova del turno interrotto dopo riavvio
@@ -1534,8 +1758,8 @@ La prova passa se ciascun turno accettato è persistito con il suo testo prima d
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [sqlite-archive-startup.test.ts](../../packages/conversations/test/adapters/out/sqlite-archive-startup.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [conversation-archive.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/conversation-archive.integration.spec.ts)
   * verify: [Nessuna ripetizione automatica del turno interrotto](../Requirements/FamilyConversation.md#nessuna-ripetizione-automatica-del-turno-interrotto)
   * verify: [Registrazione dei turni conversazionali accettati](../Requirements/FamilyConversation.md#registrazione-dei-turni-conversazionali-accettati)
   * verify: [Riconoscimento del turno interrotto dopo riavvio](../Requirements/FamilyConversation.md#riconoscimento-del-turno-interrotto-dopo-riavvio)
@@ -1543,7 +1767,7 @@ La prova passa se ciascun turno accettato è persistito con il suo testo prima d
 
 ### Prova dell'archivio configurato all'avvio
 
-Avviare l'ingresso conversazionale con moduli TypeScript HTTP e Conversazioni validi e con `archivePath` diretto a un archivio SQLite di prova che contiene un turno pendente; richiedere l'elenco e lo storico della conversazione, poi arrestare il processo. Ripetere con `archivePath` assente, non stringa e diretto a una directory inesistente.
+Avviare l'ingresso conversazionale con configurazione HTTP e Conversazioni valida e con `AMBROGIO_ARCHIVE_PATH` diretta a un archivio SQLite di prova che contiene un turno pendente; richiedere l'elenco e lo storico della conversazione, poi arrestare il processo. Ripetere con `AMBROGIO_ARCHIVE_PATH` assente, vuota e diretta a una directory inesistente.
 
 #### Details
 La prova passa se il processo ascolta all'indirizzo configurato, i due GET rispondono secondo i rispettivi contratti usando l'archivio configurato, il turno pendente è già «Interrotto» alla prima risposta, ogni avvio invalido non apre il listener né crea l'archivio e l'arresto chiude listener e archivio. Fallisce se legge un altro archivio, risponde prima del recupero o lascia risorse aperte.
@@ -1553,8 +1777,8 @@ La prova passa se il processo ascolta all'indirizzo configurato, i due GET rispo
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [config-bootstrap.test.ts](../../apps/server/test/runtime/config-bootstrap.test.ts)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
+  * satisfiedBy: [conversation-server.config-bootstrap.spec.ts](../../apps/server/src/runtime/conversation-server.config-bootstrap.spec.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
   * verify: [Selezione dell'archivio conversazionale all'avvio](../Requirements/FamilyConversation.md#selezione-dellarchivio-conversazionale-allavvio)
 ---
 
@@ -1570,26 +1794,26 @@ La prova passa se l'elenco è diviso in pagine limitate, la conversazione aggior
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
-  * satisfiedBy: [sqlite-list.test.ts](../../packages/conversations/test/adapters/out/sqlite-list.test.ts)
+  * satisfiedBy: [conversations.spec.ts](../../apps/server/src/composition/conversations.spec.ts)
+  * satisfiedBy: [sqlite-conversation-list-read.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-list-read.adapter.integration.spec.ts)
   * verify: [Elenco paginato delle conversazioni](../Requirements/FamilyConversation.md#elenco-paginato-delle-conversazioni)
   * verify: [Ordinamento delle conversazioni per ultima attività](../Requirements/FamilyConversation.md#ordinamento-delle-conversazioni-per-ultima-attività)
 ---
 
 ### Prova della configurazione della paginazione
 
-Preparare modulo TypeScript del componente «Conversazioni» con i due campi assenti, poi con `listPageSize` e `maxListPageSize` espliciti e diversi dai valori predefiniti. Indicare il percorso del file con `AMBROGIO_CONVERSATIONS_CONFIG_PATH` e leggere l'elenco attraverso i valori caricati, verificando il numero di voci e il limite applicato dall'archivio. Ripetere con variabile o file mancante, modulo TypeScript non importabile, valori non interi o non positivi e dimensione della pagina superiore al massimo.
+Leggere la configurazione del componente «Conversazioni» senza `AMBROGIO_LIST_PAGE_SIZE` e `AMBROGIO_MAX_LIST_PAGE_SIZE`, poi con valori espliciti diversi dai valori predefiniti, e leggere l'elenco attraverso i valori letti, verificando il numero di voci e il limite applicato dall'archivio. Ripetere con valori non interi o non positivi e con dimensione della pagina superiore al massimo.
 
 #### Details
-La prova passa se la variabile d'ambiente seleziona il percorso del modulo e il modulo può leggere valori dall'ambiente, i campi assenti danno 20 e 100, i valori espliciti validi sono usati dal caso d'uso e dall'adapter, e ogni percorso, file o combinazione invalida impedisce la preparazione dell'ingresso prima di accettare richieste. Fallisce se un valore d'ambiente non validato viene usato direttamente, se un valore invalido viene corretto in silenzio, se il massimo resta fissato a 100 quando la configurazione ne sceglie un altro o se il caso d'uso legge il file direttamente.
+La prova passa se le variabili assenti danno 20 e 100, i valori espliciti validi sono usati dal caso d'uso e dall'adapter, e ogni valore o combinazione invalida impedisce la preparazione dell'ingresso prima di accettare richieste, con un errore che nomina la variabile. Fallisce se un valore d'ambiente non validato viene usato direttamente, se un valore invalido viene corretto in silenzio, se il massimo resta fissato a 100 quando la configurazione ne sceglie un altro o se il caso d'uso legge la configurazione direttamente.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
-  * satisfiedBy: [conversation-config.test.ts](../../packages/conversations/test/adapters/out/conversation-config.test.ts)
+  * satisfiedBy: [conversations.spec.ts](../../apps/server/src/composition/conversations.spec.ts)
+  * satisfiedBy: [conversation-config.spec.ts](../../packages/conversations/src/adapters/out/conversation-config.spec.ts)
   * verify: [Configurazione della paginazione conversazionale](../Requirements/FamilyConversation.md#configurazione-della-paginazione-conversazionale)
 ---
 
@@ -1598,32 +1822,32 @@ La prova passa se la variabile d'ambiente seleziona il percorso del modulo e il 
 Leggere via GET più pagine di un elenco con conversazioni di attività differente e a parità di attività, usando il cursore restituito, il limite predefinito e un `limit` esplicito entro il massimo configurato. Ripetere con elenco vuoto, cursore e limite invalidi e guasto tecnico dell'archivio.
 
 #### Details
-La prova passa se le risposte `200` JSON senza cache contengono solo `items` ordinati e `nextCursor`, con identificativi e istanti ISO 8601 UTC preservati; seguire il cursore attraversa l'archivio invariato senza omissioni o duplicati e termina con `nextCursor: null`. Il limite predefinito proviene dalla configurazione e un limite esplicito valido la rispetta; valori invalidi ricevono `400` JSON sicuro senza chiamare il caso d'uso. Un guasto dell'archivio riceve `500` JSON sicuro e viene registrato. Fallisce se l'ordine, i limiti o gli esiti HTTP non corrispondono al contratto.
+La prova passa se le risposte `200` JSON senza cache contengono solo `items` ordinati e `nextCursor`, con identificativi e istanti ISO 8601 UTC preservati; seguire il cursore attraversa l'archivio invariato senza omissioni o duplicati e termina con `nextCursor: null`. Il limite predefinito proviene dalla configurazione e un limite esplicito valido la rispetta; le letture usano `GET /api/v1/conversations`; cursore e limite invalidi ricevono `400` con il problema `/problems/invalid-pagination` e un parametro non previsto `400` con `/problems/request-validation`, senza chiamare il caso d'uso. Un guasto dell'archivio riceve la risposta opaca `500` e viene registrato dalla gestione centrale. Ogni risposta d'errore è `application/problem+json` conforme al proprio schema. Fallisce se l'ordine, i limiti o gli esiti HTTP non corrispondono al contratto.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
-  * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
+  * satisfiedBy: [conversations.spec.ts](../../apps/server/src/composition/conversations.spec.ts)
+  * satisfiedBy: [list-conversations.route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.route.adapter.spec.ts)
   * verify: [Lettura HTTP dell'elenco conversazioni](../Requirements/FamilyConversation.md#lettura-http-dellelenco-conversazioni)
 ---
 
 ### Prova della lingua del guasto conversazionale
 
-Nel JSON di «Conversazioni» configurare separatamente `language: "en"` e `language: "it"`, poi omettere il campo, scegliere una lingua stringa non supportata e usare un valore non stringa. Nei casi validi ammettere un turno e provocare un guasto inatteso dopo l'ammissione. Osservare il messaggio restituito dal caso d'uso, quello conservato nell'archivio e quello comunicato al client quando l'ingresso è disponibile.
+Configurare separatamente `AMBROGIO_LANGUAGE=en` e `AMBROGIO_LANGUAGE=it`, poi omettere la variabile e usare un valore non supportato come `fr`. Nei casi validi ammettere un turno e provocare un guasto inatteso dopo l'ammissione. Osservare il messaggio restituito dal caso d'uso, quello conservato nell'archivio e quello comunicato al client quando l'ingresso è disponibile.
 
 #### Details
-La prova passa se l'inglese produce «I can't complete the response.», l'italiano produce «Non riesco a completare la risposta.», l'omissione e la lingua stringa non supportata producono la formulazione inglese, un valore non stringa impedisce la preparazione, nessun messaggio contiene dettagli tecnici e il testo coincide esattamente nell'esito conservato e nella comunicazione al client. Fallisce se la lingua configurata viene ignorata, se i due testi differiscono o se il messaggio espone il guasto tecnico.
+La prova passa se l'inglese produce «I can't complete the response.», l'italiano produce «Non riesco a completare la risposta.», l'omissione produce la formulazione inglese, un valore non supportato impedisce la preparazione, nessun messaggio contiene dettagli tecnici e il testo coincide esattamente nell'esito conservato e nella comunicazione al client. Fallisce se la lingua configurata viene ignorata, se i due testi differiscono o se il messaggio espone il guasto tecnico.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
-  * satisfiedBy: [conversation-config.test.ts](../../packages/conversations/test/adapters/out/conversation-config.test.ts)
+  * satisfiedBy: [conversations.spec.ts](../../apps/server/src/composition/conversations.spec.ts)
+  * satisfiedBy: [conversation-config.spec.ts](../../packages/conversations/src/adapters/out/conversation-config.spec.ts)
   * verify: [Localizzazione dell'errore conversazionale inatteso](../Requirements/FamilyConversation.md#localizzazione-dellerrore-conversazionale-inatteso)
 ---
 
@@ -1639,7 +1863,7 @@ La prova passa se gli istanti validi conservano il valore temporale fornito, que
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [turn.test.ts](../../packages/conversations/test/domain/turn.test.ts)
+  * satisfiedBy: [turn.spec.ts](../../packages/conversations/src/domain/turn.spec.ts)
   * verify: [Istanti validi e protetti della conversazione](../Requirements/FamilyConversation.md#istanti-validi-e-protetti-della-conversazione)
 ---
 
@@ -1655,7 +1879,7 @@ La prova passa se le migrazioni pendenti sono applicate automaticamente prima ch
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [sqlite-archive-startup.test.ts](../../packages/conversations/test/adapters/out/sqlite-archive-startup.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [conversation-archive.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/conversation-archive.integration.spec.ts)
   * verify: [Migrazione automatica dell'archivio delle conversazioni](../Requirements/FamilyConversation.md#migrazione-automatica-dellarchivio-delle-conversazioni)
 ---

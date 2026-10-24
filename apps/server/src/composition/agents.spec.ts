@@ -1,4 +1,4 @@
-import { writeConfigFile } from '../../test/support/config-fixture.js';
+import { testEnvironment, writeAgentFile } from '../../test/support/config-fixture.js';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -8,7 +8,7 @@ import { prepareAgents } from './agents.js';
 async function files() {
   const directory = await mkdtemp(join(tmpdir(), 'ambrogio-agent-composition-'));
   const llm = { provider: 'mistral', model: 'mistral-small-latest', apiKey: 'fake-key' };
-  await writeConfigFile(join(directory, 'orchestrator.ts'), JSON.stringify({ instructions: 'Coordinate.', llm }));
+  await writeAgentFile(join(directory, 'orchestrator.json'), JSON.stringify({ instructions: 'Coordinate.', llm }));
   return { directory, llm, close: () => rm(directory, { recursive: true, force: true }) };
 }
 
@@ -18,13 +18,13 @@ test('prepares every discovered specialist with an isolated MCP connection and c
   const closed: string[] = [];
   try {
     for (const id of ['home', 'memory']) {
-      await writeConfigFile(join(fixture.directory, `${id}.ts`), JSON.stringify({
+      await writeAgentFile(join(fixture.directory, `${id}.json`), JSON.stringify({
         description: `${id} description`, maxToolCalls: 3,
         instructions: `${id} instructions`, llm: fixture.llm,
         mcp: { url: `https://${id}.example/mcp` },
       }));
     }
-    const agents = await prepareAgents(fixture.directory, async (connection) => {
+    const agents = await prepareAgents(fixture.directory, testEnvironment(), async (connection) => {
       connected.push(connection.url);
       return { listTools: async () => [{ name: connection.url, inputSchema: { type: 'object' } }],
         listPrompts: async () => [], getPrompt: async () => '',
@@ -52,21 +52,21 @@ test('offers only the listed tools and refuses to start when a listed tool is mi
     close: async () => { closed.push(connection.url); } });
   try {
     const base = { description: 'Weather.', maxToolCalls: 3, instructions: 'Use tools.', llm: fixture.llm };
-    await writeConfigFile(join(fixture.directory, 'all.ts'), JSON.stringify({ ...base,
+    await writeAgentFile(join(fixture.directory, 'all.json'), JSON.stringify({ ...base,
       mcp: { url: 'https://all.example/mcp' } }));
-    await writeConfigFile(join(fixture.directory, 'some.ts'), JSON.stringify({ ...base,
+    await writeAgentFile(join(fixture.directory, 'some.json'), JSON.stringify({ ...base,
       mcp: { url: 'https://some.example/mcp', auth: { type: 'bearer', token: 'secret-token' },
         tools: ['gamma', 'light.toggle'] } }));
-    const agents = await prepareAgents(fixture.directory, connect);
+    const agents = await prepareAgents(fixture.directory, testEnvironment(), connect);
     expect(agents.specialists.map((agent) => agent.tools.map((tool) => tool.name))).toEqual([
       ['alpha', 'light.toggle', 'beta', 'gamma'], ['light.toggle', 'gamma']]);
     await agents.close();
 
     closed.length = 0;
-    await writeConfigFile(join(fixture.directory, 'some.ts'), JSON.stringify({ ...base,
+    await writeAgentFile(join(fixture.directory, 'some.json'), JSON.stringify({ ...base,
       mcp: { url: 'https://some.example/mcp', auth: { type: 'bearer', token: 'secret-token' },
         tools: ['gamma', 'delta'] } }));
-    const failure = await prepareAgents(fixture.directory, connect).catch((error: unknown) => error);
+    const failure = await prepareAgents(fixture.directory, testEnvironment(), connect).catch((error: unknown) => error);
     expect(failure).toMatchObject({ message: 'Agent MCP tool unavailable: some' });
     expect(JSON.stringify(failure, Object.getOwnPropertyNames(failure))).not.toMatch(/some\.example|secret-token/);
     expect(closed).toEqual(['https://all.example/mcp', 'https://some.example/mcp']);
@@ -76,13 +76,13 @@ test('offers only the listed tools and refuses to start when a listed tool is mi
 test('invalid provider options prevent any MCP connection', async () => {
   const fixture = await files();
   try {
-    await writeConfigFile(join(fixture.directory, 'home.ts'), JSON.stringify({
+    await writeAgentFile(join(fixture.directory, 'home.json'), JSON.stringify({
       description: 'Home.', maxToolCalls: 3, instructions: 'Use tools.',
       llm: { ...fixture.llm, options: { unexpected: 1 } },
       mcp: { url: 'https://home.example/mcp' },
     }));
     let connected = false;
-    await expect(prepareAgents(fixture.directory, async () => {
+    await expect(prepareAgents(fixture.directory, testEnvironment(), async () => {
       connected = true;
       throw new Error('Should not connect');
     })).rejects.toMatchObject({ message: 'Invalid agent options: home',
@@ -103,14 +103,14 @@ test('each agent calls the provider, endpoint and key of its own file', async ()
     return new Response('controlled failure', { status: 400 });
   });
   try {
-    await writeConfigFile(join(fixture.directory, 'local.ts'), JSON.stringify({
+    await writeAgentFile(join(fixture.directory, 'local.json'), JSON.stringify({
       description: 'Local model.', instructions: 'Answer.',
       llm: { provider: 'openai-compatible', model: 'local-model', apiKey: 'local-key',
         baseURL: 'https://models.example/v1' } }));
-    await writeConfigFile(join(fixture.directory, 'claude.ts'), JSON.stringify({
+    await writeAgentFile(join(fixture.directory, 'claude.json'), JSON.stringify({
       description: 'Claude.', instructions: 'Answer.',
       llm: { provider: 'anthropic', model: 'claude-model', apiKey: 'claude-key' } }));
-    const agents = await prepareAgents(fixture.directory, async () => { throw new Error('Should not connect'); });
+    const agents = await prepareAgents(fixture.directory, testEnvironment(), async () => { throw new Error('Should not connect'); });
     const history = { id: 'conversation', createdAt: new Date(0), lastActivityAt: new Date(0),
       turns: [{ id: 'turn', acceptedAt: new Date(0), status: 'pending' as const, text: 'Ciao' }] };
     const never = { requested: new Promise<void>(() => { /* never */ }) };
@@ -140,10 +140,10 @@ test('specialists receive the date line in the given time zone and the orchestra
     return new Response('controlled failure', { status: 400 });
   });
   try {
-    await writeConfigFile(join(fixture.directory, 'generic.ts'), JSON.stringify({
+    await writeAgentFile(join(fixture.directory, 'generic.json'), JSON.stringify({
       description: 'General questions.', instructions: 'Answer.', llm: fixture.llm }));
     const clock = { now: () => new Date('2026-10-19T07:41:00Z') };
-    const agents = await prepareAgents(fixture.directory, async () => { throw new Error('Should not connect'); },
+    const agents = await prepareAgents(fixture.directory, testEnvironment(), async () => { throw new Error('Should not connect'); },
       { timeZone: 'Europe/Rome', clock });
     const history = { id: 'conversation', createdAt: new Date(0), lastActivityAt: new Date(0),
       turns: [{ id: 'turn', acceptedAt: new Date(0), status: 'pending' as const, text: 'Ciao' }] };
@@ -171,9 +171,9 @@ test('applies the configured response language to specialists but not the orches
     return new Response('controlled failure', { status: 400 });
   });
   try {
-    await writeConfigFile(join(fixture.directory, 'generic.ts'), JSON.stringify({
+    await writeAgentFile(join(fixture.directory, 'generic.json'), JSON.stringify({
       description: 'General questions.', instructions: 'Answer briefly.', llm: fixture.llm }));
-    await writeConfigFile(join(fixture.directory, 'weather.ts'), JSON.stringify({
+    await writeAgentFile(join(fixture.directory, 'weather.json'), JSON.stringify({
       description: 'Weather.', instructions: 'Use the forecast.', llm: fixture.llm, maxToolCalls: 1,
       mcp: { url: 'https://weather.example/mcp' } }));
     const connect = async () => ({
@@ -185,7 +185,7 @@ test('applies the configured response language to specialists but not the orches
       turns: [{ id: 'turn', acceptedAt: new Date(0), status: 'pending' as const, text: 'Hello' }] };
     const never = { requested: new Promise<void>(() => { /* never */ }) };
     for (const language of ['it', 'en'] as const) {
-      const agents = await prepareAgents(fixture.directory, connect, undefined, language);
+      const agents = await prepareAgents(fixture.directory, testEnvironment(), connect, undefined, language);
       try {
         for (const reply of [...agents.specialists.map(agent => agent.reply), agents.orchestrator]) {
           await expect((async () => { for await (const part of reply.produce(history, never)) void part; })())
@@ -213,12 +213,12 @@ test('closes an earlier MCP connection when a later agent cannot start', async (
   const closed: string[] = [];
   try {
     for (const id of ['home', 'memory']) {
-      await writeConfigFile(join(fixture.directory, `${id}.ts`), JSON.stringify({
+      await writeAgentFile(join(fixture.directory, `${id}.json`), JSON.stringify({
         description: `${id} description`, maxToolCalls: 3, instructions: 'Use tools.',
         llm: fixture.llm, mcp: { url: `https://${id}.example/mcp` },
       }));
     }
-    await expect(prepareAgents(fixture.directory, async (connection) => {
+    await expect(prepareAgents(fixture.directory, testEnvironment(), async (connection) => {
       if (connection.url.includes('memory')) throw new Error('MCP unavailable');
       return { listTools: async () => [], listPrompts: async () => [], getPrompt: async () => '',
         callTool: async () => ({ isError: false, content: [] }),
@@ -234,12 +234,12 @@ test('prepares an agent without MCP without opening any connection', async () =>
   const fixture = await files();
   const connected: string[] = [];
   try {
-    await writeConfigFile(join(fixture.directory, 'generic.ts'), JSON.stringify({
+    await writeAgentFile(join(fixture.directory, 'generic.json'), JSON.stringify({
       description: 'Answers general questions.', instructions: 'Answer from knowledge.', llm: fixture.llm }));
-    await writeConfigFile(join(fixture.directory, 'home.ts'), JSON.stringify({
+    await writeAgentFile(join(fixture.directory, 'home.json'), JSON.stringify({
       description: 'Controls the home.', maxToolCalls: 2, instructions: 'Use tools.', llm: fixture.llm,
       mcp: { url: 'https://home.example/mcp' } }));
-    const agents = await prepareAgents(fixture.directory, async (connection) => {
+    const agents = await prepareAgents(fixture.directory, testEnvironment(), async (connection) => {
       connected.push(connection.url);
       return { listTools: async () => [], listPrompts: async () => [], getPrompt: async () => '',
         callTool: async () => ({ isError: false, content: [] }),
@@ -256,7 +256,7 @@ test('prepares an agent without MCP without opening any connection', async () =>
 test('fails before any connection when there is no specialist agent', async () => {
   const fixture = await files();
   try {
-    await expect(prepareAgents(fixture.directory, async () => { throw new Error('Should not connect'); }))
+    await expect(prepareAgents(fixture.directory, testEnvironment(), async () => { throw new Error('Should not connect'); }))
       .rejects.toThrow('No specialist agent configured');
   } finally { await fixture.close(); }
 });
@@ -266,10 +266,10 @@ test('a prompt discovery error at startup is an agent connection failure', async
   const fixture = await files();
   let closed = false;
   try {
-    await writeConfigFile(join(fixture.directory, 'home.ts'), JSON.stringify({
+    await writeAgentFile(join(fixture.directory, 'home.json'), JSON.stringify({
       description: 'Controls the home.', maxToolCalls: 2, instructions: 'Use tools.', llm: fixture.llm,
       mcp: { url: 'https://home.example/mcp' } }));
-    await expect(prepareAgents(fixture.directory, async () => ({ listTools: async () => [],
+    await expect(prepareAgents(fixture.directory, testEnvironment(), async () => ({ listTools: async () => [],
       listPrompts: async () => { throw new Error('MCP prompt discovery failed'); },
       getPrompt: async () => '', callTool: async () => ({ isError: false, content: [] }),
       close: async () => { closed = true; } })))

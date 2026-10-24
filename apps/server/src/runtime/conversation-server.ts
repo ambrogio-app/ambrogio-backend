@@ -1,31 +1,29 @@
-import { loadConversationConfig } from '@ambrogio/conversations/adapters/out/conversation-config';
+import { readConversationConfig } from '@ambrogio/conversations/adapters/out/conversation-config';
+import { readRuntimeEnvironment } from '@ambrogio/conversations/adapters/out/environment-variables';
 import { loadVoiceConfig } from '@ambrogio/conversations/adapters/out/voice-config';
-import { ProjectError } from '@ambrogio/conversations/application/project-error';
 import { SystemCurrentTime } from '@ambrogio/conversations/adapters/out/system-current-time';
 import { recoverPendingTurns } from '@ambrogio/conversations/adapters/out/sqlite/recover-pending-turns';
 import type { ProduceConversationReply } from '@ambrogio/conversations/application/produce-conversation-reply';
 import { prepareAgents } from '../composition/agents.js';
 import { prepareConfiguredConversations } from '../composition/conversations.js';
 import { buildConversationServer } from './http-server.js';
-import { conversationConfigPath } from './conversation-config-path.js';
-import { httpConfigPath, loadHttpConfig } from './http-config.js';
+import { readAgentsDirectory } from './agent-config.js';
+import { readHttpConfig } from './http-config.js';
 import { startupPhase } from './startup-failure.js';
 
-/** Start the executable conversation ingress with the configured orchestrator. */
+/**
+ * Start the executable conversation ingress with the configured orchestrator. The configuration of
+ * every component is read once, here, from the process environment, before any resource is built.
+ */
 export async function startConversationServer(environment: NodeJS.ProcessEnv = process.env,
-  agentDirectory = '/etc/ambrogio/agents',
   prepare: (directory: string, timeZone: string, language: 'en' | 'it') => Promise<Readonly<{
     orchestrator: ProduceConversationReply; close(): Promise<void> }>> = (directory, timeZone, language) =>
-    prepareAgents(directory, undefined, { timeZone, clock: new SystemCurrentTime() }, language)) {
-  const [http, conversations] = await Promise.all([
-    loadHttpConfig(httpConfigPath(environment)),
-    loadConversationConfig(conversationConfigPath(environment)),
-  ]);
-  const voicePath = environment.AMBROGIO_VOICE_CONFIG_PATH;
-  if (voicePath !== undefined && !voicePath.trim()) {
-    throw new ProjectError('Invalid voice configuration path');
-  }
-  const voice = voicePath === undefined ? undefined : await loadVoiceConfig(voicePath, conversations.language);
+    prepareAgents(directory, environment, undefined, { timeZone, clock: new SystemCurrentTime() }, language)) {
+  const runtime = readRuntimeEnvironment(environment);
+  const http = readHttpConfig(environment, runtime);
+  const conversations = readConversationConfig(environment, runtime);
+  const agentDirectory = readAgentsDirectory(environment, runtime);
+  const voice = await loadVoiceConfig(environment, conversations.language);
   const agents = await prepare(agentDirectory, conversations.timeZone, conversations.language);
   let prepared: Awaited<ReturnType<typeof prepareConfiguredConversations>> | undefined;
   let built: Awaited<ReturnType<typeof buildConversationServer>> | undefined;

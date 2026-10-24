@@ -111,32 +111,30 @@ sequenceDiagram
 
 ## Quick start
 
-The server imports one TypeScript configuration module per active component. Each module exports a default object and may read `process.env`; the values are validated before the server starts. Configuration modules and the SQLite archive stay outside the image.
+The server is configured with environment variables, read and validated at startup by a configuration module of each component, and with one JSON file per agent in the agents directory (`/etc/ambrogio/agents` by default). `AMBROGIO_ENV` (`development`, `test` or `production`) is required; production requires explicit values for the HTTP listener. Agent files hold no secrets: they name the environment variable that holds each credential, for example `"apiKeyEnv": "MISTRAL_API_KEY"`. Agent files and the SQLite archive stay outside the image.
 
-The ready modules are [`examples/http.ts`](examples/http.ts), [`examples/conversations.ts`](examples/conversations.ts), [`examples/voice.ts`](examples/voice.ts), and the agent modules in [`examples/agents/`](examples/agents/). The voice module is optional. To configure the container with Docker Compose, use [`compose.example.yaml`](compose.example.yaml):
+The ready agent files are in [`examples/agents/`](examples/agents/). To run the container with Docker Compose, use [`compose.example.yaml`](compose.example.yaml), which sets the values production requires and enables English and Italian voice with the bundled models:
 
 ```bash
-AMBROGIO_VERSION=v0.9.0 MISTRAL_API_KEY=replace-me docker compose -f compose.example.yaml up -d
+AMBROGIO_VERSION=<version> MISTRAL_API_KEY=replace-me docker compose -f compose.example.yaml up -d
 ```
 
-You can put the values mapped in the Compose example in a local `.env` file. For additional variables, add them under the service's `environment` section. The example mounts only the orchestrator and generic agent. To enable the Home Assistant agent, mount [`examples/agents/home-assistant.ts`](examples/agents/home-assistant.ts) at `/etc/ambrogio/agents/home-assistant.ts` and provide `AMBROGIO_HOME_ASSISTANT_MCP_URL` and `HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN` in the service environment.
+To change a setting, add its variable under the service's `environment` section; every variable you leave out keeps the default the server applies. The example mounts only the orchestrator and the generic agent.
 
 **From source**
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm build
-AMBROGIO_HTTP_CONFIG_PATH="$PWD/examples/http.ts" \
-AMBROGIO_CONVERSATIONS_CONFIG_PATH="$PWD/examples/conversations.ts" \
-MISTRAL_API_KEY=replace-me \
-node apps/server/dist/main.js
+cp .env.example .env    # then set AMBROGIO_ARCHIVE_PATH, AMBROGIO_AGENTS_DIR=examples/agents and MISTRAL_API_KEY
+pnpm dev
 ```
 
-Set `AMBROGIO_VOICE_CONFIG_PATH` to [`examples/voice.ts`](examples/voice.ts) to enable Piper voice, or to [`examples/voice-kokoro.ts`](examples/voice-kokoro.ts) for Kokoro. Set `AMBROGIO_LANGUAGE` to `it` or `en` to select the active profile. You can override model paths and other fields through the variables read by those modules. Node.js 24 runs the `.ts` modules directly; use syntax supported by Node's built-in TypeScript type stripping.
+`pnpm dev` runs `node --env-file=.env apps/server/dist/main.js`: variables already set in your shell take precedence over `.env`, and the server never reads `.env` by itself. In development the listener defaults to `127.0.0.1:3000`. To enable voice, set `AMBROGIO_VOICE_LANGUAGES` and the `AMBROGIO_VOICE_<LANGUAGE>_*` variables of each listed language.
 
-If the server cannot start, it writes one JSON line with `"event":"server_startup_failed"` to stdout, whose `err.message` names the cause (for example `Invalid agent configuration: general` or `Agent MCP connection failed: home-assistant`), then prints `Unable to start HTTP server.` to stderr and exits with code 1.
+If the server cannot start, it writes one JSON line with `"event":"server_startup_failed"` to stdout, whose `err.message` names the cause (for example `Missing environment variable AMBROGIO_HTTP_PORT`, `Invalid agent configuration: general` or `Agent MCP connection failed: home-assistant`), then prints `Unable to start HTTP server.` to stderr and exits with code 1.
 
-**Home Assistant.** [`examples/agents/home-assistant.ts`](examples/agents/home-assistant.ts) provides an agent for Home Assistant's [Model Context Protocol Server](https://www.home-assistant.io/integrations/mcp_server/) integration. Mount it in `/etc/ambrogio/agents/`, then set `AMBROGIO_HOME_ASSISTANT_MCP_URL` and `HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN` in the container environment. Only the entities exposed to Assist are available to Ambrogio.
+**Home Assistant.** [`examples/agents/home-assistant.json`](examples/agents/home-assistant.json) provides an agent for Home Assistant's [Model Context Protocol Server](https://www.home-assistant.io/integrations/mcp_server/) integration. Copy it, set `mcp.url` to your Home Assistant address, mount it in the agents directory and set `HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN` in the container environment. Only the entities exposed to Assist are available to Ambrogio.
 
 > Ambrogio has no user accounts or authentication. Run it on a trusted network, or behind a reverse proxy that allows only your own clients.
 
@@ -146,7 +144,7 @@ If the server cannot start, it writes one JSON line with `"event":"server_startu
 apps/server/              runnable server: runtime, composition, entry point
 packages/conversations/   "Conversations" business module (domain, application, adapters)
 protocol/                 JSON schema of the ambrogio.v1 protocol
-examples/                 ready configuration files, with placeholder credentials
+examples/                 ready agent files, without credentials
 voices/                   provenance of the bundled Vosk, Piper and Kokoro models
 system-model/             engineering model (requirements, contracts, verifications)
 ```

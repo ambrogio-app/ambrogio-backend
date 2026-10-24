@@ -1,4 +1,3 @@
-import { writeConfigFile } from '../../test/support/config-fixture.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -7,7 +6,7 @@ import { ProjectError } from '@ambrogio/conversations/application/project-error'
 import type { ProduceConversationReply } from '@ambrogio/conversations/application/produce-conversation-reply';
 import { prepareConfiguredConversations } from '../composition/conversations.js';
 import { buildConversationServer } from './http-server.js';
-import { loadHttpConfig, type HttpConfig } from './http-config.js';
+import type { HttpConfig } from './http-config.js';
 import { closeAllClients, ProtocolClient, takeSchemaViolations } from '../../test/support/protocol-client.js';
 import type { AddressInfo } from 'node:net';
 
@@ -17,8 +16,7 @@ const base: HttpConfig = { host: '127.0.0.1', port: 3000, allowedOrigins: [], pu
 async function fixture() {
   const directory = await mkdtemp(join(tmpdir(), 'ambrogio-http-'));
   directories.push(directory);
-  return { http: join(directory, 'http.ts'), conversations: join(directory, 'conversations.ts'),
-    archive: join(directory, 'archive.sqlite') };
+  return { archive: join(directory, 'archive.sqlite') };
 }
 
 const producer: ProduceConversationReply = { async *produce() {
@@ -39,24 +37,6 @@ afterEach(async () => {
 });
 
 describe('conversation HTTP server', () => {
-  it('requires explicit host and port and validates CORS and HSTS settings', async () => {
-    const files = await fixture();
-    await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port: 3030 }));
-    expect(await loadHttpConfig(files.http)).toEqual({ ...base, port: 3030 });
-    for (const invalid of [
-      {}, { port: 3030 }, { host: '127.0.0.1' }, { host: '', port: 3030 },
-      { host: '127.0.0.1', port: 0 }, { host: '127.0.0.1', port: 65536 },
-      { host: '127.0.0.1', port: '3030' }, { ...base, allowedOrigins: ['*'] },
-      { ...base, allowedOrigins: ['https://example.test/path'] },
-      { ...base, publicHttps: true }, { ...base, publicHttps: true, hstsMaxAgeSeconds: 0 },
-    ]) {
-      await writeConfigFile(files.http, JSON.stringify(invalid));
-      await expect(loadHttpConfig(files.http)).rejects.toThrow();
-    }
-    await writeConfigFile(files.http, '{');
-    await expect(loadHttpConfig(files.http)).rejects.toThrow('Invalid HTTP configuration file');
-  });
-
   it('applies global security headers, exact CORS origins and distinct request IDs', async () => {
     const files = await fixture();
     const prepared = await prepareConfiguredConversations({ archivePath: files.archive,

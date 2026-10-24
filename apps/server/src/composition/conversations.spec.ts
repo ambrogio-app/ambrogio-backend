@@ -1,4 +1,4 @@
-import { writeConfigFile } from '../../test/support/config-fixture.js';
+import { readConversationConfig } from '@ambrogio/conversations/adapters/out/conversation-config';
 import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -8,7 +8,7 @@ import Fastify from 'fastify';
 import websocket from '@fastify/websocket';
 import type { ProduceConversationReply, ReplyPart } from '@ambrogio/conversations/application/produce-conversation-reply';
 import type { SpeechComponents } from '@ambrogio/conversations/adapters/in/session/speech-components';
-import { assembleExchangeTurn, loadProtocolSchema, prepareConversations, registerConversationHistoryRoute,
+import { assembleExchangeTurn, loadProtocolSchema, prepareConfiguredConversations, registerConversationHistoryRoute,
   registerConversationListRoute, registerConversationSessionRoute } from './conversations.js';
 import { closeAllClients, pcm, ProtocolClient, takeSchemaViolations } from '../../test/support/protocol-client.js';
 
@@ -34,7 +34,7 @@ const verbatimSpeech: SpeechComponents = {
 };
 
 /** Fastify with the conversation session channel and the history route on an ephemeral port. */
-async function sessionServer(prepared: Awaited<ReturnType<typeof prepareConversations>>,
+async function sessionServer(prepared: Awaited<ReturnType<typeof prepareConfiguredConversations>>,
   reply: ProduceConversationReply, speech?: SpeechComponents) {
   const server = Fastify();
   await server.register(websocket);
@@ -58,11 +58,14 @@ async function sessionServer(prepared: Awaited<ReturnType<typeof prepareConversa
 async function fixture() {
   const directory = await mkdtemp(join(tmpdir(), 'ambrogio-server-list-'));
   directories.push(directory);
-  return { configFilename: join(directory, 'conversations.ts'), archiveFilename: join(directory, 'archive.sqlite') };
+  return { archiveFilename: join(directory, 'archive.sqlite') };
 }
 
-function environment(configFilename: string): NodeJS.ProcessEnv {
-  return { AMBROGIO_CONVERSATIONS_CONFIG_PATH: configFilename };
+/** Prepare the component from an environment of the test process, as the composition root does. */
+async function prepare(files: Readonly<{ archiveFilename: string }>, interruptedAt: Date,
+  variables: Readonly<Record<string, string>> = {}) {
+  return prepareConfiguredConversations(readConversationConfig({
+    AMBROGIO_ARCHIVE_PATH: files.archiveFilename, ...variables }, 'test'), interruptedAt);
 }
 
 afterEach(async () => {
@@ -72,13 +75,10 @@ afterEach(async () => {
 });
 
 describe('server conversation composition', () => {
-  it('loads TypeScript before opening the archive and uses the configured page size', async () => {
+  it('reads the validated configuration before opening the archive and uses the configured page size', async () => {
     const files = await fixture();
-    await writeConfigFile(files.configFilename, '{"listPageSize": 1, "maxListPageSize": 2, "language":"it"}');
-    const prepared = await prepareConversations(files.archiveFilename, new Date(1000), {
-      ...environment(files.configFilename),
-      AMBROGIO_CONVERSATIONS_LIST_PAGE_SIZE: '50',
-    });
+    const prepared = await prepare(files, new Date(1000),
+      { AMBROGIO_LIST_PAGE_SIZE: '1', AMBROGIO_MAX_LIST_PAGE_SIZE: '2', AMBROGIO_LANGUAGE: 'it' });
     try {
       await prepared.archive.db.insertInto('conversations').values([
         { id: 'a', created_at: 100, last_activity_at: 100 },
@@ -95,8 +95,7 @@ describe('server conversation composition', () => {
 
   it('serves configured list pages and a current first page after activity changes', async () => {
     const files = await fixture();
-    await writeConfigFile(files.configFilename, '{"listPageSize":2,"maxListPageSize":3}');
-    const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
+    const prepared = await prepare(files, new Date(1000), {'AMBROGIO_LIST_PAGE_SIZE': '2', 'AMBROGIO_MAX_LIST_PAGE_SIZE': '3'});
     const server = Fastify();
     try {
       await prepared.archive.db.insertInto('conversations').values([
@@ -124,49 +123,20 @@ describe('server conversation composition', () => {
     }
   });
 
-  it('rejects invalid TypeScript before creating the SQLite archive', async () => {
+  it('rejects invalid configuration before creating the SQLite archive', async () => {
     const files = await fixture();
-    await writeConfigFile(files.configFilename, '{"listPageSize": 0}');
-    await expect(prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename)))
-      .rejects.toThrow('Invalid conversation list limits');
+    await expect(prepare(files, new Date(1000), { AMBROGIO_LIST_PAGE_SIZE: '0' }))
+      .rejects.toThrow('Invalid environment variable AMBROGIO_LIST_PAGE_SIZE');
+    await expect(prepare(files, new Date(1000), { AMBROGIO_ARCHIVE_PATH: '' }))
+      .rejects.toThrow('Missing environment variable AMBROGIO_ARCHIVE_PATH');
     await expect(readFile(files.archiveFilename)).rejects.toThrow();
   });
 
-  it('requires the configured environment path before opening the archive', async () => {
+  it('uses English when no language is configured', async () => {
     const files = await fixture();
-    for (const absent of [{}, { AMBROGIO_CONVERSATIONS_CONFIG_PATH: '  ' }]) {
-      await expect(prepareConversations(files.archiveFilename, new Date(1000), absent))
-        .rejects.toThrow('Missing conversation configuration path');
-    }
-    await expect(prepareConversations(files.archiveFilename, new Date(1000),
-      environment(join(files.archiveFilename, 'missing.ts')))).rejects.toThrow('Invalid conversation configuration file');
-    await expect(readFile(files.archiveFilename)).rejects.toThrow();
-  });
-
-  it('uses the process environment when no environment is injected', async () => {
-    const files = await fixture();
-    await writeConfigFile(files.configFilename, '{}');
-    const previous = process.env.AMBROGIO_CONVERSATIONS_CONFIG_PATH;
-    process.env.AMBROGIO_CONVERSATIONS_CONFIG_PATH = files.configFilename;
+    const prepared = await prepare(files, new Date(1000));
     try {
-      const prepared = await prepareConversations(files.archiveFilename, new Date(1000));
-      try {
-        expect((await prepared.listConversations({})).items).toEqual([]);
-        expect(prepared.failureMessage).toBe("I can't complete the response.");
-      } finally {
-        await prepared.archive.close();
-      }
-    } finally {
-      if (previous === undefined) delete process.env.AMBROGIO_CONVERSATIONS_CONFIG_PATH;
-      else process.env.AMBROGIO_CONVERSATIONS_CONFIG_PATH = previous;
-    }
-  });
-
-  it('uses English for an unsupported configured language', async () => {
-    const files = await fixture();
-    await writeConfigFile(files.configFilename, '{"language":"fr"}');
-    const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
-    try {
+      expect((await prepared.listConversations({})).items).toEqual([]);
       expect(prepared.failureMessage).toBe("I can't complete the response.");
     } finally {
       await prepared.archive.close();
@@ -175,8 +145,7 @@ describe('server conversation composition', () => {
 
   it('passes the selected Italian failure message through the use case into SQLite', async () => {
     const files = await fixture();
-    await writeConfigFile(files.configFilename, '{"language":"it"}');
-    const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
+    const prepared = await prepare(files, new Date(1000), {'AMBROGIO_LANGUAGE': 'it'});
     try {
       const exchange = assembleExchangeTurn(prepared, {
         async *produce(): AsyncGenerator<ReplyPart> { throw new Error('private provider failure'); },
@@ -194,8 +163,7 @@ describe('server conversation composition', () => {
 
   it('serves a text turn through the session channel and conserves its completed answer', async () => {
     const files = await fixture();
-    await writeConfigFile(files.configFilename, '{"language":"it"}');
-    const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
+    const prepared = await prepare(files, new Date(1000), {'AMBROGIO_LANGUAGE': 'it'});
     const running = await sessionServer(prepared, {
       async *produce(history) {
         expect(history.turns.at(-1)?.text).toBe('ciao');
@@ -222,8 +190,7 @@ describe('server conversation composition', () => {
 
   it('reads a pending turn and then its persisted answer through GET without another stream', async () => {
     const files = await fixture();
-    await writeConfigFile(files.configFilename, '{"language":"it"}');
-    const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
+    const prepared = await prepare(files, new Date(1000), {'AMBROGIO_LANGUAGE': 'it'});
     let signalStarted!: () => void;
     const started = new Promise<void>(resolve => { signalStarted = resolve; });
     let release!: () => void;
@@ -274,8 +241,7 @@ describe('server conversation composition', () => {
   // Verification: Prova della conservazione del testo originale
   it('conserves typed and transcribed turn text exactly as received', async () => {
     const files = await fixture();
-    await writeConfigFile(files.configFilename, '{}');
-    const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
+    const prepared = await prepare(files, new Date(1000));
     const histories: string[] = [];
     const running = await sessionServer(prepared, {
       async *produce(history) {
@@ -311,8 +277,7 @@ describe('server conversation composition', () => {
 
   it('rejects empty text before admission for new, existing, and missing conversations', async () => {
     const files = await fixture();
-    await writeConfigFile(files.configFilename, '{}');
-    const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
+    const prepared = await prepare(files, new Date(1000));
     const running = await sessionServer(prepared, {
       async *produce() { yield text('answer'); yield expectation(false); },
     });
@@ -344,8 +309,7 @@ describe('server conversation composition', () => {
 
   it('rejects a simultaneous turn in the same conversation without queuing it', async () => {
     const files = await fixture();
-    await writeConfigFile(files.configFilename, '{}');
-    const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
+    const prepared = await prepare(files, new Date(1000));
     let signalStarted!: () => void;
     const started = new Promise<void>(resolve => { signalStarted = resolve; });
     let releaseFirst!: () => void;
@@ -384,8 +348,7 @@ describe('server conversation composition', () => {
 
   it('blocks new turns after a completion write failure and recovers on restart', async () => {
     const files = await fixture();
-    await writeConfigFile(files.configFilename, '{"language":"it"}');
-    const prepared = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
+    const prepared = await prepare(files, new Date(1000), {'AMBROGIO_LANGUAGE': 'it'});
     let archiveClosed = false;
     const running = await sessionServer(prepared, {
       async *produce() {
@@ -410,7 +373,7 @@ describe('server conversation composition', () => {
       if (!archiveClosed) await prepared.archive.close();
     }
 
-    const restarted = await prepareConversations(files.archiveFilename, new Date(2000), environment(files.configFilename));
+    const restarted = await prepare(files, new Date(2000), {'AMBROGIO_LANGUAGE': 'it'});
     const restartedServer = await sessionServer(restarted, {
       async *produce() { yield text('pronta'); yield expectation(false); },
     });
@@ -428,8 +391,7 @@ describe('server conversation composition', () => {
 
   it('recovers a pending turn before returning the prepared list', async () => {
     const files = await fixture();
-    await writeConfigFile(files.configFilename, '{}');
-    const first = await prepareConversations(files.archiveFilename, new Date(1000), environment(files.configFilename));
+    const first = await prepare(files, new Date(1000));
     await first.archive.db.insertInto('conversations').values({
       id: 'conversation', created_at: 100, last_activity_at: 100,
     }).execute();
@@ -440,7 +402,7 @@ describe('server conversation composition', () => {
     await first.archive.db.updateTable('conversations').set({ active_turn_id: 'turn' }).where('id', '=', 'conversation').execute();
     await first.archive.close();
 
-    const second = await prepareConversations(files.archiveFilename, new Date(2000), environment(files.configFilename));
+    const second = await prepare(files, new Date(2000));
     try {
       expect(second.archive.recoveredTurns).toBe(1);
       expect(await second.archive.db.selectFrom('turns').select(['status', 'finished_at']).executeTakeFirst())

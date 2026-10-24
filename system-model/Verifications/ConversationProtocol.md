@@ -59,7 +59,7 @@ La prova passa se la richiesta senza `Origin` è accettata in entrambe le config
 
 ### Prova del rifiuto audio senza voce abilitata
 
-Avviare il server senza `AMBROGIO_VOICE_CONFIG_PATH`. Inviare un turno audio, un turno testuale con `reply: "audio"` e un turno testuale con `reply: "text"`.
+Avviare il server senza `AMBROGIO_VOICE_LANGUAGES`. Inviare un turno audio, un turno testuale con `reply: "audio"` e un turno testuale con `reply: "text"`.
 
 #### Details
 La prova passa se i primi due turni ricevono una trasmissione testuale con il messaggio pubblico previsto e `turn.rejected` con `reason: "audio_unavailable"`, senza creare conversazioni o turni e senza caricare componenti vocali, mentre il turno testuale con risposta in testo viene ammesso e completato. Fallisce se un turno audio viene ammesso, se il messaggio di rifiuto viene trasmesso in audio o se il server tenta di costruire Vosk o Piper.

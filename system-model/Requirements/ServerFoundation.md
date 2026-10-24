@@ -1,5 +1,24 @@
 # Elements
 
+### Ambiente di esecuzione dichiarato del backend
+
+Il processo del backend deve leggere l'ambiente di esecuzione da `AMBROGIO_ENV` prima di ogni altra configurazione, rifiutare l'avvio se la variabile manca o non è valida, e applicare i valori predefiniti di sviluppo del componente HTTP soltanto nell'ambiente `development`, richiedendone il valore esplicito in `test` e `production`.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Profilo dell'ascolto HTTP](../Contracts/ServerFoundation.md#profilo-dellascolto-http)
+  * [Profilo dell'ambiente di esecuzione e del file d'ambiente locale](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#profilo-dellambiente-di-esecuzione-e-del-file-dambiente-locale)
+
+#### Relations
+  * derivedFrom: [Ambiente di esecuzione dichiarato](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#ambiente-di-esecuzione-dichiarato)
+  * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
+  * satisfiedBy: [http-config.ts](../../apps/server/src/runtime/http-config.ts)
+  * satisfiedBy: [environment-variables.ts](../../packages/conversations/src/adapters/out/environment-variables.ts)
+  * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
+---
+
 ### Arresto controllato dei nuovi turni
 
 Quando il server riceve una richiesta di arresto ordinato, deve smettere di accettare nuovi turni prima di interrompere quelli attivi e chiudere le risorse.
@@ -150,22 +169,26 @@ Origine: baseline Reqvire «Rejection-specific fields only», adottata.
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
-### Caricamento iniziale delle configurazioni TypeScript
+### Caricamento iniziale della configurazione del backend
 
-Quando un processo del server avvia un ingresso, deve caricare una volta i moduli TypeScript locali dei componenti necessari prima di attivarli. I moduli devono ammettere valori letti dalle variabili d'ambiente fornite dal deployment.
+Quando un processo del backend avvia un ingresso, deve leggere una sola volta, all'avvio e prima di attivarli, la configurazione dei componenti necessari a quell'ingresso dalle variabili d'ambiente del processo, tramite il modulo di configurazione di ciascun componente, e non deve rileggerla durante il lavoro.
 
 #### Details
-Origine: baseline Reqvire «Configuration module per component reading environment variables», adattata: il modulo TypeScript di ogni componente è fornito dall'installazione fuori dalla build e può contenere i valori, oltre a leggerli dalle variabili d'ambiente; «One-time configuration load at startup», adottata; «Ordered startup before accepting work», adottata.
+Origine: baseline Reqvire «One-time configuration load at startup», adottata; «Ordered startup before accepting work», adottata.
 
 #### Metadata
   * type: requirement
 
+#### Contract References
+  * [Profilo dell'ambiente di esecuzione e del file d'ambiente locale](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#profilo-dellambiente-di-esecuzione-e-del-file-dambiente-locale)
+
 #### Relations
+  * derivedFrom: [Modulo di configurazione per componente dalle variabili d'ambiente](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#modulo-di-configurazione-per-componente-dalle-variabili-dambiente)
   * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
   * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
   * satisfiedBy: [http-config.ts](../../apps/server/src/runtime/http-config.ts)
-  * satisfiedBy: [compose.example.yaml](../../compose.example.yaml)
   * satisfiedBy: [conversation-config.ts](../../packages/conversations/src/adapters/out/conversation-config.ts)
+  * satisfiedBy: [environment-variables.ts](../../packages/conversations/src/adapters/out/environment-variables.ts)
   * satisfiedBy: [voice-config.ts](../../packages/conversations/src/adapters/out/voice-config.ts)
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
 ---
@@ -223,13 +246,16 @@ Origine: baseline Reqvire «Strict TypeScript compilation», adottata.
 
 ### Configurazione esplicita dell'ascolto HTTP
 
-Quando il processo avvia l'ingresso HTTP, deve usare un indirizzo host e una porta dichiarati esplicitamente nel configurazione locale del componente HTTP e impedire l'avvio se tali valori sono assenti o invalidi.
+Quando il processo avvia l'ingresso HTTP, deve ascoltare all'indirizzo host e alla porta dichiarati esplicitamente nella configurazione del componente HTTP e rifiutare l'avvio quando uno dei due valori manca o non è valido; soltanto nell'ambiente `development` i valori assenti devono assumere i valori predefiniti di sviluppo dichiarati dal componente.
 
 #### Details
-Origine: baseline Reqvire «Explicit HTTP listener configuration», adattata: il caricatore non applica valori predefiniti, nemmeno in sviluppo.
+Origine: baseline Reqvire «Explicit HTTP listener configuration», adottata.
 
 #### Metadata
   * type: requirement
+
+#### Contract References
+  * [Profilo dell'ambiente di esecuzione e del file d'ambiente locale](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#profilo-dellambiente-di-esecuzione-e-del-file-dambiente-locale)
 
 #### Relations
   * satisfiedBy: [http-config.ts](../../apps/server/src/runtime/http-config.ts)
@@ -325,20 +351,24 @@ Quando l'MVP è installato senza autenticazione applicativa, il deployment deve 
   * specify: [Assistenza personale domestica](../../../ambrogio-model/system-model/Capabilities/Product.md#assistenza-personale-domestica)
 ---
 
-### Credenziali API nel modulo TypeScript del componente
+### Credenziali API dalle variabili d'ambiente
 
-Quando un componente del server usa credenziali per un'API esterna, deve riceverle dal proprio modulo TypeScript di configurazione; il modulo ammette di leggerle dall'ambiente del processo.
+Quando un componente del backend usa credenziali per un'API esterna, deve riceverle dalle variabili d'ambiente del processo tramite il proprio modulo di configurazione, e nessun file di configurazione del backend deve contenere una credenziale.
 
 #### Details
-Origine: baseline Reqvire «Configuration module per component reading environment variables», adattata: il modulo TypeScript di ogni componente è fornito dall'installazione fuori dalla build e può contenere i valori, oltre a leggerli dalle variabili d'ambiente.
+Le credenziali degli agenti sono indicate nei file degli agenti con il nome della variabile d'ambiente che le contiene.
+
+Origine: baseline Reqvire «Configuration module per component reading environment variables», adottata.
 
 #### Metadata
   * type: requirement
 
 #### Contract References
-  * [Profilo di bootstrap delle configurazioni TypeScript](../Contracts/ServerFoundation.md#profilo-di-bootstrap-delle-configurazioni-typescript)
+  * [Formato JSON dei file degli agenti](../Contracts/FamilyConversation.md#formato-json-dei-file-degli-agenti)
 
 #### Relations
+  * derivedFrom: [Modulo di configurazione per componente dalle variabili d'ambiente](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#modulo-di-configurazione-per-componente-dalle-variabili-dambiente)
+  * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
 ---
 
@@ -469,13 +499,13 @@ Origine: baseline Reqvire «Server distributed as a container image», adottata.
 
 ### Distribuzione mirata della configurazione validata
 
-Quando il processo ha validato le configurazioni TypeScript dei componenti attivi, la composition root deve fornire a ciascun componente soltanto i valori di configurazione che gli servono, già convertiti nei tipi previsti, senza far leggere direttamente file o variabili d'ambiente a Domain e ai casi d'uso Application.
+Quando il processo ha validato la configurazione dei componenti attivi, la composition root deve fornire a ciascun componente soltanto i valori di configurazione che gli servono, già convertiti nei tipi previsti, senza far leggere direttamente file o variabili d'ambiente a Domain e ai casi d'uso Application.
 
 #### Metadata
   * type: requirement
 
 #### Contract References
-  * [Profilo di bootstrap delle configurazioni TypeScript](../Contracts/ServerFoundation.md#profilo-di-bootstrap-delle-configurazioni-typescript)
+  * [Profilo di bootstrap della configurazione del backend](../Contracts/ServerFoundation.md#profilo-di-bootstrap-della-configurazione-del-backend)
 
 #### Relations
   * derivedFrom: [Validazione della configurazione prima delle risorse](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#validazione-della-configurazione-prima-delle-risorse)
@@ -531,7 +561,7 @@ Origine: baseline Reqvire «No technical details in public failure messages», a
 
 ### Esclusione dei file di configurazione effettivi dagli artefatti
 
-Quando il server usa file di configurazione locali effettivi, tali file devono restare esterni al repository Git e all'immagine container.
+Quando il backend usa file di configurazione effettivi, come il file `.env` di sviluppo o i file degli agenti di un'installazione, tali file devono restare esterni al repository Git e all'immagine container.
 
 #### Metadata
   * type: requirement
@@ -575,33 +605,57 @@ Origine: baseline Reqvire «Container start without Compose», adottata.
 
 ### Esempi di configurazione privi di credenziali
 
-Quando il repository fornisce esempi di file di configurazione TypeScript, tali esempi non devono contenere credenziali effettive.
+Quando il repository fornisce esempi di configurazione, come `.env.example`, `compose.example.yaml` e i file degli agenti d'esempio, tali esempi non devono contenere credenziali effettive.
 
 #### Metadata
   * type: requirement
 
 #### Relations
   * derivedFrom: [Configurazioni effettive escluse dagli artefatti](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#configurazioni-effettive-escluse-dagli-artefatti)
-  * satisfiedBy: [home-assistant.ts](../../examples/agents/home-assistant.ts)
+  * satisfiedBy: [.env.example](../../.env.example)
+  * satisfiedBy: [compose.example.yaml](../../compose.example.yaml)
+  * satisfiedBy: [generic.json](../../examples/agents/generic.json)
+  * satisfiedBy: [home-assistant.json](../../examples/agents/home-assistant.json)
+  * satisfiedBy: [orchestrator.json](../../examples/agents/orchestrator.json)
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
 ---
 
-### File TypeScript separato per componente configurabile
+### File JSON di soli dati per gli agenti
 
-Quando un componente del server richiede configurazione locale, la sua configurazione deve risiedere in un modulo TypeScript dedicato, separato dai moduli degli altri componenti.
+Il backend deve leggere la configurazione di ogni agente da un file JSON di soli dati nella directory degli agenti, validarla con lo schema degli agenti prima di attivare l'agente, e rifiutare un file che contiene una credenziale invece del nome della variabile d'ambiente che la fornisce.
 
 #### Details
-Origine: baseline Reqvire «Configuration module per component reading environment variables», adattata: il modulo TypeScript di ogni componente è fornito dall'installazione fuori dalla build e può contenere i valori, oltre a leggerli dalle variabili d'ambiente.
+L'insieme degli agenti resta aperto: chi installa aggiunge o toglie un agente aggiungendo o togliendo il suo file, senza scrivere codice.
+
+Origine: baseline Reqvire «Configuration module per component reading environment variables», adattata: la configurazione degli agenti è un file JSON di soli dati montato nella directory degli agenti e letto dal modulo di configurazione degli agenti, invece di sole variabili d'ambiente; le credenziali restano variabili d'ambiente, riferite nel file per nome.
 
 #### Metadata
   * type: requirement
 
 #### Contract References
-  * [Profilo di bootstrap delle configurazioni TypeScript](../Contracts/ServerFoundation.md#profilo-di-bootstrap-delle-configurazioni-typescript)
+  * [Profilo dell'ambiente di esecuzione e del file d'ambiente locale](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#profilo-dellambiente-di-esecuzione-e-del-file-dambiente-locale)
 
 #### Relations
-  * satisfiedBy: [conversations.ts](../../examples/conversations.ts)
-  * satisfiedBy: [http.ts](../../examples/http.ts)
+  * derivedFrom: [Modulo di configurazione per componente dalle variabili d'ambiente](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#modulo-di-configurazione-per-componente-dalle-variabili-dambiente)
+  * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
+  * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
+---
+
+### File d'ambiente locale del backend
+
+Il backend deve caricare il file `.env` della radice soltanto con lo script di sviluppo `dev`, che avvia il server compilato con `node --env-file=.env`, deve fornire `.env.example` secondo il profilo comune, e il suo codice non deve caricare file d'ambiente.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Profilo dell'ambiente di esecuzione e del file d'ambiente locale](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#profilo-dellambiente-di-esecuzione-e-del-file-dambiente-locale)
+
+#### Relations
+  * derivedFrom: [Caricamento esplicito del file d'ambiente locale](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#caricamento-esplicito-del-file-dambiente-locale)
+  * satisfiedBy: [.env.example](../../.env.example)
+  * satisfiedBy: [.gitignore](../../.gitignore)
+  * satisfiedBy: [package.json](../../package.json)
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
 ---
 
@@ -902,6 +956,25 @@ Quando il progetto distribuisce l'immagine Docker del backend, deve includere mo
   * satisfiedBy: [Dockerfile](../../Dockerfile)
   * satisfiedBy: [fetch-speech-models.mjs](../../scripts/fetch-speech-models.mjs)
   * specify: [Conversazione a voce](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-a-voce)
+---
+
+### Modulo di configurazione per componente del backend
+
+Ogni componente configurabile del backend, cioè HTTP, Conversazioni, Voce e Agenti, deve avere un proprio modulo di configurazione TypeScript nella build, che legge soltanto le variabili d'ambiente del componente e le valida con lo schema del componente, senza contenere valori effettivi; chi installa deve configurare il backend con variabili d'ambiente e con i file di dati degli agenti, senza fornire codice.
+
+#### Details
+Origine: baseline Reqvire «Configuration module per component reading environment variables», adottata, con l'adattamento dei file degli agenti registrato in «File JSON di soli dati per gli agenti».
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * derivedFrom: [Modulo di configurazione per componente dalle variabili d'ambiente](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#modulo-di-configurazione-per-componente-dalle-variabili-dambiente)
+  * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
+  * satisfiedBy: [http-config.ts](../../apps/server/src/runtime/http-config.ts)
+  * satisfiedBy: [conversation-config.ts](../../packages/conversations/src/adapters/out/conversation-config.ts)
+  * satisfiedBy: [voice-config.ts](../../packages/conversations/src/adapters/out/voice-config.ts)
+  * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
 ---
 
 ### Nessun log automatico per esiti previsti
@@ -1263,7 +1336,7 @@ Quando il server HTTP emette un evento diagnostico tecnico, deve usare Pino come
 
 ### Validazione preventiva della configurazione attiva
 
-Quando un processo del server prepara un ingresso, deve verificare presenza, formato e valori richiesti dei moduli TypeScript dei componenti effettivamente attivi prima di creare o attivare le risorse che li usano; una configurazione non valida deve impedire l'attivazione dell'ingresso e produrre un errore sicuro al confine di avvio.
+Quando un processo del server prepara un ingresso, deve verificare presenza, formato e valori richiesti della configurazione dei componenti effettivamente attivi, letta dai rispettivi moduli di configurazione, prima di creare o attivare le risorse che la usano; una configurazione non valida deve impedire l'attivazione dell'ingresso e produrre un errore sicuro al confine di avvio.
 
 #### Details
 Origine: baseline Reqvire «Ordered startup before accepting work», adottata.
@@ -1272,11 +1345,31 @@ Origine: baseline Reqvire «Ordered startup before accepting work», adottata.
   * type: requirement
 
 #### Contract References
-  * [Profilo di bootstrap delle configurazioni TypeScript](../Contracts/ServerFoundation.md#profilo-di-bootstrap-delle-configurazioni-typescript)
+  * [Profilo di bootstrap della configurazione del backend](../Contracts/ServerFoundation.md#profilo-di-bootstrap-della-configurazione-del-backend)
 
 #### Relations
   * derivedFrom: [Validazione della configurazione prima delle risorse](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#validazione-della-configurazione-prima-delle-risorse)
   * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
+  * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
+---
+
+### Valori predefiniti del backend applicati dal proprietario
+
+Ogni valore predefinito della configurazione del backend deve essere dichiarato e applicato soltanto dal modulo di configurazione del componente che lo possiede, e l'ingresso di prova, i file d'esempio, `.env.example` e `compose.example.yaml` non devono ripeterlo.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Profilo di bootstrap della configurazione del backend](../Contracts/ServerFoundation.md#profilo-di-bootstrap-della-configurazione-del-backend)
+
+#### Relations
+  * derivedFrom: [Valori predefiniti applicati dal proprietario](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#valori-predefiniti-applicati-dal-proprietario)
+  * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
+  * satisfiedBy: [http-config.ts](../../apps/server/src/runtime/http-config.ts)
+  * satisfiedBy: [test-server.ts](../../apps/server/src/runtime/test-server.ts)
+  * satisfiedBy: [compose.example.yaml](../../compose.example.yaml)
+  * satisfiedBy: [conversation-config.ts](../../packages/conversations/src/adapters/out/conversation-config.ts)
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
 ---
 

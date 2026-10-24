@@ -1,4 +1,4 @@
-import { writeConfigFile } from '../../test/support/config-fixture.js';
+import { serverEnvironment, testEnvironment, writeAgentFile } from '../../test/support/config-fixture.js';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createServer as createHttpServer } from 'node:http';
 import { createServer, type AddressInfo } from 'node:net';
@@ -38,8 +38,7 @@ function expectation(expectsReply = false): ReplyPart { return { kind: 'reply_ex
 async function fixture() {
   const directory = await mkdtemp(join(tmpdir(), 'ambrogio-conversation-server-'));
   directories.push(directory);
-  return { directory, http: join(directory, 'http.ts'),
-    conversations: join(directory, 'conversations.ts'), archive: join(directory, 'archive.sqlite') };
+  return { directory, archive: join(directory, 'archive.sqlite') };
 }
 
 async function freePort(): Promise<number> {
@@ -174,16 +173,13 @@ test('the session ingress uses the orchestrator and GET routes retain security, 
 test('shutdown interrupts a pending turn without waiting for the remote reply', async () => {
   const files = await fixture();
   const port = await freePort();
-  await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
   let started!: () => void;
   const producing = new Promise<void>((resolve) => { started = resolve; });
   let release!: () => void;
   const wait = new Promise<void>((resolve) => { release = resolve; });
   let closed = false;
   let persistedBeforeAgentClose = false;
-  const runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
-    AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory,
+  const runtime = await startConversationServer(serverEnvironment(files, port, files.directory),
   async () => ({ orchestrator: { async *produce() {
     started(); await wait; yield text('too late'); yield expectation();
   } },
@@ -225,8 +221,7 @@ test('shutdown interrupts a pending turn without waiting for the remote reply', 
       const rows = await archive.db.selectFrom('turns').select(['status', 'answer']).execute();
       expect(rows).toEqual([{ status: 'interrupted', answer: null }]);
     } finally { await archive.close(); }
-    const restarted = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
-      AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory,
+    const restarted = await startConversationServer(serverEnvironment(files, port, files.directory),
     async () => ({ orchestrator: { async *produce() { yield text('after restart'); yield expectation(); } },
       async close() {} }));
     try {
@@ -246,10 +241,7 @@ test('shutdown interrupts a pending turn without waiting for the remote reply', 
 test('shutdown preserves a turn already completed before interruption', async () => {
   const files = await fixture();
   const port = await freePort();
-  await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
-  const runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
-    AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory,
+  const runtime = await startConversationServer(serverEnvironment(files, port, files.directory),
   async () => ({ orchestrator: { async *produce() { yield text('completed answer'); yield expectation(); } },
     async close() {} }));
   try {
@@ -270,16 +262,13 @@ test('shutdown preserves a turn already completed before interruption', async ()
 test('keeps SQLite writable while waiting for an agent and while streaming the reply', async () => {
   const files = await fixture();
   const port = await freePort();
-  await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
   const agentGate = gate();
   const streamGate = gate();
   let agentStarted!: () => void;
   let streamStarted!: () => void;
   const waitingForAgent = new Promise<void>(resolve => { agentStarted = resolve; });
   const waitingDuringStream = new Promise<void>(resolve => { streamStarted = resolve; });
-  const runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
-    AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory,
+  const runtime = await startConversationServer(serverEnvironment(files, port, files.directory),
   async () => ({ orchestrator: { async *produce() {
     agentStarted();
     await agentGate.waiting;
@@ -321,12 +310,9 @@ test('keeps SQLite writable while waiting for an agent and while streaming the r
 test('restores completed history after restart and uses it for textual continuation', async () => {
   const files = await fixture();
   const port = await freePort();
-  await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
-  const environment = { AMBROGIO_HTTP_CONFIG_PATH: files.http,
-    AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations };
+  const environment = serverEnvironment(files, port);
   const seen: Array<Array<{ text: string; status: string; answer?: string; error?: string }>> = [];
-  const firstRuntime = await startConversationServer(environment, files.directory,
+  const firstRuntime = await startConversationServer(environment,
     async () => ({ orchestrator: { async *produce(history) {
       seen.push(history.turns.map(turn => ({ text: turn.text, status: turn.status,
         ...(turn.status === 'answered' ? { answer: turn.answer } : {}),
@@ -386,7 +372,7 @@ test('restores completed history after restart and uses it for textual continuat
   } finally { await persistedArchive.close(); }
 
   const afterRestartSeen: string[][] = [];
-  const restarted = await startConversationServer(environment, files.directory,
+  const restarted = await startConversationServer(environment,
     async () => ({ orchestrator: { async *produce(history) {
       afterRestartSeen.push(history.turns.map(turn => turn.text));
       yield text('third answer');
@@ -422,8 +408,6 @@ test('restores completed history after restart and uses it for textual continuat
 test('processes separate conversations in parallel and rejects a second turn in the same conversation', async () => {
   const files = await fixture();
   const port = await freePort();
-  await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
   const origin = `http://127.0.0.1:${port}`;
   const firstGate = gate();
   const secondGate = gate();
@@ -432,8 +416,7 @@ test('processes separate conversations in parallel and rejects a second turn in 
   let producingSecond!: () => void;
   const secondStarted = new Promise<void>(resolve => { producingSecond = resolve; });
   let productions = 0;
-  const runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
-    AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory,
+  const runtime = await startConversationServer(serverEnvironment(files, port, files.directory),
   async () => ({ orchestrator: { async *produce() {
     productions++;
     if (productions === 1) { producingFirst(); await firstGate.waiting; }
@@ -490,12 +473,9 @@ test.each(['answered', 'failed'] as const)(
   'persists a %s turn after its session client disconnects', async (outcome) => {
     const files = await fixture();
     const port = await freePort();
-    await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-    await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
-    const origin = `http://127.0.0.1:${port}`;
+        const origin = `http://127.0.0.1:${port}`;
     const continuation = gate();
-    const runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
-      AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory,
+    const runtime = await startConversationServer(serverEnvironment(files, port, files.directory),
     async () => ({ orchestrator: { async *produce() {
       yield text('partial');
       await continuation.waiting;
@@ -647,11 +627,10 @@ test('does not confirm success when the answer transaction cannot commit', async
 test('invalid agent files prevent the conversation listener from starting', async () => {
   const files = await fixture();
   const port = await freePort();
-  await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
-  await writeConfigFile(join(files.directory, 'orchestrator.ts'), '{');
-  await expect(startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
-    AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory))
+  await writeAgentFile(join(files.directory, 'orchestrator.json'), '{');
+  await writeAgentFile(join(files.directory, 'generic.json'), JSON.stringify({ description: 'Answers.',
+    instructions: 'Answer.', llm: { provider: 'mistral', model: 'mistral-medium-latest', apiKey: 'generic-key' } }));
+  await expect(startConversationServer(serverEnvironment(files, port, files.directory)))
     .rejects.toThrow('Invalid agent configuration: orchestrator');
   const probe = createServer();
   await new Promise<void>((resolve, reject) => {
@@ -664,8 +643,6 @@ test('invalid agent files prevent the conversation listener from starting', asyn
 test('migrates an existing archive before listening and preserves its history', async () => {
   const files = await fixture();
   const port = await freePort();
-  await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
   const priorConversationId = 'dc89cb5e-e695-43cc-8a04-917316771ea4';
   const priorTurnId = '79e437a8-c11a-48ba-b476-e4fd4712ea58';
   const archive = await openConversationArchive(files.archive, new Date());
@@ -680,8 +657,7 @@ test('migrates an existing archive before listening and preserves its history', 
   } finally { await archive.close(); }
   await downgradeArchiveToInitial(files.archive);
 
-  const runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
-    AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory,
+  const runtime = await startConversationServer(serverEnvironment(files, port, files.directory),
   async () => ({ orchestrator: { async *produce() { yield text('new answer'); yield expectation(); } },
     async close() {} }));
   try {
@@ -705,15 +681,12 @@ test('migrates an existing archive before listening and preserves its history', 
 test('a failed archive migration prevents the conversation listener', async () => {
   const files = await fixture();
   const port = await freePort();
-  await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
   await downgradeArchiveToInitial(files.archive);
   const sqlite = new DatabaseSync(files.archive);
   sqlite.exec('alter table turns add column ordinal integer');
   sqlite.close();
   let agentClosed = false;
-  await expect(startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
-    AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory,
+  await expect(startConversationServer(serverEnvironment(files, port, files.directory),
   async () => ({ orchestrator: { async *produce() { yield text('unused'); yield expectation(); } },
     async close() { agentClosed = true; } }))).rejects.toThrow();
   expect(agentClosed).toBe(true);
@@ -754,13 +727,11 @@ test('a session turn delegates to a configured MCP tool and persists the answer'
   await new Promise<void>((resolve) => mcpServer.listen(0, '127.0.0.1', resolve));
   const address = mcpServer.address();
   if (!address || typeof address === 'string') throw new Error('No MCP port');
-  await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
   const llm = { provider: 'mistral', model: 'controlled-model', apiKey: 'fake-key' };
-  await writeConfigFile(join(agentDirectory, 'orchestrator.ts'), JSON.stringify({
+  await writeAgentFile(join(agentDirectory, 'orchestrator.json'), JSON.stringify({
     instructions: 'Delegate fact lookups.', llm,
   }));
-  await writeConfigFile(join(agentDirectory, 'facts.ts'), JSON.stringify({
+  await writeAgentFile(join(agentDirectory, 'facts.json'), JSON.stringify({
     instructions: 'Use lookup.', description: 'Find facts.', maxToolCalls: 1, llm,
     mcp: { url: `http://127.0.0.1:${address.port}/mcp` },
   }));
@@ -771,7 +742,7 @@ test('a session turn delegates to a configured MCP tool and persists the answer'
   // The adapter appends the reply-format guidance to the configured instructions.
   const configuredInstructions = (prompt: unknown) => String(prompt ?? '').split('\n')[0]!;
   const prepareAgents = async (directory: string) => {
-    const configs = await loadAgentConfigs(directory);
+    const configs = await loadAgentConfigs(directory, testEnvironment());
     const config = configs.specialists[0]!;
     const mcp = await McpToolClient.connect(config.mcp!);
     try {
@@ -816,8 +787,7 @@ test('a session turn delegates to a configured MCP tool and persists the answer'
     } catch (error) { await mcp.close(); throw error; }
   };
   try {
-    runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
-      AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, agentDirectory, prepareAgents);
+    runtime = await startConversationServer(serverEnvironment(files, port, agentDirectory), prepareAgents);
     const client = await ProtocolClient.ready(sessionUrl(port));
     const delegated = await client.textTurn('What is the answer?');
     expect(delegated.final).toMatchObject({ type: 'turn.completed', expectsReply: false });
@@ -852,14 +822,13 @@ test('a session turn delegates to a configured MCP tool and persists the answer'
     await client.close();
     await runtime.close();
     runtime = undefined;
-    await writeConfigFile(join(agentDirectory, 'facts.ts'), JSON.stringify({
+    await writeAgentFile(join(agentDirectory, 'facts.json'), JSON.stringify({
       instructions: 'Use the updated lookup.', description: 'Find facts.', maxToolCalls: 1, llm,
       mcp: { url: `http://127.0.0.1:${address.port}/mcp` },
     }));
     orchestratorStep = 0;
     modelRequests.length = 0;
-    runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
-      AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, agentDirectory, prepareAgents);
+    runtime = await startConversationServer(serverEnvironment(files, port, agentDirectory), prepareAgents);
     const changed = await (await ProtocolClient.ready(sessionUrl(port))).textTurn('Look up the updated fact.');
     expect(changed.final.type).toBe('turn.completed');
     expect(changed.outputs[0]!.text).toBe('Answer from tool.');
@@ -882,18 +851,15 @@ test('unavailable configured MCP connector prevents the conversation listener', 
   await mkdir(agentDirectory);
   const port = await freePort();
   const unavailablePort = await freePort();
-  await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
   const llm = { provider: 'mistral', model: 'controlled-model', apiKey: 'fake-key' };
-  await writeConfigFile(join(agentDirectory, 'orchestrator.ts'), JSON.stringify({
+  await writeAgentFile(join(agentDirectory, 'orchestrator.json'), JSON.stringify({
     instructions: 'Delegate.', llm,
   }));
-  await writeConfigFile(join(agentDirectory, 'facts.ts'), JSON.stringify({
+  await writeAgentFile(join(agentDirectory, 'facts.json'), JSON.stringify({
     instructions: 'Use lookup.', description: 'Find facts.', maxToolCalls: 1, llm,
     mcp: { url: `http://127.0.0.1:${unavailablePort}/mcp` },
   }));
-  await expect(startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
-    AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, agentDirectory))
+  await expect(startConversationServer(serverEnvironment(files, port, agentDirectory)))
     .rejects.toThrow('MCP connection failed');
   const probe = createServer();
   await new Promise<void>((resolve, reject) => {
@@ -909,13 +875,10 @@ test('a directory without specialist agents prevents the conversation listener',
   const agentDirectory = join(files.directory, 'agents');
   await mkdir(agentDirectory);
   const port = await freePort();
-  await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
-  await writeConfigFile(join(agentDirectory, 'orchestrator.ts'), JSON.stringify({
+  await writeAgentFile(join(agentDirectory, 'orchestrator.json'), JSON.stringify({
     instructions: 'Choose.', llm: { provider: 'mistral', model: 'controlled-model', apiKey: 'fake-key' },
   }));
-  await expect(startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
-    AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, agentDirectory))
+  await expect(startConversationServer(serverEnvironment(files, port, agentDirectory)))
     .rejects.toThrow('No specialist agent configured');
   const probe = createServer();
   await new Promise<void>((resolve, reject) => {
@@ -943,28 +906,21 @@ const controlledAgents = async () => ({ orchestrator: { async *produce() {
 test('does not open a listener when the HTTP or archive configuration is missing or invalid', async () => {
   const files = await fixture();
   const port = await freePort();
-  await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
-  const environment = { AMBROGIO_HTTP_CONFIG_PATH: files.http,
-    AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations, PORT: String(port), HOST: '0.0.0.0' };
-  const start = (env: NodeJS.ProcessEnv) => startConversationServer(env, files.directory, controlledAgents);
-  await expect(start({ AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }))
-    .rejects.toThrow('Missing HTTP configuration path');
-  await expect(start(environment)).rejects.toThrow('Invalid HTTP configuration file');
-  await writeConfigFile(files.http, '{');
-  await expect(start(environment)).rejects.toThrow('Invalid HTTP configuration file');
-  for (const invalid of [{ port }, { host: '127.0.0.1' },
-    { host: '127.0.0.1', port: 0 }, { host: '127.0.0.1', port: '3000' }]) {
-    await writeConfigFile(files.http, JSON.stringify(invalid));
-    await expect(start(environment)).rejects.toThrow('Invalid HTTP listener configuration');
+  // Variables of other programs, such as PORT and HOST, are not read.
+  const environment = { ...serverEnvironment(files, port), PORT: String(port + 1), HOST: '0.0.0.0',
+    AMBROGIO_ENV: 'production' };
+  const start = (env: NodeJS.ProcessEnv) => startConversationServer(env, controlledAgents);
+  for (const name of ['AMBROGIO_HTTP_HOST', 'AMBROGIO_HTTP_PORT', 'AMBROGIO_PUBLIC_HTTPS', 'AMBROGIO_ARCHIVE_PATH']) {
+    await expect(start({ ...environment, [name]: undefined })).rejects.toThrow(`Missing environment variable ${name}`);
     await expectPortAvailable(port);
   }
-  await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeConfigFile(files.conversations, '{}');
-  await expect(start(environment)).rejects.toThrow('Missing conversation archive path');
-  await expectPortAvailable(port);
-  await writeConfigFile(files.conversations, JSON.stringify({ archivePath:
-    join(dirname(files.archive), 'missing', 'archive.sqlite') }));
-  await expect(start(environment)).rejects.toThrow();
+  for (const value of ['0', '65536', 'port']) {
+    await expect(start({ ...environment, AMBROGIO_HTTP_PORT: value }))
+      .rejects.toThrow('Invalid environment variable AMBROGIO_HTTP_PORT');
+    await expectPortAvailable(port);
+  }
+  await expect(start({ ...environment, AMBROGIO_ARCHIVE_PATH: join(dirname(files.archive), 'missing', 'archive.sqlite') }))
+    .rejects.toThrow();
   await expectPortAvailable(port);
 });
 
@@ -984,10 +940,7 @@ test('listens on the configured address and serves the configured archive after 
   const destroy = vi.spyOn(Object.getPrototypeOf(archive.db) as { destroy: () => Promise<void> }, 'destroy');
 
   const port = await freePort();
-  await writeConfigFile(files.http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeConfigFile(files.conversations, JSON.stringify({ archivePath: files.archive }));
-  const runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: files.http,
-    AMBROGIO_CONVERSATIONS_CONFIG_PATH: files.conversations }, files.directory, controlledAgents);
+  const runtime = await startConversationServer(serverEnvironment(files, port, files.directory), controlledAgents);
   const address = runtime.server.server.address();
   expect(address && typeof address !== 'string' && address.address).toBe('127.0.0.1');
   expect(address && typeof address !== 'string' && address.port).toBe(port);

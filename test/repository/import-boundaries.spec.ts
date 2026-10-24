@@ -19,8 +19,9 @@ test('the analysis covers the sources and tests of every application and package
     const sources = workspace.files.filter((file) => file.path.startsWith(`${unit.directory}/src/`));
     expect(sources.filter((file) => !file.path.endsWith('.spec.ts')).length, unit.directory).toBeGreaterThan(0);
     expect(sources.filter((file) => file.path.endsWith('.spec.ts')).length, unit.directory).toBeGreaterThan(0);
-    expect(workspace.files.filter((file) => file.path.startsWith(`${unit.directory}/test/`)).length, unit.directory).toBeGreaterThan(0);
   }
+  // Shared test modules live in `test/` only where a unit has them.
+  expect(units.some((unit) => workspace.files.some((file) => file.path.startsWith(`${unit.directory}/test/`)))).toBe(true);
   expect(workspace.configs.map((config) => config.path)).toContain('tsconfig.json');
 });
 

@@ -1,4 +1,4 @@
-import { writeConfigFile } from '../../test/support/config-fixture.js';
+import { serverEnvironment } from '../../test/support/config-fixture.js';
 import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -187,19 +187,15 @@ test('shutdown interrupts active turns, stores them and notifies open sessions',
   const directory = await mkdtemp(join(tmpdir(), 'ambrogio-session-shutdown-'));
   directories.push(directory);
   const port = await freePort();
-  await writeConfigFile(join(directory, 'http.ts'), JSON.stringify({ host: '127.0.0.1', port }));
-  await writeConfigFile(join(directory, 'conversations.ts'), JSON.stringify({
-    archivePath: join(directory, 'archive.sqlite'), language: 'it' }));
+  const environment = serverEnvironment({ directory, archive: join(directory, 'archive.sqlite') }, port,
+    join(directory, 'agents'), { AMBROGIO_LANGUAGE: 'it' });
   const never = gate();
   const { reply } = scriptedReply(async function* () {
     yield text('sto pensando');
     await never.waiting;
     yield expectation(false);
   });
-  const runtime = await startConversationServer({
-    AMBROGIO_HTTP_CONFIG_PATH: join(directory, 'http.ts'),
-    AMBROGIO_CONVERSATIONS_CONFIG_PATH: join(directory, 'conversations.ts'),
-  }, join(directory, 'agents'), async () => ({ orchestrator: reply, async close() {} }));
+  const runtime = await startConversationServer(environment, async () => ({ orchestrator: reply, async close() {} }));
   const client = await ProtocolClient.ready(`ws://127.0.0.1:${port}/api/session`);
   const requestId = client.requestId();
   client.startText(requestId);
@@ -216,10 +212,7 @@ test('shutdown interrupts active turns, stores them and notifies open sessions',
   await client.closed;
   never.release();
 
-  const restarted = await startConversationServer({
-    AMBROGIO_HTTP_CONFIG_PATH: join(directory, 'http.ts'),
-    AMBROGIO_CONVERSATIONS_CONFIG_PATH: join(directory, 'conversations.ts'),
-  }, join(directory, 'agents'), async () => ({ orchestrator: reply, async close() {} }));
+  const restarted = await startConversationServer(environment, async () => ({ orchestrator: reply, async close() {} }));
   try {
     const response = await fetch(`http://127.0.0.1:${port}/api/conversations/${accepted.conversationId}`);
     expect((await response.json()).turns).toMatchObject([{ status: 'interrupted' }]);

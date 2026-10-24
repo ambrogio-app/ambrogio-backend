@@ -1,70 +1,78 @@
-import { writeConfigFile } from '../../../test/support/config-fixture.js';
-import { afterEach, describe, expect, it } from 'vitest';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { loadConversationConfig } from './conversation-config.js';
+import { describe, expect, it } from 'vitest';
+import { readConversationConfig } from './conversation-config.js';
+import type { RuntimeEnvironment } from './environment-variables.js';
 
-const directories: string[] = [];
+const archive = { AMBROGIO_ARCHIVE_PATH: '/tmp/ambrogio.sqlite' };
+const read = (variables: Record<string, string>, runtime: RuntimeEnvironment = 'test') =>
+  readConversationConfig({ ...archive, ...variables }, runtime);
+const marker = 'marker-value-7c1e';
 
-async function configFile(contents: string): Promise<string> {
-  const directory = await mkdtemp(join(tmpdir(), 'ambrogio-conversation-config-'));
-  directories.push(directory);
-  const filename = join(directory, 'conversations.ts');
-  await writeConfigFile(filename, contents);
-  return filename;
+/** The message of the error thrown by a read, to check that it names the variable and not its value. */
+function failure(variables: Record<string, string>, runtime: RuntimeEnvironment = 'test'): string {
+  try { read(variables, runtime); } catch (error) { return (error as Error).message; }
+  throw new Error('The configuration was accepted');
 }
 
-afterEach(async () => {
-  await Promise.all(directories.splice(0).map(directory => rm(directory, { recursive: true, force: true })));
-});
-
-describe('conversation TypeScript configuration', () => {
-  it('uses defaults for absent fields and accepts explicit page limits', async () => {
-    expect(await loadConversationConfig(await configFile('{}'))).toEqual({
-      listPageSize: 20, maxListPageSize: 100, language: 'en', timeZone: 'UTC',
-    });
-    expect(await loadConversationConfig(await configFile('{"listPageSize": 2, "maxListPageSize": 3}'))).toEqual({
-      listPageSize: 2, maxListPageSize: 3, language: 'en', timeZone: 'UTC',
-    });
-    expect(await loadConversationConfig(await configFile('{"listPageSize": 110, "maxListPageSize": 120}'))).toEqual({
-      listPageSize: 110, maxListPageSize: 120, language: 'en', timeZone: 'UTC',
-    });
+describe('conversation component configuration', () => {
+  // Verification: Prova della configurazione della paginazione
+  it('applies its own defaults in every environment and accepts explicit page limits', () => {
+    for (const runtime of ['development', 'test', 'production'] as const) {
+      expect(read({}, runtime)).toEqual({ archivePath: '/tmp/ambrogio.sqlite', listPageSize: 20,
+        maxListPageSize: 100, language: 'en', timeZone: 'UTC' });
+    }
+    expect(read({ AMBROGIO_LIST_PAGE_SIZE: '2', AMBROGIO_MAX_LIST_PAGE_SIZE: '3' }))
+      .toMatchObject({ listPageSize: 2, maxListPageSize: 3 });
+    expect(read({ AMBROGIO_LIST_PAGE_SIZE: '110', AMBROGIO_MAX_LIST_PAGE_SIZE: '120' }))
+      .toMatchObject({ listPageSize: 110, maxListPageSize: 120 });
+    // An empty variable counts as an absent one.
+    expect(read({ AMBROGIO_LIST_PAGE_SIZE: '', AMBROGIO_LANGUAGE: '' })).toMatchObject({ listPageSize: 20, language: 'en' });
   });
 
-  it('selects English or Italian and falls back to English for an unsupported language', async () => {
-    expect((await loadConversationConfig(await configFile('{"language":"en"}'))).language).toBe('en');
-    expect((await loadConversationConfig(await configFile('{"language":"it"}'))).language).toBe('it');
-    expect((await loadConversationConfig(await configFile('{"language":"fr"}'))).language).toBe('en');
+  // Verification: Prova della configurazione della paginazione
+  it('rejects invalid page limits naming the variable', () => {
+    for (const value of ['0', '-1', '1.5', 'twenty', ' 20']) {
+      expect(failure({ AMBROGIO_LIST_PAGE_SIZE: value })).toMatch(/^Invalid environment variable AMBROGIO_LIST_PAGE_SIZE: /);
+      expect(failure({ AMBROGIO_MAX_LIST_PAGE_SIZE: value })).toMatch(/^Invalid environment variable AMBROGIO_MAX_LIST_PAGE_SIZE: /);
+    }
+    expect(failure({ AMBROGIO_LIST_PAGE_SIZE: '101' }))
+      .toBe('Invalid environment variable AMBROGIO_LIST_PAGE_SIZE: expected at most AMBROGIO_MAX_LIST_PAGE_SIZE');
+  });
+
+  it('selects English or Italian and rejects any other language', () => {
+    expect(read({ AMBROGIO_LANGUAGE: 'en' }).language).toBe('en');
+    expect(read({ AMBROGIO_LANGUAGE: 'it' }).language).toBe('it');
+    for (const language of ['fr', 'IT', 'italian']) {
+      expect(failure({ AMBROGIO_LANGUAGE: language })).toBe('Invalid environment variable AMBROGIO_LANGUAGE: expected en or it');
+    }
   });
 
   // Verification: Prova del fuso orario configurato
-  it('uses UTC without timeZone, keeps a valid one and rejects invalid ones', async () => {
-    expect((await loadConversationConfig(await configFile('{}'))).timeZone).toBe('UTC');
-    expect((await loadConversationConfig(await configFile('{"timeZone":"Europe/Rome"}'))).timeZone)
-      .toBe('Europe/Rome');
-    for (const timeZone of [7, '', 'Mars/Olympus']) {
-      await expect(loadConversationConfig(await configFile(JSON.stringify({ timeZone }))))
-        .rejects.toThrow('Invalid conversation time zone');
+  it('uses UTC without a time zone, keeps a valid one and rejects invalid ones', () => {
+    expect(read({}).timeZone).toBe('UTC');
+    expect(read({ AMBROGIO_TIME_ZONE: 'Europe/Rome' }).timeZone).toBe('Europe/Rome');
+    for (const timeZone of ['Mars/Olympus', '7']) {
+      expect(failure({ AMBROGIO_TIME_ZONE: timeZone }))
+        .toBe('Invalid environment variable AMBROGIO_TIME_ZONE: expected an IANA time zone name');
     }
   });
 
-  it('keeps a supplied archive path and rejects an unusable one', async () => {
-    expect((await loadConversationConfig(await configFile('{"archivePath":"/tmp/ambrogio.sqlite"}')))
-      .archivePath).toBe('/tmp/ambrogio.sqlite');
-    for (const archivePath of ['', '  ', 7, null]) {
-      await expect(loadConversationConfig(await configFile(JSON.stringify({ archivePath })))).rejects.toThrow();
+  // Verification: Prova dell'archivio configurato all'avvio
+  it('requires the archive path in every environment', () => {
+    expect(read({ AMBROGIO_ARCHIVE_PATH: '/data/conversations.sqlite' }).archivePath).toBe('/data/conversations.sqlite');
+    for (const runtime of ['development', 'test', 'production'] as const) {
+      expect(() => readConversationConfig({}, runtime)).toThrow('Missing environment variable AMBROGIO_ARCHIVE_PATH');
+      expect(() => readConversationConfig({ AMBROGIO_ARCHIVE_PATH: '' }, runtime))
+        .toThrow('Missing environment variable AMBROGIO_ARCHIVE_PATH');
     }
+    expect(failure({ AMBROGIO_ARCHIVE_PATH: '  ' })).toBe('Invalid environment variable AMBROGIO_ARCHIVE_PATH: expected a file path');
   });
 
-  it('rejects missing files, malformed TypeScript and invalid limits before use', async () => {
-    await expect(loadConversationConfig('/missing/conversations.ts')).rejects.toThrow();
-    for (const contents of [
-      '{', 'null', '[]', '{"listPageSize": 0}', '{"maxListPageSize": -1}',
-      '{"listPageSize": 1.5}', '{"maxListPageSize": "100"}',
-      '{"listPageSize": 101}', '{"language": 7}', '{"language": null}',
-    ]) {
-      await expect(loadConversationConfig(await configFile(contents))).rejects.toThrow();
+  // Verification: Prova del bootstrap della configurazione del backend
+  it('never shows the rejected value in its errors', () => {
+    for (const name of ['AMBROGIO_LANGUAGE', 'AMBROGIO_TIME_ZONE', 'AMBROGIO_LIST_PAGE_SIZE', 'AMBROGIO_MAX_LIST_PAGE_SIZE']) {
+      const message = failure({ [name]: marker });
+      expect(message).toContain(name);
+      expect(message).not.toContain(marker);
     }
   });
 });

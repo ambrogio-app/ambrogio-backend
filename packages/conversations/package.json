@@ -78,6 +78,10 @@
       "types": "./dist/adapters/out/conversation-config.d.ts",
       "import": "./dist/adapters/out/conversation-config.js"
     },
+    "./adapters/out/environment-variables": {
+      "types": "./dist/adapters/out/environment-variables.d.ts",
+      "import": "./dist/adapters/out/environment-variables.js"
+    },
     "./adapters/out/voice-config": {
       "types": "./dist/adapters/out/voice-config.d.ts",
       "import": "./dist/adapters/out/voice-config.js"

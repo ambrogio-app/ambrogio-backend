@@ -5,6 +5,7 @@
   "packageManager": "pnpm@12.11.2",
   "scripts": {
     "build": "tsc -p packages/conversations/tsconfig.build.json && tsc -p apps/server/tsconfig.build.json",
+    "dev": "node --env-file=.env apps/server/dist/main.js",
     "test": "vitest run --project fast",
     "test:integration": "vitest run --project integration",
     "typecheck": "tsc --noEmit",

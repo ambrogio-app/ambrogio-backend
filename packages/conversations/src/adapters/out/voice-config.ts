@@ -1,11 +1,8 @@
 import { access, readdir, stat } from 'node:fs/promises';
-import { pathToFileURL } from 'node:url';
-import { resolve } from 'node:path';
-
-let configRevision = 0;
 import { constants } from 'node:fs';
 import { join } from 'node:path';
 import { ProjectError } from '../../project-error.js';
+import { integerVariable, invalidVariable, missingVariable, type EnvironmentVariable } from './environment-variables.js';
 
 /** The synthesis engine and voice chosen by the installation. */
 export type VoiceSelection = Readonly<
@@ -24,9 +21,6 @@ export type KokoroModelFiles = Readonly<{ model: string; voices: string; tokens:
 export type VoiceModel = Readonly<
   | { engine: 'piper'; files: VoiceModelFiles }
   | { engine: 'kokoro'; files: KokoroModelFiles; speaker: number; language: string }>;
-
-const fieldNames = ['voskModelPath', 'voiceEngine', 'voiceModelDir', 'voiceSpeaker', 'voiceLanguage'];
-const pathNames = ['voskModelPath', 'voiceModelDir'];
 
 /** Every file readable and `dataDir` a directory. */
 async function readable<T extends Readonly<{ dataDir: string }>>(files: T): Promise<T> {
@@ -66,61 +60,79 @@ export async function voiceModel(voice: VoiceSelection): Promise<VoiceModel> {
     : { engine: 'piper', files: await voiceModelFiles(voice.voiceModelDir) };
 }
 
-/** The engine with its speaker and language, or undefined when they do not fit together. */
-function selection(fields: Record<string, unknown>, voiceModelDir: string): VoiceSelection | undefined {
-  const { voiceEngine, voiceSpeaker, voiceLanguage } = fields;
-  if (voiceEngine === 'piper' && voiceSpeaker === undefined && voiceLanguage === undefined) {
-    return { voiceEngine, voiceModelDir };
+export type VoiceLanguage = 'it' | 'en';
+
+const voiceLanguages: readonly VoiceLanguage[] = ['it', 'en'];
+
+/** The list of languages with a voice profile; voice is disabled when it is absent. */
+export const voiceLanguagesVariable: EnvironmentVariable = { name: 'AMBROGIO_VOICE_LANGUAGES' };
+
+/** The variables of the voice profile of one language; none has a default. */
+export function voiceProfileVariables(language: VoiceLanguage) {
+  const prefix = `AMBROGIO_VOICE_${language.toUpperCase()}_`;
+  return {
+    voskModelPath: { name: `${prefix}VOSK_MODEL_PATH` },
+    engine: { name: `${prefix}ENGINE` },
+    modelDir: { name: `${prefix}MODEL_DIR` },
+    speaker: { name: `${prefix}SPEAKER` },
+    language: { name: `${prefix}LANGUAGE` },
+  } as const satisfies Record<string, EnvironmentVariable>;
+}
+
+/** Every variable of the voice component, for the example environment file. */
+export const voiceVariables: readonly EnvironmentVariable[] = [voiceLanguagesVariable,
+  ...voiceLanguages.flatMap(language => Object.values(voiceProfileVariables(language)))];
+
+function value(environment: NodeJS.ProcessEnv, name: string): string | undefined {
+  const raw = environment[name];
+  return raw === undefined || raw === '' ? undefined : raw;
+}
+
+function required(environment: NodeJS.ProcessEnv, name: string): string {
+  const raw = value(environment, name);
+  if (raw === undefined) throw missingVariable(name);
+  return raw;
+}
+
+/** Validate the variables of one language profile, without touching its files. */
+function parseProfile(environment: NodeJS.ProcessEnv, language: VoiceLanguage): VoiceConfig {
+  const names = voiceProfileVariables(language);
+  const voskModelPath = required(environment, names.voskModelPath.name);
+  const voiceModelDir = required(environment, names.modelDir.name);
+  const engine = required(environment, names.engine.name);
+  const speaker = value(environment, names.speaker.name);
+  const espeakLanguage = value(environment, names.language.name);
+  if (engine === 'piper') {
+    if (speaker !== undefined) throw invalidVariable(names.speaker.name, 'not allowed with the piper engine');
+    if (espeakLanguage !== undefined) throw invalidVariable(names.language.name, 'not allowed with the piper engine');
+    return { voskModelPath, voiceEngine: 'piper', voiceModelDir };
   }
+  if (engine !== 'kokoro') throw invalidVariable(names.engine.name, 'expected piper or kokoro');
   // Any Kokoro model and language: the speaker is the model's numeric ID, the language an espeak-ng code.
-  if (voiceEngine === 'kokoro' && Number.isSafeInteger(voiceSpeaker) && (voiceSpeaker as number) >= 0
-    && typeof voiceLanguage === 'string' && voiceLanguage.trim()) {
-    return { voiceEngine, voiceModelDir, voiceSpeaker: voiceSpeaker as number, voiceLanguage };
-  }
-  return undefined;
+  if (speaker === undefined) throw missingVariable(names.speaker.name);
+  if (espeakLanguage === undefined) throw missingVariable(names.language.name);
+  return { voskModelPath, voiceEngine: 'kokoro', voiceModelDir,
+    voiceSpeaker: integerVariable(names.speaker.name, speaker, 0), voiceLanguage: espeakLanguage };
 }
 
-function fieldsOf(raw: unknown): Record<string, unknown> {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    throw new ProjectError('Invalid voice configuration file');
+/**
+ * Read the voice configuration: `undefined` when voice is disabled. Every listed profile is validated;
+ * only the profile of the conversation language is required and has its resources checked.
+ */
+export async function loadVoiceConfig(environment: NodeJS.ProcessEnv,
+  language: VoiceLanguage): Promise<VoiceConfig | undefined> {
+  const listed = value(environment, voiceLanguagesVariable.name);
+  if (listed === undefined) return undefined;
+  const languages = listed.split(',').map(entry => entry.trim());
+  if (!languages.every(entry => voiceLanguages.includes(entry as VoiceLanguage))
+    || new Set(languages).size !== languages.length) {
+    throw invalidVariable(voiceLanguagesVariable.name, 'expected distinct languages among it and en');
   }
-  return raw as Record<string, unknown>;
-}
-
-function parseVoiceConfig(raw: unknown): VoiceConfig {
-  const fields = fieldsOf(raw);
-  if (Object.keys(fields).some(name => !fieldNames.includes(name))) {
-    throw new ProjectError('Invalid voice configuration file');
+  if (!languages.includes(language)) {
+    throw invalidVariable(voiceLanguagesVariable.name, 'expected the conversation language AMBROGIO_LANGUAGE');
   }
-  for (const name of pathNames) {
-    if (typeof fields[name] !== 'string' || !fields[name].trim()) {
-      throw new ProjectError('Invalid voice configuration file');
-    }
-  }
-  const voice = selection(fields, fields.voiceModelDir as string);
-  if (!voice) throw new ProjectError('Invalid voice configuration file');
-  return { voskModelPath: fields.voskModelPath as string, ...voice };
-}
-
-export async function loadVoiceConfig(filename: string, language: 'en' | 'it' = 'en'): Promise<VoiceConfig> {
-  let raw: unknown;
-  try {
-    if (!filename.endsWith('.ts')) throw new Error('Expected TypeScript configuration');
-    raw = (await import(`${pathToFileURL(resolve(filename)).href}?revision=${++configRevision}`)).default;
-  }
-  catch { throw new ProjectError('Invalid voice configuration file'); }
-  const root = fieldsOf(raw);
-  let config: VoiceConfig;
-  if (Object.hasOwn(root, 'languages')) {
-    if (Object.keys(root).length !== 1) throw new ProjectError('Invalid voice configuration file');
-    const languages = fieldsOf(root.languages);
-    if (Object.keys(languages).some(name => name !== 'it' && name !== 'en') ||
-      !Object.hasOwn(languages, language)) throw new ProjectError('Invalid voice configuration file');
-    for (const profile of Object.values(languages)) parseVoiceConfig(profile);
-    config = parseVoiceConfig(languages[language]);
-  } else {
-    config = parseVoiceConfig(root);
-  }
+  for (const entry of languages) parseProfile(environment, entry as VoiceLanguage);
+  const config = parseProfile(environment, language);
   try {
     if (!(await stat(config.voskModelPath)).isDirectory()) throw new Error('not a directory');
     await access(config.voskModelPath, constants.R_OK);

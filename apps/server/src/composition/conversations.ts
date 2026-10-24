@@ -1,5 +1,4 @@
 import { ProjectError } from '@ambrogio/conversations/application/project-error';
-import { loadConversationConfig } from '@ambrogio/conversations/adapters/out/conversation-config';
 import type { ConversationConfig } from '@ambrogio/conversations/adapters/out/conversation-config';
 import { SystemCurrentTime } from '@ambrogio/conversations/adapters/out/system-current-time';
 import { SystemDeadlines } from '@ambrogio/conversations/adapters/out/system-deadlines';
@@ -22,23 +21,11 @@ import type { ProduceConversationReply } from '@ambrogio/conversations/applicati
 import type { FastifyInstance } from 'fastify';
 import { readFile } from 'node:fs/promises';
 import { registerSessionRoute } from '../adapters/in/session-route.adapter.js';
-import { conversationConfigPath } from '../runtime/conversation-config-path.js';
 
 export type PreparedConversations = Awaited<ReturnType<typeof prepareConfiguredConversations>>;
 
-/** Prepare conversation resources before an HTTP ingress can be enabled. */
-export async function prepareConversations(
-  archiveFilename: string,
-  interruptedAt: Date,
-  environment?: NodeJS.ProcessEnv,
-) {
-  const config = await loadConversationConfig(conversationConfigPath(environment));
-  return openPreparedConversations(archiveFilename, interruptedAt, config);
-}
-
-/** Prepare the configured archive without reading the component JSON again. */
+/** Prepare the configured archive and the conversation services from the validated configuration. */
 export async function prepareConfiguredConversations(config: ConversationConfig, interruptedAt: Date) {
-  if (!config.archivePath?.trim()) throw new ProjectError('Missing conversation archive path');
   return openPreparedConversations(config.archivePath, interruptedAt, config);
 }
 
@@ -63,7 +50,7 @@ async function openPreparedConversations(
 
 /** Supply the chosen reply producer to the conversational use case. */
 export function assembleExchangeTurn(
-  prepared: Awaited<ReturnType<typeof prepareConversations>>,
+  prepared: PreparedConversations,
   reply: ProduceConversationReply,
 ) {
   const clock = new SystemCurrentTime();
@@ -93,7 +80,7 @@ export async function loadProtocolSchema(path: URL | string = protocolSchemaPath
 /** Attach the conversation session ingress to a server after archive recovery. */
 export function registerConversationSessionRoute(
   server: FastifyInstance,
-  prepared: Awaited<ReturnType<typeof prepareConversations>>,
+  prepared: PreparedConversations,
   reply: ProduceConversationReply,
   options: Readonly<{
     schema: Readonly<Record<string, unknown>>;
@@ -117,7 +104,7 @@ export function registerConversationSessionRoute(
 /** Attach the HTTP history ingress after archive recovery. */
 export function registerConversationHistoryRoute(
   server: FastifyInstance,
-  prepared: Awaited<ReturnType<typeof prepareConversations>>,
+  prepared: PreparedConversations,
 ): void {
   registerHistoryRoute(server, {
     getConversation: createGetConversation(new SqliteConversationHistoryRead(prepared.archive.db)),
@@ -128,7 +115,7 @@ export function registerConversationHistoryRoute(
 /** Attach the HTTP list ingress after archive recovery. */
 export function registerConversationListRoute(
   server: FastifyInstance,
-  prepared: Awaited<ReturnType<typeof prepareConversations>>,
+  prepared: PreparedConversations,
 ): void {
   registerListRoute(server, {
     listConversations: prepared.listConversations,

@@ -21,7 +21,9 @@ function settingsFor(config: AgentConfig, currentTime?: CurrentTime, responseLan
 
 /** Prepare each user-defined agent for the future conversational entrypoint. */
 export async function prepareAgents(
-  directory = '/etc/ambrogio/agents',
+  directory: string,
+  /** The process environment, where the credentials named by the agent files are read. */
+  environment: NodeJS.ProcessEnv,
   connect: (connection: McpConnection) => Promise<ToolConnection> = McpToolClient.connect,
   // Specialists only: the orchestrator chooses the agent and does not need the date.
   currentTime: CurrentTime = { timeZone: 'UTC', clock: new SystemCurrentTime() },
@@ -33,7 +35,7 @@ export async function prepareAgents(
     tools: readonly AvailableMcpTool[]; mcp?: ToolConnection }>[];
   close(): Promise<void>;
 }>> {
-  const configs = await loadAgentConfigs(directory);
+  const configs = await loadAgentConfigs(directory, environment);
   for (const config of [configs.orchestrator, ...configs.specialists]) {
     try { aiSdkOptions(config.llm.options); }
     catch (error) { throw new ProjectError(`Invalid agent options: ${config.id}`, { cause: error }); }

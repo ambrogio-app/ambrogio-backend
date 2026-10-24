@@ -101,7 +101,7 @@ La prova passa se il server rifiuta i nuovi turni con `unavailable`, richiede su
 
 ### Prova della diagnostica del mancato avvio
 
-Provocare il fallimento dell'avvio del processo server in ciascuna fase: file HTTP o conversazionale mancante o invalido, file vocale invalido, directory degli agenti senza agenti specializzati, opzioni del modello non valide in un agente, server MCP di un agente irraggiungibile, archivio non apribile e porta di ascolto occupata. Inserire un segreto marcatore nei file e nelle credenziali MCP e un messaggio marcatore nel guasto esterno. Catturare `stdout`, `stderr` e codice di uscita.
+Provocare il fallimento dell'avvio del processo server in ciascuna fase: variabile HTTP o conversazionale mancante o invalida, configurazione vocale invalida, directory degli agenti senza agenti specializzati, opzioni del modello non valide in un agente, server MCP di un agente irraggiungibile, archivio non apribile e porta di ascolto occupata. Inserire un segreto marcatore nei valori invalidi e nelle credenziali MCP e un messaggio marcatore nel guasto esterno. Catturare `stdout`, `stderr` e codice di uscita.
 
 #### Details
 La prova passa se ogni caso produce su `stdout` una sola riga JSON con livello `error`, `event` `server_startup_failed` ed `err` conforme al profilo del contratto, con il messaggio fisso della fase o il messaggio di validazione già previsto e, per gli agenti, l'identificativo dell'agente; se `stderr` contiene `Unable to start HTTP server.`, il codice di uscita è `1` e il server non è in ascolto. Fallisce se manca l'evento o ne compaiono più di uno, se il segreto o il messaggio marcatore del guasto esterno compaiono in un output, se la causa non distingue la fase o l'agente, o se il processo termina con successo.
@@ -754,10 +754,10 @@ Raggruppa i controlli sulla preparazione del server in TypeScript ESM e sulla su
 
 ### Controllo degli esempi di configurazione
 
-Esaminare tutti i moduli TypeScript di configurazione d'esempio presenti nel repository e i campi in cui potrebbero comparire credenziali.
+Esaminare `.env.example`, `compose.example.yaml` e i file degli agenti d'esempio di `examples/agents/`, e i campi in cui potrebbero comparire credenziali.
 
 #### Details
-Il controllo passa se gli esempi non contengono credenziali effettive; eventuali campi dedicati usano soltanto valori dimostrativi non utilizzabili. Fallisce se un esempio contiene una credenziale effettiva.
+Il controllo passa se gli esempi non contengono credenziali effettive: le variabili delle credenziali sono vuote in `.env.example`, richieste senza valore in `compose.example.yaml` e nominate soltanto per nome nei file degli agenti. Fallisce se un esempio contiene una credenziale effettiva.
 
 Non automatizzabile: stabilire che un valore non è una credenziale effettiva richiede giudizio umano; gitleaks riconosce soltanto i formati previsti dalle sue regole.
 
@@ -771,19 +771,19 @@ Non automatizzabile: stabilire che un valore non è una credenziale effettiva ri
 
 ### Controllo dei file di configurazione dei componenti
 
-Per ogni componente configurabile presente nel server, individuare il file da cui viene caricata la configurazione locale; esaminare il formato e confrontare i percorsi usati dai diversi componenti.
+Per ogni componente configurabile del backend individuare il modulo di configurazione da cui è letta la sua configurazione; esaminare da dove provengono i valori, come sono validati e confrontare le variabili lette dai diversi moduli.
 
 #### Details
-Il controllo passa se ogni componente legge un proprio modulo TypeScript e nessun file è condiviso come configurazione locale di componenti distinti. Fallisce se un componente usa un formato diverso da TypeScript o condivide il proprio file di configurazione con un altro componente.
+Il controllo passa se ogni componente ha un proprio modulo di configurazione TypeScript nella build, il modulo legge soltanto variabili d'ambiente del componente, le valida con lo schema del componente e non contiene valori effettivi, e soltanto il modulo degli agenti legge i file di dati della directory degli agenti. Fallisce se un componente legge la configurazione da un'altra sorgente, condivide il modulo con un altro componente o se un modulo contiene un valore effettivo, come un indirizzo o una credenziale.
 
-Non automatizzabile: individuare i componenti configurabili e il modulo letto da ciascuno richiede di leggere la composition root.
+Non automatizzabile: individuare i componenti configurabili e distinguere un valore effettivo da un valore predefinito ammesso richiede di leggere il codice di avvio e di giudicare i confini dei componenti.
 
 #### Metadata
   * type: inspection-verification
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * verify: [File TypeScript separato per componente configurabile](../Requirements/ServerFoundation.md#file-typescript-separato-per-componente-configurabile)
+  * verify: [Modulo di configurazione per componente del backend](../Requirements/ServerFoundation.md#modulo-di-configurazione-per-componente-del-backend)
 ---
 
 ### Controllo del perimetro iniziale di osservabilità
@@ -822,7 +822,7 @@ Non automatizzabile: riconoscere meccanismi di account o autenticazione richiede
 
 ### Controllo dell'esclusione delle configurazioni effettive
 
-Per ciascun file di configurazione locale effettivo presente, esaminare i file tracciati da Git, le regole di esclusione e il contenuto dell'immagine container costruita per il server.
+Per ciascun file di configurazione effettivo usato da un'installazione o nello sviluppo, come `.env` e i file degli agenti, esaminare i file tracciati da Git, le regole di esclusione e il contenuto dell'immagine container costruita per il server.
 
 #### Details
 Il controllo passa se nessun file effettivo è tracciato in Git o incluso nell'immagine e il deployment lo fornisce dall'esterno. Fallisce se un file effettivo è presente nei file versionati o nell'immagine.
@@ -871,6 +871,23 @@ Non automatizzabile: la classificazione dei file per responsabilità richiede gi
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
   * verify: [Nomi dei file secondo il ruolo architetturale nel backend](../Requirements/ServerFoundation.md#nomi-dei-file-secondo-il-ruolo-architetturale-nel-backend)
+---
+
+### Ispezione dei proprietari dei valori predefiniti del backend
+
+Esaminare ogni valore facoltativo della configurazione del backend, degli adapter inbound, dei casi d'uso e delle creazioni del Domain, e il punto in cui viene applicato il suo valore predefinito.
+
+#### Details
+L'ispezione passa se ogni valore predefinito è deciso per il proprio concetto e applicato esplicitamente, una sola volta, dal suo proprietario soltanto quando l'assenza è ammessa: i valori di configurazione dal modulo di configurazione del componente, quelli di protocollo dall'adapter inbound, quelli di intenzione da Application e quelli di creazione dal Domain. Fallisce se un valore predefinito è soltanto documentato, ripetuto in un altro punto o applicato dal layer sbagliato.
+
+Non automatizzabile: stabilire quale layer possiede un valore predefinito dipende dal significato di ciascun campo, che richiede la lettura del codice.
+
+#### Metadata
+  * type: inspection-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * verify: [Valori predefiniti del backend applicati dal proprietario](../Requirements/ServerFoundation.md#valori-predefiniti-del-backend-applicati-dal-proprietario)
 ---
 
 ### Ispezione del limite dei corpi HTTP
@@ -924,12 +941,45 @@ La prova passa se tutte le risposte HTTP che trasportano dati conversazionali in
   * verify: [Esclusione dalla cache delle risposte conversazionali HTTP](../Requirements/ServerFoundation.md#esclusione-dalla-cache-delle-risposte-conversazionali-http)
 ---
 
-### Prova del bootstrap delle configurazioni TypeScript
+### Prova dei file JSON degli agenti
 
-Avviare l'ingresso HTTP con moduli TypeScript di prova distinti per i componenti attivi; fornire valori tramite variabili d'ambiente e omettere il modulo vocale quando la voce è disabilitata. Osservare i valori ricevuti dai componenti e il momento in cui vengono create e attivate le risorse. Ripetere con un modulo richiesto mancante, non importabile o con un valore non valido, includendo un segreto marcatore.
+Preparare una directory degli agenti con file `<id>.json` validi e con file di altro tipo; in tentativi separati usare un file che non è JSON valido, un campo sconosciuto a ciascun livello, una credenziale letterale in `llm.apiKey`, `mcp.auth.token` o `mcp.auth.clientSecret`, un nome di variabile non valido e una variabile nominata assente o vuota, con un segreto marcatore nei valori.
 
 #### Details
-La prova passa se ciascun processo importa una volta all'avvio solo i moduli necessari, usa i valori validati anche quando provengono dall'ambiente e consegna a ogni componente solo i dati pertinenti già convertiti. L'assenza del modulo vocale non blocca gli ingressi quando la voce è disabilitata. Un modulo necessario mancante o invalido impedisce l'attivazione prima dell'uso delle risorse dipendenti e produce un errore sicuro senza riprodurre il segreto. Domain e casi d'uso non leggono direttamente file o ambiente. Fallisce se un modulo non necessario diventa obbligatorio, la configurazione viene riletta durante il lavoro, una risorsa dipendente si attiva prima della validazione o un segreto appare nell'errore.
+La prova passa se i file validi sono accettati con le credenziali lette dalle variabili nominate, i file di altro tipo sono ignorati, ogni caso invalido impedisce l'attivazione con `Invalid agent configuration: <id>`, una variabile assente o vuota produce `Missing environment variable <NOME> for agent <id>` e nessun errore contiene il segreto marcatore. Fallisce se un file con una credenziale letterale o con un campo sconosciuto è accettato o se un errore riporta un valore.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * satisfiedBy: [agent-config.spec.ts](../../apps/server/src/runtime/agent-config.spec.ts)
+  * verify: [File JSON di soli dati per gli agenti](../Requirements/ServerFoundation.md#file-json-di-soli-dati-per-gli-agenti)
+---
+
+### Prova dei file d'ambiente e dei valori predefiniti del backend
+
+Confrontare `.env.example` con le variabili dichiarate dai moduli di configurazione e con le variabili nominate dai file degli agenti d'esempio; confrontare le variabili impostate da `compose.example.yaml` con i valori predefiniti dichiarati dai moduli; esaminare gli script del `package.json` della radice e i sorgenti del backend; avviare Node.js con `--env-file` su un file temporaneo e una variabile dello stesso nome nell'ambiente del processo.
+
+#### Details
+La prova passa se `.env.example` elenca esattamente quelle variabili, tutte vuote salvo `AMBROGIO_ENV=development`; se `compose.example.yaml` imposta `AMBROGIO_ENV: production`, ogni variabile con un valore predefinito di sviluppo e nessuna variabile con un valore predefinito valido in produzione, senza valori predefiniti di interpolazione; se soltanto lo script `dev` usa `--env-file=.env` e nessun sorgente carica file d'ambiente; e se la variabile del processo prevale su quella del file. Fallisce su qualunque scostamento.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * satisfiedBy: [environment-files.spec.ts](../../test/repository/environment-files.spec.ts)
+  * verify: [File d'ambiente locale del backend](../Requirements/ServerFoundation.md#file-dambiente-locale-del-backend)
+  * verify: [Valori predefiniti del backend applicati dal proprietario](../Requirements/ServerFoundation.md#valori-predefiniti-del-backend-applicati-dal-proprietario)
+---
+
+### Prova del bootstrap della configurazione del backend
+
+Avviare l'ingresso HTTP con un oggetto d'ambiente di prova che fornisce variabili distinte per i componenti attivi e omette quelle della voce. Osservare i valori ricevuti dai componenti e il momento in cui vengono create e attivate le risorse. Ripetere con una variabile richiesta mancante, malformata o con un valore invalido che contiene un segreto marcatore, e con `AMBROGIO_AGENTS_DIR` diretta a una directory di prova.
+
+#### Details
+La prova passa se il processo legge una volta all'avvio soltanto la configurazione necessaria, consegna a ogni componente solo i dati pertinenti già convertiti e usa la directory degli agenti indicata. L'assenza delle variabili della voce non blocca gli ingressi. Una variabile richiesta mancante o invalida impedisce l'attivazione prima dell'uso delle risorse dipendenti e produce un errore sicuro che nomina la variabile senza riprodurre il segreto. Domain e casi d'uso non leggono direttamente file o ambiente. Fallisce se una variabile non necessaria diventa obbligatoria, la configurazione viene riletta durante il lavoro, una risorsa dipendente si attiva prima della validazione o un segreto appare nell'errore.
 
 #### Metadata
   * type: test-verification
@@ -940,7 +990,7 @@ La prova passa se ciascun processo importa una volta all'avvio solo i moduli nec
   * satisfiedBy: [conversation-server.config-bootstrap.spec.ts](../../apps/server/src/runtime/conversation-server.config-bootstrap.spec.ts)
   * satisfiedBy: [config-examples.spec.ts](../../apps/server/test/examples/config-examples.spec.ts)
   * satisfiedBy: [conversation-config.spec.ts](../../packages/conversations/src/adapters/out/conversation-config.spec.ts)
-  * verify: [Caricamento iniziale delle configurazioni TypeScript](../Requirements/ServerFoundation.md#caricamento-iniziale-delle-configurazioni-typescript)
+  * verify: [Caricamento iniziale della configurazione del backend](../Requirements/ServerFoundation.md#caricamento-iniziale-della-configurazione-del-backend)
   * verify: [Distribuzione mirata della configurazione validata](../Requirements/ServerFoundation.md#distribuzione-mirata-della-configurazione-validata)
   * verify: [Validazione preventiva della configurazione attiva](../Requirements/ServerFoundation.md#validazione-preventiva-della-configurazione-attiva)
 ---
@@ -1014,6 +1064,24 @@ La prova passa se gli script eseguono con Vitest rispettivamente i progetti `fas
   * verify: [Vitest come runner del backend](../Requirements/ServerFoundation.md#vitest-come-runner-del-backend)
 ---
 
+### Prova dell'ambiente di esecuzione del backend
+
+Leggere la configurazione con `AMBROGIO_ENV` assente, vuota, con un valore diverso da `development`, `test` e `production`, e con ciascuno dei tre valori; in ciascun ambiente omettere a turno le variabili che hanno un valore predefinito di sviluppo e quelle che hanno un valore predefinito per tutti gli ambienti, e fornire una variabile vuota.
+
+#### Details
+La prova passa se un ambiente assente, vuoto o invalido impedisce l'avvio con un errore che nomina `AMBROGIO_ENV` senza il valore; se i valori predefiniti di sviluppo valgono soltanto in `development` e in `test` e `production` la loro assenza impedisce l'avvio; se i valori predefiniti per tutti gli ambienti valgono ovunque; e se una variabile vuota è trattata come assente. Fallisce se un ambiente implicito viene assunto, se un valore predefinito di sviluppo vale in un altro ambiente o se un errore riporta un valore.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * satisfiedBy: [http-config.spec.ts](../../apps/server/src/runtime/http-config.spec.ts)
+  * satisfiedBy: [conversation-config.spec.ts](../../packages/conversations/src/adapters/out/conversation-config.spec.ts)
+  * satisfiedBy: [environment-variables.spec.ts](../../packages/conversations/src/adapters/out/environment-variables.spec.ts)
+  * verify: [Ambiente di esecuzione dichiarato del backend](../Requirements/ServerFoundation.md#ambiente-di-esecuzione-dichiarato-del-backend)
+---
+
 ### Prova dell'immagine Docker indipendente da Compose
 
 Costruire l'immagine Docker del server a partire dagli artefatti del progetto e avviarla con il solo runtime Docker, fornendo dall'esterno i file di configurazione di prova; verificare l'avvio e una richiesta a un ingresso HTTP presente. Esaminare l'eventuale file Compose per accertare che sia un esempio di avvio e non un prerequisito della build o dell'esecuzione.
@@ -1065,10 +1133,10 @@ La prova passa se ogni workflow dichiara `permissions` con il solo `contents: re
 
 ### Prova dell'origine delle credenziali API
 
-Per ogni componente del server che usa un'API esterna, predisporre un modulo TypeScript locale di prova con credenziali fittizie distinguibili, avviare il componente con un client API controllato e osservare le credenziali fornite al client. Esaminare il percorso di caricamento della configurazione.
+Per ogni componente del backend che usa un'API esterna, preparare file degli agenti di prova che nominano variabili d'ambiente distinte per chiave API, token Bearer e segreto OAuth, fornire nell'oggetto d'ambiente valori fittizi distinguibili, avviare il componente con un client API controllato e osservare le credenziali fornite al client. Ripetere con una variabile nominata assente o vuota e con un file che contiene la credenziale al posto del nome della variabile.
 
 #### Details
-La prova passa se le credenziali fornite al client corrispondono a quelle del modulo TypeScript dedicato al componente e il codice le ottiene da quel file. Fallisce se il componente usa credenziali incorporate nel codice o ricavate da un'altra sorgente al posto del proprio modulo TypeScript.
+La prova passa se le credenziali fornite al client sono i valori delle variabili nominate dal file dell'agente, una variabile assente o vuota impedisce l'avvio con un messaggio che nomina la variabile e l'agente senza alcun valore, e un file con una credenziale letterale è rifiutato. Fallisce se il componente usa credenziali incorporate nel codice o nel file o ricavate da un'altra sorgente.
 
 #### Metadata
   * type: test-verification
@@ -1076,7 +1144,8 @@ La prova passa se le credenziali fornite al client corrispondono a quelle del mo
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
   * satisfiedBy: [agents.api-credentials.spec.ts](../../apps/server/src/composition/agents.api-credentials.spec.ts)
-  * verify: [Credenziali API nel modulo TypeScript del componente](../Requirements/ServerFoundation.md#credenziali-api-nel-modulo-typescript-del-componente)
+  * satisfiedBy: [agent-config.spec.ts](../../apps/server/src/runtime/agent-config.spec.ts)
+  * verify: [Credenziali API dalle variabili d'ambiente](../Requirements/ServerFoundation.md#credenziali-api-dalle-variabili-dambiente)
 ---
 
 ### Prova della build e dell'avvio del server
@@ -1148,10 +1217,10 @@ La prova passa se il workflow parte a ogni push su `main`, a ogni pull request, 
 
 ### Prova della configurazione esplicita del listener HTTP
 
-Fornire al processo modulo TypeScript HTTP con `host` e `port` validi, poi omettere separatamente ciascun campo e provare valori di tipo o intervallo invalidi; provare anche variabile di percorso mancante, file assente e modulo TypeScript non importabile. Verificare l'indirizzo e la porta effettivamente ascoltati nel caso valido e l'assenza di listener nei casi invalidi.
+Fornire al processo `AMBROGIO_HTTP_HOST` e `AMBROGIO_HTTP_PORT` validi, poi omettere separatamente ciascuna variabile negli ambienti `development`, `test` e `production` e provare valori di tipo o intervallo invalidi. Verificare l'indirizzo e la porta effettivamente ascoltati nel caso valido e l'assenza di listener nei casi invalidi.
 
 #### Details
-La prova passa se il processo ascolta solo all'indirizzo e alla porta espliciti validati, senza valori predefiniti, e non apre né attiva l'ingresso per configurazioni mancanti o invalide. Fallisce se usa valori non validati per host o porta o un valore implicito per host o porta.
+La prova passa se il processo ascolta solo all'indirizzo e alla porta validati, in `development` i valori assenti assumono `127.0.0.1` e `3000`, in `test` e `production` l'assenza di ciascun valore impedisce l'avvio, e i valori invalidi non aprono né attivano l'ingresso. Fallisce se usa un valore non validato o un valore implicito fuori da `development`.
 
 #### Metadata
   * type: test-verification
@@ -1159,6 +1228,7 @@ La prova passa se il processo ascolta solo all'indirizzo e alla porta espliciti 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
   * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [http-config.spec.ts](../../apps/server/src/runtime/http-config.spec.ts)
   * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
   * verify: [Configurazione esplicita dell'ascolto HTTP](../Requirements/ServerFoundation.md#configurazione-esplicita-dellascolto-http)
 ---
@@ -1181,7 +1251,7 @@ La prova passa se, senza elenco, nessuna risposta autorizza CORS; con l'elenco, 
 
 ### Prova delle voci incluse e sostituibili
 
-Con `scripts/verify-docker-image.mjs`, costruire l'immagine backend oppure usare quella indicata da `AMBROGIO_DOCKER_IMAGE`, ispezionare le directory delle voci Piper incluse `vits-piper-it_IT-riccardo-x_low`, `vits-piper-it_IT-paola-medium` e `vits-piper-en_US-kristin-medium` e sintetizzare una breve frase con ciascuna usando il codice di sintesi dell'immagine. Verificare che l'immagine non contenga `python3` né `/opt/piper`. Avviare un container con una directory di prova montata in sola lettura su `/opt/ambrogio/voices` e osservare che il mount sostituisce il contenuto incluso; selezionare inoltre una voce italiana montata in un percorso distinto tramite un profilo vocale.
+Con `scripts/verify-docker-image.mjs`, costruire l'immagine backend oppure usare quella indicata da `AMBROGIO_DOCKER_IMAGE`, ispezionare le directory delle voci Piper incluse `vits-piper-it_IT-riccardo-x_low`, `vits-piper-it_IT-paola-medium` e `vits-piper-en_US-kristin-medium` e sintetizzare una breve frase con ciascuna usando il codice di sintesi dell'immagine. Verificare che l'immagine non contenga `python3` né `/opt/piper`. Avviare un container con una directory di prova montata in sola lettura su `/opt/ambrogio/voices` e osservare che il mount sostituisce il contenuto incluso; selezionare inoltre una voce italiana montata in un percorso distinto tramite le variabili del profilo vocale.
 
 #### Details
 La prova passa se ogni directory contiene un solo modello `.onnx`, `tokens.txt`, `espeak-ng-data/` e `MODEL_CARD`, `/opt/ambrogio/voices/README.md` è presente, la sintesi produce audio non vuoto alla frequenza del modello per ogni voce, l'immagine non contiene `python3` né `/opt/piper`, il mount su `/opt/ambrogio/voices` presenta i file esterni al posto delle voci incluse senza una nuova build e la voce montata in un percorso distinto viene selezionata e caricata. Fallisce se manca una voce, la sintesi fallisce o il mount non sostituisce la directory. La prova non sostituisce l'ascolto umano della qualità delle voci.

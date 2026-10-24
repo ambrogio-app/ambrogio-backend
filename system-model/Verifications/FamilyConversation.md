@@ -117,7 +117,7 @@ Raggruppa le prove di connessione, scoperta e invocazione dei tool tramite il cl
 
 ### Dimostrazione del connettore Home Assistant su un'installazione reale
 
-Su un'installazione Home Assistant reale abilitare l'integrazione «Model Context Protocol Server», esporre ad Assist almeno due luci in aree diverse e un sensore, creare un token di accesso di lunga durata e installare `examples/agents/home-assistant.ts` completato con indirizzo, token e chiave API. Avviare il backend e chiedere in conversazione lo stato del sensore, se una luce di un'area è accesa, poi di accendere e spegnere quella luce e di spegnere tutte le luci; chiedere infine di comandare un'entità non esposta. Ripetere l'avvio con un token errato.
+Su un'installazione Home Assistant reale abilitare l'integrazione «Model Context Protocol Server», esporre ad Assist almeno due luci in aree diverse e un sensore, creare un token di accesso di lunga durata e installare `examples/agents/home-assistant.json` completato con l'indirizzo, impostando le variabili d'ambiente del token e della chiave API. Avviare il backend e chiedere in conversazione lo stato del sensore, se una luce di un'area è accesa, poi di accendere e spegnere quella luce e di spegnere tutte le luci; chiedere infine di comandare un'entità non esposta. Ripetere l'avvio con un token errato.
 
 #### Details
 La dimostrazione passa se il backend si avvia scoprendo gli strumenti di Home Assistant, la risposta riporta lo stato effettivo del sensore, la domanda sullo stato della luce riceve lo stato effettivo senza che alcun dispositivo cambi stato, la luce cambia stato in Home Assistant e la risposta lo dichiara solo dopo la conferma dello strumento, la richiesta di spegnere tutte le luci spegne tutte le luci esposte, l'entità non esposta non viene comandata e, con il token errato, l'avvio fallisce con l'evento `server_startup_failed` che indica `Agent MCP connection failed: home-assistant` senza mostrare il token. Fallisce se uno di questi esiti non si verifica.
@@ -166,7 +166,7 @@ La prova passa se ogni richiesta MCP dell'agente autenticato invia `Authorizatio
 
 ### Prova del client MCP comune
 
-Configurare due agenti specializzati in modulo TypeScript distinti, ciascuno con `mcp.url` di un server MCP di prova che usa Streamable HTTP ed espone tool con nomi e schemi diversi. Le configurazioni non contengono un campo `transport`. Avviare gli agenti tramite la stessa implementazione client, completare l'inizializzazione MCP via HTTP, scoprire i rispettivi tool e invocarne uno con argomenti validi. Ripetere con `mcp.url` assente e con un URL non HTTP o HTTPS.
+Configurare due agenti specializzati in file distinti, ciascuno con `mcp.url` di un server MCP di prova che usa Streamable HTTP ed espone tool con nomi e schemi diversi. Le configurazioni non contengono un campo `transport`. Avviare gli agenti tramite la stessa implementazione client, completare l'inizializzazione MCP via HTTP, scoprire i rispettivi tool e invocarne uno con argomenti validi. Ripetere con `mcp.url` assente e con un URL non HTTP o HTTPS.
 
 #### Details
 La prova passa se ogni agente riceve soltanto l'endpoint MCP definito nel proprio file, entrambe le connessioni usano il client comune e Streamable HTTP, ciascuna espone i tool del proprio server e le invocazioni raggiungono il server corretto senza un campo `transport`. Una configurazione invalida impedisce l'attivazione dell'agente interessato prima di contattare un server. Fallisce se serve un client specifico per un server, se le connessioni o i tool si confondono tra agenti oppure se la configurazione invalida raggiunge un server.
@@ -200,10 +200,10 @@ La prova passa se ciascun agente usa il proprio limite, nessuna chiamata viene i
 
 ### Prova della configurazione pronta di Home Assistant
 
-Copiare `examples/agents/home-assistant.ts` in una directory degli agenti di prova insieme a un orchestratore valido e caricarla con la validazione delle configurazioni degli agenti usata all'avvio. Esaminare i valori del file e cercare nei campi delle credenziali valori diversi dai segnaposto previsti.
+Copiare `examples/agents/home-assistant.json` in una directory degli agenti di prova insieme a un orchestratore valido e caricarla con la validazione dei file degli agenti usata all'avvio, fornendo valori segnaposto alle variabili d'ambiente nominate. Esaminare i valori del file e cercare credenziali scritte nel file.
 
 #### Details
-La prova passa se il file è accettato senza modifiche come agente specializzato `home-assistant` con connettore MCP, `mcp.url` termina con `/api/mcp`, `mcp.auth` è di tipo `bearer`, `maxToolCalls` vale 5, `llm` usa il provider `mistral` con il modello `mistral-medium-latest`, `description` e `instructions` corrispondono al contratto e le credenziali sono esattamente i segnaposto `<MISTRAL_API_KEY>` e `<HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN>`. Fallisce se il file viene rifiutato, se un campo differisce dal contratto o se contiene un valore che può essere una credenziale effettiva.
+La prova passa se il file è accettato senza modifiche come agente specializzato `home-assistant` con connettore MCP, `mcp.url` termina con `/api/mcp`, `mcp.auth` è di tipo `bearer`, `maxToolCalls` vale 5, `llm` usa il provider `mistral` con il modello `mistral-medium-latest`, `description` e `instructions` corrispondono al contratto e le credenziali sono i valori delle variabili `MISTRAL_API_KEY` e `HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN` nominate dal file. Fallisce se il file viene rifiutato, se un campo differisce dal contratto o se contiene una credenziale.
 
 #### Metadata
   * type: test-verification
@@ -214,9 +214,9 @@ La prova passa se il file è accettato senza modifiche come agente specializzato
   * verify: [Configurazione pronta del connettore Home Assistant](../Requirements/FamilyConversation.md#configurazione-pronta-del-connettore-home-assistant)
 ---
 
-### Prova della disponibilità degli agenti dai moduli TypeScript
+### Prova della disponibilità degli agenti dai file della directory
 
-Avviare il server con `orchestrator.ts` e un file specializzato valido in `/etc/ambrogio/agents`, usando agenti di prova osservabili dall'orchestratore. Aggiungere un secondo file `<id>.ts` valido e riavviare; rimuovere il primo file e riavviare ancora, senza modificare altri elenchi di abilitazione.
+Avviare il server con `orchestrator.json` e un file specializzato valido nella directory degli agenti, usando agenti di prova osservabili dall'orchestratore. Aggiungere un secondo file `<id>.json` valido e riavviare; rimuovere il primo file e riavviare ancora, senza modificare altri elenchi di abilitazione.
 
 #### Details
 La prova passa se al primo avvio l'orchestratore può scegliere il primo agente, al secondo entrambi e al terzo soltanto il secondo. Fallisce se un file presente richiede registrazione altrove, se un agente rimosso resta disponibile dopo il riavvio o se un file viene associato all'identificativo sbagliato.
@@ -227,7 +227,7 @@ La prova passa se al primo avvio l'orchestratore può scegliere il primo agente,
 #### Relations
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
   * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
-  * verify: [Disponibilità degli agenti dai moduli TypeScript](../Requirements/FamilyConversation.md#disponibilità-degli-agenti-dai-moduli-typescript)
+  * verify: [Disponibilità degli agenti dai file della directory](../Requirements/FamilyConversation.md#disponibilità-degli-agenti-dai-file-della-directory)
 ---
 
 ### Prova della selezione degli strumenti MCP
@@ -251,7 +251,7 @@ La prova passa se l'agente senza `mcp.tools` riceve tutti e quattro gli strument
 
 ### Prova delle configurazioni degli agenti con e senza MCP
 
-Caricare la directory degli agenti con un agente con `mcp` e `maxToolCalls` e un agente senza `mcp` e senza `maxToolCalls`. In tentativi separati usare un agente senza `mcp` ma con `maxToolCalls`, un agente con `mcp` senza `maxToolCalls` e una directory con il solo `orchestrator.ts`; avviare inoltre il server con la directory priva di agenti specializzati.
+Caricare la directory degli agenti con un agente con `mcp` e `maxToolCalls` e un agente senza `mcp` e senza `maxToolCalls`. In tentativi separati usare un agente senza `mcp` ma con `maxToolCalls`, un agente con `mcp` senza `maxToolCalls` e una directory con il solo `orchestrator.json`; avviare inoltre il server con la directory priva di agenti specializzati.
 
 #### Details
 La prova passa se la prima directory viene caricata con entrambi gli agenti disponibili all'orchestratore, l'agente senza MCP privo di connettore e di limite; se ciascun tentativo invalido viene rifiutato prima dell'attivazione, senza aprire connessioni MCP; e se il server senza agenti specializzati non si mette in ascolto e chiude le risorse già preparate. Fallisce se un file invalido viene accettato, se l'agente senza MCP viene rifiutato o se il server si avvia senza agenti specializzati.
@@ -265,7 +265,7 @@ La prova passa se la prima directory viene caricata con entrambi gli agenti disp
   * satisfiedBy: [agent-config.spec.ts](../../apps/server/src/runtime/agent-config.spec.ts)
   * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
   * verify: [Agente specializzato senza connettore MCP](../Requirements/FamilyConversation.md#agente-specializzato-senza-connettore-mcp)
-  * verify: [Disponibilità degli agenti dai moduli TypeScript](../Requirements/FamilyConversation.md#disponibilità-degli-agenti-dai-moduli-typescript)
+  * verify: [Disponibilità degli agenti dai file della directory](../Requirements/FamilyConversation.md#disponibilità-degli-agenti-dai-file-della-directory)
 ---
 
 ### Prova delle istruzioni del server MCP
@@ -273,7 +273,7 @@ La prova passa se la prima directory viene caricata con entrambi gli agenti disp
 Con un server MCP Streamable HTTP di prova che dichiara la capacità `prompts` ed espone un prompt senza argomenti, un prompt con un argomento obbligatorio e uno strumento, preparare un agente specializzato con connettore MCP e un modello controllato che registra le istruzioni ricevute. Elaborare due turni cambiando il testo del prompt fra il primo e il secondo. Ripetere con un server che non dichiara la capacità `prompts`, con un server la cui lista dei prompt fallisce all'avvio e con un server la cui lettura del prompt fallisce durante il turno.
 
 #### Details
-La prova passa se all'avvio il backend conserva soltanto il prompt senza argomenti obbligatori; a ogni turno il modello riceve le istruzioni del modulo TypeScript, l'intestazione `Instructions and context from the connected MCP server:` e il testo corrente del prompt, prima delle indicazioni sul formato della risposta, e il secondo turno vede il testo aggiornato senza riavvio; il server senza capacità `prompts` non riceve `prompts/list` e il modello riceve soltanto le istruzioni del modulo TypeScript con le indicazioni sul formato; l'errore della lista all'avvio impedisce l'attivazione con `Agent MCP connection failed: <id>`; l'errore di lettura durante il turno termina il turno con il guasto `MCP prompt retrieval failed` senza chiamare il modello. Le letture dei prompt non contano per `maxToolCalls`. Fallisce se uno di questi esiti non si verifica.
+La prova passa se all'avvio il backend conserva soltanto il prompt senza argomenti obbligatori; a ogni turno il modello riceve le istruzioni del file dell'agente, l'intestazione `Instructions and context from the connected MCP server:` e il testo corrente del prompt, prima delle indicazioni sul formato della risposta, e il secondo turno vede il testo aggiornato senza riavvio; il server senza capacità `prompts` non riceve `prompts/list` e il modello riceve soltanto le istruzioni del file dell'agente con le indicazioni sul formato; l'errore della lista all'avvio impedisce l'attivazione con `Agent MCP connection failed: <id>`; l'errore di lettura durante il turno termina il turno con il guasto `MCP prompt retrieval failed` senza chiamare il modello. Le letture dei prompt non contano per `maxToolCalls`. Fallisce se uno di questi esiti non si verifica.
 
 #### Metadata
   * type: test-verification
@@ -288,7 +288,7 @@ La prova passa se all'avvio il backend conserva soltanto il prompt senza argomen
 
 ### Prova di OAuth tra servizi per i connettori MCP
 
-Configurare un agente con `mcp.auth` di tipo `oauth_client_credentials`, `clientId`, `clientSecret`, `issuer` e `scope` facoltativo. Usare un server MCP di prova che pubblica i metadata OAuth e un authorization server di prova associato all'issuer configurato. Eseguire inizializzazione, scoperta e invocazione di un tool; ripetere dopo la scadenza del token e con un secondo agente dotato di credenziali distinte. Ripetere con un issuer pubblicato diverso da quello configurato e con campi obbligatori mancanti o vuoti; osservare richieste, log e messaggi inviati al modello.
+Configurare un agente con `mcp.auth` di tipo `oauth_client_credentials`, `clientId`, `clientSecretEnv`, `issuer` e `scope` facoltativo, con il segreto nella variabile d'ambiente nominata. Usare un server MCP di prova che pubblica i metadata OAuth e un authorization server di prova associato all'issuer configurato. Eseguire inizializzazione, scoperta e invocazione di un tool; ripetere dopo la scadenza del token e con un secondo agente dotato di credenziali distinte. Ripetere con un issuer pubblicato diverso da quello configurato e con campi obbligatori mancanti o vuoti; osservare richieste, log e messaggi inviati al modello.
 
 #### Details
 La prova passa se il client ottiene un token con `client_credentials` senza login interattivo, usa l'eventuale scope configurato, invia il token solo al server MCP dell'agente e rinnova le credenziali secondo il comportamento del SDK. Un issuer diverso impedisce l'invio del segreto; una configurazione invalida impedisce l'attivazione prima della connessione. Credenziali e token non si mescolano tra agenti e non compaiono in log o messaggi al modello. Fallisce se il segreto raggiunge un issuer diverso, se il token viene usato per un altro agente o se l'agente espone tool dopo un fallimento di autenticazione.
@@ -686,10 +686,10 @@ La prova passa se lo storico conserva solo testo e dati non audio e se nessuna r
 
 ### Prova della scelta del motore di sintesi
 
-Caricare file vocali di prova con directory di voce fittizie per entrambi i motori: `voiceEngine` uguale a `piper` senza `voiceSpeaker` né `voiceLanguage`; uguale a `kokoro` con `voiceSpeaker` 0, 35 e 52 e `voiceLanguage` `it`, `en` e `pt-br`; directory Kokoro con `model.onnx` e con un unico `model.int8.onnx`. Provare poi i casi invalidi: `voiceEngine` assente, vuoto o sconosciuto; `voiceSpeaker` o `voiceLanguage` presenti con `piper`; uno dei due assente con `kokoro`; `voiceSpeaker` negativo, decimale, stringa numerica o nome di voce come `if_sara`; `voiceLanguage` vuoto o non stringa; directory Kokoro priva di file `.onnx`, con due file `.onnx` o priva di `voices.bin`, `tokens.txt` o `espeak-ng-data/`. Con il motore di sintesi controllato costruire il sintetizzatore per ciascun motore, sintetizzare una frase e registrare la configurazione passata a `createAsync` e il `sid` di ogni generazione; ripetere con un motore controllato che dichiara meno voci del `voiceSpeaker` configurato. Quando la variabile d'ambiente che indica una directory Kokoro reale è presente, sintetizzare inoltre una breve frase italiana con le voci 35 e 36 e una breve frase inglese con la voce 0 e lingua `en`.
+Leggere configurazioni vocali di prova con directory di voce fittizie per entrambi i motori: `AMBROGIO_VOICE_<LINGUA>_ENGINE` uguale a `piper` senza `SPEAKER` né `LANGUAGE`; uguale a `kokoro` con `SPEAKER` 0, 35 e 52 e `LANGUAGE` `it`, `en` e `pt-br`; directory Kokoro con `model.onnx` e con un unico `model.int8.onnx`. Provare poi i casi invalidi: motore assente o sconosciuto; `SPEAKER` o `LANGUAGE` presenti con `piper`; uno dei due assente con `kokoro`; `SPEAKER` negativo, decimale o nome di voce come `if_sara`; directory Kokoro priva di file `.onnx`, con due file `.onnx` o priva di `voices.bin`, `tokens.txt` o `espeak-ng-data/`. Con il motore di sintesi controllato costruire il sintetizzatore per ciascun motore, sintetizzare una frase e registrare la configurazione passata a `createAsync` e il `sid` di ogni generazione; ripetere con un motore controllato che dichiara meno voci dello `SPEAKER` configurato. Quando la variabile d'ambiente che indica una directory Kokoro reale è presente, sintetizzare inoltre una breve frase italiana con le voci 35 e 36 e una breve frase inglese con la voce 0 e lingua `en`.
 
 #### Details
-La prova passa se i file validi sono accettati con il motore, la voce e la lingua indicati; ogni caso invalido rende il file vocale invalido oppure la directory della voce non disponibile prima della costruzione del sintetizzatore; con `piper` la configurazione contiene la sola sezione `vits` con i file della directory e ogni generazione usa `sid` 0; con `kokoro` la configurazione contiene la sola sezione `kokoro` con l'unico file `.onnx`, `voices.bin`, `tokens.txt`, `espeak-ng-data/` e `lang` uguale a `voiceLanguage`, e ogni generazione usa `sid` uguale a `voiceSpeaker`; un `voiceSpeaker` non inferiore a `numSpeakers` impedisce la costruzione del sintetizzatore; caricamento unico, `numThreads` e formato dell'audio restano quelli della prova della sintesi nel processo backend. Con il modello Kokoro reale la prova passa se l'audio di ogni voce provata è non vuoto alla frequenza del modello. Fallisce se un file invalido è accettato, se il motore, la voce o la lingua usati differiscono da quelli configurati, se la lingua o la voce sono imposte dal backend o se una voce fuori intervallo raggiunge la sintesi.
+La prova passa se le configurazioni valide sono accettate con il motore, la voce e la lingua indicati; ogni caso invalido rende invalida la configurazione vocale oppure la directory della voce non disponibile prima della costruzione del sintetizzatore; con `piper` la configurazione contiene la sola sezione `vits` con i file della directory e ogni generazione usa `sid` 0; con `kokoro` la configurazione contiene la sola sezione `kokoro` con l'unico file `.onnx`, `voices.bin`, `tokens.txt`, `espeak-ng-data/` e `lang` uguale alla lingua configurata, e ogni generazione usa `sid` uguale allo `SPEAKER` configurato; uno `SPEAKER` non inferiore a `numSpeakers` impedisce la costruzione del sintetizzatore; caricamento unico, `numThreads` e formato dell'audio restano quelli della prova della sintesi nel processo backend. Con il modello Kokoro reale la prova passa se l'audio di ogni voce provata è non vuoto alla frequenza del modello. Fallisce se una configurazione invalida è accettata, se il motore, la voce o la lingua usati differiscono da quelli configurati, se la lingua o la voce sono imposte dal backend o se una voce fuori intervallo raggiunge la sintesi.
 
 #### Metadata
   * type: test-verification
@@ -703,10 +703,10 @@ La prova passa se i file validi sono accettati con il motore, la voce e la lingu
 
 ### Prova della selezione vocale per lingua
 
-Preparare un file con profili italiani e inglesi che indicano percorsi espliciti alle directory incluse e a directory esterne montate, scegliendo tra più voci della stessa lingua, Piper e Kokoro. Provare la lingua effettiva italiana e inglese, il profilo attivo mancante, i campi invalidi nell'altro profilo, il formato precedente a profilo singolo e la voce disabilitata. Osservare risorse caricate, lingua Vosk, voce e lingua di fonetizzazione Kokoro.
+Preparare profili vocali italiani e inglesi con variabili che indicano percorsi espliciti alle directory incluse e a directory esterne montate, scegliendo tra più voci della stessa lingua, Piper e Kokoro. Provare la lingua effettiva italiana e inglese, la lingua effettiva assente da `AMBROGIO_VOICE_LANGUAGES`, una lingua sconosciuta o ripetuta nell'elenco, variabili invalide nell'altro profilo elencato e la voce disabilitata con `AMBROGIO_VOICE_LANGUAGES` assente o vuota. Osservare risorse caricate, lingua Vosk, voce e lingua di fonetizzazione Kokoro.
 
 #### Details
-La prova passa se ciascuna lingua seleziona esattamente i percorsi indicati, anche quando provengono da un mount o quando esistono più voci della stessa lingua; il profilo mancante o strutturalmente invalido rende il file invalido, l'altro profilo non carica i modelli, il formato precedente funziona e la voce disabilitata non carica modelli. Fallisce se una lingua carica percorsi diversi da quelli indicati, se un profilo mancante o invalido è accettato o se vengono caricati modelli di un profilo non attivo o della voce disabilitata.
+La prova passa se ciascuna lingua seleziona esattamente i percorsi indicati, anche quando provengono da un mount o quando esistono più voci della stessa lingua; un elenco invalido o un profilo elencato con variabili invalide rende invalida la configurazione, l'altro profilo non carica i modelli e la voce disabilitata non legge altre variabili né carica modelli. Fallisce se una lingua carica percorsi diversi da quelli indicati, se un elenco o un profilo invalido è accettato o se vengono caricati modelli di un profilo non attivo o della voce disabilitata.
 
 I casi di configurazione sono provati da `voice-config.spec.ts`, la selezione dei profili e della voce montata con i modelli dell'immagine da `scripts/verify-docker-image.mjs` e l'avvio senza voce da `conversation-server.config-bootstrap.spec.ts`.
 
@@ -832,10 +832,10 @@ Non automatizzabile: stabilire che ogni percorso applicativo dell'archivio passa
 
 ### Ispezione degli esempi inglesi degli agenti
 
-Esaminare tutti gli esempi distribuiti di generic.ts, orchestrator.ts e agenti specializzati, incluse istruzioni e descrizioni.
+Esaminare tutti i file d'esempio degli agenti distribuiti, `generic.json`, `orchestrator.json` e gli agenti specializzati, incluse istruzioni e descrizioni.
 
 #### Details
-L'ispezione passa se i testi sono in inglese, generic.ts non prescrive una lingua fissa per la risposta e l'orchestratore è descritto soltanto come selettore dell'agente.
+L'ispezione passa se i testi sono in inglese, `generic.json` non prescrive una lingua fissa per la risposta e l'orchestratore è descritto soltanto come selettore dell'agente.
 
 Non automatizzabile: giudicare la lingua dei testi e il ruolo descritto per l'orchestratore richiede la lettura umana.
 
@@ -899,10 +899,10 @@ La prova passa se, in tutti i casi, il backend prosegue l'elaborazione dopo la c
 
 ### Prova del fuso orario configurato
 
-Caricare il modulo TypeScript del componente «Conversazioni» senza `timeZone`, con `timeZone` uguale a `Europe/Rome` e, in tentativi separati, con un numero, con una stringa vuota e con `Mars/Olympus`.
+Leggere la configurazione del componente «Conversazioni» senza `AMBROGIO_TIME_ZONE`, con `AMBROGIO_TIME_ZONE` uguale a `Europe/Rome`, vuota e, in un tentativo separato, uguale a `Mars/Olympus`.
 
 #### Details
-La prova passa se senza il campo il fuso effettivo è `UTC`, con `Europe/Rome` è `Europe/Rome`, e ciascun valore invalido rende invalida la configurazione con il messaggio `Invalid conversation time zone`. Fallisce se un valore invalido viene accettato o se il fuso effettivo differisce da quello atteso.
+La prova passa se senza la variabile o con la variabile vuota il fuso effettivo è `UTC`, con `Europe/Rome` è `Europe/Rome`, e il valore invalido rende invalida la configurazione con il messaggio `Invalid environment variable AMBROGIO_TIME_ZONE: expected an IANA time zone name`, senza riportare il valore. Fallisce se un valore invalido viene accettato o se il fuso effettivo differisce da quello atteso.
 
 #### Metadata
   * type: test-verification
@@ -1002,7 +1002,7 @@ La prova passa se il server chiude la trasmissione in corso con `output.end`, ap
 
 ### Prova dell'ingresso dei turni con agenti configurati
 
-Avviare il processo con i moduli TypeScript HTTP, Conversazioni, orchestratore e almeno un agente specializzato validi, usando un provider e un connettore MCP controllati. Aprire una sessione su `/api/session`, inviare un turno e leggere trasmissioni, esito e storico; richiedere anche i due GET. Ripetere con un modulo agente invalido e con un connettore non disponibile prima dell'ascolto.
+Avviare il processo con la configurazione HTTP e Conversazioni, l'orchestratore e almeno un agente specializzato validi, usando un provider e un connettore MCP controllati. Aprire una sessione su `/api/session`, inviare un turno e leggere trasmissioni, esito e storico; richiedere anche i due GET. Ripetere con un file di agente invalido e con un connettore non disponibile prima dell'ascolto.
 
 #### Details
 La prova passa se l'avvio valido espone il canale conversazionale e i GET, il turno usa il produttore orchestratore e produce trasmissioni, esito e storico previsti; l'avvio invalido non apre il listener e chiude le risorse già preparate. Le risposte GET conservano gli header di sicurezza, `Cache-Control: no-store` e l'identificativo di correlazione. Fallisce se il canale manca, usa un produttore diverso, espone dettagli segreti o lascia risorse aperte. Verifica definita per il protocollo `ambrogio.v1`.
@@ -1241,10 +1241,10 @@ La prova passa se ogni specialista, con e senza MCP, riceve la direttiva della l
 
 ### Prova della ricerca delle configurazioni degli agenti
 
-Preparare in `/etc/ambrogio/agents` `orchestrator.ts`, `memory.ts` e `home-assistant.ts` con valori distinguibili. Per la prova isolata usare un filesystem controllato che rappresenti lo stesso percorso visto dal processo. Osservare i file scoperti e le associazioni; verificare separatamente nomi di file con identificativo invalido, come `Home.ts` e `home_assistant.ts`, e l'assenza di `orchestrator.ts`.
+Preparare in una directory degli agenti di prova `orchestrator.json`, `memory.json`, `home-assistant.json` e un file di altro tipo con valori distinguibili, indicandola con `AMBROGIO_AGENTS_DIR`; verificare anche che senza la variabile la directory è `/etc/ambrogio/agents`. Osservare i file scoperti e le associazioni; verificare separatamente nomi di file con identificativo invalido, come `Home.json` e `home_assistant.json`, e l'assenza di `orchestrator.json`.
 
 #### Details
-La prova passa se il server cerca nel percorso previsto, riconosce `orchestrator.ts` come orchestratore e ricava `memory` e `home-assistant` dai rispettivi file. Nomi che non rispettano `^[a-z][a-z0-9-]*$` non identificano agenti specializzati. Senza `orchestrator.ts` l'orchestratore non viene attivato e l'avvio interessato segnala l'errore secondo il contratto di configurazione. Fallisce se un file è associato all'agente sbagliato o se un nome invalido è accettato come identificativo.
+La prova passa se il server cerca nel percorso previsto, riconosce `orchestrator.json` come orchestratore, ricava `memory` e `home-assistant` dai rispettivi file e ignora il file di altro tipo. Nomi che non rispettano `^[a-z][a-z0-9-]*$` non identificano agenti specializzati. Senza `orchestrator.json` l'orchestratore non viene attivato e l'avvio interessato segnala l'errore secondo il contratto di configurazione. Fallisce se un file è associato all'agente sbagliato o se un nome invalido è accettato come identificativo.
 
 #### Metadata
   * type: test-verification
@@ -1292,10 +1292,10 @@ La prova passa se la richiesta all'orchestratore non offre strumenti, dichiara c
 
 ### Prova della selezione del modello per agente
 
-Preparare due modulo TypeScript di agenti attivi, uno per l'orchestratore e uno per un agente specializzato, con oggetti `llm` distinguibili, provider diversi e i campi `provider`, `model`, `apiKey` e `options`; ripetere con un agente `openai-compatible` che indica `baseURL`. Avviare il processo con adapter di prova e osservare i valori consegnati a ciascuno; ripetere con `llm` mancante, con uno dei suoi campi richiesti invalido, con un `provider` non ammesso, con `openai-compatible` senza `baseURL` o con un `baseURL` che non è un URL HTTP o HTTPS assoluto, con `baseURL` per un altro provider e con opzioni specifiche non valide.
+Preparare due file di agenti attivi, uno per l'orchestratore e uno per un agente specializzato, con oggetti `llm` distinguibili, provider diversi e i campi `provider`, `model`, `apiKeyEnv` e `options`, con chiavi distinte nelle variabili nominate; ripetere con un agente `openai-compatible` che indica `baseURL`. Avviare il processo con adapter di prova e osservare i valori consegnati a ciascuno; ripetere con `llm` mancante, con uno dei suoi campi richiesti invalido, con un `provider` non ammesso, con `openai-compatible` senza `baseURL` o con un `baseURL` che non è un URL HTTP o HTTPS assoluto, con `baseURL` per un altro provider e con opzioni specifiche non valide.
 
 #### Details
-La prova passa se ciascun agente usa soltanto provider, modello, chiave, `baseURL` quando previsto e opzioni validate del proprio oggetto `llm`, ogni valore ammesso di `provider` viene accettato e il processo non attiva un agente con configurazione necessaria mancante o invalida. I moduli possono leggere le variabili d'ambiente. Fallisce se i valori si mescolano tra agenti, se un provider non ammesso o un `baseURL` mancante, invalido o superfluo vengono accettati o se una configurazione invalida raggiunge l'adapter.
+La prova passa se ciascun agente usa soltanto provider, modello, chiave, `baseURL` quando previsto e opzioni validate del proprio oggetto `llm`, ogni valore ammesso di `provider` viene accettato e il processo non attiva un agente con configurazione necessaria mancante o invalida. Fallisce se i valori si mescolano tra agenti, se un provider non ammesso o un `baseURL` mancante, invalido o superfluo vengono accettati o se una configurazione invalida raggiunge l'adapter.
 
 #### Metadata
   * type: test-verification
@@ -1309,7 +1309,7 @@ La prova passa se ciascun agente usa soltanto provider, modello, chiave, `baseUR
 
 ### Prova delle istruzioni per agente
 
-Preparare due moduli TypeScript locali dell'utente con istruzioni riconoscibili e diverse, uno per l'orchestratore e uno per un agente specializzato. Attivare entrambi con modelli di prova e osservare le istruzioni consegnate a ciascuno durante un turno delegato; modificare poi le istruzioni di uno solo dei file e ripetere.
+Preparare due file di agenti dell'utente con istruzioni riconoscibili e diverse, uno per l'orchestratore e uno per un agente specializzato. Attivare entrambi con modelli di prova e osservare le istruzioni consegnate a ciascuno durante un turno delegato; modificare poi le istruzioni di uno solo dei file e ripetere.
 
 #### Details
 La prova passa se ogni modello riceve le istruzioni del proprio file e la modifica di un file cambia soltanto le istruzioni dell'agente corrispondente. Fallisce se le istruzioni sono scambiate, condivise tra agenti o ignorate.
@@ -1320,7 +1320,7 @@ La prova passa se ogni modello riceve le istruzioni del proprio file e la modifi
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
-  * verify: [Istruzioni dell'agente nel modulo TypeScript dell'utente](../Requirements/FamilyConversation.md#istruzioni-dellagente-nel-modulo-typescript-dellutente)
+  * verify: [Istruzioni dell'agente nel file dell'utente](../Requirements/FamilyConversation.md#istruzioni-dellagente-nel-file-dellutente)
 ---
 
 ### Verifica della risorsa SQLite conversazionale
@@ -1544,7 +1544,7 @@ La prova passa se ciascun turno accettato è persistito con il suo testo prima d
 
 ### Prova dell'archivio configurato all'avvio
 
-Avviare l'ingresso conversazionale con moduli TypeScript HTTP e Conversazioni validi e con `archivePath` diretto a un archivio SQLite di prova che contiene un turno pendente; richiedere l'elenco e lo storico della conversazione, poi arrestare il processo. Ripetere con `archivePath` assente, non stringa e diretto a una directory inesistente.
+Avviare l'ingresso conversazionale con configurazione HTTP e Conversazioni valida e con `AMBROGIO_ARCHIVE_PATH` diretta a un archivio SQLite di prova che contiene un turno pendente; richiedere l'elenco e lo storico della conversazione, poi arrestare il processo. Ripetere con `AMBROGIO_ARCHIVE_PATH` assente, vuota e diretta a una directory inesistente.
 
 #### Details
 La prova passa se il processo ascolta all'indirizzo configurato, i due GET rispondono secondo i rispettivi contratti usando l'archivio configurato, il turno pendente è già «Interrotto» alla prima risposta, ogni avvio invalido non apre il listener né crea l'archivio e l'arresto chiude listener e archivio. Fallisce se legge un altro archivio, risponde prima del recupero o lascia risorse aperte.
@@ -1579,10 +1579,10 @@ La prova passa se l'elenco è diviso in pagine limitate, la conversazione aggior
 
 ### Prova della configurazione della paginazione
 
-Preparare modulo TypeScript del componente «Conversazioni» con i due campi assenti, poi con `listPageSize` e `maxListPageSize` espliciti e diversi dai valori predefiniti. Indicare il percorso del file con `AMBROGIO_CONVERSATIONS_CONFIG_PATH` e leggere l'elenco attraverso i valori caricati, verificando il numero di voci e il limite applicato dall'archivio. Ripetere con variabile o file mancante, modulo TypeScript non importabile, valori non interi o non positivi e dimensione della pagina superiore al massimo.
+Leggere la configurazione del componente «Conversazioni» senza `AMBROGIO_LIST_PAGE_SIZE` e `AMBROGIO_MAX_LIST_PAGE_SIZE`, poi con valori espliciti diversi dai valori predefiniti, e leggere l'elenco attraverso i valori letti, verificando il numero di voci e il limite applicato dall'archivio. Ripetere con valori non interi o non positivi e con dimensione della pagina superiore al massimo.
 
 #### Details
-La prova passa se la variabile d'ambiente seleziona il percorso del modulo e il modulo può leggere valori dall'ambiente, i campi assenti danno 20 e 100, i valori espliciti validi sono usati dal caso d'uso e dall'adapter, e ogni percorso, file o combinazione invalida impedisce la preparazione dell'ingresso prima di accettare richieste. Fallisce se un valore d'ambiente non validato viene usato direttamente, se un valore invalido viene corretto in silenzio, se il massimo resta fissato a 100 quando la configurazione ne sceglie un altro o se il caso d'uso legge il file direttamente.
+La prova passa se le variabili assenti danno 20 e 100, i valori espliciti validi sono usati dal caso d'uso e dall'adapter, e ogni valore o combinazione invalida impedisce la preparazione dell'ingresso prima di accettare richieste, con un errore che nomina la variabile. Fallisce se un valore d'ambiente non validato viene usato direttamente, se un valore invalido viene corretto in silenzio, se il massimo resta fissato a 100 quando la configurazione ne sceglie un altro o se il caso d'uso legge la configurazione direttamente.
 
 #### Metadata
   * type: test-verification
@@ -1613,10 +1613,10 @@ La prova passa se le risposte `200` JSON senza cache contengono solo `items` ord
 
 ### Prova della lingua del guasto conversazionale
 
-Nel JSON di «Conversazioni» configurare separatamente `language: "en"` e `language: "it"`, poi omettere il campo, scegliere una lingua stringa non supportata e usare un valore non stringa. Nei casi validi ammettere un turno e provocare un guasto inatteso dopo l'ammissione. Osservare il messaggio restituito dal caso d'uso, quello conservato nell'archivio e quello comunicato al client quando l'ingresso è disponibile.
+Configurare separatamente `AMBROGIO_LANGUAGE=en` e `AMBROGIO_LANGUAGE=it`, poi omettere la variabile e usare un valore non supportato come `fr`. Nei casi validi ammettere un turno e provocare un guasto inatteso dopo l'ammissione. Osservare il messaggio restituito dal caso d'uso, quello conservato nell'archivio e quello comunicato al client quando l'ingresso è disponibile.
 
 #### Details
-La prova passa se l'inglese produce «I can't complete the response.», l'italiano produce «Non riesco a completare la risposta.», l'omissione e la lingua stringa non supportata producono la formulazione inglese, un valore non stringa impedisce la preparazione, nessun messaggio contiene dettagli tecnici e il testo coincide esattamente nell'esito conservato e nella comunicazione al client. Fallisce se la lingua configurata viene ignorata, se i due testi differiscono o se il messaggio espone il guasto tecnico.
+La prova passa se l'inglese produce «I can't complete the response.», l'italiano produce «Non riesco a completare la risposta.», l'omissione produce la formulazione inglese, un valore non supportato impedisce la preparazione, nessun messaggio contiene dettagli tecnici e il testo coincide esattamente nell'esito conservato e nella comunicazione al client. Fallisce se la lingua configurata viene ignorata, se i due testi differiscono o se il messaggio espone il guasto tecnico.
 
 #### Metadata
   * type: test-verification

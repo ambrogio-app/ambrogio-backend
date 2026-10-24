@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import type { SpeechComponentsFactory } from '@ambrogio/conversations/adapters/in/session/speech-components';
+import { readConversationConfig } from '@ambrogio/conversations/adapters/out/conversation-config';
 import { recoverPendingTurns } from '@ambrogio/conversations/adapters/out/sqlite/recover-pending-turns';
 import type { ProduceConversationReply } from '@ambrogio/conversations/application/produce-conversation-reply';
 import { prepareConfiguredConversations } from '../composition/conversations.js';
@@ -34,9 +35,10 @@ export type TestServer = Readonly<{
  * replaced by the deterministic ones of the caller. Client integration tests use only this module.
  */
 export async function startTestServer(options: TestServerOptions): Promise<TestServer> {
-  const prepared = await prepareConfiguredConversations({
-    archivePath: join(options.directory, 'conversations.sqlite'), language: options.language, timeZone: 'UTC',
-    listPageSize: 20, maxListPageSize: 100 }, new Date());
+  // The configuration module applies its own defaults to an environment built here, never the process one.
+  const prepared = await prepareConfiguredConversations(readConversationConfig({
+    AMBROGIO_ARCHIVE_PATH: join(options.directory, 'conversations.sqlite'), AMBROGIO_LANGUAGE: options.language,
+  }, 'test'), new Date());
   let built: Awaited<ReturnType<typeof buildConversationServer>> | undefined;
   try {
     built = await buildConversationServer({ host: '127.0.0.1', port: 0,

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startConversationServer } from '../apps/server/dist/runtime/conversation-server.js';
 
-const writeConfig = (filename, value) => writeFile(filename, `export default ${JSON.stringify(value)};\n`);
+const writeAgent = (filename, value) => writeFile(filename, `${JSON.stringify(value)}\n`);
 
 const directory = await mkdtemp(join(tmpdir(), 'ambrogio-server-startup-'));
 try {
@@ -17,24 +17,20 @@ try {
   if (!address || typeof address === 'string') throw new Error('No available port');
   await new Promise(resolve => probe.close(resolve));
 
-  const http = join(directory, 'http.ts');
-  const conversations = join(directory, 'conversations.ts');
   const agents = join(directory, 'agents');
   await mkdir(agents);
-  await writeConfig(http, { host: '127.0.0.1', port: address.port });
-  await writeConfig(conversations, { archivePath: join(directory, 'archive.sqlite') });
-  await writeConfig(join(agents, 'orchestrator.ts'), {
-    instructions: 'Choose the agent.',
-    llm: { provider: 'mistral', model: 'mistral-medium-latest', apiKey: 'startup-test-key' },
-  });
+  const llm = { provider: 'mistral', model: 'mistral-medium-latest', apiKeyEnv: 'MISTRAL_API_KEY' };
+  await writeAgent(join(agents, 'orchestrator.json'), { instructions: 'Choose the agent.', llm });
   // The orchestrator only chooses: at least one agent, here one without MCP, must answer.
-  await writeConfig(join(agents, 'generic.ts'), {
-    description: 'Answers general questions.', instructions: 'Answer briefly.',
-    llm: { provider: 'mistral', model: 'mistral-medium-latest', apiKey: 'startup-test-key' },
+  await writeAgent(join(agents, 'generic.json'), {
+    description: 'Answers general questions.', instructions: 'Answer briefly.', llm,
   });
 
-  const runtime = await startConversationServer({ AMBROGIO_HTTP_CONFIG_PATH: http,
-    AMBROGIO_CONVERSATIONS_CONFIG_PATH: conversations }, agents);
+  // Production values only: every setting without a production default is explicit.
+  const runtime = await startConversationServer({ AMBROGIO_ENV: 'production', AMBROGIO_HTTP_HOST: '127.0.0.1',
+    AMBROGIO_HTTP_PORT: String(address.port), AMBROGIO_PUBLIC_HTTPS: 'false',
+    AMBROGIO_ARCHIVE_PATH: join(directory, 'archive.sqlite'), AMBROGIO_AGENTS_DIR: agents,
+    MISTRAL_API_KEY: 'startup-test-key' });
   try {
     const response = await fetch(`http://127.0.0.1:${address.port}/api/conversations`);
     const body = await response.json();

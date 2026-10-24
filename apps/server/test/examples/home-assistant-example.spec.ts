@@ -1,28 +1,30 @@
-import { writeConfigFile } from '../support/config-fixture.js';
-import { copyFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+// The distributed agent files are data only: they load unchanged with placeholder credentials taken
+// from the environment, and they contain no secret.
+import { copyFile, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, expect, test, vi } from 'vitest';
+import { afterEach, expect, test } from 'vitest';
 import { loadAgentConfigs } from '../../src/runtime/agent-config.js';
 
-const example = new URL('../../../../examples/agents/home-assistant.ts', import.meta.url);
+const examples = new URL('../../../../examples/agents/', import.meta.url);
+const placeholders = { MISTRAL_API_KEY: '<MISTRAL_API_KEY>',
+  HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN: '<HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN>' };
 const directories: string[] = [];
 afterEach(async () => {
-  vi.unstubAllEnvs();
   await Promise.all(directories.splice(0).map((path) => rm(path, { recursive: true, force: true })));
 });
 
-test('the ready Home Assistant agent is accepted unchanged by the agent loader', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'ambrogio-home-assistant-'));
+async function install(...names: string[]): Promise<string> {
+  const directory = await mkdtemp(join(tmpdir(), 'ambrogio-agent-examples-'));
   directories.push(directory);
-  await writeConfigFile(join(directory, 'orchestrator.ts'), JSON.stringify({ instructions: 'Choose.',
-    llm: { provider: 'mistral', model: 'mistral-medium-latest', apiKey: '<MISTRAL_API_KEY>' } }));
-  await copyFile(example, join(directory, 'home-assistant.ts'));
-  vi.stubEnv('MISTRAL_API_KEY', '<MISTRAL_API_KEY>');
-  vi.stubEnv('HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN', '<HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN>');
-  vi.stubEnv('AMBROGIO_HOME_ASSISTANT_MCP_URL', 'https://home-assistant.example.test/api/mcp');
+  for (const name of names) await copyFile(new URL(name, examples), join(directory, name));
+  return directory;
+}
 
-  const { specialists } = await loadAgentConfigs(directory);
+// Verification: Prova della configurazione pronta di Home Assistant
+test('the ready Home Assistant agent is accepted unchanged by the agent loader', async () => {
+  const directory = await install('orchestrator.json', 'home-assistant.json');
+  const { specialists } = await loadAgentConfigs(directory, placeholders);
   expect(specialists).toHaveLength(1);
   const agent = specialists[0]!;
   expect(agent.id).toBe('home-assistant');
@@ -38,11 +40,19 @@ test('the ready Home Assistant agent is accepted unchanged by the agent loader',
   expect(agent.instructions).toMatch(/do not turn on, turn off or change anything/);
   expect(agent.instructions).toMatch(/Change a device only when the user asks for a change/);
   expect(agent.instructions).toMatch(/all the lights or the lights of a room, act on all of them/);
+  await expect(loadAgentConfigs(directory, { MISTRAL_API_KEY: '<MISTRAL_API_KEY>' })).rejects
+    .toThrow('Missing environment variable HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN for agent home-assistant');
 });
 
-test('the ready Home Assistant agent contains only placeholder credentials', async () => {
-  const raw = await readFile(example, 'utf8');
-  expect(raw).toContain('process.env.MISTRAL_API_KEY');
-  expect(raw).toContain('process.env.HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN');
-  expect(raw).not.toMatch(/eyJ[A-Za-z0-9_-]{10,}/);
+// Verification: Controllo degli esempi di configurazione
+test('the agent examples name their credentials and contain none', async () => {
+  for (const name of await readdir(examples)) {
+    const raw = await readFile(new URL(name, examples), 'utf8');
+    expect(name).toMatch(/\.json$/);
+    expect(raw).not.toMatch(/"(apiKey|token|clientSecret)"/);
+    expect(raw).not.toMatch(/eyJ[A-Za-z0-9_-]{10,}/);
+    expect(raw).toContain('"apiKeyEnv": "MISTRAL_API_KEY"');
+  }
+  expect(await readFile(new URL('home-assistant.json', examples), 'utf8'))
+    .toContain('"tokenEnv": "HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN"');
 });

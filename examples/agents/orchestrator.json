@@ -1,0 +1,8 @@
+{
+  "instructions": "Choose the agent that should answer the family's latest message. Route general questions, conversation and unclear requests to generic. If the message answers a question from an agent, choose the same agent. Return only the selected agent identifier.",
+  "llm": {
+    "provider": "mistral",
+    "model": "mistral-medium-latest",
+    "apiKeyEnv": "MISTRAL_API_KEY"
+  }
+}

@@ -1,5 +1,5 @@
-import { writeConfigFile } from '../../test/support/config-fixture.js';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { serverEnvironment } from '../../test/support/config-fixture.js';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -35,12 +35,7 @@ afterEach(async () => {
 async function fixture(port: number) {
   const directory = await mkdtemp(join(tmpdir(), 'ambrogio-resource-lifecycle-'));
   directories.push(directory);
-  const http = join(directory, 'http.ts');
-  const conversations = join(directory, 'conversations.ts');
-  await writeConfigFile(http, JSON.stringify({ host: '127.0.0.1', port }));
-  await writeConfigFile(conversations, JSON.stringify({ archivePath: join(directory, 'archive.sqlite') }));
-  return { directory, environment: { AMBROGIO_HTTP_CONFIG_PATH: http,
-    AMBROGIO_CONVERSATIONS_CONFIG_PATH: conversations } };
+  return { directory, environment: serverEnvironment({ directory, archive: join(directory, 'archive.sqlite') }, port) };
 }
 
 async function listeningServer() {
@@ -61,7 +56,7 @@ test.each(['answer', 'agent failure'] as const)(
     await new Promise<void>(resolve => reservation.server.close(() => resolve()));
     const files = await fixture(port);
     let agentClosed = 0;
-    const runtime = await startConversationServer(files.environment, files.directory,
+    const runtime = await startConversationServer(files.environment,
       async () => ({ orchestrator: { async *produce() {
         if (scenario === 'agent failure') throw new Error('controlled agent failure');
         yield { kind: 'text' as const, text: 'answer' };
@@ -85,7 +80,7 @@ test('closes the prepared archive once when the listener cannot start', async ()
   const files = await fixture(reservation.port);
   let agentClosed = 0;
   try {
-    await expect(startConversationServer(files.environment, files.directory,
+    await expect(startConversationServer(files.environment,
       async () => ({ orchestrator: { async *produce() { yield { kind: 'text' as const, text: 'unused' }; } },
         async close() { agentClosed++; } }))).rejects.toThrow();
     expect(resource).toEqual({ opened: 1, closed: 1 });

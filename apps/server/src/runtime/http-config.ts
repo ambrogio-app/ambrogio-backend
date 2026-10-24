@@ -1,6 +1,5 @@
-import { ProjectError } from '@ambrogio/conversations/application/project-error';
-import { pathToFileURL } from 'node:url';
-import { resolve } from 'node:path';
+import { integerVariable, invalidVariable, readVariable, requireVariable, type EnvironmentVariable,
+  type RuntimeEnvironment } from '@ambrogio/conversations/adapters/out/environment-variables';
 
 export type HttpConfig = Readonly<{
   host: string;
@@ -10,48 +9,43 @@ export type HttpConfig = Readonly<{
   hstsMaxAgeSeconds?: number;
 }>;
 
-let configRevision = 0;
+/** The variables of the HTTP component; this module alone owns their defaults. */
+export const httpVariables = {
+  host: { name: 'AMBROGIO_HTTP_HOST', default: { environments: 'development', value: '127.0.0.1' } },
+  port: { name: 'AMBROGIO_HTTP_PORT', default: { environments: 'development', value: '3000' } },
+  publicHttps: { name: 'AMBROGIO_PUBLIC_HTTPS', default: { environments: 'development', value: 'false' } },
+  hstsMaxAgeSeconds: { name: 'AMBROGIO_HSTS_MAX_AGE_SECONDS' },
+  allowedOrigins: { name: 'AMBROGIO_ALLOWED_ORIGINS' },
+} as const satisfies Record<string, EnvironmentVariable>;
 
-export function httpConfigPath(environment: NodeJS.ProcessEnv = process.env): string {
-  const filename = environment.AMBROGIO_HTTP_CONFIG_PATH;
-  if (!filename?.trim()) throw new ProjectError('Missing HTTP configuration path');
-  return filename;
+function exactOrigin(origin: string): boolean {
+  if (origin === '*') return false;
+  try {
+    const parsed = new URL(origin);
+    return (parsed.protocol === 'http:' || parsed.protocol === 'https:') && parsed.origin === origin;
+  } catch { return false; }
 }
 
-export async function loadHttpConfig(filename: string): Promise<HttpConfig> {
-  let value: unknown;
-  try {
-    if (!filename.endsWith('.ts')) throw new Error('Expected TypeScript configuration');
-    value = (await import(`${pathToFileURL(resolve(filename)).href}?revision=${++configRevision}`)).default;
-  } catch {
-    throw new ProjectError('Invalid HTTP configuration file');
+/** Read and validate the HTTP component's configuration before the listener is created. */
+export function readHttpConfig(environment: NodeJS.ProcessEnv, runtime: RuntimeEnvironment): HttpConfig {
+  const variables = httpVariables;
+  const host = requireVariable(environment, runtime, variables.host);
+  if (!host.trim()) throw invalidVariable(variables.host.name, 'expected a host address');
+  const port = integerVariable(variables.port.name, requireVariable(environment, runtime, variables.port), 1, 65535);
+  const listed = readVariable(environment, runtime, variables.allowedOrigins);
+  // No list authorizes no origin.
+  const allowedOrigins = listed === undefined ? [] : listed.split(',').map(origin => origin.trim());
+  if (!allowedOrigins.every(exactOrigin)) {
+    throw invalidVariable(variables.allowedOrigins.name, 'expected comma-separated exact HTTP or HTTPS origins');
   }
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-    throw new ProjectError('Invalid HTTP configuration file');
+  const https = requireVariable(environment, runtime, variables.publicHttps);
+  if (https !== 'true' && https !== 'false') throw invalidVariable(variables.publicHttps.name, 'expected true or false');
+  const publicHttps = https === 'true';
+  const maxAge = readVariable(environment, runtime, variables.hstsMaxAgeSeconds);
+  if (publicHttps && maxAge === undefined) {
+    throw invalidVariable(variables.hstsMaxAgeSeconds.name, 'required when AMBROGIO_PUBLIC_HTTPS is true');
   }
-  const fields = value as Record<string, unknown>;
-  if (typeof fields.host !== 'string' || !fields.host.trim()
-    || typeof fields.port !== 'number' || !Number.isSafeInteger(fields.port)
-    || fields.port < 1 || fields.port > 65535) {
-    throw new ProjectError('Invalid HTTP listener configuration');
-  }
-  const allowedOrigins = fields.allowedOrigins === undefined ? [] : fields.allowedOrigins;
-  if (!Array.isArray(allowedOrigins) || !allowedOrigins.every(origin => {
-    if (typeof origin !== 'string' || origin === '*') return false;
-    try {
-      const parsed = new URL(origin);
-      return (parsed.protocol === 'http:' || parsed.protocol === 'https:') && parsed.origin === origin;
-    } catch { return false; }
-  })) {
-    throw new ProjectError('Invalid HTTP CORS origins');
-  }
-  const publicHttps = fields.publicHttps === undefined ? false : fields.publicHttps;
-  if (typeof publicHttps !== 'boolean') throw new ProjectError('Invalid public HTTPS configuration');
-  const maxAge = fields.hstsMaxAgeSeconds;
-  if ((maxAge !== undefined && (typeof maxAge !== 'number' || !Number.isSafeInteger(maxAge) || maxAge < 1))
-    || (publicHttps && maxAge === undefined)) {
-    throw new ProjectError('Invalid HSTS duration');
-  }
-  return { host: fields.host, port: fields.port, allowedOrigins, publicHttps,
-    ...(maxAge === undefined ? {} : { hstsMaxAgeSeconds: maxAge }) };
+  return { host, port, allowedOrigins, publicHttps,
+    ...(maxAge === undefined ? {} : {
+      hstsMaxAgeSeconds: integerVariable(variables.hstsMaxAgeSeconds.name, maxAge, 1) }) };
 }

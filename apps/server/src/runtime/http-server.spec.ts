@@ -142,9 +142,9 @@ describe('conversation HTTP server', () => {
       expect([ordinary.statusCode, expected.statusCode, missing.statusCode]).toEqual([200, 400, 404]);
       expect(output).toEqual([]);
       await prepared.archive.close();
-      const list = await server.inject({ method: 'GET', url: '/api/conversations',
+      const list = await server.inject({ method: 'GET', url: '/api/v1/conversations',
         headers: { 'x-context-marker': 'LIST_CONTEXT_MARKER_A' } });
-      const history = await server.inject({ method: 'GET', url: '/api/conversations/example',
+      const history = await server.inject({ method: 'GET', url: '/api/v1/conversations/example',
         headers: { 'x-context-marker': 'HISTORY_CONTEXT_MARKER_A' } });
       const fallback = await server.inject({ method: 'GET', url: '/test-fallback',
         headers: { 'x-context-marker': 'FALLBACK_CONTEXT_MARKER_A' } });
@@ -161,10 +161,10 @@ describe('conversation HTTP server', () => {
       for (const response of [list, history, listAgain, historyAgain]) {
         expect(response.headers['cache-control']).toBe('no-store');
       }
-      for (const response of [listAgain, historyAgain]) expect(response.json()).toEqual({ type: 'about:blank', title: 'Internal Server Error', status: 500 });
+      for (const response of [list, history, listAgain, historyAgain]) expect(response.json()).toEqual({ type: 'about:blank', title: 'Internal Server Error', status: 500 });
       expect(list.headers['x-request-id']).not.toBe(history.headers['x-request-id']);
-      const expectedEvents = [[list, 'conversation_list_http_failed'],
-        [history, 'conversation_history_http_failed'], [fallback, 'http.unexpected_failure'],
+      const expectedEvents = [[list, 'http.unexpected_failure'],
+        [history, 'http.unexpected_failure'], [fallback, 'http.unexpected_failure'],
         [listAgain, 'http.unexpected_failure'],
         [historyAgain, 'http.unexpected_failure'],
         [fallbackAgain, 'http.unexpected_failure']] as const;
@@ -187,9 +187,9 @@ describe('conversation HTTP server', () => {
         expect(row.correlationId).toBe(expectedEvents[index]![0].headers['x-request-id']);
       }
       expect(rows).toEqual(expect.arrayContaining([
-        expect.objectContaining({ event: 'conversation_list_http_failed',
+        expect.objectContaining({ event: 'http.unexpected_failure',
           correlationId: list.headers['x-request-id'], msg: 'HTTP request failed' }),
-        expect.objectContaining({ event: 'conversation_history_http_failed',
+        expect.objectContaining({ event: 'http.unexpected_failure',
           correlationId: history.headers['x-request-id'], msg: 'HTTP request failed' }),
         expect.objectContaining({ event: 'http.unexpected_failure',
           correlationId: fallback.headers['x-request-id'], msg: 'HTTP request failed' }),

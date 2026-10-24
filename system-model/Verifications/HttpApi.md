@@ -45,24 +45,6 @@ La prova passa se ogni successo usa `200`, `application/json` e gli header dichi
   * verify: [Stato HTTP dall'esito effettivo](../Requirements/HttpApi.md#stato-http-dallesito-effettivo)
 ---
 
-### Prova dell'API HTTP senza versione
-
-Leggere elenco e storico con `GET /api/conversations` e `GET /api/conversations/:conversationId` in lingua italiana e inglese: pagine con cursore, conversazione assente, cursore e limite invalidi, parametro non previsto e guasto tecnico dell'archivio.
-
-#### Details
-La prova passa se le risposte riuscite sono uguali a quelle delle rotte `v1` e le risposte d'errore mantengono stati, corpi `{ "error": "..." }` nella lingua configurata, `Cache-Control: no-store` ed eventi diagnostici del contratto dell'API senza versione. Fallisce se una risposta della versione precedente cambia forma o se un errore espone dettagli tecnici.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dell'API HTTP pubblica](#verifica-dellapi-http-pubblica)
-  * satisfiedBy: [get-conversation.unversioned-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.unversioned-route.adapter.spec.ts)
-  * satisfiedBy: [list-conversations.unversioned-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.unversioned-route.adapter.spec.ts)
-  * verify: [Lettura HTTP dell'elenco conversazioni nell'API senza versione](../Requirements/HttpApi.md#lettura-http-dellelenco-conversazioni-nellapi-senza-versione)
-  * verify: [Lettura HTTP dello storico conversazionale nell'API senza versione](../Requirements/HttpApi.md#lettura-http-dello-storico-conversazionale-nellapi-senza-versione)
----
-
 ### Prova della mappatura esplicita degli esiti HTTP
 
 Leggere il testo delle registrazioni delle rotte HTTP che invocano casi d'uso con esiti negativi previsti e il codice di produzione di Domain e Application del modulo «Conversazioni».
@@ -81,10 +63,10 @@ La prova passa se ogni registrazione mappa gli esiti negativi previsti con uno `
 
 ### Prova della struttura della superficie HTTP
 
-Avviare il server conversazionale composto come in produzione e raccogliere le rotte registrate con metodo e percorso; leggere le cartelle delle slice di `packages/conversations/src/adapters/in/http/` e gli aggregatori che le registrano.
+Avviare il server conversazionale composto come in produzione e raccogliere le rotte registrate con metodo e percorso; richiedere `GET /api/conversations` e `GET /api/conversations/<id>`; leggere le cartelle delle slice di `packages/conversations/src/adapters/in/http/` e gli aggregatori che le registrano.
 
 #### Details
-La prova passa se ogni rotta HTTP diversa dalla sessione `/api/session` e dalle rotte dell'API senza versione sta sotto `/api/v1/`; se le rotte senza versione sono esattamente `GET /api/conversations` e `GET /api/conversations/:conversationId`, con le stesse risposte riuscite delle rotte `v1`; se ogni slice ha i propri file `.schemas.ts`, `.handler.ts` e `.route.adapter.ts` e le registrazioni ricevono i casi d'uso già costruiti; e se le rotte sono registrate soltanto dagli aggregatori consegnati alla factory tecnica. Fallisce se una rotta manca del prefisso di versione, se una slice unisce le responsabilità o se una rotta è registrata fuori da un aggregatore.
+La prova passa se ogni rotta HTTP diversa dalla sessione `/api/session` sta sotto `/api/v1/`; se i percorsi senza versione ricevono il Problem Details `404` della rotta inesistente; se ogni slice ha i propri file `.schemas.ts`, `.handler.ts` e `.route.adapter.ts` e le registrazioni ricevono i casi d'uso già costruiti; e se le rotte sono registrate soltanto dagli aggregatori consegnati alla factory tecnica. Fallisce se una rotta manca del prefisso di versione, se un percorso senza versione risponde con una rotta, se una slice unisce le responsabilità o se una rotta è registrata fuori da un aggregatore.
 
 #### Metadata
   * type: test-verification

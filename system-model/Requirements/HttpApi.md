@@ -47,15 +47,10 @@ Origine: baseline Reqvire «Composition written by hand», adottata.
 Quando il server HTTP del backend produce una risposta 4xx o 5xx, deve usare il formato Problem Details di RFC 9457 con `application/problem+json`, con `type`, `title` e `status` sempre presenti, `type` come unico discriminante pubblico e soltanto le estensioni sicure dichiarate nello schema del problema concreto.
 
 #### Details
-Fanno eccezione soltanto le risposte d'errore delle rotte dell'API senza versione, che restano quelle del loro contratto finché la versione precedente è mantenuta.
-
-Origine: baseline Reqvire «Problem Details for error responses», adattata: i `type` sono riferimenti relativi `/problems/<nome>` non risolti dal backend e documentati in `ambrogio-docs`, e la versione precedente dell'API conserva i propri corpi d'errore.
+Origine: baseline Reqvire «Problem Details for error responses», adattata: i `type` sono riferimenti relativi `/problems/<nome>` non risolti dal backend e documentati in `ambrogio-docs`.
 
 #### Metadata
   * type: requirement
-
-#### Contract References
-  * [Versioni dell'API HTTP pubblica](../Contracts/HttpApi.md#versioni-dellapi-http-pubblica)
 
 #### Relations
   * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
@@ -104,43 +99,6 @@ Regola di interpretazione dell'API HTTP valida per ogni client che la usa. `titl
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
-### Lettura HTTP dell'elenco conversazioni nell'API senza versione
-
-Finché una release di un client conversazionale usa l'API HTTP senza versione, quando un client consulta l'elenco delle conversazioni conservate con quella API il backend deve restituire una pagina dell'elenco secondo il contratto dell'elenco nell'API senza versione.
-
-#### Details
-Versione precedente di «Lettura HTTP dell'elenco conversazioni», mantenuta secondo «Compatibilità fra release per versione d'interfaccia»: usa lo stesso caso d'uso, gli stessi schemi e la stessa traduzione della pagina, e cambia soltanto percorso e rappresentazione degli errori.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Pagine dell'elenco conversazioni](../Contracts/FamilyConversation.md#pagine-dellelenco-conversazioni)
-  * [Versioni dell'API HTTP pubblica](../Contracts/HttpApi.md#versioni-dellapi-http-pubblica)
-
-#### Relations
-  * satisfiedBy: [list-conversations.unversioned-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.unversioned-route.adapter.ts)
-  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
----
-
-### Lettura HTTP dello storico conversazionale nell'API senza versione
-
-Finché una release di un client conversazionale usa l'API HTTP senza versione, quando un client consulta una conversazione conservata con quella API il backend deve restituire lo storico secondo il contratto dello storico nell'API senza versione.
-
-#### Details
-Versione precedente di «Lettura HTTP dello storico conversazionale», mantenuta secondo «Compatibilità fra release per versione d'interfaccia»: usa lo stesso caso d'uso, gli stessi schemi e la stessa traduzione dello storico, e cambia soltanto percorso e rappresentazione degli errori.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Versioni dell'API HTTP pubblica](../Contracts/HttpApi.md#versioni-dellapi-http-pubblica)
-
-#### Relations
-  * satisfiedBy: [get-conversation.unversioned-route.adapter.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.unversioned-route.adapter.ts)
-  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
----
-
 ### Mappatura HTTP esplicita degli esiti previsti per operazione
 
 Quando un'operazione HTTP invoca un caso d'uso con esiti negativi previsti, la registrazione della rotta deve mappare esplicitamente ogni variante dell'unione chiusa in un Problem Details dichiarato da quell'operazione, scegliendone il significato pubblico e soltanto campi sicuri dichiarati, senza una tabella globale dai tipi interni agli stati e senza lanciare gli esiti previsti come eccezioni; Domain e Application non devono contenere stati HTTP, header, tipi di problema o oggetti di risposta.
@@ -168,9 +126,9 @@ Origine: baseline Reqvire «Explicit HTTP mapping of expected outcomes per opera
 Il backend deve esporre la propria API HTTP pubblica sotto un namespace con la versione maggiore nel percorso, `/api/v1/`, con un ciclo di versione indipendente da quello del protocollo conversazionale.
 
 #### Details
-La sessione conversazionale resta sul percorso `/api/session`, fuori dal namespace versionato, ed è versionata dal sottoprotocollo `ambrogio.v1`. Le rotte senza versione nel percorso restano come versione precedente dell'API, secondo «Compatibilità fra release per versione d'interfaccia».
+La sessione conversazionale resta sul percorso `/api/session`, fuori dal namespace versionato, ed è versionata dal sottoprotocollo `ambrogio.v1`. Un cambio incompatibile dell'API cambia la versione nel percorso e si fa nella stessa modifica dei client che la usano, senza mantenere la versione precedente, secondo «Compatibilità fra release per versione d'interfaccia»; un percorso sotto `/api` senza versione non ha rotte e riceve la risposta della rotta inesistente.
 
-Origine: baseline Reqvire «API namespace and major version in the path», adattata: la sessione WebSocket non entra nel namespace versionato perché la versiona il sottoprotocollo, e la versione precedente senza namespace resta disponibile come elemento distinto.
+Origine: baseline Reqvire «API namespace and major version in the path», adattata: la sessione WebSocket non entra nel namespace versionato perché la versiona il sottoprotocollo.
 
 #### Metadata
   * type: requirement

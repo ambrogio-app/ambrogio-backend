@@ -36,7 +36,7 @@ try {
     MISTRAL_API_KEY: 'startup-test-key' }, createBaseLogger());
   try {
     await listen(runtime);
-    const response = await fetch(`http://127.0.0.1:${address.port}/api/conversations`);
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/v1/conversations`);
     const body = await response.json();
     if (response.status !== 200 || !Array.isArray(body.items)) {
       throw new Error(`Unexpected HTTP response: ${response.status}`);

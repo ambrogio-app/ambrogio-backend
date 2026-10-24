@@ -188,15 +188,13 @@ describe('HTTP surface of the conversation server', () => {
   });
 
   // Verification: Prova della struttura della superficie HTTP
-  it('registers only the routes of its aggregators, versioned except the session and the previous API', async () => {
+  it('registers only the routes of its aggregators, versioned except the session', async () => {
     const { server } = await composed();
     await server.ready();
     const write = ['POST', 'PUT', 'PATCH', 'DELETE'] as const;
     const expected: Array<readonly [string, string]> = [
       ...['GET', 'HEAD', ...write].map(method => [method, '/api/v1/conversations'] as const),
       ...['GET', 'HEAD', ...write].map(method => [method, '/api/v1/conversations/:conversationId'] as const),
-      ['GET', '/api/conversations'], ['HEAD', '/api/conversations'],
-      ['GET', '/api/conversations/:conversationId'], ['HEAD', '/api/conversations/:conversationId'],
       ['GET', '/api/session'], ['HEAD', '/api/session'],
       // The CORS preflight of the technical factory.
       ['OPTIONS', '*'],
@@ -208,17 +206,13 @@ describe('HTTP surface of the conversation server', () => {
     expect(routes.sort()).toEqual(expected.map(([method, url]) => `${method} ${url}`).sort());
     for (const route of routes) {
       const url = route.split(' ')[1]!;
-      expect(url.startsWith('/api/v1/') || ['/api/session', '*'].includes(url) || url.startsWith('/api/conversations'),
-        route)
-        .toBe(true);
+      expect(url.startsWith('/api/v1/') || ['/api/session', '*'].includes(url), route).toBe(true);
     }
 
-    // The previous API answers with the same successful bodies.
-    for (const url of ['/conversations', '/conversations/c-1']) {
-      const current = await server.inject({ method: 'GET', url: `/api/v1${url}` });
-      const previous = await server.inject({ method: 'GET', url: `/api${url}` });
-      expect(previous.statusCode).toBe(200);
-      expect(previous.json()).toEqual(current.json());
+    // No previous API is kept: paths without a version are routes that do not exist.
+    for (const url of ['/api/conversations', '/api/conversations/c-1', '/api/conversations?limit=1']) {
+      expect((await server.inject({ method: 'GET', url: `/api/v1${url.slice(4)}` })).statusCode).toBe(200);
+      expectProblem(await server.inject({ method: 'GET', url }), 404, problems.notFound);
     }
   });
 

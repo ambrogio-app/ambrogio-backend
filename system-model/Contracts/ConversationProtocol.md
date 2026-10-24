@@ -14,7 +14,7 @@ Chat testuale e voce usano un unico protocollo conversazionale di Ambrogio, `amb
 - La definizione macchina dei messaggi è uno schema JSON versionato nel repository backend.
 - Il protocollo ammette messaggi del server non legati a un turno, con una regola di risposta esplicita del client, senza una dichiarazione preventiva delle capacità del client.
 - Le regole su ammissione atomica per conversazione, completamento dopo disconnessione, esiti conservati, diagnostica, configurazione e lingua sono definite dai rispettivi contratti e valgono per ogni client del protocollo.
-- Un cambio incompatibile del protocollo segue «Compatibilità fra release per versione d'interfaccia»: introduce una nuova versione maggiore del protocollo, e la versione precedente resta un elemento distinto del modello del backend finché un client la usa.
+- Un cambio incompatibile del protocollo segue «Compatibilità fra release per versione d'interfaccia»: cambia la versione maggiore nel nome del sottoprotocollo e si fa nella stessa modifica dei client che lo usano, rilasciati insieme al backend; il backend non conserva la versione precedente del protocollo.
 
 #### Documentazione utente
 Un cambiamento del protocollo aggiorna nello stesso lavoro la documentazione utente secondo «Documentazione utente aggiornata con i cambiamenti pubblici».

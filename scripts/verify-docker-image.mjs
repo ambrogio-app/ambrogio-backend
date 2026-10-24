@@ -166,7 +166,7 @@ try {
     const published = docker('port', container, `${port}/tcp`);
     const hostPort = Number(published.match(/:(\d+)$/)?.[1]);
     if (!Number.isSafeInteger(hostPort)) throw new Error(`Unexpected published port: ${published}`);
-    const url = `http://127.0.0.1:${hostPort}/api/conversations`;
+    const url = `http://127.0.0.1:${hostPort}/api/v1/conversations`;
     let response;
     for (let attempt = 0; attempt < 50; attempt++) {
       try { response = await fetch(url); break; }

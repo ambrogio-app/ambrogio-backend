@@ -11,8 +11,7 @@ import { SqliteConversationLookup } from '@ambrogio/conversations/adapters/out/s
 import { createConversationSessions } from '@ambrogio/conversations/adapters/in/session/conversation-session';
 import { createProtocolDecoder } from '@ambrogio/conversations/adapters/in/session/protocol-decoder';
 import type { SpeechComponents } from '@ambrogio/conversations/adapters/in/session/speech-components';
-import { conversationApiRoutes, unversionedConversationRoutes,
-  type RouteRegistration } from '@ambrogio/conversations/adapters/in/http/conversation-routes';
+import { conversationApiRoutes, type RouteRegistration } from '@ambrogio/conversations/adapters/in/http/conversation-routes';
 import { createBeginTurn } from '@ambrogio/conversations/application/begin-turn';
 import { createCompleteTurn } from '@ambrogio/conversations/application/complete-turn';
 import { createInterruptPendingTurns } from '@ambrogio/conversations/application/interrupt-pending-turns';
@@ -126,9 +125,4 @@ function consultationDependencies(prepared: PreparedConversations) {
 /** The consultation routes of HTTP API `v1`, for the scope `/api/v1`. */
 export function conversationApiRegistration(prepared: PreparedConversations): RouteRegistration {
   return conversationApiRoutes(consultationDependencies(prepared));
-}
-
-/** The same routes in the API without a version, for the scope `/api`, kept while a client release uses it. */
-export function unversionedConversationRegistration(prepared: PreparedConversations, log: Logger): RouteRegistration {
-  return unversionedConversationRoutes({ ...consultationDependencies(prepared), language: prepared.language, log });
 }

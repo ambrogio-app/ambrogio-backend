@@ -890,6 +890,8 @@ Il backend deve offrire un ingresso di prova pubblico e documentato che avvia il
 #### Details
 Le prove di integrazione dei client conversazionali usano soltanto questo ingresso, dal repository backend affiancato nella cartella di lavoro, compilato nella loro CI dopo il checkout affiancato e senza una revisione fissata. Modulo, funzione e forma dei parametri sono registrati in «Ingresso di prova del server conversazionale».
 
+Origine: baseline Reqvire «Public test entry point for client integration tests», adottata.
+
 #### Concept References
   * [Backend](../../../ambrogio-model/system-model/Thesaurus/Lessico.md#backend)
   * [Client conversazionale](../../../ambrogio-model/system-model/Thesaurus/Lessico.md#client-conversazionale)

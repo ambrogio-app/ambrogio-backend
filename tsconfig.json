@@ -6,7 +6,9 @@
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": true,
+    "types": ["node"]
   },
-  "include": ["packages/**/*.ts"]
+  "include": ["packages/**/*.ts", "apps/**/*.ts", "test/**/*.ts", "vitest.config.ts"],
+  "exclude": ["**/dist/**", "**/node_modules/**"]
 }

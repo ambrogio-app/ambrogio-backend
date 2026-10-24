@@ -268,15 +268,15 @@ Il segnale diagnostico della prima versione è costituito dai log JSON struttura
 
 ### Regole di architettura del backend
 
-Le regole sono definite in `test/repository/architecture-rules.ts` e controllate da `test/repository/import-boundaries.test.ts` sull'intero grafo degli import dei sorgenti e dei test di `apps/*` e `packages/*`, compresi gli import di soli tipi, gli import dinamici e le riesportazioni letti dal testo dei sorgenti senza commenti e stringhe; ogni violazione riporta il nome della regola, il file che importa e lo specificatore o il file raggiunto.
+Le regole sono definite in `test/repository/architecture-rules.ts` e controllate da `test/repository/import-boundaries.spec.ts` sull'intero grafo degli import dei sorgenti e dei test di `apps/*` e `packages/*`, compresi gli import di soli tipi, gli import dinamici e le riesportazioni letti dal testo dei sorgenti senza commenti e stringhe; ogni violazione riporta il nome della regola, il file che importa e lo specificatore o il file raggiunto.
 
 | Nome della regola | Che cosa vieta | Requisiti serviti |
 |---|---|---|
 | `package-isolation` | un file di un package che importa un altro package o un'applicazione del workspace, per nome o con un percorso relativo che esce dal package | «Isolamento degli import dei package business», «Isolamento dei package business dai package tecnici condivisi» |
 | `application-public-exports` | un file di un'applicazione che importa un package con un sottopercorso non dichiarato in `exports`, con un alias `#` o con un percorso relativo che esce dall'applicazione | «Import delle API pubbliche dei package business» |
 | `no-path-aliases` | una configurazione `tsconfig*.json` della radice o di un'unità del workspace che dichiara `paths` | «Import delle API pubbliche dei package business» |
-| `layer-test-imports` | un test di un package fuori da `test/domain`, `test/application`, `test/adapters/in` e `test/adapters/out`, e un test Domain o Application che raggiunge, anche tramite file locali dei test, codice di produzione fuori dai layer ammessi | «Import del codice di produzione nei test Domain», «Import del codice di produzione nei test Application» |
-| `domain-application-own-package` | un file di `src/domain` o `src/application` di un package che importa, anche tramite i file che importa, un modulo diverso da un file esistente in `src/` dello stesso package | «Indipendenza tecnica di Domain e Application nel backend» |
+| `layer-test-imports` | un file di test `*.test.ts` di un'applicazione o di un package; un file `*.spec.ts` di un package che non risiede in `src/domain`, `src/application`, `src/adapters/in` o `src/adapters/out` accanto al file che verifica secondo «Suite di test con Vitest»; un test Domain o Application, cioè accanto a un file di `src/domain` o di `src/application`, che raggiunge, anche tramite i moduli di supporto della cartella `test/` del package, codice di produzione fuori dai layer ammessi | «Import del codice di produzione nei test Domain», «Import del codice di produzione nei test Application» |
+| `domain-application-own-package` | un file di produzione di `src/domain` o `src/application` di un package, esclusi i file `*.spec.ts`, che importa, anche tramite i file che importa, un modulo diverso da un file di produzione esistente in `src/` dello stesso package | «Indipendenza tecnica di Domain e Application nel backend» |
 
 Ogni regola ha almeno una fixture negativa in memoria che produce violazioni soltanto con il nome di quella regola. Un'eccezione è una voce dell'elenco `exceptions` del modulo con il nome della regola, il file che importa, l'import ammesso e il motivo, e ammette soltanto quell'import; ogni voce compare anche in questo contratto con il motivo.
 
@@ -320,6 +320,29 @@ Il codice sorgente del server è scritto in TypeScript. La build del server usa 
 
 #### Relations
   * define: [Preparazione del server TypeScript ESM](../Requirements/ServerFoundation.md#preparazione-del-server-typescript-esm)
+---
+
+### Suite di test del backend
+
+Il backend applica «Suite di test con Vitest» con questi valori.
+
+Le unità con test sono `packages/conversations` e `apps/server`: i loro test risiedono in `src/` accanto ai file che verificano. Le cartelle `test/` dedicate sono:
+
+- `packages/conversations/test/support/`, con la fixture dei file di configurazione;
+- `apps/server/test/support/`, con la fixture dei file di configurazione, la fixture del server di sessione, il client del protocollo `ambrogio.v1` e la vista Ajv dello schema pubblicato usata dalle asserzioni;
+- `apps/server/test/protocol/`, con il test dello schema `protocol/ambrogio-v1.schema.json` che il server pubblica;
+- `apps/server/test/examples/`, con i test delle configurazioni d'esempio di `examples/`;
+- `test/repository/`, con i test dell'intero repository: regole di architettura e loro fixture negative, indipendenza tecnica di Domain e Application, tipo `Result`, workflow e hook pre-commit.
+
+La selezione `integration` contiene i test degli adapter di `packages/conversations/src/adapters/out/sqlite/` che aprono un database SQLite reale con `better-sqlite3`; ogni file `*.integration.spec.ts` importa `better-sqlite3` e ogni test di un adapter SQLite che lo importa è un file `*.integration.spec.ts`. Le prove dell'applicazione server che attraversano l'archivio SQLite verificano composizione e runtime, non un adapter, e restano nella selezione `fast`. Il backend non ha file `*.e2e.spec.ts` e non dichiara lo script `test:e2e`.
+
+Gli script sono `test`, `vitest run --project fast`, e `test:integration`, `vitest run --project integration`. Il `package.json` della radice dichiara `"type": "module"`; il `tsconfig.json` della radice, usato da `pnpm typecheck` con `tsc --noEmit`, comprende `packages/**/*.ts`, `apps/**/*.ts`, `test/**/*.ts` e `vitest.config.ts`, escluse le cartelle `dist/` e `node_modules/`. Poiché l'applicazione server e i suoi test importano i package del workspace dalla loro `dist/`, la build precede il controllo TypeScript nella CI e in `pnpm verify`. Il `tsconfig.build.json` di ciascuna unità esclude `src/**/*.spec.ts`, e `.dockerignore` esclude `**/*.spec.ts` e le cartelle `test/`.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Vitest come runner del backend](../Requirements/ServerFoundation.md#vitest-come-runner-del-backend)
 ---
 
 ### Vincolo sui campi dei rifiuti previsti

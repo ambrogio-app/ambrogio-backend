@@ -1,7 +1,7 @@
 import { ProjectError } from '../project-error.js';
 import { Turn, type Result } from '../domain/turn.js';
-import type { AdmissionRejection, ConversationWrite } from './conversation-write.js';
-import type { CurrentTime, NewIdentifier } from './turn-capabilities.js';
+import type { AdmissionRejection, ConversationWrite } from './conversation-write.port.js';
+import type { CurrentTime, NewIdentifier } from './turn-capabilities.port.js';
 
 export type BeginTurnInput = Readonly<{ text: string; conversationId?: string }>;
 export type BeginTurnSuccess = Readonly<{ conversationId: string; turnId: string; acceptedAt: Date }>;

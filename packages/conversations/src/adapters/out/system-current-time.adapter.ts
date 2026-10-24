@@ -1,4 +1,4 @@
-import type { CurrentTime } from '../../application/turn-capabilities.js';
+import type { CurrentTime } from '../../application/turn-capabilities.port.js';
 
 export class SystemCurrentTime implements CurrentTime {
   now(): Date {

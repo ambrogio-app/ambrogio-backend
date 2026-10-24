@@ -1,7 +1,7 @@
 import { ProjectError } from '../project-error.js';
 import type { Result } from '../domain/turn.js';
-import type { CompleteTurn, ConversationWrite, TurnNotActive } from './conversation-write.js';
-import type { CurrentTime } from './turn-capabilities.js';
+import type { CompleteTurn, ConversationWrite, TurnNotActive } from './conversation-write.port.js';
+import type { CurrentTime } from './turn-capabilities.port.js';
 
 export type CompleteTurnInput = Readonly<{ turnId: string; outcome: CompleteTurn['outcome'] }>;
 export type CompleteTurnSuccess = Readonly<{ turnId: string; status: 'answered' | 'failed' | 'interrupted' }>;

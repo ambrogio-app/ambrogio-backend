@@ -194,7 +194,7 @@ Origine: baseline Reqvire «Interrupted state persisted before closing resources
 Il backend deve offrire `pnpm verify` secondo «Comando di verifica completo con pnpm», con i comandi dei controlli successivi all'installazione nell'ordine del job `Backend checks` della CI.
 
 #### Details
-I comandi del punto 5 del contratto sono, in quest'ordine, `pnpm typecheck`, `pnpm build` e `pnpm test`; la build precede i test perché i package del workspace esportano la propria cartella `dist/`. La suite di test prova l'hook pre-commit e richiede gitleaks nel `PATH`.
+I comandi del punto 5 del contratto sono, in quest'ordine, `pnpm build`, `pnpm typecheck`, `pnpm test` e `pnpm test:integration`; la build precede il controllo TypeScript e i test perché i package del workspace esportano la propria cartella `dist/`, che l'applicazione server e i suoi test importano. La suite di test prova l'hook pre-commit e richiede gitleaks nel `PATH`.
 
 #### Metadata
   * type: requirement
@@ -265,7 +265,7 @@ Quando un `catch` del server aggiunge un contesto operativo concreto a un guasto
 
 ### Controlli CI delle modifiche funzionali del server
 
-Quando la CI del backend viene eseguita, il job `Backend checks` di `.github/workflows/ci.yml` deve eseguire il checkout del repository in `workspace/ambrogio-backend`, scaricare affiancati gli altri repository del modello con `ambrogio-model/scripts/checkout-workspace`, eseguire `ambrogio-model/scripts/model-checks` sulla cartella `workspace` e poi, nella cartella del backend, l'installazione delle dipendenze, l'audit delle dipendenze, il controllo TypeScript, la build e la suite backend con Vitest, comprendente prove degli adapter di persistenza su SQLite reale quando tali adapter esistono e la prova dell'hook dei segreti con lo scanner installato e verificato, e deve fallire se uno di questi controlli fallisce.
+Quando la CI del backend viene eseguita, il job `Backend checks` di `.github/workflows/ci.yml` deve eseguire il checkout del repository in `workspace/ambrogio-backend`, scaricare affiancati gli altri repository del modello con `ambrogio-model/scripts/checkout-workspace`, eseguire `ambrogio-model/scripts/model-checks` sulla cartella `workspace` e poi, nella cartella del backend, l'installazione delle dipendenze, l'audit delle dipendenze, la build, il controllo TypeScript e la suite backend con Vitest nella selezione veloce, con la prova dell'hook dei segreti e lo scanner installato e verificato, e nella selezione di integrazione, con le prove degli adapter di persistenza su SQLite reale quando tali adapter esistono, e deve fallire se uno di questi controlli fallisce.
 
 #### Details
 Origine: baseline Reqvire «Persistence adapter tests against a real database», adottata.
@@ -401,7 +401,7 @@ Origine: baseline Reqvire «Use case declarations in a single file», adottata.
   * type: requirement
 
 #### Contract References
-  * [Convenzione dei nomi di casi d'uso e adapter](../../../ambrogio-model/system-model/Contracts/CodeArchitecture.md#convenzione-dei-nomi-di-casi-duso-e-adapter)
+  * [Convenzione dei nomi di casi d'uso, porte e adapter](../../../ambrogio-model/system-model/Contracts/CodeArchitecture.md#convenzione-dei-nomi-di-casi-duso-porte-e-adapter)
 
 #### Relations
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
@@ -930,22 +930,23 @@ Quando il logger del server HTTP emette un evento diagnostico, la riga JSON deve
 
 ### Nomi dei file secondo il ruolo architetturale nel backend
 
-I file del codice di produzione dell'applicazione server e dei package business del backend devono seguire «Convenzione dei nomi di casi d'uso e adapter».
+I file del codice di produzione dell'applicazione server e dei package business del backend devono seguire «Convenzione dei nomi di casi d'uso, porte e adapter».
 
 #### Details
-Esempi nel backend: il caso d'uso che scambia un turno si chiama `exchange-turn.use-case.ts`; l'implementazione SQLite di una porta di lettura dello storico si chiama `sqlite-conversation-history-read.adapter.ts`. Le regole sulla dichiarazione di firme, factory ed esiti restano applicabili nel loro ambito.
+Esempi nel backend: il caso d'uso che scambia un turno si chiama `exchange-turn.use-case.ts`; la porta di lettura dello storico si chiama `conversation-history-read.port.ts` e la sua implementazione SQLite `sqlite-conversation-history-read.adapter.ts`. Le regole sulla dichiarazione di firme, factory ed esiti restano applicabili nel loro ambito.
 
 #### Metadata
   * type: requirement
 
 #### Contract References
-  * [Convenzione dei nomi di casi d'uso e adapter](../../../ambrogio-model/system-model/Contracts/CodeArchitecture.md#convenzione-dei-nomi-di-casi-duso-e-adapter)
+  * [Convenzione dei nomi di casi d'uso, porte e adapter](../../../ambrogio-model/system-model/Contracts/CodeArchitecture.md#convenzione-dei-nomi-di-casi-duso-porte-e-adapter)
 
 #### Relations
   * derivedFrom: [Nomi dei file secondo il ruolo architetturale](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#nomi-dei-file-secondo-il-ruolo-architetturale)
   * satisfiedBy: [session-route.adapter.ts](../../apps/server/src/adapters/in/session-route.adapter.ts)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
+  * satisfiedBy: [conversation-history-read.port.ts](../../packages/conversations/src/application/conversation-history-read.port.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
@@ -1293,14 +1294,17 @@ Quando un adapter inbound del server rappresenta un rifiuto di un caso d'uso, de
 
 ### Vitest come runner del backend
 
-Quando la suite automatica del backend esegue le verifiche implementate nei package e nell'app server, deve usare Vitest come runner.
-
-#### Details
-Origine: baseline Reqvire «Vitest as test runner», adattata: i test sono file `*.test.ts` sotto `test/<layer>/` invece di file `*.spec.ts` accanto al codice.
+Quando la suite automatica del backend esegue le verifiche dei package business, dell'applicazione server e del repository, deve usare Vitest come unico runner con i test accanto al codice e le selezioni del contratto «Suite di test del backend».
 
 #### Metadata
   * type: requirement
 
+#### Contract References
+  * [Suite di test con Vitest](../../../ambrogio-model/system-model/Contracts/CodeArchitecture.md#suite-di-test-con-vitest)
+
 #### Relations
+  * derivedFrom: [Suite di test con Vitest accanto al codice](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#suite-di-test-con-vitest-accanto-al-codice)
+  * satisfiedBy: [package.json](../../package.json)
+  * satisfiedBy: [vitest.config.ts](../../vitest.config.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---

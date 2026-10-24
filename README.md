@@ -156,10 +156,14 @@ The code follows a ports-and-adapters design. Domain and application logic do no
 ## Development
 
 ```bash
-pnpm test        # Vitest suite, including real SQLite adapters
+pnpm build              # the server application and its tests import the packages from their dist/
 pnpm typecheck
-pnpm build
+pnpm test               # fast Vitest selection
+pnpm test:integration   # SQLite adapters against a real database
+pnpm verify             # every check of the CI, in the same order
 ```
+
+Tests sit next to the file they verify as `*.spec.ts`; adapter tests against a real SQLite database end with `*.integration.spec.ts`. Shared test helpers live in the `test/support/` folder of each package or application, and the tests of the whole repository in `test/repository/`.
 
 Secrets must never enter the history. CI scans the whole history with [gitleaks](https://github.com/gitleaks/gitleaks) 8.30.1 on every push and pull request, and no image is published if the scan fails. Locally, a versioned pre-commit hook runs gitleaks on staged changes. Install gitleaks 8.30.1 on your `PATH` and enable the hook once per clone:
 

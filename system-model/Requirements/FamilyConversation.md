@@ -421,8 +421,8 @@ Origine: baseline Reqvire «Separate read contracts for queries», adottata.
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [conversation-history-read.ts](../../packages/conversations/src/application/conversation-history-read.ts)
-  * satisfiedBy: [conversation-list-read.ts](../../packages/conversations/src/application/conversation-list-read.ts)
+  * satisfiedBy: [conversation-history-read.port.ts](../../packages/conversations/src/application/conversation-history-read.port.ts)
+  * satisfiedBy: [conversation-list-read.port.ts](../../packages/conversations/src/application/conversation-list-read.port.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
@@ -437,7 +437,7 @@ Origine: baseline Reqvire «Dedicated write contract without universal CRUD», a
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [conversation-write.ts](../../packages/conversations/src/application/conversation-write.ts)
+  * satisfiedBy: [conversation-write.port.ts](../../packages/conversations/src/application/conversation-write.port.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
@@ -660,7 +660,7 @@ Quando Application del modulo «Conversazioni» dichiara una porta outbound a og
 
 #### Relations
   * derivedFrom: [Forma TypeScript dei contratti Application](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#forma-typescript-dei-contratti-application)
-  * satisfiedBy: [conversation-write.ts](../../packages/conversations/src/application/conversation-write.ts)
+  * satisfiedBy: [conversation-write.port.ts](../../packages/conversations/src/application/conversation-write.port.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -989,7 +989,7 @@ Quando Application del modulo «Conversazioni» dichiara una porta verso una cap
 
 #### Relations
   * derivedFrom: [Contratti Application nei termini del componente](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#contratti-application-nei-termini-del-componente)
-  * satisfiedBy: [turn-capabilities.ts](../../packages/conversations/src/application/turn-capabilities.ts)
+  * satisfiedBy: [turn-capabilities.port.ts](../../packages/conversations/src/application/turn-capabilities.port.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -1387,8 +1387,8 @@ Quando la voce è abilitata con profili vocali per lingua, Ambrogio deve selezio
 #### Relations
   * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
   * satisfiedBy: [voice.ts](../../examples/voice.ts)
+  * satisfiedBy: [voice-config.spec.ts](../../packages/conversations/src/adapters/out/voice-config.spec.ts)
   * satisfiedBy: [voice-config.ts](../../packages/conversations/src/adapters/out/voice-config.ts)
-  * satisfiedBy: [voice-config.test.ts](../../packages/conversations/test/adapters/out/voice-config.test.ts)
   * specify: [Conversazione a voce](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-a-voce)
 ---
 

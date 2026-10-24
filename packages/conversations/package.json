@@ -27,20 +27,20 @@
       "import": "./dist/application/exchange-turn.use-case.js"
     },
     "./application/produce-conversation-reply": {
-      "types": "./dist/application/produce-conversation-reply.d.ts",
-      "import": "./dist/application/produce-conversation-reply.js"
+      "types": "./dist/application/produce-conversation-reply.port.d.ts",
+      "import": "./dist/application/produce-conversation-reply.port.js"
     },
     "./application/conversation-write": {
-      "types": "./dist/application/conversation-write.d.ts",
-      "import": "./dist/application/conversation-write.js"
+      "types": "./dist/application/conversation-write.port.d.ts",
+      "import": "./dist/application/conversation-write.port.js"
     },
     "./application/conversation-history-read": {
-      "types": "./dist/application/conversation-history-read.d.ts",
-      "import": "./dist/application/conversation-history-read.js"
+      "types": "./dist/application/conversation-history-read.port.d.ts",
+      "import": "./dist/application/conversation-history-read.port.js"
     },
     "./application/conversation-list-read": {
-      "types": "./dist/application/conversation-list-read.d.ts",
-      "import": "./dist/application/conversation-list-read.js"
+      "types": "./dist/application/conversation-list-read.port.d.ts",
+      "import": "./dist/application/conversation-list-read.port.js"
     },
     "./application/get-conversation": {
       "types": "./dist/application/get-conversation.use-case.d.ts",
@@ -51,8 +51,8 @@
       "import": "./dist/application/list-conversations.use-case.js"
     },
     "./application/turn-capabilities": {
-      "types": "./dist/application/turn-capabilities.d.ts",
-      "import": "./dist/application/turn-capabilities.js"
+      "types": "./dist/application/turn-capabilities.port.d.ts",
+      "import": "./dist/application/turn-capabilities.port.js"
     },
     "./adapters/out/sqlite/migrations": {
       "types": "./dist/adapters/out/sqlite/migrations.d.ts",

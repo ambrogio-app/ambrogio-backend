@@ -1,14 +1,17 @@
 {
   "name": "ambrogio-backend",
   "private": true,
+  "type": "module",
   "packageManager": "pnpm@12.11.2",
   "scripts": {
     "build": "tsc -p packages/conversations/tsconfig.build.json && tsc -p apps/server/tsconfig.build.json",
-    "test": "vitest run",
+    "test": "vitest run --project fast",
+    "test:integration": "vitest run --project integration",
     "typecheck": "tsc --noEmit",
-    "verify": "../ambrogio-model/scripts/model-checks && pnpm install --frozen-lockfile && pnpm audit --audit-level high && pnpm typecheck && pnpm build && pnpm test"
+    "verify": "../ambrogio-model/scripts/model-checks && pnpm install --frozen-lockfile && pnpm audit --audit-level high && pnpm build && pnpm typecheck && pnpm test && pnpm test:integration"
   },
   "devDependencies": {
+    "@types/node": "24.19.2",
     "typescript": "7.0.2",
     "vitest": "5.0.4"
   }

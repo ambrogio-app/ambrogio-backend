@@ -12,7 +12,7 @@ La prova passa se ogni caso riceve una trasmissione del messaggio pubblico nel t
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](ConversationProtocol.md#verifica-del-protocollo-conversazionale)
-  * satisfiedBy: [session-rejections.test.ts](../../apps/server/test/runtime/session-rejections.test.ts)
+  * satisfiedBy: [http-server.session-rejections.spec.ts](../../apps/server/src/runtime/http-server.session-rejections.spec.ts)
   * verify: [Rifiuto del turno prima dell'ammissione](../Requirements/FamilyConversation.md#rifiuto-del-turno-prima-dellammissione)
 ---
 
@@ -28,7 +28,7 @@ La prova passa se la chiusura di una sessione rilascia soltanto le sue risorse: 
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](ConversationProtocol.md#verifica-del-protocollo-conversazionale)
-  * satisfiedBy: [session-lifecycle.test.ts](../../apps/server/test/runtime/session-lifecycle.test.ts)
+  * satisfiedBy: [conversation-server.session-lifecycle.spec.ts](../../apps/server/src/runtime/conversation-server.session-lifecycle.spec.ts)
   * verify: [Chiusura della sessione conversazionale](../Requirements/FamilyConversation.md#chiusura-della-sessione-conversazionale)
   * verify: [Creazione della conversazione all'ammissione del turno](../Requirements/FamilyConversation.md#creazione-della-conversazione-allammissione-del-turno)
 ---
@@ -45,7 +45,7 @@ La prova passa se `turn.completed` arriva una sola volta come ultimo messaggio d
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](ConversationProtocol.md#verifica-del-protocollo-conversazionale)
-  * satisfiedBy: [session-turns.test.ts](../../apps/server/test/runtime/session-turns.test.ts)
+  * satisfiedBy: [http-server.session-turns.spec.ts](../../apps/server/src/runtime/http-server.session-turns.spec.ts)
   * verify: [Conferma del completamento del turno](../Requirements/FamilyConversation.md#conferma-del-completamento-del-turno)
 ---
 
@@ -61,8 +61,8 @@ La prova passa se l'agente produce il booleano strutturato `expectsReply` durant
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](ConversationProtocol.md#verifica-del-protocollo-conversazionale)
-  * satisfiedBy: [session-turns.test.ts](../../apps/server/test/runtime/session-turns.test.ts)
-  * satisfiedBy: [exchange-turn.test.ts](../../packages/conversations/test/application/exchange-turn.test.ts)
+  * satisfiedBy: [http-server.session-turns.spec.ts](../../apps/server/src/runtime/http-server.session-turns.spec.ts)
+  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
   * verify: [Determinazione della replica attesa](../Requirements/FamilyConversation.md#determinazione-della-replica-attesa)
   * verify: [Segnalazione della replica attesa](../Requirements/FamilyConversation.md#segnalazione-della-replica-attesa)
 ---
@@ -79,7 +79,7 @@ La prova passa se, dopo `turn.accepted`, il server apre una trasmissione con `ou
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](ConversationProtocol.md#verifica-del-protocollo-conversazionale)
-  * satisfiedBy: [session-turns.test.ts](../../apps/server/test/runtime/session-turns.test.ts)
+  * satisfiedBy: [http-server.session-turns.spec.ts](../../apps/server/src/runtime/http-server.session-turns.spec.ts)
   * verify: [Trasmissione progressiva della risposta del turno](../Requirements/FamilyConversation.md#trasmissione-progressiva-della-risposta-del-turno)
 ---
 
@@ -103,7 +103,7 @@ La prova passa se ogni turno nasce in elaborazione, raggiunge una sola volta uno
 
 #### Relations
   * derivedFrom: [Verifica degli invarianti dei turni](#verifica-degli-invarianti-dei-turni)
-  * satisfiedBy: [turn.test.ts](../../packages/conversations/test/domain/turn.test.ts)
+  * satisfiedBy: [turn.spec.ts](../../packages/conversations/src/domain/turn.spec.ts)
   * verify: [Integrità dello stato del turno nel Domain](../Requirements/FamilyConversation.md#integrità-dello-stato-del-turno-nel-domain)
 ---
 
@@ -144,7 +144,7 @@ La prova passa se `HassTurnOff`, `GetLiveContext` e `_private` sono offerti con 
 
 #### Relations
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
-  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
   * verify: [Nomi degli strumenti MCP offerti al modello](../Requirements/FamilyConversation.md#nomi-degli-strumenti-mcp-offerti-al-modello)
 ---
 
@@ -160,7 +160,7 @@ La prova passa se ogni richiesta MCP dell'agente autenticato invia `Authorizatio
 
 #### Relations
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
-  * satisfiedBy: [mcp-tool-client.test.ts](../../packages/conversations/test/adapters/out/mcp-tool-client.test.ts)
+  * satisfiedBy: [mcp-tool-client.spec.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.spec.ts)
   * verify: [Autenticazione Bearer del client MCP](../Requirements/FamilyConversation.md#autenticazione-bearer-del-client-mcp)
 ---
 
@@ -176,7 +176,7 @@ La prova passa se ogni agente riceve soltanto l'endpoint MCP definito nel propri
 
 #### Relations
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
-  * satisfiedBy: [mcp-tool-client.test.ts](../../packages/conversations/test/adapters/out/mcp-tool-client.test.ts)
+  * satisfiedBy: [mcp-tool-client.spec.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.spec.ts)
   * verify: [Client MCP comune ai connettori](../Requirements/FamilyConversation.md#client-mcp-comune-ai-connettori)
   * verify: [Configurazione MCP dell'agente specializzato](../Requirements/FamilyConversation.md#configurazione-mcp-dellagente-specializzato)
   * verify: [Trasporto HTTP dei connettori MCP](../Requirements/FamilyConversation.md#trasporto-http-dei-connettori-mcp)
@@ -194,7 +194,7 @@ La prova passa se ciascun agente usa il proprio limite, nessuna chiamata viene i
 
 #### Relations
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
-  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
   * verify: [Limite delle chiamate agli strumenti per agente](../Requirements/FamilyConversation.md#limite-delle-chiamate-agli-strumenti-per-agente)
 ---
 
@@ -210,7 +210,7 @@ La prova passa se il file è accettato senza modifiche come agente specializzato
 
 #### Relations
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
-  * satisfiedBy: [home-assistant-example.test.ts](../../apps/server/test/runtime/home-assistant-example.test.ts)
+  * satisfiedBy: [home-assistant-example.spec.ts](../../apps/server/test/examples/home-assistant-example.spec.ts)
   * verify: [Configurazione pronta del connettore Home Assistant](../Requirements/FamilyConversation.md#configurazione-pronta-del-connettore-home-assistant)
 ---
 
@@ -226,7 +226,7 @@ La prova passa se al primo avvio l'orchestratore può scegliere il primo agente,
 
 #### Relations
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
-  * satisfiedBy: [agents.test.ts](../../apps/server/test/composition/agents.test.ts)
+  * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
   * verify: [Disponibilità degli agenti dai moduli TypeScript](../Requirements/FamilyConversation.md#disponibilità-degli-agenti-dai-moduli-typescript)
 ---
 
@@ -242,9 +242,9 @@ La prova passa se l'agente senza `mcp.tools` riceve tutti e quattro gli strument
 
 #### Relations
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
-  * satisfiedBy: [agents.test.ts](../../apps/server/test/composition/agents.test.ts)
-  * satisfiedBy: [agent-config.test.ts](../../apps/server/test/runtime/agent-config.test.ts)
-  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
+  * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
+  * satisfiedBy: [agent-config.spec.ts](../../apps/server/src/runtime/agent-config.spec.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
   * verify: [Rifiuto dell'avvio con uno strumento MCP elencato non disponibile](../Requirements/FamilyConversation.md#rifiuto-dellavvio-con-uno-strumento-mcp-elencato-non-disponibile)
   * verify: [Selezione degli strumenti MCP offerti all'agente](../Requirements/FamilyConversation.md#selezione-degli-strumenti-mcp-offerti-allagente)
 ---
@@ -261,9 +261,9 @@ La prova passa se la prima directory viene caricata con entrambi gli agenti disp
 
 #### Relations
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
-  * satisfiedBy: [agents.test.ts](../../apps/server/test/composition/agents.test.ts)
-  * satisfiedBy: [agent-config.test.ts](../../apps/server/test/runtime/agent-config.test.ts)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
+  * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
+  * satisfiedBy: [agent-config.spec.ts](../../apps/server/src/runtime/agent-config.spec.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
   * verify: [Agente specializzato senza connettore MCP](../Requirements/FamilyConversation.md#agente-specializzato-senza-connettore-mcp)
   * verify: [Disponibilità degli agenti dai moduli TypeScript](../Requirements/FamilyConversation.md#disponibilità-degli-agenti-dai-moduli-typescript)
 ---
@@ -280,9 +280,9 @@ La prova passa se all'avvio il backend conserva soltanto il prompt senza argomen
 
 #### Relations
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
-  * satisfiedBy: [agents.test.ts](../../apps/server/test/composition/agents.test.ts)
-  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
-  * satisfiedBy: [mcp-tool-client.test.ts](../../packages/conversations/test/adapters/out/mcp-tool-client.test.ts)
+  * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
+  * satisfiedBy: [mcp-tool-client.spec.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.spec.ts)
   * verify: [Istruzioni del server MCP per l'agente](../Requirements/FamilyConversation.md#istruzioni-del-server-mcp-per-lagente)
 ---
 
@@ -298,8 +298,8 @@ La prova passa se il client ottiene un token con `client_credentials` senza logi
 
 #### Relations
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
-  * satisfiedBy: [agent-config.test.ts](../../apps/server/test/runtime/agent-config.test.ts)
-  * satisfiedBy: [mcp-tool-client.test.ts](../../packages/conversations/test/adapters/out/mcp-tool-client.test.ts)
+  * satisfiedBy: [agent-config.spec.ts](../../apps/server/src/runtime/agent-config.spec.ts)
+  * satisfiedBy: [mcp-tool-client.spec.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.spec.ts)
   * verify: [Autenticazione OAuth tra servizi del client MCP](../Requirements/FamilyConversation.md#autenticazione-oauth-tra-servizi-del-client-mcp)
 ---
 
@@ -530,8 +530,8 @@ La prova passa se `tsc` termina con stato 0 senza diagnostiche e se ogni import 
 
 #### Relations
   * derivedFrom: [Verifica dell'organizzazione delle conversazioni](#verifica-dellorganizzazione-delle-conversazioni)
-  * satisfiedBy: [domain-application-independence.test.ts](../../test/repository/domain-application-independence.test.ts)
-  * satisfiedBy: [import-boundaries.test.ts](../../test/repository/import-boundaries.test.ts)
+  * satisfiedBy: [domain-application-independence.spec.ts](../../test/repository/domain-application-independence.spec.ts)
+  * satisfiedBy: [import-boundaries.spec.ts](../../test/repository/import-boundaries.spec.ts)
   * verify: [Indipendenza tecnica di Domain e Application nel backend](../Requirements/FamilyConversation.md#indipendenza-tecnica-di-domain-e-application-nel-backend)
 ---
 
@@ -555,8 +555,8 @@ La prova passa se, finché il turno di A non ha un esito conservato, ogni nuovo 
 
 #### Relations
   * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [session-rejections.test.ts](../../apps/server/test/runtime/session-rejections.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [http-server.session-rejections.spec.ts](../../apps/server/src/runtime/http-server.session-rejections.spec.ts)
   * verify: [Disabilitazione degli ingressi durante un turno](../Requirements/FamilyConversation.md#disabilitazione-degli-ingressi-durante-un-turno)
 ---
 
@@ -572,7 +572,7 @@ Nella stessa conversazione viene ammesso al massimo un turno; gli altri ricevono
 
 #### Relations
   * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
-  * satisfiedBy: [session-rejections.test.ts](../../apps/server/test/runtime/session-rejections.test.ts)
+  * satisfiedBy: [http-server.session-rejections.spec.ts](../../apps/server/src/runtime/http-server.session-rejections.spec.ts)
   * verify: [Elaborazione parallela di conversazioni diverse](../Requirements/FamilyConversation.md#elaborazione-parallela-di-conversazioni-diverse)
   * verify: [Rifiuto dei turni concorrenti nella stessa conversazione](../Requirements/FamilyConversation.md#rifiuto-dei-turni-concorrenti-nella-stessa-conversazione)
   * verify: [Rifiuto del turno nella conversazione occupata](../Requirements/FamilyConversation.md#rifiuto-del-turno-nella-conversazione-occupata)
@@ -590,8 +590,8 @@ La prova passa se il secondo turno è rifiutato subito, non viene conservato e n
 
 #### Relations
   * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [session-rejections.test.ts](../../apps/server/test/runtime/session-rejections.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [http-server.session-rejections.spec.ts](../../apps/server/src/runtime/http-server.session-rejections.spec.ts)
   * verify: [Assenza di accodamento dei turni](../Requirements/FamilyConversation.md#assenza-di-accodamento-dei-turni)
 ---
 
@@ -607,7 +607,7 @@ La prova passa se solo l'ammissione concorrente accertata produce il rifiuto pre
 
 #### Relations
   * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
-  * satisfiedBy: [sqlite-conversation-write.test.ts](../../packages/conversations/test/adapters/out/sqlite-conversation-write.test.ts)
+  * satisfiedBy: [sqlite-conversation-write.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.integration.spec.ts)
   * verify: [Classificazione degli esiti delle scritture conversazionali](../Requirements/FamilyConversation.md#classificazione-degli-esiti-delle-scritture-conversazionali)
 ---
 
@@ -623,7 +623,7 @@ La prova passa se nessuna transazione del turno resta aperta durante l'attesa de
 
 #### Relations
   * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
   * verify: [Transazioni brevi dell'archivio conversazioni](../Requirements/FamilyConversation.md#transazioni-brevi-dellarchivio-conversazioni)
 ---
 
@@ -639,8 +639,8 @@ La prova passa se un errore non lascia transizioni parziali e il chiamante non r
 
 #### Relations
   * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [sqlite-conversation-write.test.ts](../../packages/conversations/test/adapters/out/sqlite-conversation-write.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [sqlite-conversation-write.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.integration.spec.ts)
   * verify: [Scritture atomiche dello stato dei turni](../Requirements/FamilyConversation.md#scritture-atomiche-dello-stato-dei-turni)
 ---
 
@@ -664,7 +664,7 @@ La prova passa se l'ingresso conversazionale si avvia e completa un turno testua
 
 #### Relations
   * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
-  * satisfiedBy: [config-bootstrap.test.ts](../../apps/server/test/runtime/config-bootstrap.test.ts)
+  * satisfiedBy: [conversation-server.config-bootstrap.spec.ts](../../apps/server/src/runtime/conversation-server.config-bootstrap.spec.ts)
   * verify: [Ingressi testuali indipendenti dalla voce](../Requirements/FamilyConversation.md#ingressi-testuali-indipendenti-dalla-voce)
 ---
 
@@ -680,7 +680,7 @@ La prova passa se lo storico conserva solo testo e dati non audio e se nessuna r
 
 #### Relations
   * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
-  * satisfiedBy: [session-lifecycle.test.ts](../../apps/server/test/runtime/session-lifecycle.test.ts)
+  * satisfiedBy: [conversation-server.session-lifecycle.spec.ts](../../apps/server/src/runtime/conversation-server.session-lifecycle.spec.ts)
   * verify: [Conservazione solo testuale della conversazione](../Requirements/FamilyConversation.md#conservazione-solo-testuale-della-conversazione)
 ---
 
@@ -696,8 +696,8 @@ La prova passa se i file validi sono accettati con il motore, la voce e la lingu
 
 #### Relations
   * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
-  * satisfiedBy: [sherpa-synthesizer.test.ts](../../packages/conversations/test/adapters/in/sherpa-synthesizer.test.ts)
-  * satisfiedBy: [voice-config.test.ts](../../packages/conversations/test/adapters/out/voice-config.test.ts)
+  * satisfiedBy: [sherpa-synthesizer.spec.ts](../../packages/conversations/src/adapters/in/session/sherpa-synthesizer.spec.ts)
+  * satisfiedBy: [voice-config.spec.ts](../../packages/conversations/src/adapters/out/voice-config.spec.ts)
   * verify: [Scelta del motore di sintesi vocale](../Requirements/FamilyConversation.md#scelta-del-motore-di-sintesi-vocale)
 ---
 
@@ -708,15 +708,15 @@ Preparare un file con profili italiani e inglesi che indicano percorsi espliciti
 #### Details
 La prova passa se ciascuna lingua seleziona esattamente i percorsi indicati, anche quando provengono da un mount o quando esistono più voci della stessa lingua; il profilo mancante o strutturalmente invalido rende il file invalido, l'altro profilo non carica i modelli, il formato precedente funziona e la voce disabilitata non carica modelli. Fallisce se una lingua carica percorsi diversi da quelli indicati, se un profilo mancante o invalido è accettato o se vengono caricati modelli di un profilo non attivo o della voce disabilitata.
 
-I casi di configurazione sono provati da `voice-config.test.ts`, la selezione dei profili e della voce montata con i modelli dell'immagine da `scripts/verify-docker-image.mjs` e l'avvio senza voce da `config-bootstrap.test.ts`.
+I casi di configurazione sono provati da `voice-config.spec.ts`, la selezione dei profili e della voce montata con i modelli dell'immagine da `scripts/verify-docker-image.mjs` e l'avvio senza voce da `conversation-server.config-bootstrap.spec.ts`.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
-  * satisfiedBy: [config-bootstrap.test.ts](../../apps/server/test/runtime/config-bootstrap.test.ts)
-  * satisfiedBy: [voice-config.test.ts](../../packages/conversations/test/adapters/out/voice-config.test.ts)
+  * satisfiedBy: [conversation-server.config-bootstrap.spec.ts](../../apps/server/src/runtime/conversation-server.config-bootstrap.spec.ts)
+  * satisfiedBy: [voice-config.spec.ts](../../packages/conversations/src/adapters/out/voice-config.spec.ts)
   * satisfiedBy: [verify-docker-image.mjs](../../scripts/verify-docker-image.mjs)
   * verify: [Selezione dei modelli vocali inclusi per lingua](../Requirements/FamilyConversation.md#selezione-dei-modelli-vocali-inclusi-per-lingua)
 ---
@@ -733,7 +733,7 @@ La prova passa se i testi consegnati al motore non contengono asterischi, tilde 
 
 #### Relations
   * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
-  * satisfiedBy: [sherpa-synthesizer.test.ts](../../packages/conversations/test/adapters/in/sherpa-synthesizer.test.ts)
+  * satisfiedBy: [sherpa-synthesizer.spec.ts](../../packages/conversations/src/adapters/in/session/sherpa-synthesizer.spec.ts)
   * verify: [Risposta parlata senza marcatura testuale](../Requirements/FamilyConversation.md#risposta-parlata-senza-marcatura-testuale)
 ---
 
@@ -749,7 +749,7 @@ La prova passa se la voce è caricata una sola volta per tutte le trasmissioni, 
 
 #### Relations
   * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
-  * satisfiedBy: [sherpa-synthesizer.test.ts](../../packages/conversations/test/adapters/in/sherpa-synthesizer.test.ts)
+  * satisfiedBy: [sherpa-synthesizer.spec.ts](../../packages/conversations/src/adapters/in/session/sherpa-synthesizer.spec.ts)
   * verify: [Risposta parlata su richiesta del client](../Requirements/FamilyConversation.md#risposta-parlata-su-richiesta-del-client)
 ---
 
@@ -765,8 +765,8 @@ La prova passa se il turno conservato contiene la trascrizione testuale attesa, 
 
 #### Relations
   * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
-  * satisfiedBy: [session-lifecycle.test.ts](../../apps/server/test/runtime/session-lifecycle.test.ts)
-  * satisfiedBy: [sherpa-synthesizer.test.ts](../../packages/conversations/test/adapters/in/sherpa-synthesizer.test.ts)
+  * satisfiedBy: [conversation-server.session-lifecycle.spec.ts](../../apps/server/src/runtime/conversation-server.session-lifecycle.spec.ts)
+  * satisfiedBy: [sherpa-synthesizer.spec.ts](../../packages/conversations/src/adapters/in/session/sherpa-synthesizer.spec.ts)
   * verify: [Risposta parlata su richiesta del client](../Requirements/FamilyConversation.md#risposta-parlata-su-richiesta-del-client)
   * verify: [Trascrizione del turno vocale](../Requirements/FamilyConversation.md#trascrizione-del-turno-vocale)
 ---
@@ -783,7 +783,7 @@ La prova passa se entrambi i tentativi ricevono la trasmissione del messaggio pu
 
 #### Relations
   * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
-  * satisfiedBy: [session-rejections.test.ts](../../apps/server/test/runtime/session-rejections.test.ts)
+  * satisfiedBy: [http-server.session-rejections.spec.ts](../../apps/server/src/runtime/http-server.session-rejections.spec.ts)
   * verify: [Trascrizione vocale non riuscita](../Requirements/FamilyConversation.md#trascrizione-vocale-non-riuscita)
 ---
 
@@ -859,7 +859,7 @@ La prova passa se `turn.accepted` arriva prima di qualsiasi trasmissione della r
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [session-turns.test.ts](../../apps/server/test/runtime/session-turns.test.ts)
+  * satisfiedBy: [http-server.session-turns.spec.ts](../../apps/server/src/runtime/http-server.session-turns.spec.ts)
   * verify: [Comunicazione degli identificativi del turno ammesso](../Requirements/FamilyConversation.md#comunicazione-degli-identificativi-del-turno-ammesso)
 ---
 
@@ -875,9 +875,9 @@ La prova passa se gli schemi TypeBox sono applicati da Fastify/Ajv prima dei ges
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
-  * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [history-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.spec.ts)
+  * satisfiedBy: [list-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.spec.ts)
   * verify: [Validazione strutturale delle richieste conversazionali HTTP](../Requirements/FamilyConversation.md#validazione-strutturale-delle-richieste-conversazionali-http)
 ---
 
@@ -893,7 +893,7 @@ La prova passa se, in tutti i casi, il backend prosegue l'elaborazione dopo la c
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [session-lifecycle.test.ts](../../apps/server/test/runtime/session-lifecycle.test.ts)
+  * satisfiedBy: [conversation-server.session-lifecycle.spec.ts](../../apps/server/src/runtime/conversation-server.session-lifecycle.spec.ts)
   * verify: [Completamento del turno accettato dopo disconnessione](../Requirements/FamilyConversation.md#completamento-del-turno-accettato-dopo-disconnessione)
 ---
 
@@ -909,7 +909,7 @@ La prova passa se senza il campo il fuso effettivo è `UTC`, con `Europe/Rome` �
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-config.test.ts](../../packages/conversations/test/adapters/out/conversation-config.test.ts)
+  * satisfiedBy: [conversation-config.spec.ts](../../packages/conversations/src/adapters/out/conversation-config.spec.ts)
   * verify: [Configurazione del fuso orario della conversazione](../Requirements/FamilyConversation.md#configurazione-del-fuso-orario-della-conversazione)
 ---
 
@@ -925,7 +925,7 @@ La prova passa se ogni turno riceve la trasmissione del messaggio pubblico e `tu
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [session-rejections.test.ts](../../apps/server/test/runtime/session-rejections.test.ts)
+  * satisfiedBy: [http-server.session-rejections.spec.ts](../../apps/server/src/runtime/http-server.session-rejections.spec.ts)
   * verify: [Rifiuto del turno testuale vuoto](../Requirements/FamilyConversation.md#rifiuto-del-turno-testuale-vuoto)
 ---
 
@@ -941,10 +941,10 @@ La prova passa se il caso d'uso chiede alla porta una scadenza di 30 secondi; se
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
-  * satisfiedBy: [mcp-tool-client.test.ts](../../packages/conversations/test/adapters/out/mcp-tool-client.test.ts)
-  * satisfiedBy: [turn-capabilities.test.ts](../../packages/conversations/test/adapters/out/turn-capabilities.test.ts)
-  * satisfiedBy: [exchange-turn.test.ts](../../packages/conversations/test/application/exchange-turn.test.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
+  * satisfiedBy: [mcp-tool-client.spec.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.spec.ts)
+  * satisfiedBy: [system-deadlines.adapter.spec.ts](../../packages/conversations/src/adapters/out/system-deadlines.adapter.spec.ts)
+  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
   * verify: [Tempo massimo della produzione della risposta](../Requirements/FamilyConversation.md#tempo-massimo-della-produzione-della-risposta)
 ---
 
@@ -960,9 +960,9 @@ La prova passa se l'agente senza MCP viene attivato senza aprire connessioni MCP
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [agents.test.ts](../../apps/server/test/composition/agents.test.ts)
-  * satisfiedBy: [config-bootstrap.test.ts](../../apps/server/test/runtime/config-bootstrap.test.ts)
-  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
+  * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
+  * satisfiedBy: [conversation-server.config-bootstrap.spec.ts](../../apps/server/src/runtime/conversation-server.config-bootstrap.spec.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
   * verify: [Agente specializzato senza connettore MCP](../Requirements/FamilyConversation.md#agente-specializzato-senza-connettore-mcp)
 ---
 
@@ -978,8 +978,8 @@ La prova passa se l'adapter rifiuta ciascun messaggio al proprio confine con `se
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [ambrogio-v1-schema.test.ts](../../apps/server/test/protocol/ambrogio-v1-schema.test.ts)
-  * satisfiedBy: [session-opening.test.ts](../../apps/server/test/runtime/session-opening.test.ts)
+  * satisfiedBy: [http-server.session-opening.spec.ts](../../apps/server/src/runtime/http-server.session-opening.spec.ts)
+  * satisfiedBy: [ambrogio-v1-schema.spec.ts](../../apps/server/test/protocol/ambrogio-v1-schema.spec.ts)
   * verify: [Validazione del formato negli ingressi conversazionali](../Requirements/FamilyConversation.md#validazione-del-formato-negli-ingressi-conversazionali)
 ---
 
@@ -995,7 +995,7 @@ La prova passa se il server chiude la trasmissione in corso con `output.end`, ap
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [session-lifecycle.test.ts](../../apps/server/test/runtime/session-lifecycle.test.ts)
+  * satisfiedBy: [conversation-server.session-lifecycle.spec.ts](../../apps/server/src/runtime/conversation-server.session-lifecycle.spec.ts)
   * verify: [Conservazione dell'errore dopo risposta parziale](../Requirements/FamilyConversation.md#conservazione-dellerrore-dopo-risposta-parziale)
   * verify: [Segnalazione dell'errore dopo l'ammissione](../Requirements/FamilyConversation.md#segnalazione-dellerrore-dopo-lammissione)
 ---
@@ -1012,8 +1012,8 @@ La prova passa se l'avvio valido espone il canale conversazionale e i GET, il tu
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [config-bootstrap.test.ts](../../apps/server/test/runtime/config-bootstrap.test.ts)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
+  * satisfiedBy: [conversation-server.config-bootstrap.spec.ts](../../apps/server/src/runtime/conversation-server.config-bootstrap.spec.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
   * verify: [Avvio dell'ingresso dei turni conversazionali](../Requirements/FamilyConversation.md#avvio-dellingresso-dei-turni-conversazionali)
 ---
 
@@ -1029,8 +1029,8 @@ La prova passa se l'adapter usa il pacchetto AI SDK del provider indicato, l'end
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [api-credentials.test.ts](../../apps/server/test/composition/api-credentials.test.ts)
-  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
+  * satisfiedBy: [agents.api-credentials.spec.ts](../../apps/server/src/composition/agents.api-credentials.spec.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
   * verify: [Risposta testuale nella conversazione](../Requirements/FamilyConversation.md#risposta-testuale-nella-conversazione)
   * verify: [Validazione preventiva della configurazione attiva](../Requirements/ServerFoundation.md#validazione-preventiva-della-configurazione-attiva)
 ---
@@ -1047,7 +1047,7 @@ La prova passa se ogni turno accettato compare nello storico con il testo identi
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
+  * satisfiedBy: [conversations.spec.ts](../../apps/server/src/composition/conversations.spec.ts)
   * verify: [Conservazione del testo originale del turno](../Requirements/FamilyConversation.md#conservazione-del-testo-originale-del-turno)
 ---
 
@@ -1063,7 +1063,7 @@ La prova passa se entrambi i turni ricevono la trasmissione del messaggio pubbli
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [session-rejections.test.ts](../../apps/server/test/runtime/session-rejections.test.ts)
+  * satisfiedBy: [http-server.session-rejections.spec.ts](../../apps/server/src/runtime/http-server.session-rejections.spec.ts)
   * verify: [Precondizioni contestuali nel caso d'uso conversazionale](../Requirements/FamilyConversation.md#precondizioni-contestuali-nel-caso-duso-conversazionale)
   * verify: [Rifiuto della continuazione con conversazione inesistente](../Requirements/FamilyConversation.md#rifiuto-della-continuazione-con-conversazione-inesistente)
 ---
@@ -1080,7 +1080,7 @@ La prova passa se, per ogni origine e per ogni tipo di contenuto, il backend rec
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [session-turns.test.ts](../../apps/server/test/runtime/session-turns.test.ts)
+  * satisfiedBy: [http-server.session-turns.spec.ts](../../apps/server/src/runtime/http-server.session-turns.spec.ts)
   * verify: [Continuazione di ogni conversazione da qualunque client](../Requirements/FamilyConversation.md#continuazione-di-ogni-conversazione-da-qualunque-client)
   * verify: [Recupero dello storico per il turno](../Requirements/FamilyConversation.md#recupero-dello-storico-per-il-turno)
 ---
@@ -1097,11 +1097,11 @@ La prova passa se nel secondo turno la risposta precedente compare nel contesto 
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
-  * satisfiedBy: [sqlite-history.test.ts](../../packages/conversations/test/adapters/out/sqlite-history.test.ts)
-  * satisfiedBy: [exchange-turn.test.ts](../../packages/conversations/test/application/exchange-turn.test.ts)
-  * satisfiedBy: [turn.test.ts](../../packages/conversations/test/domain/turn.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
+  * satisfiedBy: [sqlite-conversation-history-read.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-history-read.adapter.integration.spec.ts)
+  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
+  * satisfiedBy: [turn.spec.ts](../../packages/conversations/src/domain/turn.spec.ts)
   * verify: [Continuità dell'agente nella conversazione](../Requirements/FamilyConversation.md#continuità-dellagente-nella-conversazione)
 ---
 
@@ -1117,8 +1117,8 @@ La prova passa se in entrambi i casi la produzione prosegue fino al proprio esit
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
-  * satisfiedBy: [exchange-turn.test.ts](../../packages/conversations/test/application/exchange-turn.test.ts)
+  * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
+  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
   * verify: [Continuità del turno dopo un guasto di consegna](../Requirements/FamilyConversation.md#continuità-del-turno-dopo-un-guasto-di-consegna)
 ---
 
@@ -1134,8 +1134,8 @@ La prova passa se entrambi gli agenti specializzati ricevono, subito dopo le pro
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [agents.test.ts](../../apps/server/test/composition/agents.test.ts)
-  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
+  * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
   * verify: [Data e ora correnti per gli agenti specializzati](../Requirements/FamilyConversation.md#data-e-ora-correnti-per-gli-agenti-specializzati)
 ---
 
@@ -1151,8 +1151,8 @@ La prova passa se l'orchestratore riceve per ciascun agente attivo solo identifi
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [agents.test.ts](../../apps/server/test/composition/agents.test.ts)
-  * satisfiedBy: [agent-config.test.ts](../../apps/server/test/runtime/agent-config.test.ts)
+  * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
+  * satisfiedBy: [agent-config.spec.ts](../../apps/server/src/runtime/agent-config.spec.ts)
   * verify: [Descrizione degli agenti specializzati per l'orchestrazione](../Requirements/FamilyConversation.md#descrizione-degli-agenti-specializzati-per-lorchestrazione)
 ---
 
@@ -1168,8 +1168,8 @@ La prova passa se il guasto tecnico inatteso è registrato dal componente tecnic
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
   * verify: [Diagnostica del guasto tecnico di consegna](../Requirements/FamilyConversation.md#diagnostica-del-guasto-tecnico-di-consegna)
 ---
 
@@ -1185,8 +1185,8 @@ La prova passa se per ogni guasto esiste un solo evento `conversation_reply_fail
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
-  * satisfiedBy: [exchange-turn.test.ts](../../packages/conversations/test/application/exchange-turn.test.ts)
+  * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
+  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
   * verify: [Diagnostica del guasto nella produzione della risposta](../Requirements/FamilyConversation.md#diagnostica-del-guasto-nella-produzione-della-risposta)
 ---
 
@@ -1202,7 +1202,7 @@ La prova passa se, dopo il riavvio, la famiglia può recuperare la conversazione
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
   * verify: [Disponibilità dello storico dopo riavvio](../Requirements/FamilyConversation.md#disponibilità-dello-storico-dopo-riavvio)
 ---
 
@@ -1218,8 +1218,8 @@ La prova passa se la risposta `200` è JSON senza cache, conserva identità, tes
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
-  * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
+  * satisfiedBy: [conversations.spec.ts](../../apps/server/src/composition/conversations.spec.ts)
+  * satisfiedBy: [history-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.spec.ts)
   * verify: [Lettura HTTP dello storico conversazionale](../Requirements/FamilyConversation.md#lettura-http-dello-storico-conversazionale)
 ---
 
@@ -1235,7 +1235,7 @@ La prova passa se ogni specialista, con e senza MCP, riceve la direttiva della l
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [agents.test.ts](../../apps/server/test/composition/agents.test.ts)
+  * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
   * verify: [Lingua configurata nelle risposte degli agenti](../Requirements/FamilyConversation.md#lingua-configurata-nelle-risposte-degli-agenti)
 ---
 
@@ -1251,7 +1251,7 @@ La prova passa se il server cerca nel percorso previsto, riconosce `orchestrator
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [agent-config.test.ts](../../apps/server/test/runtime/agent-config.test.ts)
+  * satisfiedBy: [agent-config.spec.ts](../../apps/server/src/runtime/agent-config.spec.ts)
   * verify: [Scoperta delle configurazioni degli agenti](../Requirements/FamilyConversation.md#scoperta-delle-configurazioni-degli-agenti)
 ---
 
@@ -1267,8 +1267,8 @@ La prova passa se ogni turno riceve l'esito testuale nella conversazione corrett
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [sqlite-history.test.ts](../../packages/conversations/test/adapters/out/sqlite-history.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [sqlite-conversation-history-read.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-history-read.adapter.integration.spec.ts)
   * verify: [Conservazione dello scambio testuale](../Requirements/FamilyConversation.md#conservazione-dello-scambio-testuale)
   * verify: [Risposta testuale nella conversazione](../Requirements/FamilyConversation.md#risposta-testuale-nella-conversazione)
 ---
@@ -1285,8 +1285,8 @@ La prova passa se la richiesta all'orchestratore non offre strumenti, dichiara c
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [ai-sdk-reply.test.ts](../../packages/conversations/test/adapters/out/ai-sdk-reply.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
   * verify: [Orchestrazione della risposta conversazionale](../Requirements/FamilyConversation.md#orchestrazione-della-risposta-conversazionale)
 ---
 
@@ -1302,8 +1302,8 @@ La prova passa se ciascun agente usa soltanto provider, modello, chiave, `baseUR
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [agents.test.ts](../../apps/server/test/composition/agents.test.ts)
-  * satisfiedBy: [agent-config.test.ts](../../apps/server/test/runtime/agent-config.test.ts)
+  * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
+  * satisfiedBy: [agent-config.spec.ts](../../apps/server/src/runtime/agent-config.spec.ts)
   * verify: [Configurazione del modello per agente](../Requirements/FamilyConversation.md#configurazione-del-modello-per-agente)
 ---
 
@@ -1319,7 +1319,7 @@ La prova passa se ogni modello riceve le istruzioni del proprio file e la modifi
 
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
   * verify: [Istruzioni dell'agente nel modulo TypeScript dell'utente](../Requirements/FamilyConversation.md#istruzioni-dellagente-nel-modulo-typescript-dellutente)
 ---
 
@@ -1360,8 +1360,8 @@ La prova passa se l'archivio è preparato prima degli ingressi, ogni risorsa cre
 
 #### Relations
   * derivedFrom: [Verifica della risorsa SQLite conversazionale](#verifica-della-risorsa-sqlite-conversazionale)
-  * satisfiedBy: [conversation-resource-lifecycle.test.ts](../../apps/server/test/runtime/conversation-resource-lifecycle.test.ts)
-  * satisfiedBy: [sqlite-archive-startup.test.ts](../../packages/conversations/test/adapters/out/sqlite-archive-startup.test.ts)
+  * satisfiedBy: [conversation-server.resource-lifecycle.spec.ts](../../apps/server/src/runtime/conversation-server.resource-lifecycle.spec.ts)
+  * satisfiedBy: [conversation-archive.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/conversation-archive.integration.spec.ts)
   * verify: [Chiusura della risorsa SQLite conversazionale](../Requirements/FamilyConversation.md#chiusura-della-risorsa-sqlite-conversazionale)
 ---
 
@@ -1402,8 +1402,8 @@ La prova passa se le colonne contengono interi pari ai rispettivi `getTime()`, l
 
 #### Relations
   * derivedFrom: [Verifica delle conversioni di persistenza](#verifica-delle-conversioni-di-persistenza)
-  * satisfiedBy: [sqlite-history.test.ts](../../packages/conversations/test/adapters/out/sqlite-history.test.ts)
-  * satisfiedBy: [sqlite-turn-mapper.test.ts](../../packages/conversations/test/adapters/out/sqlite-turn-mapper.test.ts)
+  * satisfiedBy: [sqlite-conversation-history-read.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-history-read.adapter.integration.spec.ts)
+  * satisfiedBy: [sqlite-turn-mapper.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-mapper.spec.ts)
   * verify: [Persistenza degli istanti conversazionali in millisecondi Unix](../Requirements/FamilyConversation.md#persistenza-degli-istanti-conversazionali-in-millisecondi-unix)
 ---
 
@@ -1419,8 +1419,8 @@ La prova passa se i valori recuperati preservano identità, ordine, testo origin
 
 #### Relations
   * derivedFrom: [Verifica delle conversioni di persistenza](#verifica-delle-conversioni-di-persistenza)
-  * satisfiedBy: [sqlite-history.test.ts](../../packages/conversations/test/adapters/out/sqlite-history.test.ts)
-  * satisfiedBy: [sqlite-turn-mapper.test.ts](../../packages/conversations/test/adapters/out/sqlite-turn-mapper.test.ts)
+  * satisfiedBy: [sqlite-conversation-history-read.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-history-read.adapter.integration.spec.ts)
+  * satisfiedBy: [sqlite-turn-mapper.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-mapper.spec.ts)
   * verify: [Conversione esplicita dei dati conversazionali persistenti](../Requirements/FamilyConversation.md#conversione-esplicita-dei-dati-conversazionali-persistenti)
 ---
 
@@ -1461,8 +1461,8 @@ La prova passa se ogni nuovo identificativo è un UUID v4, gli identificativi cr
 
 #### Relations
   * derivedFrom: [Verifica delle identità conversazionali](#verifica-delle-identità-conversazionali)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [sqlite-conversation-write.test.ts](../../packages/conversations/test/adapters/out/sqlite-conversation-write.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [sqlite-conversation-write.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.integration.spec.ts)
   * verify: [Identificativi UUID v4 di conversazioni e turni](../Requirements/FamilyConversation.md#identificativi-uuid-v4-di-conversazioni-e-turni)
 ---
 
@@ -1503,7 +1503,7 @@ La prova passa se ogni turno e l'ultima attività della sua conversazione usano 
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [sqlite-conversation-write.test.ts](../../packages/conversations/test/adapters/out/sqlite-conversation-write.test.ts)
+  * satisfiedBy: [sqlite-conversation-write.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.integration.spec.ts)
   * verify: [Fornitura esplicita dell'ora corrente alla conversazione](../Requirements/FamilyConversation.md#fornitura-esplicita-dellora-corrente-alla-conversazione)
 ---
 
@@ -1519,7 +1519,7 @@ La prova passa se la risposta non viene prodotta, una conclusione riuscita conse
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
   * verify: [Gestione del turno ammesso senza storico utilizzabile](../Requirements/FamilyConversation.md#gestione-del-turno-ammesso-senza-storico-utilizzabile)
 ---
 
@@ -1535,8 +1535,8 @@ La prova passa se ciascun turno accettato è persistito con il suo testo prima d
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [sqlite-archive-startup.test.ts](../../packages/conversations/test/adapters/out/sqlite-archive-startup.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [conversation-archive.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/conversation-archive.integration.spec.ts)
   * verify: [Nessuna ripetizione automatica del turno interrotto](../Requirements/FamilyConversation.md#nessuna-ripetizione-automatica-del-turno-interrotto)
   * verify: [Registrazione dei turni conversazionali accettati](../Requirements/FamilyConversation.md#registrazione-dei-turni-conversazionali-accettati)
   * verify: [Riconoscimento del turno interrotto dopo riavvio](../Requirements/FamilyConversation.md#riconoscimento-del-turno-interrotto-dopo-riavvio)
@@ -1554,8 +1554,8 @@ La prova passa se il processo ascolta all'indirizzo configurato, i due GET rispo
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [config-bootstrap.test.ts](../../apps/server/test/runtime/config-bootstrap.test.ts)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
+  * satisfiedBy: [conversation-server.config-bootstrap.spec.ts](../../apps/server/src/runtime/conversation-server.config-bootstrap.spec.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
   * verify: [Selezione dell'archivio conversazionale all'avvio](../Requirements/FamilyConversation.md#selezione-dellarchivio-conversazionale-allavvio)
 ---
 
@@ -1571,8 +1571,8 @@ La prova passa se l'elenco è diviso in pagine limitate, la conversazione aggior
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
-  * satisfiedBy: [sqlite-list.test.ts](../../packages/conversations/test/adapters/out/sqlite-list.test.ts)
+  * satisfiedBy: [conversations.spec.ts](../../apps/server/src/composition/conversations.spec.ts)
+  * satisfiedBy: [sqlite-conversation-list-read.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-list-read.adapter.integration.spec.ts)
   * verify: [Elenco paginato delle conversazioni](../Requirements/FamilyConversation.md#elenco-paginato-delle-conversazioni)
   * verify: [Ordinamento delle conversazioni per ultima attività](../Requirements/FamilyConversation.md#ordinamento-delle-conversazioni-per-ultima-attività)
 ---
@@ -1589,8 +1589,8 @@ La prova passa se la variabile d'ambiente seleziona il percorso del modulo e il 
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
-  * satisfiedBy: [conversation-config.test.ts](../../packages/conversations/test/adapters/out/conversation-config.test.ts)
+  * satisfiedBy: [conversations.spec.ts](../../apps/server/src/composition/conversations.spec.ts)
+  * satisfiedBy: [conversation-config.spec.ts](../../packages/conversations/src/adapters/out/conversation-config.spec.ts)
   * verify: [Configurazione della paginazione conversazionale](../Requirements/FamilyConversation.md#configurazione-della-paginazione-conversazionale)
 ---
 
@@ -1606,8 +1606,8 @@ La prova passa se le risposte `200` JSON senza cache contengono solo `items` ord
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
-  * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
+  * satisfiedBy: [conversations.spec.ts](../../apps/server/src/composition/conversations.spec.ts)
+  * satisfiedBy: [list-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.spec.ts)
   * verify: [Lettura HTTP dell'elenco conversazioni](../Requirements/FamilyConversation.md#lettura-http-dellelenco-conversazioni)
 ---
 
@@ -1623,8 +1623,8 @@ La prova passa se l'inglese produce «I can't complete the response.», l'italia
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [conversations.test.ts](../../apps/server/test/composition/conversations.test.ts)
-  * satisfiedBy: [conversation-config.test.ts](../../packages/conversations/test/adapters/out/conversation-config.test.ts)
+  * satisfiedBy: [conversations.spec.ts](../../apps/server/src/composition/conversations.spec.ts)
+  * satisfiedBy: [conversation-config.spec.ts](../../packages/conversations/src/adapters/out/conversation-config.spec.ts)
   * verify: [Localizzazione dell'errore conversazionale inatteso](../Requirements/FamilyConversation.md#localizzazione-dellerrore-conversazionale-inatteso)
 ---
 
@@ -1640,7 +1640,7 @@ La prova passa se gli istanti validi conservano il valore temporale fornito, que
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [turn.test.ts](../../packages/conversations/test/domain/turn.test.ts)
+  * satisfiedBy: [turn.spec.ts](../../packages/conversations/src/domain/turn.spec.ts)
   * verify: [Istanti validi e protetti della conversazione](../Requirements/FamilyConversation.md#istanti-validi-e-protetti-della-conversazione)
 ---
 
@@ -1656,7 +1656,7 @@ La prova passa se le migrazioni pendenti sono applicate automaticamente prima ch
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [sqlite-archive-startup.test.ts](../../packages/conversations/test/adapters/out/sqlite-archive-startup.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [conversation-archive.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/conversation-archive.integration.spec.ts)
   * verify: [Migrazione automatica dell'archivio delle conversazioni](../Requirements/FamilyConversation.md#migrazione-automatica-dellarchivio-delle-conversazioni)
 ---

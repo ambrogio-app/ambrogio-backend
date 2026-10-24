@@ -1,4 +1,4 @@
-import type { Deadlines, RunningDeadline } from '../../application/turn-capabilities.js';
+import type { Deadlines, RunningDeadline } from '../../application/turn-capabilities.port.js';
 
 export class SystemDeadlines implements Deadlines {
   start(milliseconds: number): RunningDeadline {

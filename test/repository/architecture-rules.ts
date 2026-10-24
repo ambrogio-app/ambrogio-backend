@@ -64,10 +64,29 @@ const noPathAliases: Rule = {
     .map((config) => ({ rule: 'no-path-aliases' as const, from: config.path, to: 'paths' })),
 };
 
-const testKinds = ['test/domain', 'test/application', 'test/adapters/in', 'test/adapters/out'] as const;
+/** A test file sits next to the source file it verifies («Suite di test con Vitest»). */
+export const isSpec = (path: string) => path.endsWith('.spec.ts');
+const isProduction = (path: string, unit: WorkspaceUnit) => inside(path, `${unit.directory}/src`) && !isSpec(path);
 
-/** Production code reached by a test file, directly or through local test files. */
-function productionReached(graph: ImportGraph, file: SourceFile, testDirectory: string): string[] {
+/**
+ * The source file verified by a `*.spec.ts` file of `src`: the file of the same folder whose name, without `.ts`,
+ * opens the name of the test up to a dot, e.g. `turn.spec.ts` and `turn.aspect.spec.ts` verify `turn.ts`.
+ */
+export function verifiedFile(path: string, known: ReadonlySet<string>): string | undefined {
+  const name = path.replace(/(\.integration|\.e2e)?\.spec\.ts$/, '');
+  const parts = name.split('/').at(-1)!.split('.');
+  const folder = name.slice(0, name.length - parts.join('.').length);
+  for (let length = parts.length; length > 0; length -= 1) {
+    const candidate = `${folder}${parts.slice(0, length).join('.')}.ts`;
+    if (known.has(candidate) && !isSpec(candidate)) return candidate;
+  }
+  return undefined;
+}
+
+const testLayers = ['src/domain', 'src/application', 'src/adapters/in', 'src/adapters/out'] as const;
+
+/** Production code reached by a test file, directly or through the support modules of the unit's `test/` folder. */
+function productionReached(graph: ImportGraph, file: SourceFile, unit: WorkspaceUnit): string[] {
   const reached: string[] = [];
   const seen = new Set<string>();
   const visit = (current: SourceFile) => {
@@ -77,7 +96,7 @@ function productionReached(graph: ImportGraph, file: SourceFile, testDirectory: 
       if (namedUnit(specifier, graph.units) !== undefined) { reached.push(specifier); continue; }
       if (!specifier.startsWith('.')) continue; // runner, assertion, Node.js modules and npm dependencies
       const target = asSource(resolveSpecifier(current.path, specifier));
-      if (inside(target, testDirectory)) {
+      if (inside(target, `${unit.directory}/test`) || isSpec(target)) {
         const local = graph.files.find((candidate) => candidate.path === target);
         if (local !== undefined) visit(local);
         continue;
@@ -91,19 +110,24 @@ function productionReached(graph: ImportGraph, file: SourceFile, testDirectory: 
 
 const layerTestImports: Rule = {
   name: 'layer-test-imports',
-  check: (graph) => packagesOf(graph).flatMap((unit) => {
-    const testDirectory = `${unit.directory}/test`;
-    return filesIn(graph, testDirectory).filter((file) => file.path.endsWith('.test.ts')).flatMap((file) => {
-      const kind = testKinds.find((prefix) => inside(file.path, `${unit.directory}/${prefix}`));
-      if (kind === undefined) return [{ rule: 'layer-test-imports' as const, from: file.path, to: '(not classifiable)' }];
-      const allowed = kind === 'test/domain' ? ['src/domain']
-        : kind === 'test/application' ? ['src/domain', 'src/application'] : undefined;
-      if (allowed === undefined) return [];
-      return productionReached(graph, file, testDirectory)
-        .filter((target) => !allowed.some((layer) => inside(target, `${unit.directory}/${layer}`)))
-        .map((target) => ({ rule: 'layer-test-imports' as const, from: file.path, to: target }));
-    });
-  }),
+  check: (graph) => {
+    const known = new Set(graph.files.map((file) => file.path));
+    const named = graph.files.filter((file) => file.path.endsWith('.test.ts'))
+      .map((file) => ({ rule: 'layer-test-imports' as const, from: file.path, to: '(not a *.spec.ts file)' }));
+    return [...named, ...packagesOf(graph).flatMap((unit) =>
+      filesIn(graph, unit.directory).filter((file) => isSpec(file.path)).flatMap((file) => {
+        const layer = testLayers.find((prefix) => inside(file.path, `${unit.directory}/${prefix}`));
+        if (layer === undefined || verifiedFile(file.path, known) === undefined) {
+          return [{ rule: 'layer-test-imports' as const, from: file.path, to: '(not classifiable)' }];
+        }
+        const allowed = layer === 'src/domain' ? ['src/domain']
+          : layer === 'src/application' ? ['src/domain', 'src/application'] : undefined;
+        if (allowed === undefined) return [];
+        return productionReached(graph, file, unit)
+          .filter((target) => !allowed.some((prefix) => inside(target, `${unit.directory}/${prefix}`)))
+          .map((target) => ({ rule: 'layer-test-imports' as const, from: file.path, to: target }));
+      }))];
+  },
 };
 
 const domainApplicationOwnPackage: Rule = {
@@ -112,7 +136,8 @@ const domainApplicationOwnPackage: Rule = {
     const known = new Set(graph.files.map((file) => file.path));
     const violations: Violation[] = [];
     const pending = ['src/domain', 'src/application']
-      .flatMap((layer) => filesIn(graph, `${unit.directory}/${layer}`)).map((file) => file.path);
+      .flatMap((layer) => filesIn(graph, `${unit.directory}/${layer}`)).map((file) => file.path)
+      .filter((path) => isProduction(path, unit));
     const seen = new Set<string>();
     while (pending.length > 0) {
       const path = pending.pop()!;
@@ -121,7 +146,7 @@ const domainApplicationOwnPackage: Rule = {
       const file = graph.files.find((candidate) => candidate.path === path)!;
       for (const specifier of file.specifiers) {
         const target = asSource(resolveSpecifier(path, specifier));
-        if (!specifier.startsWith('.') || !inside(target, `${unit.directory}/src`) || !known.has(target)) {
+        if (!specifier.startsWith('.') || !isProduction(target, unit) || !known.has(target)) {
           violations.push({ rule: 'domain-application-own-package', from: path, to: specifier });
         } else pending.push(target);
       }

@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { Type, type Static } from '@sinclair/typebox';
-import type { ConversationListCursor } from '../../../application/conversation-list-read.js';
+import type { ConversationListCursor } from '../../../application/conversation-list-read.port.js';
 import type { ListConversations } from '../../../application/list-conversations.use-case.js';
 
 type Language = 'en' | 'it';

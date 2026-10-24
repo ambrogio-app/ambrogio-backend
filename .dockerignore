@@ -6,6 +6,7 @@ dist
 **/dist
 system-model
 **/test
+**/*.spec.ts
 *.sqlite
 *.sqlite-*
 *.db

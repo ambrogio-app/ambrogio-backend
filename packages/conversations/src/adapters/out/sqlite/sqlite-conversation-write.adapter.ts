@@ -3,7 +3,7 @@ import { sql, type Kysely } from 'kysely';
 import type { Result, TurnSnapshot } from '../../../domain/turn.js';
 import type {
   AdmitTurn, AdmissionRejection, CompleteTurn, ConversationWrite, TurnNotActive,
-} from '../../../application/conversation-write.js';
+} from '../../../application/conversation-write.port.js';
 import type { ConversationDatabase } from './schema.js';
 import { restoreTurn, toMillis } from './sqlite-turn-mapper.js';
 import { AdmissionLockBusy, withImmediateTransaction } from './sqlite-transaction.js';

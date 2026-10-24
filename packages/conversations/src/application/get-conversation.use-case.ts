@@ -1,5 +1,5 @@
 import type { Result, TurnSnapshot } from '../domain/turn.js';
-import type { ConversationHistoryRead } from './conversation-history-read.js';
+import type { ConversationHistoryRead } from './conversation-history-read.port.js';
 
 export type GetConversationInput = Readonly<{ conversationId: string }>;
 export type GetConversationRejection = Readonly<{ kind: 'conversation_not_found' }>;

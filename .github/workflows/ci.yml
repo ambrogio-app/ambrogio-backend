@@ -66,14 +66,15 @@ jobs:
         working-directory: workspace/ambrogio-backend
         run: pnpm audit --audit-level high
 
-      - name: Check TypeScript
-        working-directory: workspace/ambrogio-backend
-        run: pnpm typecheck
-
-      # The workspace packages export their compiled dist/, so tests need the build first.
+      # The workspace packages export their compiled dist/, which the server application and
+      # its tests import: the build precedes the type check and the tests.
       - name: Build
         working-directory: workspace/ambrogio-backend
         run: pnpm build
+
+      - name: Check TypeScript
+        working-directory: workspace/ambrogio-backend
+        run: pnpm typecheck
 
       # The test suite exercises the pre-commit hook, which needs gitleaks on PATH.
       - name: Install verified gitleaks
@@ -90,3 +91,7 @@ jobs:
       - name: Run tests
         working-directory: workspace/ambrogio-backend
         run: pnpm test
+
+      - name: Run integration tests
+        working-directory: workspace/ambrogio-backend
+        run: pnpm test:integration

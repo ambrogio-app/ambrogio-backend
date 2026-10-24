@@ -20,7 +20,7 @@ La prova passa se il commit privo di segreti riesce ed esegue lo script; se con 
 
 #### Relations
   * derivedFrom: [Verifica degli strumenti del repository backend](#verifica-degli-strumenti-del-repository-backend)
-  * satisfiedBy: [pre-commit-hook.test.ts](../../test/repository/pre-commit-hook.test.ts)
+  * satisfiedBy: [pre-commit-hook.spec.ts](../../test/repository/pre-commit-hook.spec.ts)
   * verify: [Controlli del modello prima del commit del backend](../Requirements/ServerFoundation.md#controlli-del-modello-prima-del-commit-del-backend)
 ---
 
@@ -29,14 +29,14 @@ La prova passa se il commit privo di segreti riesce ed esegue lo script; se con 
 Leggere lo script `verify` di `package.json` e i passi del job `Backend checks` di `.github/workflows/ci.yml`.
 
 #### Details
-La prova passa se i comandi `pnpm` del job successivi all'installazione, escluso l'audit, sono `pnpm typecheck`, `pnpm build` e `pnpm test` e se `verify` è la sequenza unita da `&&` di `../ambrogio-model/scripts/model-checks`, `pnpm install --frozen-lockfile`, `pnpm audit --audit-level high` e di quei comandi nello stesso ordine. Fallisce se un controllo della CI manca da `verify`, se l'ordine differisce o se i comandi non sono uniti da `&&`. Che `&&` interrompa la sequenza al primo comando fallito è un comportamento della shell.
+La prova passa se i comandi `pnpm` del job successivi all'installazione, escluso l'audit, sono `pnpm build`, `pnpm typecheck`, `pnpm test` e `pnpm test:integration` e se `verify` è la sequenza unita da `&&` di `../ambrogio-model/scripts/model-checks`, `pnpm install --frozen-lockfile`, `pnpm audit --audit-level high` e di quei comandi nello stesso ordine. Fallisce se un controllo della CI manca da `verify`, se l'ordine differisce o se i comandi non sono uniti da `&&`. Che `&&` interrompa la sequenza al primo comando fallito è un comportamento della shell.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica degli strumenti del repository backend](#verifica-degli-strumenti-del-repository-backend)
-  * satisfiedBy: [workflows.test.ts](../../test/repository/workflows.test.ts)
+  * satisfiedBy: [workflows.spec.ts](../../test/repository/workflows.spec.ts)
   * verify: [Comando di verifica completo del backend](../Requirements/ServerFoundation.md#comando-di-verifica-completo-del-backend)
 ---
 
@@ -52,7 +52,7 @@ La prova passa se l'unico comando di audit dei workflow è `pnpm audit --audit-l
 
 #### Relations
   * derivedFrom: [Verifica degli strumenti del repository backend](#verifica-degli-strumenti-del-repository-backend)
-  * satisfiedBy: [workflows.test.ts](../../test/repository/workflows.test.ts)
+  * satisfiedBy: [workflows.spec.ts](../../test/repository/workflows.spec.ts)
   * verify: [Audit delle dipendenze nella CI del backend](../Requirements/ServerFoundation.md#audit-delle-dipendenze-nella-ci-del-backend)
 ---
 
@@ -68,7 +68,7 @@ La prova passa se `packageManager` dichiara una versione esatta di pnpm; se ness
 
 #### Relations
   * derivedFrom: [Verifica degli strumenti del repository backend](#verifica-degli-strumenti-del-repository-backend)
-  * satisfiedBy: [workflows.test.ts](../../test/repository/workflows.test.ts)
+  * satisfiedBy: [workflows.spec.ts](../../test/repository/workflows.spec.ts)
   * verify: [Installazione delle dipendenze del backend con pnpm e Corepack](../Requirements/ServerFoundation.md#installazione-delle-dipendenze-del-backend-con-pnpm-e-corepack)
 ---
 
@@ -92,8 +92,8 @@ La prova passa se il server rifiuta i nuovi turni con `unavailable`, richiede su
 
 #### Relations
   * derivedFrom: [Verifica del ciclo di vita del server](#verifica-del-ciclo-di-vita-del-server)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [session-lifecycle.test.ts](../../apps/server/test/runtime/session-lifecycle.test.ts)
+  * satisfiedBy: [conversation-server.session-lifecycle.spec.ts](../../apps/server/src/runtime/conversation-server.session-lifecycle.spec.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
   * verify: [Arresto controllato dei nuovi turni](../Requirements/ServerFoundation.md#arresto-controllato-dei-nuovi-turni)
   * verify: [Chiusura delle risorse dopo l'interruzione dei turni](../Requirements/ServerFoundation.md#chiusura-delle-risorse-dopo-linterruzione-dei-turni)
   * verify: [Interruzione dei turni durante l'arresto](../Requirements/ServerFoundation.md#interruzione-dei-turni-durante-larresto)
@@ -111,8 +111,8 @@ La prova passa se ogni caso produce su `stdout` una sola riga JSON con livello `
 
 #### Relations
   * derivedFrom: [Verifica del ciclo di vita del server](#verifica-del-ciclo-di-vita-del-server)
-  * satisfiedBy: [agents.test.ts](../../apps/server/test/composition/agents.test.ts)
-  * satisfiedBy: [startup-failure.test.ts](../../apps/server/test/runtime/startup-failure.test.ts)
+  * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
+  * satisfiedBy: [startup-failure.spec.ts](../../apps/server/src/runtime/startup-failure.spec.ts)
   * verify: [Diagnostica del mancato avvio del server](../Requirements/ServerFoundation.md#diagnostica-del-mancato-avvio-del-server)
 ---
 
@@ -347,8 +347,8 @@ La prova passa se tutti i campi della riga appartengono alla selezione esplicita
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
-  * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
+  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
+  * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
   * verify: [Selezione esplicita dei campi diagnostici](../Requirements/ServerFoundation.md#selezione-esplicita-dei-campi-diagnostici)
 ---
 
@@ -364,7 +364,7 @@ La prova passa se ogni evento Pino occupa una sola riga JSON strutturata, il pro
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
+  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
   * verify: [Formato e flussi dei log tecnici](../Requirements/ServerFoundation.md#formato-e-flussi-dei-log-tecnici)
 ---
 
@@ -380,8 +380,8 @@ La prova passa se ogni riga contiene `event`, il suo valore corrisponde al nome 
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
-  * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
+  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
+  * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
   * verify: [Nome stabile degli eventi diagnostici](../Requirements/ServerFoundation.md#nome-stabile-degli-eventi-diagnostici)
 ---
 
@@ -397,11 +397,12 @@ La prova passa se ogni rifiuto è restituito come valore distinguibile dal succe
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [sqlite-conversation-write.test.ts](../../packages/conversations/test/adapters/out/sqlite-conversation-write.test.ts)
-  * satisfiedBy: [sqlite-history.test.ts](../../packages/conversations/test/adapters/out/sqlite-history.test.ts)
-  * satisfiedBy: [exchange-turn.test.ts](../../packages/conversations/test/application/exchange-turn.test.ts)
-  * satisfiedBy: [turn-use-cases.test.ts](../../packages/conversations/test/application/turn-use-cases.test.ts)
-  * satisfiedBy: [turn.test.ts](../../packages/conversations/test/domain/turn.test.ts)
+  * satisfiedBy: [sqlite-conversation-history-read.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-history-read.adapter.integration.spec.ts)
+  * satisfiedBy: [sqlite-conversation-write.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.integration.spec.ts)
+  * satisfiedBy: [begin-turn.use-case.spec.ts](../../packages/conversations/src/application/begin-turn.use-case.spec.ts)
+  * satisfiedBy: [complete-turn.use-case.spec.ts](../../packages/conversations/src/application/complete-turn.use-case.spec.ts)
+  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
+  * satisfiedBy: [turn.spec.ts](../../packages/conversations/src/domain/turn.spec.ts)
   * verify: [Rifiuti previsti come valori di esito](../Requirements/ServerFoundation.md#rifiuti-previsti-come-valori-di-esito)
 ---
 
@@ -417,10 +418,10 @@ La prova passa se per l'`Error` del progetto il campo strutturato `err` conserva
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
-  * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
-  * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
-  * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
+  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
+  * satisfiedBy: [history-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.spec.ts)
+  * satisfiedBy: [list-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.spec.ts)
+  * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
   * verify: [Conservazione dell'errore originale durante la serializzazione](../Requirements/ServerFoundation.md#conservazione-dellerrore-originale-durante-la-serializzazione)
   * verify: [Oggetto Error nel campo err del log definitivo](../Requirements/ServerFoundation.md#oggetto-error-nel-campo-err-del-log-definitivo)
   * verify: [Rappresentazione di err nel log JSON](../Requirements/ServerFoundation.md#rappresentazione-di-err-nel-log-json)
@@ -438,7 +439,7 @@ La prova passa se, per ciascun caso e ciascun ingresso presente, il confine emet
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
+  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
   * verify: [Log error del fallback pubblico](../Requirements/ServerFoundation.md#log-error-del-fallback-pubblico)
 ---
 
@@ -454,7 +455,7 @@ La prova passa se la ricezione della richiesta e l'invio della risposta non gene
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
+  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
   * verify: [Assenza dei log HTTP automatici](../Requirements/ServerFoundation.md#assenza-dei-log-http-automatici)
 ---
 
@@ -470,7 +471,7 @@ La prova passa se nessuno dei quattro esiti causa automaticamente un log dedicat
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
+  * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
   * verify: [Nessun log automatico per esiti previsti](../Requirements/ServerFoundation.md#nessun-log-automatico-per-esiti-previsti)
 ---
 
@@ -486,7 +487,7 @@ La prova passa se nessuno dei marcatori viene acquisito automaticamente dagli ev
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
+  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
   * verify: [Esclusione della raccolta automatica di dati nei log](../Requirements/ServerFoundation.md#esclusione-della-raccolta-automatica-di-dati-nei-log)
 ---
 
@@ -502,10 +503,10 @@ La prova passa se per il guasto esiste al massimo un log diagnostico definitivo,
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
-  * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
-  * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
-  * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
+  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
+  * satisfiedBy: [history-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.spec.ts)
+  * satisfiedBy: [list-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.spec.ts)
+  * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
   * verify: [Assenza di log definitivi nei componenti intermedi](../Requirements/ServerFoundation.md#assenza-di-log-definitivi-nei-componenti-intermedi)
   * verify: [Proprietà e unicità del log diagnostico definitivo](../Requirements/ServerFoundation.md#proprietà-e-unicità-del-log-diagnostico-definitivo)
 ---
@@ -522,7 +523,7 @@ La prova passa se ogni richiesta riceve un `correlationId` UUID v4 distinto, tut
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
+  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
   * verify: [Identificativo di correlazione delle richieste HTTP](../Requirements/ServerFoundation.md#identificativo-di-correlazione-delle-richieste-http)
   * verify: [Identificativo di richiesta nelle risposte HTTP](../Requirements/ServerFoundation.md#identificativo-di-richiesta-nelle-risposte-http)
 ---
@@ -539,8 +540,9 @@ La prova passa se il caso d'uso gestisce esplicitamente ogni variante e, quando 
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [exchange-turn.test.ts](../../packages/conversations/test/application/exchange-turn.test.ts)
-  * satisfiedBy: [turn-use-cases.test.ts](../../packages/conversations/test/application/turn-use-cases.test.ts)
+  * satisfiedBy: [begin-turn.use-case.spec.ts](../../packages/conversations/src/application/begin-turn.use-case.spec.ts)
+  * satisfiedBy: [complete-turn.use-case.spec.ts](../../packages/conversations/src/application/complete-turn.use-case.spec.ts)
+  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
   * verify: [Gestione esplicita dei rifiuti delle porte](../Requirements/ServerFoundation.md#gestione-esplicita-dei-rifiuti-delle-porte)
   * verify: [Proiezione dei rifiuti bloccanti delle porte](../Requirements/ServerFoundation.md#proiezione-dei-rifiuti-bloccanti-delle-porte)
 ---
@@ -557,10 +559,10 @@ La prova passa se la normalizzazione avviene una sola volta nel confine definiti
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
-  * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
-  * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
-  * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
+  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
+  * satisfiedBy: [history-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.spec.ts)
+  * satisfiedBy: [list-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.spec.ts)
+  * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
   * verify: [Normalizzazione diagnostica nel confine definitivo](../Requirements/ServerFoundation.md#normalizzazione-diagnostica-nel-confine-definitivo)
 ---
 
@@ -576,8 +578,8 @@ La prova passa se entrambi i guasti si propagano come eccezioni fino al confine 
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
-  * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
+  * satisfiedBy: [history-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.spec.ts)
+  * satisfiedBy: [list-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.spec.ts)
   * verify: [Propagazione dei guasti inattesi](../Requirements/ServerFoundation.md#propagazione-dei-guasti-inattesi)
 ---
 
@@ -593,8 +595,8 @@ La prova passa se nel primo caso arriva al confine lo stesso valore originale, s
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [mcp-tool-client.test.ts](../../packages/conversations/test/adapters/out/mcp-tool-client.test.ts)
-  * satisfiedBy: [turn-use-cases.test.ts](../../packages/conversations/test/application/turn-use-cases.test.ts)
+  * satisfiedBy: [mcp-tool-client.spec.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.spec.ts)
+  * satisfiedBy: [complete-turn.use-case.spec.ts](../../packages/conversations/src/application/complete-turn.use-case.spec.ts)
   * verify: [Contesto operativo con Error e cause](../Requirements/ServerFoundation.md#contesto-operativo-con-error-e-cause)
   * verify: [Propagazione senza wrapper superflui](../Requirements/ServerFoundation.md#propagazione-senza-wrapper-superflui)
 ---
@@ -611,10 +613,10 @@ La prova passa se il messaggio pubblico non contiene nessuno dei marcatori tecni
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
-  * satisfiedBy: [conversation-session.test.ts](../../packages/conversations/test/adapters/in/conversation-session.test.ts)
-  * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
-  * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
+  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
+  * satisfiedBy: [history-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.spec.ts)
+  * satisfiedBy: [list-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.spec.ts)
+  * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
   * verify: [Esclusione dei dettagli tecnici dal messaggio pubblico](../Requirements/ServerFoundation.md#esclusione-dei-dettagli-tecnici-dal-messaggio-pubblico)
   * verify: [Separazione del messaggio pubblico dalla diagnosi tecnica](../Requirements/ServerFoundation.md#separazione-del-messaggio-pubblico-dalla-diagnosi-tecnica)
 ---
@@ -631,7 +633,7 @@ La prova passa se ogni package che riferisce `Result` lo dichiara nel proprio `s
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [result-type.test.ts](../../test/repository/result-type.test.ts)
+  * satisfiedBy: [result-type.spec.ts](../../test/repository/result-type.spec.ts)
   * verify: [Definizione locale del tipo Result](../Requirements/ServerFoundation.md#definizione-locale-del-tipo-result)
   * verify: [Struttura del tipo Result](../Requirements/ServerFoundation.md#struttura-del-tipo-result)
 ---
@@ -656,7 +658,7 @@ La prova passa se il commit con il token è impedito e l'output non mostra il va
 
 #### Relations
   * derivedFrom: [Verifica della protezione dai segreti](#verifica-della-protezione-dai-segreti)
-  * satisfiedBy: [pre-commit-hook.test.ts](../../test/repository/pre-commit-hook.test.ts)
+  * satisfiedBy: [pre-commit-hook.spec.ts](../../test/repository/pre-commit-hook.spec.ts)
   * verify: [Blocco locale dei commit con segreti](../Requirements/ServerFoundation.md#blocco-locale-dei-commit-con-segreti)
 ---
 
@@ -672,7 +674,7 @@ La prova passa se la scansione parte a ogni push su qualunque branch (`'**'`), a
 
 #### Relations
   * derivedFrom: [Verifica della protezione dai segreti](#verifica-della-protezione-dai-segreti)
-  * satisfiedBy: [workflows.test.ts](../../test/repository/workflows.test.ts)
+  * satisfiedBy: [workflows.spec.ts](../../test/repository/workflows.spec.ts)
   * verify: [Scansione dei segreti nella CI del backend](../Requirements/ServerFoundation.md#scansione-dei-segreti-nella-ci-del-backend)
 ---
 
@@ -713,7 +715,7 @@ La prova passa se il workflow parte soltanto sui tag `v*`, se il job `publish` c
 
 #### Relations
   * derivedFrom: [Verifica della pubblicazione dell'immagine Docker del server](#verifica-della-pubblicazione-dellimmagine-docker-del-server)
-  * satisfiedBy: [workflows.test.ts](../../test/repository/workflows.test.ts)
+  * satisfiedBy: [workflows.spec.ts](../../test/repository/workflows.spec.ts)
   * verify: [Pubblicazione dell'immagine Docker del server](../Requirements/ServerFoundation.md#pubblicazione-dellimmagine-docker-del-server)
 ---
 
@@ -855,9 +857,9 @@ Non automatizzabile: riconoscere un gestore HTTP che aggira Fastify richiede di 
 ### Ispezione dei nomi secondo le responsabilità nel backend
 
 #### Details
-Partire dall'elenco completo dei file di produzione, dalle porte Application e dai punti di ingresso; non limitare la ricerca ai nomi che contengono già `.adapter` o `.use-case`. Per ciascun componente interessato registrare percorso, responsabilità, eventuale porta implementata o caso d'uso invocato, classificazione e nome atteso.
+Partire dall'elenco completo dei file di produzione, dalle porte Application e dai punti di ingresso; non limitare la ricerca ai nomi che contengono già `.adapter`, `.port` o `.use-case`. Per ciascun componente interessato registrare percorso, responsabilità, eventuale porta dichiarata o implementata o caso d'uso invocato, classificazione e nome atteso.
 
-L'ispezione passa se tutti i casi d'uso hanno il suffisso `.use-case.ts`, tutti gli adapter di ingresso e di uscita hanno il suffisso `.adapter.ts` e i file di supporto non sono classificati come adapter soltanto per la cartella che li contiene. Considerare anche le implementazioni strutturali di porte a oggetto o callable; non affidarsi al solo `implements`. I ruoli ambigui devono essere risolti con motivazione documentata. L'ispezione fallisce se manca un suffisso richiesto o se un suffisso descrive un ruolo non realizzato.
+L'ispezione passa se tutti i casi d'uso hanno il suffisso `.use-case.ts`, tutti i file che dichiarano una porta Application hanno il suffisso `.port.ts`, tutti gli adapter di ingresso e di uscita hanno il suffisso `.adapter.ts` e i file di supporto non sono classificati come adapter soltanto per la cartella che li contiene. Considerare anche le implementazioni strutturali di porte a oggetto o callable; non affidarsi al solo `implements`. I ruoli ambigui devono essere risolti con motivazione documentata. L'ispezione fallisce se manca un suffisso richiesto o se un suffisso descrive un ruolo non realizzato.
 
 Per ogni rinomina controllare import, export pubblici, riferimenti nei test e collegamenti Reqvire. La compilazione e i test pertinenti devono continuare a passare. L'elenco dei file classificati, i difetti e l'esito si riportano nel messaggio del commit o nella pull request che svolge l'ispezione; la presenza di una relazione `satisfiedBy` e il successo di `validate` o `lint` non sostituiscono questa ispezione.
 
@@ -917,8 +919,8 @@ La prova passa se tutte le risposte HTTP che trasportano dati conversazionali in
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [http-history-route.test.ts](../../packages/conversations/test/adapters/in/http-history-route.test.ts)
-  * satisfiedBy: [http-list-route.test.ts](../../packages/conversations/test/adapters/in/http-list-route.test.ts)
+  * satisfiedBy: [history-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.spec.ts)
+  * satisfiedBy: [list-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.spec.ts)
   * verify: [Esclusione dalla cache delle risposte conversazionali HTTP](../Requirements/ServerFoundation.md#esclusione-dalla-cache-delle-risposte-conversazionali-http)
 ---
 
@@ -934,10 +936,10 @@ La prova passa se ciascun processo importa una volta all'avvio solo i moduli nec
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [agent-config.test.ts](../../apps/server/test/runtime/agent-config.test.ts)
-  * satisfiedBy: [config-bootstrap.test.ts](../../apps/server/test/runtime/config-bootstrap.test.ts)
-  * satisfiedBy: [config-examples.test.ts](../../apps/server/test/runtime/config-examples.test.ts)
-  * satisfiedBy: [conversation-config.test.ts](../../packages/conversations/test/adapters/out/conversation-config.test.ts)
+  * satisfiedBy: [agent-config.spec.ts](../../apps/server/src/runtime/agent-config.spec.ts)
+  * satisfiedBy: [conversation-server.config-bootstrap.spec.ts](../../apps/server/src/runtime/conversation-server.config-bootstrap.spec.ts)
+  * satisfiedBy: [config-examples.spec.ts](../../apps/server/test/examples/config-examples.spec.ts)
+  * satisfiedBy: [conversation-config.spec.ts](../../packages/conversations/src/adapters/out/conversation-config.spec.ts)
   * verify: [Caricamento iniziale delle configurazioni TypeScript](../Requirements/ServerFoundation.md#caricamento-iniziale-delle-configurazioni-typescript)
   * verify: [Distribuzione mirata della configurazione validata](../Requirements/ServerFoundation.md#distribuzione-mirata-della-configurazione-validata)
   * verify: [Validazione preventiva della configurazione attiva](../Requirements/ServerFoundation.md#validazione-preventiva-della-configurazione-attiva)
@@ -991,16 +993,16 @@ La prova passa se `@fastify/helmet` è registrato globalmente e le tre risposte 
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
+  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
   * verify: [Header di sicurezza sulle risposte HTTP](../Requirements/ServerFoundation.md#header-di-sicurezza-sulle-risposte-http)
 ---
 
 ### Prova del runner Vitest del backend
 
-Esaminare gli script dei package e dell'app server che eseguono la suite automatica del backend; avviarli con il runner configurato e acquisire il report delle verifiche disponibili.
+Esaminare `vitest.config.ts` e gli script `test` e `test:integration` del `package.json` della radice; avviarli e acquisire il report dei test eseguiti da ciascuno.
 
 #### Details
-La prova passa se gli script eseguono i test backend tramite Vitest e il runner produce un report dei test avviati. Fallisce se la suite backend usa un runner diverso o non può essere avviata tramite Vitest.
+La prova passa se gli script eseguono con Vitest rispettivamente i progetti `fast` e `integration` di «Suite di test del backend», ciascuno produce un report dei test avviati, nessun file di test compare in entrambi i report e la somma dei file eseguiti è pari al numero dei file `*.spec.ts` del repository. Fallisce se la suite usa un runner diverso, se uno script non può essere avviato tramite Vitest, se un file gira in entrambe le selezioni o se un file di test non appartiene a nessuna.
 
 #### Metadata
   * type: test-verification
@@ -1008,6 +1010,7 @@ La prova passa se gli script eseguono i test backend tramite Vitest e il runner 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
   * satisfiedBy: [package.json](../../package.json)
+  * satisfiedBy: [vitest.config.ts](../../vitest.config.ts)
   * verify: [Vitest come runner del backend](../Requirements/ServerFoundation.md#vitest-come-runner-del-backend)
 ---
 
@@ -1040,7 +1043,7 @@ La prova passa se l'ingresso restituisce un indirizzo locale raggiungibile e un'
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [test-server.test.ts](../../apps/server/test/runtime/test-server.test.ts)
+  * satisfiedBy: [test-server.spec.ts](../../apps/server/src/runtime/test-server.spec.ts)
   * verify: [Ingresso di prova pubblico del server conversazionale](../Requirements/ServerFoundation.md#ingresso-di-prova-pubblico-del-server-conversazionale)
 ---
 
@@ -1056,7 +1059,7 @@ La prova passa se ogni workflow dichiara `permissions` con il solo `contents: re
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [workflows.test.ts](../../test/repository/workflows.test.ts)
+  * satisfiedBy: [workflows.spec.ts](../../test/repository/workflows.spec.ts)
   * verify: [Irrobustimento dei workflow GitHub Actions](../Requirements/ServerFoundation.md#irrobustimento-dei-workflow-github-actions)
 ---
 
@@ -1072,7 +1075,7 @@ La prova passa se le credenziali fornite al client corrispondono a quelle del mo
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [api-credentials.test.ts](../../apps/server/test/composition/api-credentials.test.ts)
+  * satisfiedBy: [agents.api-credentials.spec.ts](../../apps/server/src/composition/agents.api-credentials.spec.ts)
   * verify: [Credenziali API nel modulo TypeScript del componente](../Requirements/ServerFoundation.md#credenziali-api-nel-modulo-typescript-del-componente)
 ---
 
@@ -1123,7 +1126,7 @@ La prova passa se HSTS è assente quando la configurazione pubblica è HTTP o no
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
+  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
   * verify: [HSTS legato all'HTTPS pubblico](../Requirements/ServerFoundation.md#hsts-legato-allhttps-pubblico)
 ---
 
@@ -1132,14 +1135,14 @@ La prova passa se HSTS è assente quando la configurazione pubblica è HTTP o no
 Leggere come testo `.github/workflows/ci.yml` e i file di prova dei package sotto `packages/`.
 
 #### Details
-La prova passa se il workflow parte a ogni push su `main`, a ogni pull request, su richiesta manuale e con `workflow_call`; se il job `Backend checks` dichiara `BRANCH` pari a `${{ github.head_ref || github.ref_name }}`, esegue il checkout del repository in `workspace/ambrogio-backend` con `fetch-depth: 0`, clona `ambrogio-model` in `workspace/ambrogio-model` sul branch `BRANCH` se esiste sul remoto e altrimenti su `main`, esegue poi `workspace/ambrogio-model/scripts/checkout-workspace workspace "$BRANCH"` e `workspace/ambrogio-model/scripts/model-checks --workspace workspace`, e infine, nella cartella `workspace/ambrogio-backend`, `pnpm install --frozen-lockfile`, `pnpm audit --audit-level high` subito dopo, `pnpm typecheck`, `pnpm build` e `pnpm test`, con `corepack enable` prima dell'installazione e l'installazione e l'audit delle dipendenze prima degli altri passi pnpm e con `pnpm build` e l'installazione verificata di gitleaks prima di `pnpm test`; se il workflow non nomina un pacchetto o una versione di Reqvire né uno script di integrità locale; se nessun passo o job dichiara `continue-on-error`; e se ogni file di prova che importa un adapter di persistenza di `src/adapters/out/sqlite/` importa anche `better-sqlite3`, così da esercitare un database SQLite reale. Fallisce se manca un evento o una fase, se l'ordine richiesto non è rispettato, se un fallimento è tollerato o se una prova di un adapter SQLite non usa il driver reale. Che un controllo fallito impedisca l'integrazione è verificato da «Ispezione della protezione del merge del backend».
+La prova passa se il workflow parte a ogni push su `main`, a ogni pull request, su richiesta manuale e con `workflow_call`; se il job `Backend checks` dichiara `BRANCH` pari a `${{ github.head_ref || github.ref_name }}`, esegue il checkout del repository in `workspace/ambrogio-backend` con `fetch-depth: 0`, clona `ambrogio-model` in `workspace/ambrogio-model` sul branch `BRANCH` se esiste sul remoto e altrimenti su `main`, esegue poi `workspace/ambrogio-model/scripts/checkout-workspace workspace "$BRANCH"` e `workspace/ambrogio-model/scripts/model-checks --workspace workspace`, e infine, nella cartella `workspace/ambrogio-backend`, `pnpm install --frozen-lockfile`, `pnpm audit --audit-level high` subito dopo, `pnpm build`, `pnpm typecheck`, `pnpm test` e `pnpm test:integration`, con `corepack enable` prima dell'installazione e l'installazione e l'audit delle dipendenze prima degli altri passi pnpm, con `pnpm build` prima di `pnpm typecheck` e l'installazione verificata di gitleaks prima di `pnpm test`; se il workflow non nomina un pacchetto o una versione di Reqvire né uno script di integrità locale; se nessun passo o job dichiara `continue-on-error`; e se ogni file di prova dei package che importa un adapter di persistenza di `src/adapters/out/sqlite/` importa anche `better-sqlite3`, così da esercitare un database SQLite reale, e si chiama `*.integration.spec.ts`, e ogni file `*.integration.spec.ts` importa `better-sqlite3`. Fallisce se manca un evento o una fase, se l'ordine richiesto non è rispettato, se un fallimento è tollerato, se una prova di un adapter SQLite non usa il driver reale o non appartiene alla selezione di integrazione. Che un controllo fallito impedisca l'integrazione è verificato da «Ispezione della protezione del merge del backend».
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [workflows.test.ts](../../test/repository/workflows.test.ts)
+  * satisfiedBy: [workflows.spec.ts](../../test/repository/workflows.spec.ts)
   * verify: [Controlli CI delle modifiche funzionali del server](../Requirements/ServerFoundation.md#controlli-ci-delle-modifiche-funzionali-del-server)
 ---
 
@@ -1155,8 +1158,8 @@ La prova passa se il processo ascolta solo all'indirizzo e alla porta espliciti 
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
-  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
   * verify: [Configurazione esplicita dell'ascolto HTTP](../Requirements/ServerFoundation.md#configurazione-esplicita-dellascolto-http)
 ---
 
@@ -1172,7 +1175,7 @@ La prova passa se, senza elenco, nessuna risposta autorizza CORS; con l'elenco, 
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [http-server.test.ts](../../apps/server/test/runtime/http-server.test.ts)
+  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
   * verify: [Origini CORS esplicite dell'API HTTP](../Requirements/ServerFoundation.md#origini-cors-esplicite-dellapi-http)
 ---
 

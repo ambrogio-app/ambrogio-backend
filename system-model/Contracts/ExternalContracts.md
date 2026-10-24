@@ -74,7 +74,7 @@ Versione da cui Ambrogio dipende: Home Assistant 2025.11.0 o successiva. L'integ
 
 Interfaccia usata: endpoint `/api/mcp` con trasporto Streamable HTTP; autenticazione con un token di accesso di lunga durata di Home Assistant come Bearer, non con OAuth; strumenti limitati alle entità esposte ad Assist; capacità `prompts` con un prompt senza argomenti che contiene le indicazioni d'uso degli strumenti e l'elenco delle aree e dei dispositivi esposti.
 
-Prova d'integrazione: «Dimostrazione del connettore Home Assistant su un'installazione reale». La versione di Home Assistant con cui la dimostrazione è stata eseguita non è registrata: la versione dichiarata è la minima che offre l'interfaccia usata secondo il sorgente di Home Assistant. «Prova della configurazione pronta di Home Assistant» controlla il file d'esempio senza un'istanza di Home Assistant.
+Prova d'integrazione: «Dimostrazione del connettore Home Assistant su un'installazione reale». L'installazione di riferimento usa Home Assistant 2025.12.5, la versione che Home Assistant registra nella propria configurazione; la versione dichiarata come dipendenza resta la minima che offre l'interfaccia usata secondo il sorgente di Home Assistant. «Prova della configurazione pronta di Home Assistant» controlla il file d'esempio senza un'istanza di Home Assistant.
 
 #### Metadata
   * type: source

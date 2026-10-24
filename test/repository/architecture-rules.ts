@@ -111,6 +111,21 @@ function productionReached(graph: ImportGraph, file: SourceFile, unit: Workspace
   return reached;
 }
 
+/**
+ * The files of the adapter of a verified adapter file: the file itself, the files of the same direction it imports
+ * directly, the modules in which that adapter is split, and, when the adapter has a folder of its own below
+ * `src/adapters/in` or `src/adapters/out`, every production file of that folder.
+ */
+function ownAdapter(graph: ImportGraph, verified: string, direction: string): ReadonlySet<string> {
+  const folder = verified.slice(0, verified.lastIndexOf('/'));
+  const siblings = folder === direction ? []
+    : graph.files.map((file) => file.path).filter((path) => inside(path, folder) && !isSpec(path));
+  const file = graph.files.find((candidate) => candidate.path === verified);
+  const imported = (file?.specifiers ?? []).filter((specifier) => specifier.startsWith('.'))
+    .map((specifier) => asSource(resolveSpecifier(verified, specifier))).filter((target) => inside(target, direction));
+  return new Set([verified, ...siblings, ...imported]);
+}
+
 const layerTestImports: Rule = {
   name: 'layer-test-imports',
   check: (graph) => {
@@ -123,11 +138,15 @@ const layerTestImports: Rule = {
         if (layer === undefined || verifiedFile(file.path, known) === undefined) {
           return [{ rule: 'layer-test-imports' as const, from: file.path, to: '(not classifiable)' }];
         }
-        const allowed = layer === 'src/domain' ? ['src/domain']
-          : layer === 'src/application' ? ['src/domain', 'src/application'] : undefined;
-        if (allowed === undefined) return [];
+        const verified = verifiedFile(file.path, known)!;
+        const allowedLayers = layer === 'src/domain' ? ['src/domain']
+          : layer === 'src/application' ? ['src/domain', 'src/application']
+          : layer === 'src/adapters/in' ? ['src/application'] : ['src/domain', 'src/application'];
+        const own = layer === 'src/adapters/in' || layer === 'src/adapters/out'
+          ? ownAdapter(graph, verified, `${unit.directory}/${layer}`) : new Set<string>();
         return productionReached(graph, file, unit)
-          .filter((target) => !allowed.some((prefix) => inside(target, `${unit.directory}/${prefix}`)))
+          .filter((target) => !own.has(target)
+            && !allowedLayers.some((prefix) => inside(target, `${unit.directory}/${prefix}`)))
           .map((target) => ({ rule: 'layer-test-imports' as const, from: file.path, to: target }));
       }))];
   },
@@ -137,24 +156,13 @@ const domainApplicationOwnPackage: Rule = {
   name: 'domain-application-own-package',
   check: (graph) => packagesOf(graph).flatMap((unit) => {
     const known = new Set(graph.files.map((file) => file.path));
-    const violations: Violation[] = [];
-    const pending = ['src/domain', 'src/application']
-      .flatMap((layer) => filesIn(graph, `${unit.directory}/${layer}`)).map((file) => file.path)
-      .filter((path) => isProduction(path, unit));
-    const seen = new Set<string>();
-    while (pending.length > 0) {
-      const path = pending.pop()!;
-      if (seen.has(path)) continue;
-      seen.add(path);
-      const file = graph.files.find((candidate) => candidate.path === path)!;
-      for (const specifier of file.specifiers) {
-        const target = asSource(resolveSpecifier(path, specifier));
-        if (!specifier.startsWith('.') || !isProduction(target, unit) || !known.has(target)) {
-          violations.push({ rule: 'domain-application-own-package', from: path, to: specifier });
-        } else pending.push(target);
-      }
-    }
-    return violations;
+    const layers = { 'src/domain': ['src/domain'], 'src/application': ['src/domain', 'src/application'] } as const;
+    return Object.entries(layers).flatMap(([layer, allowed]) => filesIn(graph, `${unit.directory}/${layer}`)
+      .filter((file) => isProduction(file.path, unit)).flatMap((file) => file.specifiers.filter((specifier) => {
+        const target = asSource(resolveSpecifier(file.path, specifier));
+        return !specifier.startsWith('.') || !isProduction(target, unit) || !known.has(target)
+          || !allowed.some((prefix) => inside(target, `${unit.directory}/${prefix}`));
+      }).map((specifier) => ({ rule: 'domain-application-own-package' as const, from: file.path, to: specifier }))));
   }),
 };
 

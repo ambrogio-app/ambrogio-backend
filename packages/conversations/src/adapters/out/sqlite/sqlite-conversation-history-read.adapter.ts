@@ -1,4 +1,4 @@
-import { ProjectError } from '../../../project-error.js';
+import { ProjectError } from '../../../domain/project-error.js';
 import type { Kysely } from 'kysely';
 import type { ConversationHistory, ConversationHistoryRead } from '../../../application/conversation-history-read.port.js';
 import type { ConversationDatabase } from './schema.js';

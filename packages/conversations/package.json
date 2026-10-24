@@ -11,8 +11,8 @@
   },
   "exports": {
     "./application/project-error": {
-      "types": "./dist/project-error.d.ts",
-      "import": "./dist/project-error.js"
+      "types": "./dist/application/project-error.d.ts",
+      "import": "./dist/application/project-error.js"
     },
     "./application/begin-turn": {
       "types": "./dist/application/begin-turn.use-case.d.ts",

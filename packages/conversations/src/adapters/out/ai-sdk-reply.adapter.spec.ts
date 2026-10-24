@@ -2,7 +2,7 @@ import { expect, test, vi } from 'vitest';
 import { simulateReadableStream } from 'ai';
 import { MockLanguageModelV4 } from 'ai/test';
 import type { ReplyPart } from '../../application/produce-conversation-reply.port.js';
-import { ProjectError } from '../../project-error.js';
+import { ProjectError } from '../../domain/project-error.js';
 import { AiSdkKnowledgeAgentReply, AiSdkOrchestratorReply, AiSdkToolAgentReply, aiSdkOptions } from './ai-sdk-reply.adapter.js';
 
 const settings = { provider: 'mistral' as const, instructions: 'Use available tools when needed.',

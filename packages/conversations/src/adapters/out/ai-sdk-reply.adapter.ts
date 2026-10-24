@@ -5,7 +5,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { generateText, jsonSchema, Output, stepCountIs, streamText, tool, type LanguageModel,
   type ModelMessage } from 'ai';
-import { ProjectError } from '../../project-error.js';
+import { ProjectError } from '../../domain/project-error.js';
 import type { ConversationHistory } from '../../application/conversation-history-read.port.js';
 import type { ProduceConversationReply, ReplyCancellation, ReplyPart }
   from '../../application/produce-conversation-reply.port.js';

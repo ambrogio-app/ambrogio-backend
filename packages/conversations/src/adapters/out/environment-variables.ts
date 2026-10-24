@@ -1,4 +1,4 @@
-import { ProjectError } from '../../project-error.js';
+import { ProjectError } from '../../domain/project-error.js';
 
 /** The runtime environment every process declares in `AMBROGIO_ENV`, without a default. */
 export type RuntimeEnvironment = 'development' | 'test' | 'production';

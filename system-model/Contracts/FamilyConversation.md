@@ -656,6 +656,8 @@ Il caricamento legge in un'unica istruzione SQL la riga del turno, la sua conver
 
 Nel modulo business «Conversazioni», Domain contiene le regole e i tipi del dominio della conversazione; Application contiene i casi d'uso e le porte necessarie per collaborare con componenti esterni; gli adapter realizzano gli ingressi del modulo e le integrazioni tecniche richieste dalle porte. Questa suddivisione riguarda le responsabilità del codice, indipendentemente dai percorsi delle cartelle.
 
+L'errore del progetto `ProjectError`, la sottoclasse di `Error` con cui ogni layer segnala i guasti inattesi, è definito nel Domain in `src/domain/project-error.ts`. L'Application lo riesporta in `src/application/project-error.ts` come parte della propria superficie pubblica: da lì lo importano gli adapter inbound, che non importano il Domain, e le applicazioni, tramite il sottopercorso `./application/project-error` del package. `ProjectError` non è un oggetto del Domain e non segue «Classi del Domain conversazionale con TypeScript».
+
 #### Metadata
   * type: specification
 

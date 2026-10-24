@@ -3,7 +3,7 @@ import type { AddressInfo } from 'node:net';
 import { expect, test, vi } from 'vitest';
 import { Client } from '@modelcontextprotocol/client';
 import { McpToolClient } from './mcp-tool-client.js';
-import { ProjectError } from '../../project-error.js';
+import { ProjectError } from '../../domain/project-error.js';
 
 async function testServer(options: { prompts?: 'ok' | 'list-fails' | 'get-fails' } = {}) {
   const seen: Array<{ method: string; authorization?: string }> = [];

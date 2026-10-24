@@ -652,6 +652,11 @@ Quando il server avvia la conversazione con la directory degli agenti, deve rend
 
 Quando Ambrogio viene riavviato, deve rendere nuovamente disponibili alla famiglia le conversazioni e gli scambi testuali conservati prima del riavvio.
 
+#### Details
+L'archivio è un database SQLite letto e scritto con Kysely secondo «Archivio SQLite con Kysely».
+
+Origine: baseline Reqvire «Kysely for SQLite access», adottata.
+
 #### Concept References
   * [Famiglia](../../../ambrogio-model/system-model/Thesaurus/Lessico.md#famiglia)
   * [Conversazione](../../../ambrogio-model/system-model/Thesaurus/Lessico.md#conversazione)
@@ -927,7 +932,7 @@ Quando un caso d'uso del modulo «Conversazioni» richiede una capacità tecnica
 Quando il modulo «Conversazioni» crea, modifica o ricostruisce lo stato di un turno, Domain deve ammettere soltanto stati e transizioni validi per quel turno, preservando identità e testo, e lasciare invariato lo stato se una transizione è rifiutata.
 
 #### Details
-Origine: baseline Reqvire «Entity by identity», adottata; «Invariants preserved on every Domain path», adottata; «Distinct birth and reconstruction paths», adottata.
+Origine: baseline Reqvire «Entity by identity», adottata; «Invariants preserved on every Domain path», adottata; «Distinct birth and reconstruction paths», adottata; «Invariant in the smallest owner», adottata; «Refused operation leaves the aggregate unchanged», adattata: il Domain non registra eventi, quindi la garanzia riguarda il solo stato del turno.
 
 #### Metadata
   * type: requirement
@@ -1757,7 +1762,7 @@ Origine: baseline Reqvire «Shape validation in inbound adapters», adottata.
 Quando un ingresso HTTP riceve una richiesta per le operazioni conversazionali, deve verificare la forma dei dati ricevuti prima di invocare il caso d'uso, rifiutando le rappresentazioni non valide senza modificare implicitamente i valori.
 
 #### Details
-Origine: baseline Reqvire «Shape validation in inbound adapters», adottata; «Structural validation of HTTP requests», adottata.
+Origine: baseline Reqvire «Shape validation in inbound adapters», adottata; «Structural validation of HTTP requests», adottata; «Declared policy for unknown input fields», adottata; «Explicit field-wise conversion in inbound adapters», adottata.
 
 #### Metadata
   * type: requirement

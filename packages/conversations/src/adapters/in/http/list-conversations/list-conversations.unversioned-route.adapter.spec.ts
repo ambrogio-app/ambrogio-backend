@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { registerUnversionedListConversationsRoute } from './list-conversations.unversioned-route.adapter.js';
 import { createListConversationsHandler } from './list-conversations.handler.js';
 import { createListConversations } from '../../../../application/list-conversations.use-case.js';
-import { ProjectError } from '../../../../project-error.js';
+import { ProjectError } from '../../../../application/project-error.js';
 import type { ListConversations } from '../../../../application/list-conversations.use-case.js';
 import { routeServer } from '../../../../../test/support/http-routes.js';
 import { recordingLogger } from '../../../../../test/support/recording-logger.js';

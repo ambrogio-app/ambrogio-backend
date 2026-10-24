@@ -469,20 +469,20 @@ Non automatizzabile: confrontare il bisogno del caso d'uso con l'API del fornito
   * verify: [Contratti delle porte nei termini di Conversazioni](../Requirements/FamilyConversation.md#contratti-delle-porte-nei-termini-di-conversazioni)
 ---
 
-### Analisi statica dei confini degli import
+### Prova statica dei confini degli import
 
-Analizzare il grafo degli import del codice TypeScript di produzione del modulo «Conversazioni», includendo gli import di valori, gli `import type` e le riesportazioni.
+Eseguire la regola `domain-application-own-package` di «Regole di architettura del backend» sul grafo degli import del codice TypeScript di produzione del modulo «Conversazioni», compresi gli import di valori, gli `import type` e le riesportazioni, e sulle sue fixture negative.
 
 #### Details
-L'analisi passa se ogni import originato da Domain punta a Domain dello stesso modulo e ogni import originato da Application punta a Domain o Application dello stesso modulo. Fallisce se è presente anche un solo collegamento verso un componente o modulo non ammesso, compresi quelli che importano soltanto tipi.
-
-Non automatizzabile: Domain e Application importano `src/project-error.ts`, che si trova fuori dalle cartelle dei layer; è una deviazione nota in attesa di una decisione sulla collocazione di `ProjectError`, e finché quella decisione manca un controllo automatico fallirebbe su ogni import di quel file.
+La prova passa se ogni import originato da Domain punta a Domain dello stesso modulo, ogni import originato da Application punta a Domain o Application dello stesso modulo e le fixture negative della regola falliscono con il suo nome. Fallisce se è presente anche un solo collegamento verso un componente, un modulo o un file del package fuori da quei layer, compresi quelli che importano soltanto tipi.
 
 #### Metadata
-  * type: analysis-verification
+  * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica dell'organizzazione delle conversazioni](#verifica-dellorganizzazione-delle-conversazioni)
+  * satisfiedBy: [architecture-rules.ts](../../test/repository/architecture-rules.ts)
+  * satisfiedBy: [import-boundaries.spec.ts](../../test/repository/import-boundaries.spec.ts)
   * verify: [Import del Domain entro il proprio componente](../Requirements/FamilyConversation.md#import-del-domain-entro-il-proprio-componente)
   * verify: [Import dell'Application entro il proprio modulo](../Requirements/FamilyConversation.md#import-dellapplication-entro-il-proprio-modulo)
 ---

@@ -29,7 +29,7 @@ La prova passa se il commit privo di segreti riesce ed esegue lo script; se con 
 Leggere lo script `verify` di `package.json` e i passi del job `Backend checks` di `.github/workflows/ci.yml`.
 
 #### Details
-La prova passa se i comandi `pnpm` del job successivi all'installazione, escluso l'audit, sono `pnpm build`, `pnpm typecheck`, `pnpm test` e `pnpm test:integration` e se `verify` è la sequenza unita da `&&` di `../ambrogio-model/scripts/model-checks`, `pnpm install --frozen-lockfile`, `pnpm audit --audit-level high` e di quei comandi nello stesso ordine. Fallisce se un controllo della CI manca da `verify`, se l'ordine differisce o se i comandi non sono uniti da `&&`. Che `&&` interrompa la sequenza al primo comando fallito è un comportamento della shell.
+La prova passa se i comandi `pnpm` del job successivi all'installazione, escluso l'audit, sono `pnpm build`, `pnpm typecheck`, `pnpm test`, `pnpm test:integration` e `pnpm test:e2e` e se `verify` è la sequenza unita da `&&` di `../ambrogio-model/scripts/model-checks`, `pnpm install --frozen-lockfile`, `pnpm audit --audit-level high` e di quei comandi nello stesso ordine. Fallisce se un controllo della CI manca da `verify`, se l'ordine differisce o se i comandi non sono uniti da `&&`. Che `&&` interrompa la sequenza al primo comando fallito è un comportamento della shell.
 
 #### Metadata
   * type: test-verification
@@ -58,16 +58,17 @@ La prova passa se l'unico comando di audit dei workflow è `pnpm audit --audit-l
 
 ### Prova dell'installazione del backend con pnpm e Corepack
 
-Leggere come testo `package.json`, i workflow e il `Dockerfile` del backend.
+Leggere come testo i `package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`, i workflow e il `Dockerfile` del backend.
 
 #### Details
-La prova passa se `packageManager` dichiara una versione esatta di pnpm; se nessun workflow né il `Dockerfile` installano pnpm con `npm install --global` o lo eseguono con `npx`; se il job `Backend checks` dichiara `COREPACK_ENABLE_DOWNLOAD_PROMPT` uguale a `0` ed esegue `corepack enable` prima di ogni comando `pnpm`; e se la fase di build del `Dockerfile` parte da `node:24`, dichiara `ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0` ed esegue `corepack enable` prima di `pnpm install --frozen-lockfile`, primo comando pnpm della fase. Fallisce se una di queste condizioni manca.
+La prova passa se `packageManager` dichiara una versione esatta di pnpm; se nessun workflow né il `Dockerfile` installano pnpm con `npm install --global` o lo eseguono con `npx`; se il job `Backend checks` dichiara `COREPACK_ENABLE_DOWNLOAD_PROMPT` uguale a `0` ed esegue `corepack enable` prima di ogni comando `pnpm`; se la fase di build del `Dockerfile` parte da `node:24`, dichiara `ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0` ed esegue `corepack enable` prima di `pnpm install --frozen-lockfile`, primo comando pnpm della fase; se ogni dipendenza diretta dei tre `package.json` ha la versione esatta risolta nel lockfile, salvo il package interno dichiarato con `workspace:*`; se `allowBuilds` ammette soltanto `koffi` e `vosk-koffi`; e se `pnpm-workspace.yaml` non dichiara `minimumReleaseAge` né eccezioni all'attesa. Fallisce se una di queste condizioni manca.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica degli strumenti del repository backend](#verifica-degli-strumenti-del-repository-backend)
+  * satisfiedBy: [dependencies.spec.ts](../../test/repository/dependencies.spec.ts)
   * satisfiedBy: [workflows.spec.ts](../../test/repository/workflows.spec.ts)
   * verify: [Installazione delle dipendenze del backend con pnpm e Corepack](../Requirements/ServerFoundation.md#installazione-delle-dipendenze-del-backend-con-pnpm-e-corepack)
 ---
@@ -1126,10 +1127,10 @@ La prova passa se `@fastify/helmet` è registrato globalmente e le tre risposte 
 
 ### Prova del runner Vitest del backend
 
-Esaminare `vitest.config.ts` e gli script `test` e `test:integration` del `package.json` della radice; avviarli e acquisire il report dei test eseguiti da ciascuno.
+Esaminare `vitest.config.ts` e gli script `test`, `test:integration` e `test:e2e` del `package.json` della radice; avviarli e acquisire il report dei test eseguiti da ciascuno.
 
 #### Details
-La prova passa se gli script eseguono con Vitest rispettivamente i progetti `fast` e `integration` di «Suite di test del backend», ciascuno produce un report dei test avviati, nessun file di test compare in entrambi i report e la somma dei file eseguiti è pari al numero dei file `*.spec.ts` del repository. Fallisce se la suite usa un runner diverso, se uno script non può essere avviato tramite Vitest, se un file gira in entrambe le selezioni o se un file di test non appartiene a nessuna.
+La prova passa se gli script eseguono con Vitest rispettivamente i progetti `fast`, `integration` ed `e2e` di «Suite di test del backend», ciascuno produce un report dei test avviati, nessun file di test compare in più di un report e la somma dei file eseguiti è pari al numero dei file `*.spec.ts` del repository. Fallisce se la suite usa un runner diverso, se uno script non può essere avviato tramite Vitest, se un file gira in entrambe le selezioni o se un file di test non appartiene a nessuna.
 
 #### Metadata
   * type: test-verification
@@ -1281,7 +1282,7 @@ La prova passa se HSTS è assente quando la configurazione pubblica è HTTP o no
 Leggere come testo `.github/workflows/ci.yml` e i file di prova dei package sotto `packages/`.
 
 #### Details
-La prova passa se il workflow parte a ogni push su `main`, a ogni pull request, su richiesta manuale e con `workflow_call`; se il job `Backend checks` dichiara `BRANCH` pari a `${{ github.head_ref || github.ref_name }}`, esegue il checkout del repository in `workspace/ambrogio-backend` con `fetch-depth: 0`, clona `ambrogio-model` in `workspace/ambrogio-model` sul branch `BRANCH` se esiste sul remoto e altrimenti su `main`, esegue poi `workspace/ambrogio-model/scripts/checkout-workspace workspace "$BRANCH"` e `workspace/ambrogio-model/scripts/model-checks --workspace workspace`, e infine, nella cartella `workspace/ambrogio-backend`, `pnpm install --frozen-lockfile`, `pnpm audit --audit-level high` subito dopo, `pnpm build`, `pnpm typecheck`, `pnpm test` e `pnpm test:integration`, con `corepack enable` prima dell'installazione e l'installazione e l'audit delle dipendenze prima degli altri passi pnpm, con `pnpm build` prima di `pnpm typecheck` e l'installazione verificata di gitleaks prima di `pnpm test`; se il workflow non nomina un pacchetto o una versione di Reqvire né uno script di integrità locale; se nessun passo o job dichiara `continue-on-error`; e se ogni file di prova dei package che importa un adapter di persistenza di `src/adapters/out/sqlite/` importa anche `better-sqlite3`, così da esercitare un database SQLite reale, e si chiama `*.integration.spec.ts`, e ogni file `*.integration.spec.ts` importa `better-sqlite3`. Fallisce se manca un evento o una fase, se l'ordine richiesto non è rispettato, se un fallimento è tollerato, se una prova di un adapter SQLite non usa il driver reale o non appartiene alla selezione di integrazione. Che un controllo fallito impedisca l'integrazione è verificato da «Ispezione della protezione del merge del backend».
+La prova passa se il workflow parte a ogni push su `main`, a ogni pull request, su richiesta manuale e con `workflow_call`; se il job `Backend checks` dichiara `BRANCH` pari a `${{ github.head_ref || github.ref_name }}`, esegue il checkout del repository in `workspace/ambrogio-backend` con `fetch-depth: 0`, clona `ambrogio-model` in `workspace/ambrogio-model` sul branch `BRANCH` se esiste sul remoto e altrimenti su `main`, esegue poi `workspace/ambrogio-model/scripts/checkout-workspace workspace "$BRANCH"` e `workspace/ambrogio-model/scripts/model-checks --workspace workspace`, e infine, nella cartella `workspace/ambrogio-backend`, `pnpm install --frozen-lockfile`, `pnpm audit --audit-level high` subito dopo, `pnpm build`, `pnpm typecheck`, `pnpm test`, `pnpm test:integration` e `pnpm test:e2e`, con `corepack enable` prima dell'installazione e l'installazione e l'audit delle dipendenze prima degli altri passi pnpm, con `pnpm build` prima di `pnpm typecheck` e di `pnpm test:e2e` e l'installazione verificata di gitleaks prima di `pnpm test`; se il workflow non nomina un pacchetto o una versione di Reqvire né uno script di integrità locale; se nessun passo o job dichiara `continue-on-error`; e se ogni file di prova dei package che importa un adapter di persistenza di `src/adapters/out/sqlite/` importa anche `better-sqlite3`, così da esercitare un database SQLite reale, e si chiama `*.integration.spec.ts`, e ogni file `*.integration.spec.ts` importa `better-sqlite3`. Fallisce se manca un evento o una fase, se l'ordine richiesto non è rispettato, se un fallimento è tollerato, se una prova di un adapter SQLite non usa il driver reale o non appartiene alla selezione di integrazione. Che un controllo fallito impedisca l'integrazione è verificato da «Ispezione della protezione del merge del backend».
 
 #### Metadata
   * type: test-verification
@@ -1340,4 +1341,52 @@ La prova passa se ogni directory contiene un solo modello `.onnx`, `tokens.txt`,
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
   * satisfiedBy: [verify-docker-image.mjs](../../scripts/verify-docker-image.mjs)
   * verify: [Directory delle voci sostituibile nell'immagine](../Requirements/ServerFoundation.md#directory-delle-voci-sostituibile-nellimmagine)
+---
+
+### Prova del contesto di build dell'immagine del server
+
+Leggere `.dockerignore` del backend.
+
+#### Details
+La prova passa se `.dockerignore` contiene tutte le esclusioni di «Profilo dell'immagine Docker del server» e nessuna voce `!` che reinclude file. Fallisce se manca un'esclusione o se una voce reinclude file.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * satisfiedBy: [container-build-context.spec.ts](../../test/repository/container-build-context.spec.ts)
+  * verify: [Distribuzione del server come immagine Docker](../Requirements/ServerFoundation.md#distribuzione-del-server-come-immagine-docker)
+---
+
+### Prova del server compilato come processo
+
+Dopo `pnpm build`, eseguire `pnpm test:e2e`: avviare `apps/server/dist/main.js` con Node.js in un processo figlio con impostazioni di produzione, una porta libera di loopback, un archivio in una cartella temporanea e un agente che risponde, richiedere `GET /api/v1/conversations`, inviare `SIGTERM`; avviarlo poi senza variabili `AMBROGIO_*`.
+
+#### Details
+La prova passa se il punto d'ingresso compilato esiste; se il server risponde `200` con un elenco vuoto, crea il file dell'archivio, termina con codice 0 senza scrivere su stderr e non riporta la credenziale segnaposto; e se senza ambiente di esecuzione termina con codice 1, una sola riga JSON `server_startup_failed` con il messaggio `Missing environment variable AMBROGIO_ENV` e la sola riga `Unable to start HTTP server.` su stderr. Fallisce se il compilato manca o non si risolve, se una risposta, un codice di uscita o un output differiscono.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * satisfiedBy: [main.e2e.spec.ts](../../apps/server/src/main.e2e.spec.ts)
+  * verify: [Server compilato provato come processo](../Requirements/ServerFoundation.md#server-compilato-provato-come-processo)
+---
+
+### Prova dell'isolamento dei database di prova
+
+Leggere come testo i file `*.integration.spec.ts` degli adapter SQLite.
+
+#### Details
+La prova passa se ogni file importa le migrazioni di produzione o l'archivio che le applica, apre almeno un database con `better-sqlite3`, non legge `process.env` né variabili `AMBROGIO_*`, e se, quando apre un file invece di un database in memoria, crea la propria cartella con `mkdtempSync` nella cartella temporanea del sistema e la cancella con `rmSync`. Fallisce se un file manca di una di queste proprietà.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * satisfiedBy: [test-databases.spec.ts](../../test/repository/test-databases.spec.ts)
+  * verify: [Database di prova isolati del backend](../Requirements/ServerFoundation.md#database-di-prova-isolati-del-backend)
 ---

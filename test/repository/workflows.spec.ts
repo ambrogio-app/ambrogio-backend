@@ -153,8 +153,9 @@ test('the CI checks the whole model from the side-by-side workspace, then the ba
   const build = indexOfRun(job, /^pnpm build\s*$/);
   const tests = indexOfRun(job, /^pnpm test\s*$/);
   const integration = indexOfRun(job, /^pnpm test:integration\s*$/);
+  const e2e = indexOfRun(job, /^pnpm test:e2e\s*$/);
   const gitleaks = stepsOf(job).indexOf(installStep(job));
-  for (const index of [model, sideBySide, modelChecks, corepack, install, audit, typecheck, build, tests, integration]) expect(index).toBeGreaterThanOrEqual(0);
+  for (const index of [model, sideBySide, modelChecks, corepack, install, audit, typecheck, build, tests, integration, e2e]) expect(index).toBeGreaterThanOrEqual(0);
   expect(install).toBeGreaterThan(corepack);
   expect(audit).toBe(install + 1);
   expect(sideBySide).toBeGreaterThan(model);
@@ -163,7 +164,8 @@ test('the CI checks the whole model from the side-by-side workspace, then the ba
   expect(typecheck).toBeGreaterThan(build);
   expect(tests).toBeGreaterThan(Math.max(typecheck, gitleaks));
   expect(integration).toBeGreaterThan(tests);
-  for (const index of [install, audit, typecheck, build, tests, integration]) {
+  expect(e2e).toBeGreaterThan(Math.max(build, integration));
+  for (const index of [install, audit, typecheck, build, tests, integration, e2e]) {
     expect(stepsOf(job)[index]!['working-directory']).toBe('workspace/ambrogio-backend');
   }
   expectVerifiedInstall(job);
@@ -235,7 +237,7 @@ test('pnpm verify runs the model checks, the frozen installation, the audit and 
   const install = indexOfRun(job, /^pnpm install --frozen-lockfile\s*$/);
   const checks = runs(job).slice(install + 1).map((run) => run.trim()).filter((run) => /^pnpm /.test(run))
     .filter((run) => run !== 'pnpm audit --audit-level high');
-  expect(checks).toEqual(['pnpm build', 'pnpm typecheck', 'pnpm test', 'pnpm test:integration']);
+  expect(checks).toEqual(['pnpm build', 'pnpm typecheck', 'pnpm test', 'pnpm test:integration', 'pnpm test:e2e']);
   expect(manifest.scripts.verify!.split(' && ')).toEqual([
     '../ambrogio-model/scripts/model-checks', 'pnpm install --frozen-lockfile', 'pnpm audit --audit-level high', ...checks,
   ]);

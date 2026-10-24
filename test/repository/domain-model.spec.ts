@@ -49,7 +49,8 @@ function classesOf(text: string): ClassFacts[] {
   return classes;
 }
 
-const domainFiles = filesIn('domain');
+// The project error of `src/domain/project-error.ts` is the error class of the project, not a Domain object.
+const domainFiles = filesIn('domain').filter((file) => !file.endsWith('/project-error.ts'));
 const domainClasses = domainFiles.flatMap((file) => classesOf(code(file)).map((facts) => ({ file, ...facts })));
 const valueObjects = ['ConversationId', 'TurnId'];
 const roots = ['Turn'];

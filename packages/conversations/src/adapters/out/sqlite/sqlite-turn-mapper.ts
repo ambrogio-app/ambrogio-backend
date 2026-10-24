@@ -1,4 +1,4 @@
-import { ProjectError } from '../../../project-error.js';
+import { ProjectError } from '../../../domain/project-error.js';
 import { ConversationId, TurnId } from '../../../domain/identities.js';
 import { Turn } from '../../../domain/turn.js';
 import type { HistoryTurn } from '../../../application/conversation-history-read.port.js';

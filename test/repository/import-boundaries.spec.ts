@@ -83,6 +83,26 @@ const negativeFixtures: ReadonlyArray<Readonly<{ rule: RuleName; title: string; 
     }, units),
   },
   {
+    rule: 'layer-test-imports', title: 'an inbound adapter test importing the Domain and an outbound adapter test another adapter',
+    graph: fixtureGraph({
+      'packages/conversations/src/domain/turn.ts': 'export class Turn {}\n',
+      'packages/conversations/src/adapters/in/list.route.adapter.ts': 'export const route = 1;\n',
+      'packages/conversations/src/adapters/in/list.route.adapter.spec.ts':
+        "import { route } from './list.route.adapter.js';\nimport type { Turn } from '../../domain/turn.js';\n",
+      'packages/conversations/src/adapters/out/clock.adapter.ts': 'export const clock = 1;\n',
+      'packages/conversations/src/adapters/out/reply.adapter.ts': 'export const reply = 1;\n',
+      'packages/conversations/src/adapters/out/reply.adapter.spec.ts':
+        "import { reply } from './reply.adapter.js';\nimport { clock } from './clock.adapter.js';\n",
+    }, units),
+  },
+  {
+    rule: 'domain-application-own-package', title: 'a Domain file importing a file of the package outside the Domain',
+    graph: fixtureGraph({
+      'packages/conversations/src/project-error.ts': 'export class ProjectError extends Error {}\n',
+      'packages/conversations/src/domain/turn.ts': "import { ProjectError } from '../project-error.js';\nexport class Turn {}\n",
+    }, units),
+  },
+  {
     rule: 'domain-application-own-package', title: 'an Application file importing a Node.js module through a Domain file',
     graph: fixtureGraph({
       'packages/conversations/src/application/start-turn.use-case.ts': "import { Turn } from '../domain/turn.js';\n",

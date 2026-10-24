@@ -47,20 +47,20 @@ Raggruppa i controlli sulla collocazione delle applicazioni eseguibili e dei mod
   * type: verification-objective
 ---
 
-### Analisi degli import dei test degli adapter
+### Prova degli import dei test degli adapter
 
-Analizzare il grafo degli import dei test degli adapter inbound e outbound di ogni modulo business, compresi `import type` e riesportazioni, distinguendo il codice di produzione da runner, assertion, tecnologie degli adapter e fake locali.
+Eseguire la regola `layer-test-imports` di «Regole di architettura del backend» sui test degli adapter inbound e outbound di ogni modulo business, compresi `import type`, riesportazioni e moduli di supporto della cartella `test/`, e sulle sue fixture negative.
 
 #### Details
-L'analisi passa se i test inbound importano codice di produzione solo dal proprio adapter inbound e dall'Application del modulo, senza Domain, e i test outbound solo dal proprio adapter outbound, dall'Application e dal Domain del modulo, senza adapter inbound. Fallisce se un test raggiunge altro codice di produzione, anche tramite un import di soli tipi. Runner, assertion, tecnologie degli adapter e fake locali non sono classificati come codice di produzione del modulo.
-
-Non automatizzabile: diversi test degli adapter importano `src/project-error.ts`, che si trova fuori dalle cartelle dei layer; è una deviazione nota in attesa di una decisione sulla collocazione di `ProjectError`, e finché quella decisione manca un controllo automatico fallirebbe su quegli import.
+La prova passa se i test inbound raggiungono codice di produzione solo dal proprio adapter inbound e dall'Application del modulo, senza Domain, e i test outbound solo dal proprio adapter outbound, dall'Application e dal Domain del modulo, senza adapter inbound, con il proprio adapter definito dal contratto, e se le fixture negative falliscono con il nome della regola. Fallisce se un test raggiunge altro codice di produzione, anche tramite un import di soli tipi. Runner, librerie di asserzione, tecnologie degli adapter e fake locali non sono codice di produzione del modulo.
 
 #### Metadata
-  * type: analysis-verification
+  * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della struttura del monorepo](#verifica-della-struttura-del-monorepo)
+  * satisfiedBy: [architecture-rules.ts](../../test/repository/architecture-rules.ts)
+  * satisfiedBy: [import-boundaries.spec.ts](../../test/repository/import-boundaries.spec.ts)
   * verify: [Import del codice di produzione nei test degli adapter inbound](../Requirements/Workspace.md#import-del-codice-di-produzione-nei-test-degli-adapter-inbound)
   * verify: [Import del codice di produzione nei test degli adapter outbound](../Requirements/Workspace.md#import-del-codice-di-produzione-nei-test-degli-adapter-outbound)
 ---

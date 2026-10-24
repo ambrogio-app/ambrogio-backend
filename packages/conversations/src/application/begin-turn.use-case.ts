@@ -1,4 +1,4 @@
-import { ProjectError } from '../project-error.js';
+import { ProjectError } from '../domain/project-error.js';
 import { ConversationId, TurnId } from '../domain/identities.js';
 import type { Result } from '../domain/result.js';
 import { Turn } from '../domain/turn.js';

@@ -1,4 +1,4 @@
-import { ProjectError } from '../../project-error.js';
+import { ProjectError } from '../../domain/project-error.js';
 import { Client, ClientCredentialsProvider, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 
 export type McpConnection = Readonly<{

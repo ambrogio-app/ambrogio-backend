@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { registerUnversionedGetConversationRoute } from './get-conversation.unversioned-route.adapter.js';
 import { createGetConversationHandler } from './get-conversation.handler.js';
 import { createGetConversation } from '../../../../application/get-conversation.use-case.js';
-import { ProjectError } from '../../../../project-error.js';
+import { ProjectError } from '../../../../application/project-error.js';
 import type { GetConversation } from '../../../../application/get-conversation.use-case.js';
 import { routeServer } from '../../../../../test/support/http-routes.js';
 import { recordingLogger } from '../../../../../test/support/recording-logger.js';

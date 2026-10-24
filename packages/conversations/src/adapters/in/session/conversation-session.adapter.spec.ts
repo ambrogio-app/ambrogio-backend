@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { WebSocket } from 'ws';
-import { ProjectError } from '../../../project-error.js';
+import { ProjectError } from '../../../application/project-error.js';
 import { createExchangeTurn, type ExchangeTurn } from '../../../application/exchange-turn.use-case.js';
 import type { ConversationHistory } from '../../../application/conversation-history-read.port.js';
 

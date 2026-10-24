@@ -8,8 +8,9 @@
     "dev": "node --env-file=.env apps/server/dist/main.js",
     "test": "vitest run --project fast",
     "test:integration": "vitest run --project integration",
+    "test:e2e": "vitest run --project e2e",
     "typecheck": "tsc --noEmit",
-    "verify": "../ambrogio-model/scripts/model-checks && pnpm install --frozen-lockfile && pnpm audit --audit-level high && pnpm build && pnpm typecheck && pnpm test && pnpm test:integration"
+    "verify": "../ambrogio-model/scripts/model-checks && pnpm install --frozen-lockfile && pnpm audit --audit-level high && pnpm build && pnpm typecheck && pnpm test && pnpm test:integration && pnpm test:e2e"
   },
   "devDependencies": {
     "@types/node": "24.19.2",

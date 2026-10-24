@@ -1,4 +1,4 @@
-import { ProjectError } from '../../../project-error.js';
+import { ProjectError } from '../../../domain/project-error.js';
 import { sql, type Kysely } from 'kysely';
 import type {
   ConversationListCursor, ConversationListPage, ConversationListRead,

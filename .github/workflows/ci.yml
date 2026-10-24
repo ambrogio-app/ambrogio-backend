@@ -95,3 +95,7 @@ jobs:
       - name: Run integration tests
         working-directory: workspace/ambrogio-backend
         run: pnpm test:integration
+
+      - name: Run compiled process tests
+        working-directory: workspace/ambrogio-backend
+        run: pnpm test:e2e

@@ -240,7 +240,7 @@ Origine: baseline Reqvire «Interrupted state persisted before closing resources
 Il backend deve offrire `pnpm verify` secondo «Comando di verifica completo con pnpm», con i comandi dei controlli successivi all'installazione nell'ordine del job `Backend checks` della CI.
 
 #### Details
-I comandi del punto 5 del contratto sono, in quest'ordine, `pnpm build`, `pnpm typecheck`, `pnpm test` e `pnpm test:integration`; la build precede il controllo TypeScript e i test perché i package del workspace esportano la propria cartella `dist/`, che l'applicazione server e i suoi test importano. La suite di test prova l'hook pre-commit e richiede gitleaks nel `PATH`.
+I comandi del punto 5 del contratto sono, in quest'ordine, `pnpm build`, `pnpm typecheck`, `pnpm test`, `pnpm test:integration` e `pnpm test:e2e`; la build precede il controllo TypeScript e i test perché i package del workspace esportano la propria cartella `dist/`, che l'applicazione server e i suoi test importano. La suite di test prova l'hook pre-commit e richiede gitleaks nel `PATH`.
 
 #### Metadata
   * type: requirement
@@ -314,7 +314,7 @@ Quando un `catch` del server aggiunge un contesto operativo concreto a un guasto
 
 ### Controlli CI delle modifiche funzionali del server
 
-Quando la CI del backend viene eseguita, il job `Backend checks` di `.github/workflows/ci.yml` deve eseguire il checkout del repository in `workspace/ambrogio-backend`, scaricare affiancati gli altri repository del modello con `ambrogio-model/scripts/checkout-workspace`, eseguire `ambrogio-model/scripts/model-checks` sulla cartella `workspace` e poi, nella cartella del backend, l'installazione delle dipendenze, l'audit delle dipendenze, la build, il controllo TypeScript e la suite backend con Vitest nella selezione veloce, con la prova dell'hook dei segreti e lo scanner installato e verificato, e nella selezione di integrazione, con le prove degli adapter di persistenza su SQLite reale quando tali adapter esistono, e deve fallire se uno di questi controlli fallisce.
+Quando la CI del backend viene eseguita, il job `Backend checks` di `.github/workflows/ci.yml` deve eseguire il checkout del repository in `workspace/ambrogio-backend`, scaricare affiancati gli altri repository del modello con `ambrogio-model/scripts/checkout-workspace`, eseguire `ambrogio-model/scripts/model-checks` sulla cartella `workspace` e poi, nella cartella del backend, l'installazione delle dipendenze, l'audit delle dipendenze, la build, il controllo TypeScript e la suite backend con Vitest nella selezione veloce, con la prova dell'hook dei segreti e lo scanner installato e verificato, nella selezione di integrazione, con le prove degli adapter di persistenza su SQLite reale quando tali adapter esistono, e nella selezione dei processi compilati, e deve fallire se uno di questi controlli fallisce.
 
 #### Details
 Origine: baseline Reqvire «Persistence adapter tests against a real database», adottata.
@@ -522,10 +522,12 @@ Origine: baseline Reqvire «Rejection variants without classes or instanceof», 
 
 ### Distribuzione del server come immagine Docker
 
-Quando il progetto distribuisce il server, deve fornire un'immagine Docker eseguibile del server.
+Quando il progetto distribuisce il server, deve fornire un'immagine Docker eseguibile del server, il cui filesystem non contiene i valori effettivi della configurazione né i dati persistenti, costruita da un contesto di build che esclude storia Git, dipendenze installate, risultati di build, modello, test, file di database e file d'ambiente.
 
 #### Details
-Origine: baseline Reqvire «Server distributed as a container image», adottata.
+I modelli vocali inclusi sono risorse in sola lettura sostituibili con un mount, non configurazione.
+
+Origine: baseline Reqvire «Server distributed as a container image», adottata; «Configuration and data outside the container image», adottata; «Minimal container build context», adottata.
 
 #### Metadata
   * type: requirement
@@ -534,6 +536,7 @@ Origine: baseline Reqvire «Server distributed as a container image», adottata.
   * [Catalogo bilingue dei modelli vocali nell'immagine backend](../Contracts/ServerFoundation.md#catalogo-bilingue-dei-modelli-vocali-nellimmagine-backend)
 
 #### Relations
+  * satisfiedBy: [.dockerignore](../../.dockerignore)
   * satisfiedBy: [Dockerfile](../../Dockerfile)
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
 ---
@@ -898,7 +901,7 @@ Quando è richiesta la raccolta centralizzata dei log tecnici del server HTTP, l
 
 ### Installazione delle dipendenze del backend con pnpm e Corepack
 
-Il backend deve dichiarare in `package.json` `"packageManager": "pnpm@12.11.2"` e il job `Backend checks` della CI e la fase di build del `Dockerfile` devono attivare quella versione con Corepack e installare le dipendenze del workspace con `pnpm install --frozen-lockfile`, secondo «Profilo di installazione con pnpm e Corepack».
+Il backend deve dichiarare in `package.json` `"packageManager": "pnpm@12.11.2"` e il job `Backend checks` della CI e la fase di build del `Dockerfile` devono attivare quella versione con Corepack e installare le dipendenze del workspace con `pnpm install --frozen-lockfile`, secondo «Profilo di installazione con pnpm e Corepack», con le versioni esatte, gli script di build ammessi e l'attesa per le nuove versioni di «Profilo di installazione delle dipendenze del backend».
 
 #### Metadata
   * type: requirement
@@ -911,6 +914,7 @@ Il backend deve dichiarare in `package.json` `"packageManager": "pnpm@12.11.2"` 
   * satisfiedBy: [ci.yml](../../.github/workflows/ci.yml)
   * satisfiedBy: [Dockerfile](../../Dockerfile)
   * satisfiedBy: [package.json](../../package.json)
+  * satisfiedBy: [pnpm-workspace.yaml](../../pnpm-workspace.yaml)
 ---
 
 ### Interruzione dei turni durante l'arresto
@@ -1294,7 +1298,7 @@ Quando il logger del server emette la riga JSON di un log diagnostico definitivo
   * derivedFrom: [Serializzazione controllata di err](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#serializzazione-controllata-di-err)
   * satisfiedBy: [lifecycle.ts](../../apps/server/src/runtime/lifecycle.ts)
   * satisfiedBy: [logger.ts](../../apps/server/src/runtime/logger.ts)
-  * satisfiedBy: [project-error.ts](../../packages/conversations/src/project-error.ts)
+  * satisfiedBy: [project-error.ts](../../packages/conversations/src/domain/project-error.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -1502,5 +1506,40 @@ Quando la suite automatica del backend esegue le verifiche dei package business,
   * derivedFrom: [Suite di test con Vitest accanto al codice](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#suite-di-test-con-vitest-accanto-al-codice)
   * satisfiedBy: [package.json](../../package.json)
   * satisfiedBy: [vitest.config.ts](../../vitest.config.ts)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
+---
+
+### Server compilato provato come processo
+
+La selezione `e2e` del backend deve avviare il punto d'ingresso compilato del server come processo figlio e verificare che risolva i propri moduli, si avvii in produzione su un archivio SQLite nuovo, risponda all'elenco delle conversazioni di `/api/v1`, termini con codice 0 a `SIGTERM` e, senza ambiente di esecuzione, termini con codice 1, un solo evento `server_startup_failed` e la riga fissa su stderr.
+
+#### Details
+Le matrici dei casi di configurazione, delle rotte e del ciclo di vita restano nelle prove dei singoli confini.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Suite di test del backend](../Contracts/ServerFoundation.md#suite-di-test-del-backend)
+
+#### Relations
+  * derivedFrom: [Artefatti compilati provati come processi](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#artefatti-compilati-provati-come-processi)
+  * satisfiedBy: [main.e2e.spec.ts](../../apps/server/src/main.e2e.spec.ts)
+  * satisfiedBy: [vitest.config.ts](../../vitest.config.ts)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
+---
+
+### Database di prova isolati del backend
+
+Le prove del backend che usano un database SQLite devono usare soltanto database che creano, in memoria o in una cartella temporanea propria, costruiti con le migrazioni di produzione, devono cancellare soltanto le cartelle che hanno creato e non devono leggere la configurazione dell'installazione né ripiegare su un archivio di sviluppo o di produzione.
+
+#### Details
+Origine: baseline Reqvire «Isolated and guarded test databases», adattata: con SQLite incorporato ogni prova crea il proprio database invece di un database per worker su un server, quindi non servono il controllo del bersaglio, la pulizia dei dati fra i casi né un servizio di database da cui la suite dipenda.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [sqlite-turn-repository.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.integration.spec.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---

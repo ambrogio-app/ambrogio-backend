@@ -1,7 +1,7 @@
 import { access, readdir, stat } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { join } from 'node:path';
-import { ProjectError } from '../../project-error.js';
+import { ProjectError } from '../../domain/project-error.js';
 import { integerVariable, invalidVariable, missingVariable, type EnvironmentVariable } from './environment-variables.js';
 
 /** The synthesis engine and voice chosen by the installation. */

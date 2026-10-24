@@ -24,7 +24,8 @@ export type RuleName =
   | 'layer-test-imports'
   | 'domain-application-own-package'
   | 'technical-factory-imports'
-  | 'no-dependency-container';
+  | 'no-dependency-container'
+  | 'pino-only-in-logger';
 
 export type Violation = Readonly<{ rule: RuleName; from: string; to: string }>;
 export type Rule = Readonly<{ name: RuleName; check: (graph: ImportGraph) => Violation[] }>;
@@ -185,9 +186,23 @@ const noDependencyContainer: Rule = {
     .map((specifier) => ({ rule: 'no-dependency-container' as const, from: file.path, to: specifier }))),
 };
 
+/** The only module that creates the base logger with Pino («Logger minimo del backend»). */
+export const loggerModule = 'apps/server/src/runtime/logger.ts';
+
+const pinoOnlyInLogger: Rule = {
+  name: 'pino-only-in-logger',
+  check: (graph) => {
+    const units = [...appsOf(graph), ...packagesOf(graph)];
+    return graph.files.filter((file) => file.path !== loggerModule && !isSpec(file.path)
+      && units.some((unit) => isProduction(file.path, unit)))
+      .flatMap((file) => file.specifiers.filter((specifier) => specifier === 'pino' || specifier.startsWith('pino/'))
+        .map((specifier) => ({ rule: 'pino-only-in-logger' as const, from: file.path, to: specifier })));
+  },
+};
+
 export const rules: readonly Rule[] = [
   packageIsolation, applicationPublicExports, noPathAliases, layerTestImports, domainApplicationOwnPackage,
-  technicalFactoryImports, noDependencyContainer,
+  technicalFactoryImports, noDependencyContainer, pinoOnlyInLogger,
 ];
 
 const excepted = (violation: Violation, list: readonly ArchitectureException[]) =>

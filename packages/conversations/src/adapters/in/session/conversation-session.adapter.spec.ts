@@ -19,6 +19,7 @@ import { createConversationSessions,
   type ConversationSessionsDependencies } from './conversation-session.adapter.js';
 import { createProtocolDecoder } from './protocol-decoder.js';
 import type { SpeechComponents } from './speech-components.js';
+import { recordingLogger } from '../../../../test/support/recording-logger.js';
 
 const schemaPath = fileURLToPath(new URL('../../../../../../protocol/ambrogio-v1.schema.json', import.meta.url));
 const decode = createProtocolDecoder(JSON.parse(readFileSync(schemaPath, 'utf8')));
@@ -78,9 +79,9 @@ function textTurn(socket: FakeSocket, text: string, conversationId?: string): st
 }
 
 function harness(exchange: ExchangeTurn, speech?: SpeechComponents) {
-  const logs: unknown[][] = [];
+  const { log, errors: logs } = recordingLogger();
   const dependencies: ConversationSessionsDependencies = { exchange, decode, language: 'en',
-    pingIntervalMs: 60_000, log: { error: (...args: unknown[]) => { logs.push(args); } },
+    pingIntervalMs: 60_000, log,
     ...(speech ? { speech } : {}) };
   const sessions = createConversationSessions(dependencies);
   const open = () => {

@@ -1,17 +1,19 @@
 import type { FastifyInstance } from 'fastify';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { registerUnversionedGetConversationRoute } from './get-conversation.unversioned-route.adapter.js';
 import { createGetConversationHandler } from './get-conversation.handler.js';
 import { createGetConversation } from '../../../../application/get-conversation.use-case.js';
 import { ProjectError } from '../../../../project-error.js';
 import type { GetConversation } from '../../../../application/get-conversation.use-case.js';
 import { routeServer } from '../../../../../test/support/http-routes.js';
+import { recordingLogger } from '../../../../../test/support/recording-logger.js';
 
 const servers: FastifyInstance[] = [];
+let recorder = recordingLogger();
 
 function fixture(getConversation: GetConversation, language: 'en' | 'it' = 'en') {
   const server = routeServer('/api', scope => registerUnversionedGetConversationRoute(scope,
-    createGetConversationHandler(getConversation), language));
+    createGetConversationHandler(getConversation), language, recorder.log));
   servers.push(server);
   return server;
 }
@@ -94,27 +96,23 @@ describe('conversation history HTTP ingress of the API without a version', () =>
     const project = new ProjectError('PROJECT_MESSAGE_MARKER', { cause });
     const unknown = { marker: 'TECH_ORIGINAL_MARKER' };
     const thrown: unknown[] = [original, project, unknown, 'TECH_STRING_MARKER'];
-    const logs: unknown[][] = [];
-    const warnings: unknown[][] = [];
+    recorder = recordingLogger();
     const server = fixture(createGetConversation({ async find() { throw thrown.shift(); } }));
-    server.addHook('onRequest', (request, _reply, done) => {
-      const error = vi.spyOn(request.log, 'error');
-      const warn = vi.spyOn(request.log, 'warn');
-      logs.push(error.mock.calls);
-      warnings.push(warn.mock.calls);
-      done();
-    });
     const logged: { err: Error }[] = [];
+    const ids: string[] = [];
     for (let index = 0; index < 4; index++) {
-      const previousErrors = (logs.at(-1) as unknown[][] | undefined)?.length ?? 0;
-      const previousWarnings = (warnings.at(-1) as unknown[][] | undefined)?.length ?? 0;
       const response = await server.inject({ method: 'GET', url: '/api/conversations/broken' });
       expect(response.statusCode).toBe(500);
       expect(response.json()).toEqual({ error: "I can't complete the response." });
-      expect((logs.at(-1) as unknown[][])).toHaveLength(previousErrors + 1);
-      expect((warnings.at(-1) as unknown[][])).toHaveLength(previousWarnings);
-      logged.push((logs.at(-1) as unknown[][]).at(-1)![0] as { err: Error });
+      // One definitive error per failure, through a logger derived with the request's correlation identifier.
+      expect(recorder.events).toHaveLength(index + 1);
+      const event = recorder.events.at(-1)!;
+      expect(event.level).toBe('error');
+      expect(Object.keys(event.bindings)).toEqual(['correlationId']);
+      ids.push(event.bindings.correlationId as string);
+      logged.push(event.fields as { err: Error });
     }
+    expect(new Set(ids).size).toBe(4);
     expect(logged[0]!.err).toBe(original);
     expect(logged[1]!.err).toBe(project);
     expect(original.cause).toBe(cause);

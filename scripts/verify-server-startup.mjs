@@ -2,7 +2,9 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { startConversationServer } from '../apps/server/dist/runtime/conversation-server.js';
+import { prepareConversationServer } from '../apps/server/dist/runtime/conversation-server.js';
+import { createBaseLogger } from '../apps/server/dist/runtime/logger.js';
+import { listen } from '../apps/server/dist/runtime/server-process.js';
 
 const writeAgent = (filename, value) => writeFile(filename, `${JSON.stringify(value)}\n`);
 
@@ -27,11 +29,13 @@ try {
   });
 
   // Production values only: every setting without a production default is explicit.
-  const runtime = await startConversationServer({ AMBROGIO_ENV: 'production', AMBROGIO_HTTP_HOST: '127.0.0.1',
+  // Built without listening, then activated as the process runner does.
+  const runtime = await prepareConversationServer({ AMBROGIO_ENV: 'production', AMBROGIO_HTTP_HOST: '127.0.0.1',
     AMBROGIO_HTTP_PORT: String(address.port), AMBROGIO_PUBLIC_HTTPS: 'false',
     AMBROGIO_ARCHIVE_PATH: join(directory, 'archive.sqlite'), AMBROGIO_AGENTS_DIR: agents,
-    MISTRAL_API_KEY: 'startup-test-key' });
+    MISTRAL_API_KEY: 'startup-test-key' }, createBaseLogger());
   try {
+    await listen(runtime);
     const response = await fetch(`http://127.0.0.1:${address.port}/api/conversations`);
     const body = await response.json();
     if (response.status !== 200 || !Array.isArray(body.items)) {

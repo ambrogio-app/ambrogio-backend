@@ -4,6 +4,8 @@
 services:
   backend:
     image: ghcr.io/ambrogio-app/ambrogio-backend:${AMBROGIO_VERSION:?Set AMBROGIO_VERSION}
+    # The backend ends its own shutdown within 10 seconds; give it longer before Docker sends SIGKILL.
+    stop_grace_period: 15s
     ports:
       - "3000:3000"
     volumes:

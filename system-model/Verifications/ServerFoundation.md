@@ -80,6 +80,42 @@ Raggruppa le prove dell'interruzione dei turni attivi all'arresto ordinato e del
   * type: verification-objective
 ---
 
+### Prova del percorso fatale del server
+
+In un processo Node.js figlio che installa il percorso fatale del server, provocare separatamente un'eccezione non catturata e un rifiuto di promessa non gestito, entrambi con un messaggio marcatore e una proprietà marcatore; catturare `stdout`, `stderr` e codice di uscita. Leggere `main.ts` del server.
+
+#### Details
+La prova passa se in entrambi i casi `stderr` contiene soltanto `Ambrogio backend stopped after a fatal error.`, `stdout` è vuoto, il codice di uscita è 1 e nessun marcatore compare negli output; e se `main.ts` installa il percorso fatale prima di caricare con import dinamici il codice dell'applicazione. Fallisce se il processo continua, termina con successo, serializza il valore sollevato o scrive su `stdout`.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica del ciclo di vita del server](#verifica-del-ciclo-di-vita-del-server)
+  * satisfiedBy: [fatal-path.spec.ts](../../apps/server/src/runtime/fatal-path.spec.ts)
+  * verify: [Percorso fatale del server](../Requirements/ServerFoundation.md#percorso-fatale-del-server)
+---
+
+### Prova dell'arresto ordinato e limitato del server
+
+Con risorse controllate che registrano l'ordine delle chiusure, eseguire il runner del processo server: inviare due volte `SIGTERM`, poi ripetere facendo fallire la chiusura di una risorsa intermedia e infine con una chiusura che non termina mai e un timer controllato. Costruire il server reale con archivio, componenti vocali controllati e agenti controllati e chiuderlo, registrando l'ordine delle chiusure. Leggere l'esempio Compose del repository.
+
+#### Details
+La prova passa se due segnali producono un solo arresto; se le chiusure avvengono una sola volta in ordine inverso di acquisizione, dopo lo stop dei nuovi turni e l'interruzione di quelli in corso, e quelle successive a una chiusura fallita sono comunque tentate; se un guasto di chiusura produce una sola riga `server_shutdown_failed` con il guasto incapsulato che nomina la risorsa e codice 1, e due guasti un `LifecycleError` che li elenca nell'ordine osservato; se alla scadenza dei 10000 ms il runner emette una sola riga `server_shutdown_timeout` con `timeoutMs: 10000` e i guasti già osservati, e restituisce il codice 1 con l'uscita forzata senza attendere la chiusura pendente; se l'arresto riuscito restituisce 0 senza righe di log; e se l'esempio Compose dichiara un `stop_grace_period` di almeno 15 secondi. Fallisce se una risorsa è chiusa due volte o fuori ordine, se un guasto di chiusura va perso o diventa causa di un altro, se un secondo segnale riavvia il tempo massimo o se l'esempio non dichiara il periodo di arresto.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica del ciclo di vita del server](#verifica-del-ciclo-di-vita-del-server)
+  * satisfiedBy: [conversation-server.resource-lifecycle.spec.ts](../../apps/server/src/runtime/conversation-server.resource-lifecycle.spec.ts)
+  * satisfiedBy: [lifecycle.spec.ts](../../apps/server/src/runtime/lifecycle.spec.ts)
+  * satisfiedBy: [server-process.spec.ts](../../apps/server/src/runtime/server-process.spec.ts)
+  * satisfiedBy: [environment-files.spec.ts](../../test/repository/environment-files.spec.ts)
+  * verify: [Arresto unico e ordinato del server](../Requirements/ServerFoundation.md#arresto-unico-e-ordinato-del-server)
+  * verify: [Esito del ciclo di vita del server conservato nei guasti](../Requirements/ServerFoundation.md#esito-del-ciclo-di-vita-del-server-conservato-nei-guasti)
+---
+
 ### Prova dell'interruzione dei turni all'arresto
 
 Avviare un turno con elaborazione controllata che resterebbe in corso, richiedere l'arresto del server e tentare un nuovo turno. Osservare la richiesta di interruzione, lo stato persistente del turno, l'ordine di chiusura delle risorse e i messaggi ricevuti dalla sessione del client.
@@ -99,12 +135,30 @@ La prova passa se il server rifiuta i nuovi turni con `unavailable`, richiede su
   * verify: [Interruzione dei turni durante l'arresto](../Requirements/ServerFoundation.md#interruzione-dei-turni-durante-larresto)
 ---
 
-### Prova della diagnostica del mancato avvio
+### Prova della costruzione del server senza ascolto
 
-Provocare il fallimento dell'avvio del processo server in ciascuna fase: variabile HTTP o conversazionale mancante o invalida, configurazione vocale invalida, directory degli agenti senza agenti specializzati, opzioni del modello non valide in un agente, server MCP di un agente irraggiungibile, archivio non apribile e porta di ascolto occupata. Inserire un segreto marcatore nei valori invalidi e nelle credenziali MCP e un messaggio marcatore nel guasto esterno. Catturare `stdout`, `stderr` e codice di uscita.
+Costruire il server conversazionale da una configurazione valida con agenti controllati, verificare che la porta configurata resti libera, poi farlo attivare dal runner del processo e richiedere l'elenco delle conversazioni; avviare l'ingresso di prova pubblico e chiuderlo.
 
 #### Details
-La prova passa se ogni caso produce su `stdout` una sola riga JSON con livello `error`, `event` `server_startup_failed` ed `err` conforme al profilo del contratto, con il messaggio fisso della fase o il messaggio di validazione già previsto e, per gli agenti, l'identificativo dell'agente; se `stderr` contiene `Unable to start HTTP server.`, il codice di uscita è `1` e il server non è in ascolto. Fallisce se manca l'evento o ne compaiono più di uno, se il segreto o il messaggio marcatore del guasto esterno compaiono in un output, se la causa non distingue la fase o l'agente, o se il processo termina con successo.
+La prova passa se dopo la costruzione nessun listener è aperto sulla porta configurata e la funzione di chiusura rilascia le risorse senza aver mai ascoltato; se l'ascolto si apre soltanto con l'attivazione decisa dal runner, che risponde all'elenco con HTTP 200; e se l'ingresso di prova si costruisce, si attiva su una porta libera e si chiude. Fallisce se la costruzione apre l'ascolto o se l'attivazione avviene fuori dall'entrypoint e dal runner.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica del ciclo di vita del server](#verifica-del-ciclo-di-vita-del-server)
+  * satisfiedBy: [conversation-server.resource-lifecycle.spec.ts](../../apps/server/src/runtime/conversation-server.resource-lifecycle.spec.ts)
+  * satisfiedBy: [server-process.spec.ts](../../apps/server/src/runtime/server-process.spec.ts)
+  * satisfiedBy: [test-server.spec.ts](../../apps/server/src/runtime/test-server.spec.ts)
+  * verify: [Costruzione del server separata dall'ascolto](../Requirements/ServerFoundation.md#costruzione-del-server-separata-dallascolto)
+---
+
+### Prova della diagnostica del mancato avvio
+
+Provocare il fallimento dell'avvio del processo server in ciascuna fase: variabile HTTP o conversazionale mancante o invalida, configurazione vocale invalida, directory degli agenti senza agenti specializzati, opzioni del modello non valide in un agente, server MCP di un agente irraggiungibile, archivio non apribile e porta di ascolto occupata; ripetere un caso in cui fallisce anche la chiusura di una risorsa già acquisita. Inserire un segreto marcatore nei valori invalidi e nelle credenziali MCP e un messaggio marcatore nel guasto esterno. Catturare `stdout`, `stderr` e codice di uscita.
+
+#### Details
+La prova passa se ogni caso produce su `stdout` una sola riga JSON con livello `error`, `event` `server_startup_failed` ed `err` conforme al profilo del contratto, con il messaggio fisso della fase o il messaggio di validazione già previsto e, per gli agenti, l'identificativo dell'agente; se `stderr` contiene `Unable to start HTTP server.`, il codice di uscita è `1` e il server non è in ascolto; se, quando fallisce anche una chiusura, `err` è un `LifecycleError` con il guasto dell'avvio al primo posto e il guasto di chiusura dopo. Fallisce se manca l'evento o ne compaiono più di uno, se il segreto o il messaggio marcatore del guasto esterno compaiono in un output, se la causa non distingue la fase o l'agente, o se il processo termina con successo.
 
 #### Metadata
   * type: test-verification
@@ -112,6 +166,7 @@ La prova passa se ogni caso produce su `stdout` una sola riga JSON con livello `
 #### Relations
   * derivedFrom: [Verifica del ciclo di vita del server](#verifica-del-ciclo-di-vita-del-server)
   * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
+  * satisfiedBy: [server-process.spec.ts](../../apps/server/src/runtime/server-process.spec.ts)
   * satisfiedBy: [startup-failure.spec.ts](../../apps/server/src/runtime/startup-failure.spec.ts)
   * verify: [Diagnostica del mancato avvio del server](../Requirements/ServerFoundation.md#diagnostica-del-mancato-avvio-del-server)
 ---
@@ -408,10 +463,10 @@ La prova passa se ogni rifiuto è restituito come valore distinguibile dal succe
 
 ### Prova del campo err nel log definitivo
 
-Nei fallback HTTP presenti, indurre separatamente un `Error` costruito dal progetto con catena `cause`, errori esterni con marcatori distinti in messaggio, stack e proprietà aggiuntive, e valori lanciati sconosciuti; intercettare l'argomento del logger e le righe JSON emesse. Prima della serializzazione acquisire riferimenti e proprietà proprie dell'`Error` originale e degli oggetti della sua catena `cause`, poi confrontarli dopo l'emissione. Confrontare le chiavi serializzate con i campi ammessi esplicitamente dal serializzatore.
+Nei fallback HTTP presenti, indurre separatamente un `Error` costruito dal progetto con catena `cause`, errori esterni con marcatori distinti in messaggio, stack e proprietà aggiuntive, valori lanciati sconosciuti e un `LifecycleError` che raccoglie un errore del progetto e un errore esterno; intercettare l'argomento del logger e le righe JSON emesse. Prima della serializzazione acquisire riferimenti e proprietà proprie dell'`Error` originale e degli oggetti della sua catena `cause`, poi confrontarli dopo l'emissione. Confrontare le chiavi serializzate con i campi ammessi esplicitamente dal serializzatore.
 
 #### Details
-La prova passa se per l'`Error` del progetto il campo strutturato `err` conserva in memoria la catena `cause`, i riferimenti e le proprietà degli oggetti originali restano invariati, e la vista JSON include lo stack diagnostico; se ogni vista contiene soltanto campi ammessi; e se errori esterni e valori sconosciuti producono una descrizione costante sicura senza riportare messaggio, stack o proprietà aggiuntive di origine. Fallisce se la serializzazione modifica l'`Error` originale o un oggetto della sua catena `cause`, se l'argomento in memoria perde la catena delle cause, se la riga omette `err` o lo stack previsto, se compaiono campi non ammessi o se la descrizione esterna dipende dal valore originale.
+La prova passa se per l'`Error` del progetto il campo strutturato `err` conserva in memoria la catena `cause`, i riferimenti e le proprietà degli oggetti originali restano invariati, e la vista JSON include lo stack diagnostico; se ogni vista contiene soltanto campi ammessi; e se errori esterni e valori sconosciuti producono una descrizione costante sicura senza riportare messaggio, stack o proprietà aggiuntive di origine, e il `LifecycleError` elenca in `faults`, nell'ordine, la vista completa dell'errore del progetto e quella costante dell'errore esterno. Fallisce se la serializzazione modifica l'`Error` originale o un oggetto della sua catena `cause`, se l'argomento in memoria perde la catena delle cause, se la riga omette `err` o lo stack previsto, se compaiono campi non ammessi o se la descrizione esterna dipende dal valore originale.
 
 #### Metadata
   * type: test-verification
@@ -419,6 +474,7 @@ La prova passa se per l'`Error` del progetto il campo strutturato `err` conserva
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
   * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
+  * satisfiedBy: [logger.spec.ts](../../apps/server/src/runtime/logger.spec.ts)
   * satisfiedBy: [get-conversation.unversioned-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.unversioned-route.adapter.spec.ts)
   * satisfiedBy: [list-conversations.unversioned-route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.unversioned-route.adapter.spec.ts)
   * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
@@ -441,6 +497,25 @@ La prova passa se, per ciascun caso e ciascun ingresso presente, il confine emet
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
   * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
   * verify: [Log error del fallback pubblico](../Requirements/ServerFoundation.md#log-error-del-fallback-pubblico)
+---
+
+### Prova del logger minimo del backend
+
+Creare il logger di base del backend su un flusso di prova, derivarne due logger con campi diversi ed emettere eventi con campi sensibili annidati, nomi di variabili delle credenziali e un `err`; costruire il server HTTP e la sessione conversazionale con un logger di prova che registra le chiamate e provocare un guasto inatteso in una rotta e in una sessione. Leggere gli import dei componenti che ricevono il logger.
+
+#### Details
+La prova passa se le righe dei logger derivati contengono ciascuna soltanto i propri campi fissi e il logger di base resta invariato; se i valori dei campi sensibili e delle variabili delle credenziali sono sostituiti da `[redacted]` a ogni profondità senza modificare gli oggetti originali; se il livello minimo è `warn`; se gli eventi della rotta e della sessione arrivano al logger iniettato tramite un logger derivato con il `correlationId` della richiesta; e se nessun componente fuori da `apps/server/src/runtime/logger.ts` importa Pino. Fallisce se un evento passa dal logger di Fastify o da un'istanza Pino diversa, se un valore sensibile compare in una riga o se un logger derivato altera il logger di base.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
+  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
+  * satisfiedBy: [logger.spec.ts](../../apps/server/src/runtime/logger.spec.ts)
+  * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
+  * satisfiedBy: [import-boundaries.spec.ts](../../test/repository/import-boundaries.spec.ts)
+  * verify: [Logger minimo del backend](../Requirements/ServerFoundation.md#logger-minimo-del-backend)
 ---
 
 ### Prova dell'assenza di log HTTP automatici

@@ -21,6 +21,7 @@ import { createListConversations } from '@ambrogio/conversations/application/lis
 import { createGetConversation } from '@ambrogio/conversations/application/get-conversation';
 import type { ProduceConversationReply } from '@ambrogio/conversations/application/produce-conversation-reply';
 import type { FastifyInstance } from 'fastify';
+import type { Logger } from '@ambrogio/conversations/adapters/in/logger';
 import { readFile } from 'node:fs/promises';
 import { registerSessionRoute } from '../adapters/in/session-route.adapter.js';
 
@@ -97,6 +98,8 @@ export function registerConversationSessionRoute(
     allowedOrigins: readonly string[];
     pingIntervalMs: number;
     speech?: SpeechComponents;
+    /** Base logger of the process. */
+    log: Logger;
   }>,
 ) {
   const sessions = createConversationSessions({
@@ -104,10 +107,10 @@ export function registerConversationSessionRoute(
     decode: createProtocolDecoder(options.schema),
     language: prepared.language,
     pingIntervalMs: options.pingIntervalMs,
-    log: server.log,
+    log: options.log,
     ...(options.speech ? { speech: options.speech } : {}),
   });
-  registerSessionRoute(server, sessions, options.allowedOrigins);
+  registerSessionRoute(server, sessions, options.allowedOrigins, options.log);
   return sessions;
 }
 
@@ -126,6 +129,6 @@ export function conversationApiRegistration(prepared: PreparedConversations): Ro
 }
 
 /** The same routes in the API without a version, for the scope `/api`, kept while a client release uses it. */
-export function unversionedConversationRegistration(prepared: PreparedConversations): RouteRegistration {
-  return unversionedConversationRoutes({ ...consultationDependencies(prepared), language: prepared.language });
+export function unversionedConversationRegistration(prepared: PreparedConversations, log: Logger): RouteRegistration {
+  return unversionedConversationRoutes({ ...consultationDependencies(prepared), language: prepared.language, log });
 }

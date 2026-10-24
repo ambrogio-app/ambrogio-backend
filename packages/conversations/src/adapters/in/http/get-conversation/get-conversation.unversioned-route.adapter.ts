@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
+import type { Logger } from '../../logger.js';
 import type { GetConversationHandler } from './get-conversation.handler.js';
 import { getConversationParamsSchema, type GetConversationParams } from './get-conversation.schemas.js';
 
@@ -26,7 +27,7 @@ function assertNever(value: never): never {
  * («Risposta HTTP dello storico conversazionale nell'API senza versione»).
  */
 export function registerUnversionedGetConversationRoute(scope: FastifyInstance, handle: GetConversationHandler,
-  language: Language): void {
+  language: Language, log: Logger): void {
   scope.get<{ Params: GetConversationParams }>('/conversations/:conversationId', {
     schema: { params: getConversationParamsSchema },
     errorHandler(error, _request, reply) {
@@ -45,7 +46,7 @@ export function registerUnversionedGetConversationRoute(scope: FastifyInstance, 
           return assertNever(outcome);
       }
     } catch (error) {
-      request.log.error({ event: 'conversation_history_http_failed', err: normalizeError(error) },
+      log.child({ correlationId: request.id }).error({ event: 'conversation_history_http_failed', err: normalizeError(error) },
         'HTTP request failed');
       return publicError(reply, 500, messages.failure[language]);
     }

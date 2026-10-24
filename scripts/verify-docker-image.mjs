@@ -155,7 +155,7 @@ try {
     image, '-c', 'test -f /opt/ambrogio/voices/custom-voice.marker && test ! -e /opt/ambrogio/voices/vits-piper-it_IT-riccardo-x_low');
   for (const language of ['it', 'en']) {
     // Production values only: every setting without a production default is explicit.
-    container = docker('run', '--detach', '--rm',
+    container = docker('run', '--detach', '--stop-timeout', '15',
       '--publish', `127.0.0.1::${port}`,
       '--mount', `type=bind,src=${agents},dst=/etc/ambrogio/agents,readonly`,
       '--mount', `type=bind,src=${data},dst=/data`,
@@ -177,9 +177,15 @@ try {
     if (response.status !== 200 || !Array.isArray(body.items)) {
       throw new Error(`Unexpected HTTP response for ${language}: ${response.status}`);
     }
+    // An orderly stop ends within the shutdown window with exit code 0 and no log line.
     docker('stop', container);
+    const exitCode = docker('inspect', '--format', '{{.State.ExitCode}}', container);
+    const logs = execFileSync('docker', ['logs', container], { encoding: 'utf8' });
+    docker('rm', container);
     container = undefined;
-    console.log(`Voice-enabled HTTP startup passed for ${language}`);
+    if (exitCode !== '0') throw new Error(`Unexpected exit code after docker stop for ${language}: ${exitCode}`);
+    if (logs.trim() !== '') throw new Error(`Unexpected output after docker stop for ${language}`);
+    console.log(`Voice-enabled HTTP startup and orderly stop passed for ${language}`);
   }
   if (!existsSync(join(data, 'conversations.sqlite'))) {
     throw new Error('SQLite archive was not created in the external mount');
@@ -187,7 +193,7 @@ try {
   console.log('Docker image verification passed: configuration from environment variables, mounted JSON agents and external SQLite, language profiles, bundled Italian and English Vosk, Piper and Kokoro models, replaceable Piper voices, voice-enabled HTTP 200, no Compose.');
 } finally {
   if (container) {
-    try { docker('stop', container); } catch { /* preserve the verification failure */ }
+    try { docker('rm', '--force', container); } catch { /* preserve the verification failure */ }
   }
   rmSync(temp, { recursive: true, force: true });
 }

@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { GetConversation } from '../../../application/get-conversation.use-case.js';
 import type { ListConversations } from '../../../application/list-conversations.use-case.js';
+import type { Logger } from '../logger.js';
 import { createGetConversationHandler } from './get-conversation/get-conversation.handler.js';
 import { registerGetConversationRoute } from './get-conversation/get-conversation.route.adapter.js';
 import { registerUnversionedGetConversationRoute } from './get-conversation/get-conversation.unversioned-route.adapter.js';
@@ -34,11 +35,13 @@ export function conversationApiRoutes(dependencies: ConversationRouteDependencie
  */
 export function unversionedConversationRoutes(dependencies: ConversationRouteDependencies & Readonly<{
   language: 'en' | 'it';
+  /** Base logger of the process: each failure is logged with a derived logger carrying the request identifier. */
+  log: Logger;
 }>): RouteRegistration {
   const list = createListConversationsHandler(dependencies);
   const get = createGetConversationHandler(dependencies.getConversation);
   return scope => {
-    registerUnversionedListConversationsRoute(scope, list, dependencies.language);
-    registerUnversionedGetConversationRoute(scope, get, dependencies.language);
+    registerUnversionedListConversationsRoute(scope, list, dependencies.language, dependencies.log);
+    registerUnversionedGetConversationRoute(scope, get, dependencies.language, dependencies.log);
   };
 }

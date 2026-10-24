@@ -66,6 +66,15 @@ test('the Compose example sets only production values and repeats no default', (
   expect(Object.values(environment).join('\n')).not.toMatch(/:-/);
 });
 
+// Verification: Prova dell'arresto ordinato e limitato del server
+test('the Compose example grants the container a stop period longer than the shutdown window', () => {
+  const compose = parseYaml(read('compose.example.yaml')) as { services: { backend: { stop_grace_period?: string } } };
+  const period = /^(\d+)s$/.exec(compose.services.backend.stop_grace_period ?? '');
+  expect(period, 'stop_grace_period').not.toBeNull();
+  // «Finestra di arresto del server»: 10 seconds of shutdown window, 15 seconds granted by the runtime.
+  expect(Number(period![1])).toBeGreaterThanOrEqual(15);
+});
+
 test('only the development command loads the local environment file', () => {
   const scripts = JSON.parse(read('package.json')).scripts as Record<string, string>;
   expect(scripts.dev).toBe('node --env-file=.env apps/server/dist/main.js');

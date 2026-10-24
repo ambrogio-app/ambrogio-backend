@@ -2,8 +2,9 @@ import { randomUUID } from 'node:crypto';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import websocket from '@fastify/websocket';
-import Fastify, { LogController, type FastifyInstance, type FastifyReply } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify';
 import type { HttpConfig } from './http-config.js';
+import type { Logger } from './logger.js';
 
 /**
  * One registration delivered by the composition root: it registers its routes in its own Fastify scope, under
@@ -15,8 +16,8 @@ export type HttpRouteRegistration = Readonly<{
 }>;
 
 export type HttpServerOptions = Readonly<{
-  /** The controlled view of `err` in diagnostic events, chosen by the composition root. */
-  serializeError: (value: unknown) => Readonly<{ type: string; message: string; stack: string }>;
+  /** Base logger of the process; each failure is logged with a derived logger carrying the request identifier. */
+  log: Logger;
   /** Registered in the order given, after the technical plugins. */
   routes: readonly HttpRouteRegistration[];
 }>;
@@ -99,16 +100,16 @@ function normalizeError(value: unknown): Error {
 }
 
 /**
- * Technical factory of the HTTP server: logger, request identifiers, security headers, CORS, WebSocket support,
- * validation options and the central handling of errors and unknown routes. It knows no business module: the
- * composition root hands it the route registrations, already built, and the diagnostic view of `err`.
+ * Technical factory of the HTTP server: request identifiers, security headers, CORS, WebSocket support, validation
+ * options and the central handling of errors and unknown routes. It knows no business module: the composition root
+ * hands it the route registrations, already built, and the base logger. Fastify's own logger stays disabled, so
+ * nothing is logged automatically for requests and responses («Assenza dei log HTTP automatici»).
  */
 export async function createHttpServer(config: HttpConfig, options: HttpServerOptions): Promise<FastifyInstance> {
   const server = Fastify({
     ajv: { customOptions: httpAjvOptions },
     forceCloseConnections: true,
-    logger: { level: 'warn', serializers: { err: options.serializeError } },
-    logController: new LogController({ disableRequestLogging: true, requestIdLogLabel: 'correlationId' }),
+    logger: false,
     requestIdHeader: false,
     genReqId: () => randomUUID(),
   });
@@ -119,7 +120,8 @@ export async function createHttpServer(config: HttpConfig, options: HttpServerOp
   server.setErrorHandler((error, request, reply) => {
     const problem = protocolProblem(error);
     if (problem) return sendProblem(reply, problem);
-    request.log.error({ event: 'http.unexpected_failure', err: normalizeError(error) }, 'HTTP request failed');
+    options.log.child({ correlationId: request.id })
+      .error({ event: 'http.unexpected_failure', err: normalizeError(error) }, 'HTTP request failed');
     return sendProblem(reply, internalServerError);
   });
   server.setNotFoundHandler((_request, reply) => sendProblem(reply, notFound));

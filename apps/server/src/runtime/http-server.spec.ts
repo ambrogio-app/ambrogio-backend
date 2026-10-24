@@ -6,6 +6,9 @@ import { ProjectError } from '@ambrogio/conversations/application/project-error'
 import type { ProduceConversationReply } from '@ambrogio/conversations/application/produce-conversation-reply';
 import { prepareConfiguredConversations } from '../composition/conversations.js';
 import { buildConversationServer } from '../composition/http-surface.js';
+import { teeLogger } from '../../test/support/logger-fixture.js';
+import { createResourceStack } from './lifecycle.js';
+import { createBaseLogger, type Logger } from './logger.js';
 import type { HttpConfig } from './http-config.js';
 import { closeAllClients, ProtocolClient, takeSchemaViolations } from '../../test/support/protocol-client.js';
 import type { AddressInfo } from 'node:net';
@@ -26,8 +29,9 @@ const producer: ProduceConversationReply = { async *produce() {
 
 /** Build the conversation HTTP server with a controlled reply producer. */
 async function buildServer(config: HttpConfig,
-  prepared: Awaited<ReturnType<typeof prepareConfiguredConversations>>) {
-  return (await buildConversationServer(config, prepared, producer)).server;
+  prepared: Awaited<ReturnType<typeof prepareConfiguredConversations>>, log: Logger = createBaseLogger()) {
+  return (await buildConversationServer(config, prepared, producer, undefined, undefined,
+    { log, resources: createResourceStack() })).server;
 }
 
 afterEach(async () => {
@@ -124,16 +128,11 @@ describe('conversation HTTP server', () => {
       errorOutput.push(String(chunk));
       return true;
     });
-    const server = await buildServer(base, prepared);
+    const recorded = teeLogger(createBaseLogger());
+    const server = await buildServer(base, prepared, recorded.log);
     server.get('/test-fallback', async request => {
       throw Object.assign(new Error('private diagnostic marker'),
         { sourceContext: request.headers['x-context-marker'] });
-    });
-    const diagnostics = new Map<string, { binding: unknown; events: unknown[][] }>();
-    server.addHook('onRequest', (request, _reply, done) => {
-      const error = vi.spyOn(request.log, 'error');
-      diagnostics.set(request.id, { binding: (request.log as unknown as { bindings(): unknown }).bindings(), events: error.mock.calls });
-      done();
     });
     try {
       const ordinary = await server.inject({ method: 'GET', url: '/api/v1/conversations',
@@ -169,12 +168,12 @@ describe('conversation HTTP server', () => {
         [listAgain, 'http.unexpected_failure'],
         [historyAgain, 'http.unexpected_failure'],
         [fallbackAgain, 'http.unexpected_failure']] as const;
-      for (const [response, event] of expectedEvents) {
+      // Every event comes from a logger derived from the base one with the request's correlation identifier.
+      expect(recorded.events).toHaveLength(expectedEvents.length);
+      for (const [index, [response, event]] of expectedEvents.entries()) {
         const id = response.headers['x-request-id'] as string;
-        const diagnostic = diagnostics.get(id);
-        expect(diagnostic?.binding).toMatchObject({ correlationId: id });
-        expect(diagnostic?.events[0]?.[0]).toMatchObject({ event });
-        expect(diagnostic?.events[0]?.[1]).toBe('HTTP request failed');
+        expect(recorded.events[index]).toMatchObject({ level: 'error', bindings: { correlationId: id },
+          fields: { event }, message: 'HTTP request failed' });
       }
       const rows = output.flatMap(chunk => chunk.split('\n')).filter(line => line.length > 0)
         .map(line => JSON.parse(line) as { event?: string; correlationId?: string; msg?: string });
@@ -230,24 +229,14 @@ describe('conversation HTTP server', () => {
       output.push(String(chunk));
       return true;
     });
-    const server = await buildServer(base, prepared);
-    const logged: { err: Error; event: string }[] = [];
-    const warnings: unknown[][] = [];
+    const recorded = teeLogger(createBaseLogger());
+    const server = await buildServer(base, prepared, recorded.log);
+    const logged = recorded.events;
     server.get('/test-project', async () => { throw project; });
     server.get('/test-fallback', async () => { throw original; });
     server.get('/test-sdk', async () => { throw sdkError; });
     server.get('/test-unknown', async () => { throw unknown; });
     server.get('/test-string', async () => { throw 'another private failure'; });
-    server.addHook('onRequest', (request, _reply, done) => {
-      const logError = request.log.error.bind(request.log);
-      const error = vi.spyOn(request.log, 'error');
-      warnings.push(vi.spyOn(request.log, 'warn').mock.calls);
-      error.mockImplementation((value: unknown, message?: string) => {
-        logged.push(value as { err: Error; event: string });
-        logError(value, message);
-      });
-      done();
-    });
     try {
       for (const [index, url] of ['/test-project', '/test-fallback', '/test-sdk',
         '/test-unknown', '/test-string'].entries()) {
@@ -255,20 +244,20 @@ describe('conversation HTTP server', () => {
         expect(response.statusCode).toBe(500);
         expect(response.json()).toEqual({ type: 'about:blank', title: 'Internal Server Error', status: 500 });
         expect(logged).toHaveLength(index + 1);
-        expect(warnings[index]).toHaveLength(0);
+        expect(logged.every(event => event.level === 'error')).toBe(true);
       }
-      expect(logged.map(item => item.event)).toEqual([
+      expect(logged.map(item => item.fields.event)).toEqual([
         'http.unexpected_failure', 'http.unexpected_failure',
         'http.unexpected_failure', 'http.unexpected_failure', 'http.unexpected_failure',
       ]);
-      expect(logged[0]!.err).toBe(project);
-      expect(logged[1]!.err).toBe(original);
-      expect(logged[2]!.err).toBe(sdkError);
+      expect((logged[0]!.fields.err as Error)).toBe(project);
+      expect((logged[1]!.fields.err as Error)).toBe(original);
+      expect((logged[2]!.fields.err as Error)).toBe(sdkError);
       expect(original.cause).toBe(cause);
-      expect(logged[3]!.err).toBeInstanceOf(Error);
-      expect(logged[3]!.err.cause).toBe(unknown);
-      expect(logged[4]!.err.cause).toBe('another private failure');
-      expect(logged[3]!.err.message).toBe(logged[4]!.err.message);
+      expect((logged[3]!.fields.err as Error)).toBeInstanceOf(Error);
+      expect((logged[3]!.fields.err as Error).cause).toBe(unknown);
+      expect((logged[4]!.fields.err as Error).cause).toBe('another private failure');
+      expect((logged[3]!.fields.err as Error).message).toBe((logged[4]!.fields.err as Error).message);
       expect(Object.getOwnPropertyDescriptors(project)).toEqual(projectProperties);
       expect(Object.getOwnPropertyDescriptors(original)).toEqual(originalProperties);
       expect(Object.getOwnPropertyDescriptors(sdkError)).toEqual(sdkProperties);
@@ -279,7 +268,7 @@ describe('conversation HTTP server', () => {
       expect(rows).toHaveLength(5);
       expect(rows[0]!.err).toEqual({ type: 'ProjectError', message: project.message, stack: project.stack });
       for (const row of rows.slice(1)) {
-        expect(row.err).toEqual({ type: 'Error', message: 'Unexpected HTTP failure', stack: '[redacted]' });
+        expect(row.err).toEqual({ type: 'Error', message: 'Unexpected backend failure', stack: '[redacted]' });
       }
       expect(output.join('')).not.toMatch(/private bug|private cause|private driver property|private SDK failure|private SDK property|private unknown failure|another private failure|TECH_EXTERNAL_STACK_MARKER/);
     } finally {
@@ -304,7 +293,7 @@ describe('conversation HTTP server', () => {
         yield { kind: 'text', text: 'PRIVATE_USE_CASE_OUTPUT' };
         yield { kind: 'reply_expectation', expectsReply: false };
       },
-    });
+    }, undefined, undefined, { log: createBaseLogger(), resources: createResourceStack() });
     server.post('/test-diagnostic-input', async request => {
       throw Object.assign(new Error('private technical fault'), {
         input: request.body,
@@ -376,7 +365,7 @@ describe('conversation HTTP server', () => {
         yield { kind: 'text', text: 'ok' };
         yield { kind: 'reply_expectation', expectsReply: false };
       },
-    });
+    }, undefined, undefined, { log: createBaseLogger(), resources: createResourceStack() });
     try {
       await server.listen({ host: '127.0.0.1', port: 0 });
       const { port } = server.server.address() as AddressInfo;

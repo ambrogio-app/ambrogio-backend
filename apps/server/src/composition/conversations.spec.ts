@@ -8,6 +8,7 @@ import Fastify from 'fastify';
 import websocket from '@fastify/websocket';
 import type { ProduceConversationReply, ReplyPart } from '@ambrogio/conversations/application/produce-conversation-reply';
 import type { SpeechComponents } from '@ambrogio/conversations/adapters/in/session/speech-components';
+import { recordingLogger } from '../../test/support/logger-fixture.js';
 import { assembleExchangeTurn, conversationApiRegistration, loadProtocolSchema, prepareConfiguredConversations,
   registerConversationSessionRoute } from './conversations.js';
 import { closeAllClients, pcm, ProtocolClient, takeSchemaViolations } from '../../test/support/protocol-client.js';
@@ -39,7 +40,7 @@ async function sessionServer(prepared: Awaited<ReturnType<typeof prepareConfigur
   const server = Fastify();
   await server.register(websocket);
   const sessions = registerConversationSessionRoute(server, prepared, reply, {
-    schema: await loadProtocolSchema(), allowedOrigins: [], pingIntervalMs: 30_000,
+    schema: await loadProtocolSchema(), allowedOrigins: [], pingIntervalMs: 30_000, log: recordingLogger().log,
     ...(speech ? { speech } : {}),
   });
   await server.register(async scope => { conversationApiRegistration(prepared)(scope); }, { prefix: '/api/v1' });

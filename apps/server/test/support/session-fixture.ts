@@ -7,6 +7,7 @@ import type { ProduceConversationReply, ReplyPart } from '@ambrogio/conversation
 import type { SpeechComponents, SpeechComponentsFactory } from '@ambrogio/conversations/adapters/in/session/speech-components';
 import { prepareConfiguredConversations } from '../../src/composition/conversations.js';
 import { buildConversationServer } from '../../src/composition/http-surface.js';
+import { surfaceOptions } from './logger-fixture.js';
 
 export type Language = 'en' | 'it';
 export type Reason = 'invalid' | 'conversation_not_found' | 'occupied' | 'unavailable' | 'too_large'
@@ -125,7 +126,7 @@ export async function startSessionServer(options: Readonly<{
   options.voice ? { voskModelPath: '/fake/vosk', voiceEngine: 'piper', voiceModelDir: '/fake/voice' }
     : undefined,
   options.voice ? speech.factory : undefined,
-  { sessionPingIntervalMs: options.pingIntervalMs ?? 30_000 });
+  { ...surfaceOptions(), sessionPingIntervalMs: options.pingIntervalMs ?? 30_000 });
   await built.server.listen({ host: '127.0.0.1', port: 0 });
   const { port } = built.server.server.address() as AddressInfo;
   let closed = false;

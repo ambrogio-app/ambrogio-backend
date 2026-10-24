@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
+import type { Logger } from '../../logger.js';
 import type { ListConversationsHandler } from './list-conversations.handler.js';
 import { listConversationsQuerySchema, type ListConversationsQuery } from './list-conversations.schemas.js';
 
@@ -26,12 +27,12 @@ function assertNever(value: never): never {
  * («Risposta HTTP dell'elenco conversazioni nell'API senza versione»).
  */
 export function registerUnversionedListConversationsRoute(scope: FastifyInstance, handle: ListConversationsHandler,
-  language: Language): void {
+  language: Language, log: Logger): void {
   scope.get<{ Querystring: ListConversationsQuery }>('/conversations', {
     schema: { querystring: listConversationsQuerySchema },
     errorHandler(error, request, reply) {
       if (error.statusCode === 400) return publicError(reply, 400, messages.invalid[language]);
-      request.log.error({ event: 'conversation_list_http_failed', err: normalizeError(error) },
+      log.child({ correlationId: request.id }).error({ event: 'conversation_list_http_failed', err: normalizeError(error) },
         'HTTP request failed');
       return publicError(reply, 500, messages.failure[language]);
     },
@@ -47,7 +48,7 @@ export function registerUnversionedListConversationsRoute(scope: FastifyInstance
           return assertNever(outcome);
       }
     } catch (error) {
-      request.log.error({ event: 'conversation_list_http_failed', err: normalizeError(error) },
+      log.child({ correlationId: request.id }).error({ event: 'conversation_list_http_failed', err: normalizeError(error) },
         'HTTP request failed');
       return publicError(reply, 500, messages.failure[language]);
     }

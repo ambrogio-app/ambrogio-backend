@@ -19,7 +19,8 @@ import { AiSdkOrchestratorReply, AiSdkToolAgentReply } from '@ambrogio/conversat
 import { prepareConfiguredConversations } from '../composition/conversations.js';
 import { loadAgentConfigs } from './agent-config.js';
 import { buildConversationServer } from '../composition/http-surface.js';
-import { startConversationServer } from './conversation-server.js';
+import { surfaceOptions } from '../../test/support/logger-fixture.js';
+import { startConversationServer } from '../../test/support/start-server.js';
 import { closeAllClients, ProtocolClient, takeSchemaViolations } from '../../test/support/protocol-client.js';
 
 const directories: string[] = [];
@@ -123,7 +124,7 @@ test('the session ingress uses the orchestrator and GET routes retain security, 
     listPageSize: 20, maxListPageSize: 100, language: 'en', timeZone: 'UTC' }, new Date());
   const built = await buildConversationServer({ host: '127.0.0.1', port: 3000,
     allowedOrigins: ['https://client.test'], publicHttps: true, hstsMaxAgeSeconds: 600 },
-  prepared, { async *produce() { yield text('Hello'); yield text(' world'); yield expectation(); } });
+  prepared, { async *produce() { yield text('Hello'); yield text(' world'); yield expectation(); } }, undefined, undefined, surfaceOptions());
   const { server, turnIngress } = built;
   try {
     const port = await listen(built);
@@ -521,7 +522,7 @@ test.each([
   let productions = 0;
   const built = await buildConversationServer({ host: '127.0.0.1', port: 3000,
     allowedOrigins: [], publicHttps: false }, prepared,
-  { async *produce() { productions++; yield text('must not be produced for the faulty turn'); yield expectation(); } });
+  { async *produce() { productions++; yield text('must not be produced for the faulty turn'); yield expectation(); } }, undefined, undefined, surfaceOptions());
   const historyFault = vi.spyOn(SqliteConversationHistoryRead.prototype, 'find')
     .mockImplementationOnce(async () => {
       if (missing) return undefined;
@@ -571,7 +572,7 @@ test.each([
       listPageSize: 20, maxListPageSize: 100, language: 'en', timeZone: 'UTC' }, new Date());
     const restarted = await buildConversationServer({ host: '127.0.0.1', port: 3000,
       allowedOrigins: [], publicHttps: false }, recovered,
-    { async *produce() { yield text('after restart'); yield expectation(); } });
+    { async *produce() { yield text('after restart'); yield expectation(); } }, undefined, undefined, surfaceOptions());
     try {
       expect(recovered.recoveredTurns).toBe(1);
       expect(await recovered.archive.db.selectFrom('turns').select('status').execute())
@@ -599,7 +600,7 @@ test('does not confirm success when the answer transaction cannot commit', async
   } finally { sqlite.close(); }
   const built = await buildConversationServer({ host: '127.0.0.1', port: 3000,
     allowedOrigins: [], publicHttps: false }, prepared,
-  { async *produce() { yield text('partial answer'); yield expectation(); } });
+  { async *produce() { yield text('partial answer'); yield expectation(); } }, undefined, undefined, surfaceOptions());
   try {
     const port = await listen(built);
     const client = await ProtocolClient.ready(sessionUrl(port));

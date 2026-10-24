@@ -6,6 +6,7 @@ import { aiSdkOptions, AiSdkKnowledgeAgentReply, AiSdkOrchestratorReply, AiSdkTo
 import { loadAgentConfigs } from '../runtime/agent-config.js';
 import type { AgentConfig } from '../runtime/agent-config.js';
 import { ProjectError } from '@ambrogio/conversations/application/project-error';
+import { createResourceStack, startupWithCleanup } from '../runtime/lifecycle.js';
 
 type ToolConnection = Pick<McpToolClient, 'listTools' | 'listPrompts' | 'getPrompt' | 'callTool' | 'close'>;
 
@@ -40,7 +41,8 @@ export async function prepareAgents(
     try { aiSdkOptions(config.llm.options); }
     catch (error) { throw new ProjectError(`Invalid agent options: ${config.id}`, { cause: error }); }
   }
-  const opened: ToolConnection[] = [];
+  // Each MCP connection is closed once, in reverse order of opening, keeping every closing fault.
+  const connections = createResourceStack('Agent MCP connections could not be closed');
   try {
     const specialists = [];
     for (const config of configs.specialists) {
@@ -55,7 +57,8 @@ export async function prepareAgents(
       let prompts: readonly string[];
       try {
         mcp = await connect(config.mcp);
-        opened.push(mcp);
+        const opened = mcp;
+        connections.defer(`Agent MCP connection could not be closed: ${config.id}`, () => opened.close());
         tools = await mcp.listTools();
         prompts = await mcp.listPrompts();
       } catch (error) {
@@ -75,9 +78,9 @@ export async function prepareAgents(
     }
     const orchestrator = new AiSdkOrchestratorReply(settingsFor(configs.orchestrator), specialists);
     return { orchestrator, specialists,
-      async close() { await Promise.all(opened.map((mcp) => mcp.close())); } };
+      close: () => connections.close() };
   } catch (error) {
-    await Promise.allSettled(opened.map((mcp) => mcp.close()));
-    throw error;
+    const cleanup = await connections.close().then(() => [], () => connections.faults);
+    throw startupWithCleanup('Agents could not be prepared', error, cleanup);
   }
 }

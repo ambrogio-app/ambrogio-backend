@@ -7,7 +7,7 @@ import { afterEach, expect, test } from 'vitest';
 import { closeAllClients, pcm, ProtocolClient, takeSchemaViolations } from '../../test/support/protocol-client.js';
 import { expectation, gate, publicMessages, scriptedReply, startSessionServer, text, waitUntil,
   type SessionServer } from '../../test/support/session-fixture.js';
-import { startConversationServer } from './conversation-server.js';
+import { startConversationServer } from '../../test/support/start-server.js';
 
 const servers: SessionServer[] = [];
 const directories: string[] = [];

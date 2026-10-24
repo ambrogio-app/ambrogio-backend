@@ -10,6 +10,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ProduceConversationReply } from '@ambrogio/conversations/application/produce-conversation-reply';
 import { prepareConfiguredConversations } from './conversations.js';
 import { buildConversationServer } from './http-surface.js';
+import { surfaceOptions } from '../../test/support/logger-fixture.js';
 
 const directories: string[] = [];
 const servers: FastifyInstance[] = [];
@@ -61,10 +62,11 @@ async function composed(language: 'en' | 'it' = 'it') {
   archives.push(prepared.archive);
   await prepared.archive.db.insertInto('conversations')
     .values({ id: 'c-1', created_at: 100, last_activity_at: 100 }).execute();
+  const surface = surfaceOptions();
   const { server } = await buildConversationServer({ host: '127.0.0.1', port: 0,
-    allowedOrigins: ['https://client.test'], publicHttps: false }, prepared, producer);
+    allowedOrigins: ['https://client.test'], publicHttps: false }, prepared, producer, undefined, undefined, surface);
   servers.push(server);
-  return { server, prepared };
+  return { server, prepared, events: surface.events };
 }
 
 function expectProblem(response: { statusCode: number; headers: Record<string, unknown>; json(): unknown },
@@ -164,12 +166,7 @@ describe('HTTP surface of the conversation server', () => {
 
   // Verification: Prova degli esiti pubblici dell'API HTTP
   it('answers an unexpected fault with the opaque 500 only, and logs it once', async () => {
-    const { server, prepared } = await composed();
-    const logged: unknown[] = [];
-    server.addHook('onRequest', (request, _reply, done) => {
-      vi.spyOn(request.log, 'error').mockImplementation((value: unknown) => { logged.push(value); });
-      done();
-    });
+    const { server, prepared, events } = await composed();
     await prepared.archive.db.destroy();
     for (const url of ['/api/v1/conversations', '/api/v1/conversations/c-1']) {
       const response = await server.inject({ method: 'GET', url });
@@ -177,8 +174,8 @@ describe('HTTP surface of the conversation server', () => {
       expect(body).toEqual({ type: 'about:blank', title: 'Internal Server Error', status: 500 });
       expect(response.body).not.toMatch(/destroy|sqlite|kysely|stack/i);
     }
-    expect(logged.map(value => (value as { event: string }).event))
-      .toEqual(['http.unexpected_failure', 'http.unexpected_failure']);
+    expect(events.map(event => [event.level, event.fields.event]))
+      .toEqual([['error', 'http.unexpected_failure'], ['error', 'http.unexpected_failure']]);
   });
 
   // Verification: Prova degli esiti pubblici dell'API HTTP

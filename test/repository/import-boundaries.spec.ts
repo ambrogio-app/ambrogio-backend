@@ -32,6 +32,7 @@ test('the analysis covers the sources and tests of every application and package
 // Verification: Prova degli import dei test Domain e Application
 // Verification: Prova dell'indipendenza tecnica di Domain e Application
 // Verification: Prova delle regole sulle factory tecniche e sulla composizione
+// Verification: Prova del logger minimo del backend
 test.each(rules.map((rule) => rule.name))('the workspace respects the rule %s', (name) => {
   const rule = rules.find((candidate) => candidate.name === name)!;
   expect(analyse(workspace, [rule]).map(describeViolation)).toEqual([]);
@@ -96,6 +97,13 @@ const negativeFixtures: ReadonlyArray<Readonly<{ rule: RuleName; title: string; 
   {
     rule: 'no-dependency-container', title: 'a composition root using a dependency injection container',
     graph: fixtureGraph({ 'apps/server/src/composition/conversations.ts': "import { createContainer } from 'awilix';\n" }, units),
+  },
+  {
+    rule: 'pino-only-in-logger', title: 'a startup boundary and a package adapter creating their own Pino logger',
+    graph: fixtureGraph({
+      'apps/server/src/runtime/startup-failure.ts': "import { pino } from 'pino';\n",
+      'packages/conversations/src/adapters/in/session/conversation-session.adapter.ts': "import type { Logger } from 'pino';\n",
+    }, units),
   },
 ];
 

@@ -3,6 +3,7 @@ import type { BeginTurnRejection } from '../../../application/begin-turn.use-cas
 import type { ExchangeTurn } from '../../../application/exchange-turn.use-case.js';
 import type { DecodedMessage, InputStart } from './protocol-decoder.js';
 import type { SpeechComponents } from './speech-components.js';
+import type { Logger } from '../logger.js';
 
 export const sessionProtocol = 'ambrogio.v1';
 export const sessionRoute = '/api/session';
@@ -43,20 +44,19 @@ const admissionRejections: Record<BeginTurnRejection['kind'], RejectionReason> =
   temporarily_unavailable: 'unavailable',
 };
 
-export type DiagnosticLog = Readonly<{ error(details: object, message: string): void }>;
-
 export type ConversationSessionsDependencies = Readonly<{
   exchange: ExchangeTurn;
   decode: (frame: string) => DecodedMessage;
   language: Language;
   speech?: SpeechComponents;
   pingIntervalMs: number;
-  log: DiagnosticLog;
+  /** Base logger of the process, used for a session attached without its own derived logger. */
+  log: Logger;
 }>;
 
 export type ConversationSessions = Readonly<{
-  /** Serve one accepted `ambrogio.v1` WebSocket; `log` carries the session's diagnostic correlation. */
-  attach(socket: WebSocket, log?: DiagnosticLog): void;
+  /** Serve one accepted `ambrogio.v1` WebSocket; `log`, derived by the HTTP boundary, carries its correlation. */
+  attach(socket: WebSocket, log?: Logger): void;
   /** Refuse new admissions and wait for admissions already in progress to settle. */
   stopAccepting(): Promise<void>;
   /** Notify interrupted turns, then close every open session. */
@@ -135,7 +135,7 @@ class ConversationSession {
   private alive = true;
   private readonly ping: NodeJS.Timeout;
 
-  constructor(readonly socket: WebSocket, readonly owner: SessionRegistry, readonly log: DiagnosticLog) {
+  constructor(readonly socket: WebSocket, readonly owner: SessionRegistry, readonly log: Logger) {
     socket.on('message', (data, isBinary) => {
       const frame = Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data as ArrayBuffer);
       if (isBinary) this.receiveFrame(frame);
@@ -522,7 +522,7 @@ class SessionRegistry implements ConversationSessions {
     return rejectionMessages[reason][this.dependencies.language];
   }
 
-  attach(socket: WebSocket, log: DiagnosticLog = this.dependencies.log): void {
+  attach(socket: WebSocket, log: Logger = this.dependencies.log): void {
     if (this.stopping) { socket.close(1001, 'Server stopping'); return; }
     this.sessions.add(new ConversationSession(socket, this, log));
   }

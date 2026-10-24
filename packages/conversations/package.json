@@ -114,6 +114,10 @@
       "types": "./dist/adapters/in/http/problem-details.d.ts",
       "import": "./dist/adapters/in/http/problem-details.js"
     },
+    "./adapters/in/logger": {
+      "types": "./dist/adapters/in/logger.d.ts",
+      "import": "./dist/adapters/in/logger.js"
+    },
     "./adapters/out/sqlite/schema": {
       "types": "./dist/adapters/out/sqlite/schema.d.ts",
       "import": "./dist/adapters/out/sqlite/schema.js"

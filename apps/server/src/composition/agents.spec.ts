@@ -37,7 +37,8 @@ test('prepares every discovered specialist with an isolated MCP connection and c
     ]);
     expect(agents.specialists.map((agent) => agent.tools[0]?.name)).toEqual(connected);
     await agents.close();
-    expect(closed).toEqual(connected);
+    // Each connection is closed once, in reverse order of opening.
+    expect(closed).toEqual([...connected].reverse());
   } finally { await fixture.close(); }
 });
 
@@ -69,7 +70,7 @@ test('offers only the listed tools and refuses to start when a listed tool is mi
     const failure = await prepareAgents(fixture.directory, testEnvironment(), connect).catch((error: unknown) => error);
     expect(failure).toMatchObject({ message: 'Agent MCP tool unavailable: some' });
     expect(JSON.stringify(failure, Object.getOwnPropertyNames(failure))).not.toMatch(/some\.example|secret-token/);
-    expect(closed).toEqual(['https://all.example/mcp', 'https://some.example/mcp']);
+    expect(closed).toEqual(['https://some.example/mcp', 'https://all.example/mcp']);
   } finally { await fixture.close(); }
 });
 

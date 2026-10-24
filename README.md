@@ -134,6 +134,8 @@ pnpm dev
 
 If the server cannot start, it writes one JSON line with `"event":"server_startup_failed"` to stdout, whose `err.message` names the cause (for example `Missing environment variable AMBROGIO_HTTP_PORT`, `Invalid agent configuration: general` or `Agent MCP connection failed: home-assistant`), then prints `Unable to start HTTP server.` to stderr and exits with code 1.
 
+On `SIGTERM` or `SIGINT` the server stops accepting turns, saves the pending ones as interrupted and closes its resources in reverse order within 10 seconds; it exits with code 0, or with 1 and a `server_shutdown_failed` or `server_shutdown_timeout` line. Give the container at least 15 seconds to stop: `compose.example.yaml` sets `stop_grace_period: 15s`.
+
 **Home Assistant.** [`examples/agents/home-assistant.json`](examples/agents/home-assistant.json) provides an agent for Home Assistant's [Model Context Protocol Server](https://www.home-assistant.io/integrations/mcp_server/) integration. Copy it, set `mcp.url` to your Home Assistant address, mount it in the agents directory and set `HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN` in the container environment. Only the entities exposed to Assist are available to Ambrogio.
 
 > Ambrogio has no user accounts or authentication. Run it on a trusted network, or behind a reverse proxy that allows only your own clients.

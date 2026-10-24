@@ -38,9 +38,32 @@ Origine: baseline Reqvire «New work refused on shutdown», adottata.
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
 ---
 
+### Arresto unico e ordinato del server
+
+Quando riceve `SIGINT` o `SIGTERM`, il server deve avviare un solo arresto, smettere di accettare turni, interrompere quelli in corso, chiudere le sessioni conversazionali e poi, ciascuna una sola volta e in ordine inverso di acquisizione, il listener HTTP, i componenti vocali, l'archivio e le connessioni MCP degli agenti, e deve concludere l'arresto entro il tempo massimo del contratto «Finestra di arresto del server».
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Politica di interruzione nell'arresto ordinato](../Contracts/ServerFoundation.md#politica-di-interruzione-nellarresto-ordinato)
+  * [Ciclo di vita dei processi di servizio con Node.js](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#ciclo-di-vita-dei-processi-di-servizio-con-nodejs)
+
+#### Relations
+  * derivedFrom: [Arresto unico, ordinato e limitato nel tempo](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#arresto-unico-ordinato-e-limitato-nel-tempo)
+  * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
+  * satisfiedBy: [http-surface.ts](../../apps/server/src/composition/http-surface.ts)
+  * satisfiedBy: [main.ts](../../apps/server/src/main.ts)
+  * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
+  * satisfiedBy: [lifecycle.ts](../../apps/server/src/runtime/lifecycle.ts)
+  * satisfiedBy: [server-process.ts](../../apps/server/src/runtime/server-process.ts)
+  * satisfiedBy: [compose.example.yaml](../../compose.example.yaml)
+  * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
+---
+
 ### Assenza dei log HTTP automatici
 
-Quando il runtime HTTP del server abilita il logger di Fastify, non deve emettere automaticamente eventi diagnostici di ricezione della richiesta o invio della risposta.
+Il runtime HTTP del server non deve emettere automaticamente eventi diagnostici di ricezione della richiesta o invio della risposta: il logger interno di Fastify deve restare disattivato e gli eventi diagnostici HTTP devono passare soltanto dal logger minimo del backend.
 
 #### Details
 Origine: baseline Reqvire «No automatic HTTP request logs», adottata.
@@ -351,6 +374,25 @@ Quando l'MVP è installato senza autenticazione applicativa, il deployment deve 
   * specify: [Assistenza personale domestica](../../../ambrogio-model/system-model/Capabilities/Product.md#assistenza-personale-domestica)
 ---
 
+### Costruzione del server separata dall'ascolto
+
+La costruzione del server conversazionale deve preparare configurazione, agenti, archivio, componenti vocali e server HTTP e restituire il server, l'indirizzo di ascolto validato e la funzione di chiusura senza mettersi in ascolto, e l'entrypoint del processo deve aprire l'ascolto e decidere l'esito del processo; l'ingresso di prova pubblico deve seguire la stessa separazione.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Ciclo di vita dei processi di servizio con Node.js](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#ciclo-di-vita-dei-processi-di-servizio-con-nodejs)
+
+#### Relations
+  * derivedFrom: [Costruzione separata dall'attivazione](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#costruzione-separata-dallattivazione)
+  * satisfiedBy: [main.ts](../../apps/server/src/main.ts)
+  * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
+  * satisfiedBy: [server-process.ts](../../apps/server/src/runtime/server-process.ts)
+  * satisfiedBy: [test-server.ts](../../apps/server/src/runtime/test-server.ts)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
+---
+
 ### Credenziali API dalle variabili d'ambiente
 
 Quando un componente del backend usa credenziali per un'API esterna, deve riceverle dalle variabili d'ambiente del processo tramite il proprio modulo di configurazione, e nessun file di configurazione del backend deve contenere una credenziale.
@@ -403,19 +445,18 @@ Origine: baseline Reqvire «Diagnostics of unexpected failures in technical comp
 
 ### Diagnostica del mancato avvio del server
 
-Se la preparazione del processo server fallisce prima che il server sia in ascolto, il processo deve emettere un unico log diagnostico definitivo che identifichi la causa del mancato avvio senza riprodurre valori segreti, comunicare il mancato avvio su stderr e terminare con un codice di uscita non riuscito.
-
-#### Details
-Origine: baseline Reqvire «Startup failure diagnostics», adottata.
+Se la preparazione del processo server o l'apertura dell'ascolto HTTP falliscono, il processo deve emettere un unico log diagnostico definitivo `server_startup_failed` che identifichi la causa del mancato avvio senza riprodurre valori segreti, comunicare il mancato avvio su stderr e terminare con un codice di uscita non riuscito, secondo il contratto «Evento diagnostico del mancato avvio del server».
 
 #### Metadata
   * type: requirement
 
 #### Relations
+  * derivedFrom: [Diagnostica del mancato avvio](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#diagnostica-del-mancato-avvio)
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
+  * satisfiedBy: [http-surface.ts](../../apps/server/src/composition/http-surface.ts)
   * satisfiedBy: [main.ts](../../apps/server/src/main.ts)
   * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
-  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
+  * satisfiedBy: [server-process.ts](../../apps/server/src/runtime/server-process.ts)
   * satisfiedBy: [startup-failure.ts](../../apps/server/src/runtime/startup-failure.ts)
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
 ---
@@ -617,6 +658,26 @@ Quando il repository fornisce esempi di configurazione, come `.env.example`, `co
   * satisfiedBy: [generic.json](../../examples/agents/generic.json)
   * satisfiedBy: [home-assistant.json](../../examples/agents/home-assistant.json)
   * satisfiedBy: [orchestrator.json](../../examples/agents/orchestrator.json)
+  * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
+---
+
+### Esito del ciclo di vita del server conservato nei guasti
+
+Quando l'avvio o l'arresto del server falliscono, il server deve conservare il guasto dell'avvio come primo guasto, raccogliere i guasti di pulizia e di chiusura senza perderli né presentarli come cause l'uno dell'altro, ed emetterli nell'unico log diagnostico definitivo dell'avvio o dell'arresto, terminando con codice di uscita 1 anche quando soltanto la chiusura di una risorsa è fallita.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Finestra di arresto del server](../Contracts/ServerFoundation.md#finestra-di-arresto-del-server)
+  * [Ciclo di vita dei processi di servizio con Node.js](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#ciclo-di-vita-dei-processi-di-servizio-con-nodejs)
+
+#### Relations
+  * derivedFrom: [Esito del ciclo di vita conservato nei guasti](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#esito-del-ciclo-di-vita-conservato-nei-guasti)
+  * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
+  * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
+  * satisfiedBy: [lifecycle.ts](../../apps/server/src/runtime/lifecycle.ts)
+  * satisfiedBy: [server-process.ts](../../apps/server/src/runtime/server-process.ts)
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
 ---
 
@@ -930,6 +991,30 @@ Origine: baseline Reqvire «Error log at the public fallback», adottata.
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
+### Logger minimo del backend
+
+I componenti tecnici del backend che registrano eventi diagnostici devono ricevere il logger minimo creato una sola volta da `main.ts` con Pino al livello minimo `warn`, o dall'ingresso di prova pubblico per il proprio processo, e il confine HTTP deve passare alle rotte e alle sessioni conversazionali un logger derivato con il `correlationId` della richiesta.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Profilo del logger con Pino](../../../ambrogio-model/system-model/Contracts/CodeArchitecture.md#profilo-del-logger-con-pino)
+
+#### Relations
+  * derivedFrom: [Interfaccia minima del logger con un solo logger di base](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#interfaccia-minima-del-logger-con-un-solo-logger-di-base)
+  * satisfiedBy: [session-route.adapter.ts](../../apps/server/src/adapters/in/session-route.adapter.ts)
+  * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
+  * satisfiedBy: [main.ts](../../apps/server/src/main.ts)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
+  * satisfiedBy: [logger.ts](../../apps/server/src/runtime/logger.ts)
+  * satisfiedBy: [test-server.ts](../../apps/server/src/runtime/test-server.ts)
+  * satisfiedBy: [conversation-routes.ts](../../packages/conversations/src/adapters/in/http/conversation-routes.ts)
+  * satisfiedBy: [logger.ts](../../packages/conversations/src/adapters/in/logger.ts)
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
+---
+
 ### Mapping esaustivo dei rifiuti previsti
 
 Quando un mapping del server deve gestire tutte le varianti di un'unione di rifiuti previsti, il codice TypeScript deve usare uno `switch` su `kind` con un ramo per ogni variante e un `default` che passi il valore completo della variante a `assertNever`.
@@ -1072,6 +1157,23 @@ Origine: baseline Reqvire «Explicitly configured CORS origins», adottata.
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
 ---
 
+### Percorso fatale del server
+
+Quando un errore sfugge a ogni confine controllato del processo server, compreso un rifiuto di promessa non gestito, il processo deve scrivere su stderr soltanto la riga fissa `Ambrogio backend stopped after a fatal error.` e terminare con codice di uscita 1, senza serializzare il valore sollevato né emettere log ordinari.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Ciclo di vita dei processi di servizio con Node.js](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#ciclo-di-vita-dei-processi-di-servizio-con-nodejs)
+
+#### Relations
+  * derivedFrom: [Percorso fatale separato](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#percorso-fatale-separato)
+  * satisfiedBy: [main.ts](../../apps/server/src/main.ts)
+  * satisfiedBy: [fatal-path.ts](../../apps/server/src/runtime/fatal-path.ts)
+  * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
+---
+
 ### Perimetro iniziale dei segnali di osservabilità del backend
 
 Nella prima versione, il runtime HTTP del backend deve usare come segnali di osservabilità, oltre ai log tecnici strutturati, soltanto gli identificativi di correlazione delle richieste HTTP.
@@ -1180,17 +1282,18 @@ Quando viene creato un tag di release `v*` del backend, il progetto deve pubblic
 
 ### Rappresentazione di err nel log JSON
 
-Quando il logger del server emette la riga JSON di un log diagnostico definitivo HTTP, la riga deve contenere una rappresentazione serializzata del campo `err` conforme al profilo controllato di serializzazione.
-
-#### Details
-Origine: baseline Reqvire «Controlled serialization of err», adottata.
+Quando il logger del server emette la riga JSON di un log diagnostico definitivo, la riga deve contenere una rappresentazione del campo `err` conforme al profilo controllato di serializzazione, con `ProjectError` come errore del progetto e `Unexpected backend failure` come descrizione costante di ogni altro valore.
 
 #### Metadata
   * type: requirement
 
+#### Contract References
+  * [Profilo controllato di serializzazione di err](../../../ambrogio-model/system-model/Contracts/CodeArchitecture.md#profilo-controllato-di-serializzazione-di-err)
+
 #### Relations
-  * derivedFrom: [Diagnosi definitiva unica dei guasti inattesi](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#diagnosi-definitiva-unica-dei-guasti-inattesi)
-  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
+  * derivedFrom: [Serializzazione controllata di err](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#serializzazione-controllata-di-err)
+  * satisfiedBy: [lifecycle.ts](../../apps/server/src/runtime/lifecycle.ts)
+  * satisfiedBy: [logger.ts](../../apps/server/src/runtime/logger.ts)
   * satisfiedBy: [project-error.ts](../../packages/conversations/src/project-error.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---

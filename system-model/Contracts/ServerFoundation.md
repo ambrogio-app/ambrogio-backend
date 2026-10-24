@@ -52,15 +52,30 @@ Quando la voce è abilitata, Vosk e la sintesi vocale sherpa-onnx sono eseguiti 
 
 ### Evento diagnostico del mancato avvio del server
 
-L'entrypoint del processo server è il confine definitivo dei guasti avvenuti prima dell'ascolto: quando la preparazione fallisce emette una sola riga JSON Pino su `stdout` con livello `error`, `event: "server_startup_failed"`, il messaggio fisso `Server startup failed` e il campo `err`, poi scrive su `stderr` la riga invariata `Unable to start HTTP server.` e termina con codice di uscita `1`. Il server non si mette in ascolto e non emette altri log definitivi per lo stesso guasto. Motivazione: la sola riga su `stderr` non permette a chi installa Ambrogio di capire quale configurazione o risorsa impedisca l'avvio.
+Il runner del processo server è il confine definitivo dei guasti avvenuti prima che il server sia in ascolto: quando la costruzione del server o l'apertura dell'ascolto falliscono, emette con il logger di base una sola riga JSON su `stdout` con livello `error`, `event: "server_startup_failed"`, il messaggio fisso `Server startup failed` e il campo `err`, poi scrive su `stderr` la riga invariata `Unable to start HTTP server.` e restituisce il codice di uscita `1`. Il server non resta in ascolto e non emette altri log definitivi per lo stesso guasto. Motivazione: la sola riga su `stderr` non permette a chi installa Ambrogio di capire quale configurazione o risorsa impedisca l'avvio.
 
-Il campo `err` segue il profilo controllato di serializzazione già adottato dal runtime HTTP: un `ProjectError` espone tipo, messaggio e stack; ogni altro valore riceve la descrizione costante `Unexpected startup failure` con stack oscurato, senza copiarne messaggio o proprietà. La catena `cause` non è serializzata. Per rendere identificabile la causa, le fasi di avvio esposte a guasti esterni li incapsulano in un `ProjectError` con un messaggio fisso che nomina la fase e conserva l'originale come `cause`: `Conversation archive could not be prepared` per apertura, migrazione e recupero dell'archivio, `Voice components could not be loaded` per il caricamento di trascrizione e sintesi, `HTTP listener could not start` per l'ascolto, `Agent MCP connection failed: <id>` per connessione e scoperta degli strumenti MCP di un agente e `Invalid agent options: <id>` per opzioni del modello non valide. Un `ProjectError` già prodotto da una fase, come quelli della validazione della configurazione, resta invariato. I messaggi ammettono il nome di una variabile d'ambiente, l'identificativo di un agente o il nome di un file di agente, ma mai valori letti dalle variabili d'ambiente o dai file, URL, credenziali, token o chiavi.
+Il campo `err` segue il profilo controllato di serializzazione: un `ProjectError` espone tipo, messaggio e stack; ogni altro valore riceve la descrizione costante `Unexpected backend failure` con stack oscurato, senza copiarne messaggio o proprietà. La catena `cause` non è serializzata. Per rendere identificabile la causa, le fasi di avvio esposte a guasti esterni li incapsulano in un `ProjectError` con un messaggio fisso che nomina la fase e conserva l'originale come `cause`: `Conversation archive could not be prepared` per apertura, migrazione e recupero dell'archivio, `Voice components could not be loaded` per il caricamento di trascrizione e sintesi, `HTTP listener could not start` per l'ascolto, `Agent MCP connection failed: <id>` per connessione e scoperta degli strumenti MCP di un agente e `Invalid agent options: <id>` per opzioni del modello non valide. Un `ProjectError` già prodotto da una fase, come quelli della validazione della configurazione, resta invariato. Se anche la chiusura delle risorse già acquisite fallisce, `err` è un `LifecycleError` con il messaggio fisso `Server startup failed` e `faults` che elenca il guasto dell'avvio seguito dai guasti di chiusura. I messaggi ammettono il nome di una variabile d'ambiente, l'identificativo di un agente o il nome di un file di agente, ma mai valori letti dalle variabili d'ambiente o dai file, URL, credenziali, token o chiavi.
 
 #### Metadata
   * type: input-output
 
 #### Relations
   * define: [Diagnostica del mancato avvio del server](../Requirements/ServerFoundation.md#diagnostica-del-mancato-avvio-del-server)
+---
+
+### Finestra di arresto del server
+
+Il tempo massimo dell'arresto del server è una costante di 10000 ms, non configurabile, che parte dal primo `SIGINT` o `SIGTERM`; i segnali successivi non la riavviano. L'arresto riuscito termina il processo con codice 0 senza righe di log. Se una chiusura fallisce, il server emette una sola riga JSON con livello `error`, `event: "server_shutdown_failed"`, il messaggio fisso `Server shutdown failed` ed `err`, e termina con codice 1. Se l'arresto non termina entro il tempo massimo, il server emette una sola riga JSON con livello `error`, `event: "server_shutdown_timeout"`, il messaggio fisso `Server shutdown timed out`, `timeoutMs: 10000` ed `err` con i guasti già osservati quando ve ne sono, e termina subito con codice 1 senza attendere le chiusure pendenti. Un turno ancora senza esito alla scadenza resta senza esito e il recupero al riavvio lo riconosce come interrotto.
+
+I messaggi fissi dei guasti dell'arresto nominano la fase o la risorsa: `Turns could not be interrupted` per l'arresto dei turni e la chiusura delle sessioni, `HTTP server could not be closed`, `Voice components could not be closed`, `Conversation archive could not be closed` e `Agent MCP connection could not be closed: <id>`; più guasti di chiusura delle connessioni MCP sono raccolti in un `LifecycleError` con il messaggio `Agent MCP connections could not be closed`, più guasti dell'arresto in un `LifecycleError` con il messaggio `Server shutdown failed`.
+
+Il periodo di arresto concesso dal supervisore è di 15 secondi: l'esempio Compose del repository dichiara `stop_grace_period: 15s` e la documentazione indica `--stop-timeout 15` per `docker run`, così che il processo concluda da sé l'arresto prima del `SIGKILL` del runtime dei container.
+
+#### Metadata
+  * type: behavior
+
+#### Relations
+  * define: [Arresto unico e ordinato del server](../Requirements/ServerFoundation.md#arresto-unico-e-ordinato-del-server)
 ---
 
 ### Forma del tipo Result
@@ -129,17 +144,6 @@ Alla richiesta di arresto il server smette di accettare nuovi turni, richiede su
 
 #### Relations
   * define: [Interruzione dei turni durante l'arresto](../Requirements/ServerFoundation.md#interruzione-dei-turni-durante-larresto)
----
-
-### Profilo controllato di serializzazione di err
-
-La rappresentazione JSON di `err` usa una vista composta soltanto da campi ammessi esplicitamente dal serializzatore. Gli errori costruiti dal progetto usano un tipo `Error` dedicato e riconoscibile dal serializzatore; la loro vista include lo stack diagnostico. Gli errori ricevuti da driver, SDK o provider conservano il tipo originale e, come ogni valore lanciato sconosciuto, ricevono una descrizione costante sicura, indipendente dal valore ricevuto, senza copiarne messaggio, stack o proprietà aggiuntive. La normalizzazione diagnostica al confine conserva l'identità di ogni `Error` ricevuto e rappresenta un valore non `Error` con un nuovo `Error` privo del tipo dedicato; non applica il tipo del progetto a un guasto esterno o sconosciuto.
-
-#### Metadata
-  * type: input-output
-
-#### Relations
-  * define: [Rappresentazione di err nel log JSON](../Requirements/ServerFoundation.md#rappresentazione-di-err-nel-log-json)
 ---
 
 ### Profilo del limite dei corpi HTTP
@@ -291,6 +295,7 @@ Le regole sono definite in `test/repository/architecture-rules.ts` e controllate
 | `domain-application-own-package` | un file di produzione di `src/domain` o `src/application` di un package, esclusi i file `*.spec.ts`, che importa, anche tramite i file che importa, un modulo diverso da un file di produzione esistente in `src/` dello stesso package | «Indipendenza tecnica di Domain e Application nel backend» |
 | `technical-factory-imports` | un file delle factory tecniche del runtime, oggi `apps/server/src/runtime/http-server.ts`, che importa un package del workspace oppure un file dell'applicazione in `src/composition/` o `src/adapters/` | «Factory tecniche senza conoscenza business» |
 | `no-dependency-container` | un file di un'applicazione o di un package che importa un container di dependency injection: `awilix`, `inversify`, `tsyringe`, `typedi`, `injection-js` o `@nestjs/core` | «Composizione scritta a mano» |
+| `pino-only-in-logger` | un file di produzione di un'applicazione o di un package, diverso da `apps/server/src/runtime/logger.ts`, che importa `pino` | «Logger minimo del backend» |
 
 Ogni regola ha almeno una fixture negativa in memoria che produce violazioni soltanto con il nome di quella regola. Un'eccezione è una voce dell'elenco `exceptions` del modulo con il nome della regola, il file che importa, l'import ammesso e il motivo, e ammette soltanto quell'import; ogni voce compare anche in questo contratto con il motivo.
 

@@ -5,7 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, test } from 'vitest';
 import { ProjectError } from '@ambrogio/conversations/application/project-error';
-import { startConversationServer } from './conversation-server.js';
+import { startConversationServer } from '../../test/support/start-server.js';
+import { capturedBaseLogger } from '../../test/support/logger-fixture.js';
 import { reportStartupFailure } from './startup-failure.js';
 
 const secret = 'startup-secret-marker';
@@ -17,14 +18,10 @@ afterEach(async () => {
 });
 
 function capture(error: unknown) {
-  const stdout: string[] = [];
+  const stdout = capturedBaseLogger();
   const stderr: string[] = [];
-  reportStartupFailure(error, {
-    stdout: { write: (line: string) => { stdout.push(line); } },
-    stderr: { write: (line: string) => { stderr.push(line); return true; } },
-  });
-  return { lines: stdout.join('').trim().split('\n').map((line) => JSON.parse(line) as Record<string, unknown>),
-    raw: stdout.join('') + stderr.join(''), stderr: stderr.join('') };
+  reportStartupFailure(error, stdout.log, line => { stderr.push(line); });
+  return { lines: stdout.lines(), raw: stdout.output.join('') + stderr.join(''), stderr: stderr.join('') };
 }
 
 async function listeningPort(): Promise<{ port: number; server: Server }> {
@@ -89,7 +86,7 @@ test('keeps external failures opaque', () => {
   for (const value of [external, secret, { secret }]) {
     const report = capture(value);
     expect(report.lines[0]).toMatchObject({ event: 'server_startup_failed',
-      err: { type: 'Error', message: 'Unexpected startup failure', stack: '[redacted]' } });
+      err: { type: 'Error', message: 'Unexpected backend failure', stack: '[redacted]' } });
     expect(report.raw).not.toContain(secret);
   }
 });

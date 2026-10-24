@@ -4,7 +4,7 @@ import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, test, vi } from 'vitest';
-import { startConversationServer } from './conversation-server.js';
+import { startConversationServer } from '../../test/support/start-server.js';
 import { closeAllClients, ProtocolClient, rejectedUpgradeStatus, takeSchemaViolations } from '../../test/support/protocol-client.js';
 
 const directories: string[] = [];

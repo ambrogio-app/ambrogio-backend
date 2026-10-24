@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import type { Logger } from '@ambrogio/conversations/adapters/in/logger';
 import { sendProblem, type ProblemDetails } from '@ambrogio/conversations/adapters/in/http/problem-details';
 import { sessionProtocol, sessionRoute,
   type ConversationSessions } from '@ambrogio/conversations/adapters/in/session/conversation-session';
@@ -14,9 +15,12 @@ function offeredProtocols(header: string | string[] | undefined): string[] {
   return values.flatMap(value => value.split(',')).map(value => value.trim()).filter(Boolean);
 }
 
-/** Accept the conversation WebSocket only for `ambrogio.v1` and an allowed or absent Origin. */
+/**
+ * Accept the conversation WebSocket only for `ambrogio.v1` and an allowed or absent Origin; the session logs through
+ * a logger derived from `log` with the `correlationId` of the opening request.
+ */
 export function registerSessionRoute(server: FastifyInstance, sessions: ConversationSessions,
-  allowedOrigins: readonly string[]): void {
+  allowedOrigins: readonly string[], log: Logger): void {
   server.get(sessionRoute, { websocket: true, preValidation(request, reply, done) {
     const origin = request.headers.origin;
     if (origin !== undefined && !allowedOrigins.includes(origin)) {
@@ -28,5 +32,7 @@ export function registerSessionRoute(server: FastifyInstance, sessions: Conversa
       return;
     }
     done();
-  } }, (socket, request) => { sessions.attach(socket, request.log); });
+  } }, (socket, request) => {
+    sessions.attach(socket, log.child({ correlationId: request.id }));
+  });
 }

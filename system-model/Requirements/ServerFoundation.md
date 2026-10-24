@@ -414,6 +414,21 @@ Origine: baseline Reqvire «Configuration module per component reading environme
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
 ---
 
+### Database di prova isolati del backend
+
+Le prove del backend che usano un database SQLite devono usare soltanto database che creano, in memoria o in una cartella temporanea propria, costruiti con le migrazioni di produzione, devono cancellare soltanto le cartelle che hanno creato e non devono leggere la configurazione dell'installazione né ripiegare su un archivio di sviluppo o di produzione.
+
+#### Details
+Origine: baseline Reqvire «Isolated and guarded test databases», adattata: con SQLite incorporato ogni prova crea il proprio database invece di un database per worker su un server, quindi non servono il controllo del bersaglio, la pulizia dei dati fra i casi né un servizio di database da cui la suite dipenda.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [sqlite-turn-repository.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.integration.spec.ts)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
+---
+
 ### Definizione locale del tipo Result
 
 Ogni modulo business del server che usa `Result<T, E>` deve definire il tipo nel proprio package, senza importarlo da un altro package.
@@ -1384,6 +1399,26 @@ Origine: baseline Reqvire «Public message separated from technical diagnosis»,
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
+### Server compilato provato come processo
+
+La selezione `e2e` del backend deve avviare il punto d'ingresso compilato del server come processo figlio e verificare che risolva i propri moduli, si avvii in produzione su un archivio SQLite nuovo, risponda all'elenco delle conversazioni di `/api/v1`, termini con codice 0 a `SIGTERM` e, senza ambiente di esecuzione, termini con codice 1, un solo evento `server_startup_failed` e la riga fissa su stderr.
+
+#### Details
+Le matrici dei casi di configurazione, delle rotte e del ciclo di vita restano nelle prove dei singoli confini.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Suite di test del backend](../Contracts/ServerFoundation.md#suite-di-test-del-backend)
+
+#### Relations
+  * derivedFrom: [Artefatti compilati provati come processi](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#artefatti-compilati-provati-come-processi)
+  * satisfiedBy: [main.e2e.spec.ts](../../apps/server/src/main.e2e.spec.ts)
+  * satisfiedBy: [vitest.config.ts](../../vitest.config.ts)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
+---
+
 ### Struttura del tipo Result
 
 Il tipo `Result<T, E>` definito da un modulo business del server deve rappresentare successo e rifiuto mediante un'unione discriminata immutabile conforme alla specifica della forma di Result.
@@ -1506,40 +1541,5 @@ Quando la suite automatica del backend esegue le verifiche dei package business,
   * derivedFrom: [Suite di test con Vitest accanto al codice](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#suite-di-test-con-vitest-accanto-al-codice)
   * satisfiedBy: [package.json](../../package.json)
   * satisfiedBy: [vitest.config.ts](../../vitest.config.ts)
-  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
----
-
-### Server compilato provato come processo
-
-La selezione `e2e` del backend deve avviare il punto d'ingresso compilato del server come processo figlio e verificare che risolva i propri moduli, si avvii in produzione su un archivio SQLite nuovo, risponda all'elenco delle conversazioni di `/api/v1`, termini con codice 0 a `SIGTERM` e, senza ambiente di esecuzione, termini con codice 1, un solo evento `server_startup_failed` e la riga fissa su stderr.
-
-#### Details
-Le matrici dei casi di configurazione, delle rotte e del ciclo di vita restano nelle prove dei singoli confini.
-
-#### Metadata
-  * type: requirement
-
-#### Contract References
-  * [Suite di test del backend](../Contracts/ServerFoundation.md#suite-di-test-del-backend)
-
-#### Relations
-  * derivedFrom: [Artefatti compilati provati come processi](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#artefatti-compilati-provati-come-processi)
-  * satisfiedBy: [main.e2e.spec.ts](../../apps/server/src/main.e2e.spec.ts)
-  * satisfiedBy: [vitest.config.ts](../../vitest.config.ts)
-  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
----
-
-### Database di prova isolati del backend
-
-Le prove del backend che usano un database SQLite devono usare soltanto database che creano, in memoria o in una cartella temporanea propria, costruiti con le migrazioni di produzione, devono cancellare soltanto le cartelle che hanno creato e non devono leggere la configurazione dell'installazione né ripiegare su un archivio di sviluppo o di produzione.
-
-#### Details
-Origine: baseline Reqvire «Isolated and guarded test databases», adattata: con SQLite incorporato ogni prova crea il proprio database invece di un database per worker su un server, quindi non servono il controllo del bersaglio, la pulizia dei dati fra i casi né un servizio di database da cui la suite dipenda.
-
-#### Metadata
-  * type: requirement
-
-#### Relations
-  * satisfiedBy: [sqlite-turn-repository.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.integration.spec.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---

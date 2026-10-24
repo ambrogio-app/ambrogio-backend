@@ -469,24 +469,6 @@ Non automatizzabile: confrontare il bisogno del caso d'uso con l'API del fornito
   * verify: [Contratti delle porte nei termini di Conversazioni](../Requirements/FamilyConversation.md#contratti-delle-porte-nei-termini-di-conversazioni)
 ---
 
-### Prova statica dei confini degli import
-
-Eseguire la regola `domain-application-own-package` di «Regole di architettura del backend» sul grafo degli import del codice TypeScript di produzione del modulo «Conversazioni», compresi gli import di valori, gli `import type` e le riesportazioni, e sulle sue fixture negative.
-
-#### Details
-La prova passa se ogni import originato da Domain punta a Domain dello stesso modulo, ogni import originato da Application punta a Domain o Application dello stesso modulo e le fixture negative della regola falliscono con il suo nome. Fallisce se è presente anche un solo collegamento verso un componente, un modulo o un file del package fuori da quei layer, compresi quelli che importano soltanto tipi.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dell'organizzazione delle conversazioni](#verifica-dellorganizzazione-delle-conversazioni)
-  * satisfiedBy: [architecture-rules.ts](../../test/repository/architecture-rules.ts)
-  * satisfiedBy: [import-boundaries.spec.ts](../../test/repository/import-boundaries.spec.ts)
-  * verify: [Import del Domain entro il proprio componente](../Requirements/FamilyConversation.md#import-del-domain-entro-il-proprio-componente)
-  * verify: [Import dell'Application entro il proprio modulo](../Requirements/FamilyConversation.md#import-dellapplication-entro-il-proprio-modulo)
----
-
 ### Controllo degli adapter per componenti tecnici esterni
 
 Esaminare gli ingressi e le implementazioni delle porte Application del modulo «Conversazioni» che integrano componenti tecnici esterni.
@@ -706,6 +688,24 @@ La prova passa se l'unica porta con consegna incrementale è `ProduceConversatio
   * derivedFrom: [Verifica dell'organizzazione delle conversazioni](#verifica-dellorganizzazione-delle-conversazioni)
   * satisfiedBy: [domain-model.spec.ts](../../test/repository/domain-model.spec.ts)
   * verify: [Streaming soltanto quando l'intenzione lo richiede](../Requirements/FamilyConversation.md#streaming-soltanto-quando-lintenzione-lo-richiede)
+---
+
+### Prova statica dei confini degli import
+
+Eseguire la regola `domain-application-own-package` di «Regole di architettura del backend» sul grafo degli import del codice TypeScript di produzione del modulo «Conversazioni», compresi gli import di valori, gli `import type` e le riesportazioni, e sulle sue fixture negative.
+
+#### Details
+La prova passa se ogni import originato da Domain punta a Domain dello stesso modulo, ogni import originato da Application punta a Domain o Application dello stesso modulo e le fixture negative della regola falliscono con il suo nome. Fallisce se è presente anche un solo collegamento verso un componente, un modulo o un file del package fuori da quei layer, compresi quelli che importano soltanto tipi.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dell'organizzazione delle conversazioni](#verifica-dellorganizzazione-delle-conversazioni)
+  * satisfiedBy: [architecture-rules.ts](../../test/repository/architecture-rules.ts)
+  * satisfiedBy: [import-boundaries.spec.ts](../../test/repository/import-boundaries.spec.ts)
+  * verify: [Import del Domain entro il proprio componente](../Requirements/FamilyConversation.md#import-del-domain-entro-il-proprio-componente)
+  * verify: [Import dell'Application entro il proprio modulo](../Requirements/FamilyConversation.md#import-dellapplication-entro-il-proprio-modulo)
 ---
 
 ### Verifica della concorrenza dei turni

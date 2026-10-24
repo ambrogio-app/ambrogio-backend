@@ -1092,6 +1092,22 @@ La build dell'immagine verifica le impronte degli archivi con `scripts/fetch-spe
   * verify: [Modelli vocali italiani e inglesi inclusi](../Requirements/ServerFoundation.md#modelli-vocali-italiani-e-inglesi-inclusi)
 ---
 
+### Prova del contesto di build dell'immagine del server
+
+Leggere `.dockerignore` del backend.
+
+#### Details
+La prova passa se `.dockerignore` contiene tutte le esclusioni di «Profilo dell'immagine Docker del server» e nessuna voce `!` che reinclude file. Fallisce se manca un'esclusione o se una voce reinclude file.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * satisfiedBy: [container-build-context.spec.ts](../../test/repository/container-build-context.spec.ts)
+  * verify: [Distribuzione del server come immagine Docker](../Requirements/ServerFoundation.md#distribuzione-del-server-come-immagine-docker)
+---
+
 ### Prova del controllo di accesso dell'installazione
 
 Per ogni installazione dell'MVP da verificare, ispezionare la configurazione di rete e dell'eventuale reverse proxy; tentare l'accesso agli ingressi del server da un client ammesso e da un client non ammesso dall'installatore.
@@ -1140,6 +1156,22 @@ La prova passa se gli script eseguono con Vitest rispettivamente i progetti `fas
   * satisfiedBy: [package.json](../../package.json)
   * satisfiedBy: [vitest.config.ts](../../vitest.config.ts)
   * verify: [Vitest come runner del backend](../Requirements/ServerFoundation.md#vitest-come-runner-del-backend)
+---
+
+### Prova del server compilato come processo
+
+Dopo `pnpm build`, eseguire `pnpm test:e2e`: avviare `apps/server/dist/main.js` con Node.js in un processo figlio con impostazioni di produzione, una porta libera di loopback, un archivio in una cartella temporanea e un agente che risponde, richiedere `GET /api/v1/conversations`, inviare `SIGTERM`; avviarlo poi senza variabili `AMBROGIO_*`.
+
+#### Details
+La prova passa se il punto d'ingresso compilato esiste; se il server risponde `200` con un elenco vuoto, crea il file dell'archivio, termina con codice 0 senza scrivere su stderr e non riporta la credenziale segnaposto; e se senza ambiente di esecuzione termina con codice 1, una sola riga JSON `server_startup_failed` con il messaggio `Missing environment variable AMBROGIO_ENV` e la sola riga `Unable to start HTTP server.` su stderr. Fallisce se il compilato manca o non si risolve, se una risposta, un codice di uscita o un output differiscono.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * satisfiedBy: [main.e2e.spec.ts](../../apps/server/src/main.e2e.spec.ts)
+  * verify: [Server compilato provato come processo](../Requirements/ServerFoundation.md#server-compilato-provato-come-processo)
 ---
 
 ### Prova dell'ambiente di esecuzione del backend
@@ -1207,6 +1239,22 @@ La prova passa se ogni workflow dichiara `permissions` con il solo `contents: re
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
   * satisfiedBy: [workflows.spec.ts](../../test/repository/workflows.spec.ts)
   * verify: [Irrobustimento dei workflow GitHub Actions](../Requirements/ServerFoundation.md#irrobustimento-dei-workflow-github-actions)
+---
+
+### Prova dell'isolamento dei database di prova
+
+Leggere come testo i file `*.integration.spec.ts` degli adapter SQLite.
+
+#### Details
+La prova passa se ogni file importa le migrazioni di produzione o l'archivio che le applica, apre almeno un database con `better-sqlite3`, non legge `process.env` né variabili `AMBROGIO_*`, e se, quando apre un file invece di un database in memoria, crea la propria cartella con `mkdtempSync` nella cartella temporanea del sistema e la cancella con `rmSync`. Fallisce se un file manca di una di queste proprietà.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * satisfiedBy: [test-databases.spec.ts](../../test/repository/test-databases.spec.ts)
+  * verify: [Database di prova isolati del backend](../Requirements/ServerFoundation.md#database-di-prova-isolati-del-backend)
 ---
 
 ### Prova dell'origine delle credenziali API
@@ -1341,52 +1389,4 @@ La prova passa se ogni directory contiene un solo modello `.onnx`, `tokens.txt`,
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
   * satisfiedBy: [verify-docker-image.mjs](../../scripts/verify-docker-image.mjs)
   * verify: [Directory delle voci sostituibile nell'immagine](../Requirements/ServerFoundation.md#directory-delle-voci-sostituibile-nellimmagine)
----
-
-### Prova del contesto di build dell'immagine del server
-
-Leggere `.dockerignore` del backend.
-
-#### Details
-La prova passa se `.dockerignore` contiene tutte le esclusioni di «Profilo dell'immagine Docker del server» e nessuna voce `!` che reinclude file. Fallisce se manca un'esclusione o se una voce reinclude file.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [container-build-context.spec.ts](../../test/repository/container-build-context.spec.ts)
-  * verify: [Distribuzione del server come immagine Docker](../Requirements/ServerFoundation.md#distribuzione-del-server-come-immagine-docker)
----
-
-### Prova del server compilato come processo
-
-Dopo `pnpm build`, eseguire `pnpm test:e2e`: avviare `apps/server/dist/main.js` con Node.js in un processo figlio con impostazioni di produzione, una porta libera di loopback, un archivio in una cartella temporanea e un agente che risponde, richiedere `GET /api/v1/conversations`, inviare `SIGTERM`; avviarlo poi senza variabili `AMBROGIO_*`.
-
-#### Details
-La prova passa se il punto d'ingresso compilato esiste; se il server risponde `200` con un elenco vuoto, crea il file dell'archivio, termina con codice 0 senza scrivere su stderr e non riporta la credenziale segnaposto; e se senza ambiente di esecuzione termina con codice 1, una sola riga JSON `server_startup_failed` con il messaggio `Missing environment variable AMBROGIO_ENV` e la sola riga `Unable to start HTTP server.` su stderr. Fallisce se il compilato manca o non si risolve, se una risposta, un codice di uscita o un output differiscono.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [main.e2e.spec.ts](../../apps/server/src/main.e2e.spec.ts)
-  * verify: [Server compilato provato come processo](../Requirements/ServerFoundation.md#server-compilato-provato-come-processo)
----
-
-### Prova dell'isolamento dei database di prova
-
-Leggere come testo i file `*.integration.spec.ts` degli adapter SQLite.
-
-#### Details
-La prova passa se ogni file importa le migrazioni di produzione o l'archivio che le applica, apre almeno un database con `better-sqlite3`, non legge `process.env` né variabili `AMBROGIO_*`, e se, quando apre un file invece di un database in memoria, crea la propria cartella con `mkdtempSync` nella cartella temporanea del sistema e la cancella con `rmSync`. Fallisce se un file manca di una di queste proprietà.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [test-databases.spec.ts](../../test/repository/test-databases.spec.ts)
-  * verify: [Database di prova isolati del backend](../Requirements/ServerFoundation.md#database-di-prova-isolati-del-backend)
 ---

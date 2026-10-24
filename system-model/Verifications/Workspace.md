@@ -47,24 +47,6 @@ Raggruppa i controlli sulla collocazione delle applicazioni eseguibili e dei mod
   * type: verification-objective
 ---
 
-### Prova degli import dei test degli adapter
-
-Eseguire la regola `layer-test-imports` di «Regole di architettura del backend» sui test degli adapter inbound e outbound di ogni modulo business, compresi `import type`, riesportazioni e moduli di supporto della cartella `test/`, e sulle sue fixture negative.
-
-#### Details
-La prova passa se i test inbound raggiungono codice di produzione solo dal proprio adapter inbound e dall'Application del modulo, senza Domain, e i test outbound solo dal proprio adapter outbound, dall'Application e dal Domain del modulo, senza adapter inbound, con il proprio adapter definito dal contratto, e se le fixture negative falliscono con il nome della regola. Fallisce se un test raggiunge altro codice di produzione, anche tramite un import di soli tipi. Runner, librerie di asserzione, tecnologie degli adapter e fake locali non sono codice di produzione del modulo.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della struttura del monorepo](#verifica-della-struttura-del-monorepo)
-  * satisfiedBy: [architecture-rules.ts](../../test/repository/architecture-rules.ts)
-  * satisfiedBy: [import-boundaries.spec.ts](../../test/repository/import-boundaries.spec.ts)
-  * verify: [Import del codice di produzione nei test degli adapter inbound](../Requirements/Workspace.md#import-del-codice-di-produzione-nei-test-degli-adapter-inbound)
-  * verify: [Import del codice di produzione nei test degli adapter outbound](../Requirements/Workspace.md#import-del-codice-di-produzione-nei-test-degli-adapter-outbound)
----
-
 ### Controllo degli adapter tra moduli business
 
 Quando esiste un adapter che collega due moduli business del server, individuare il modulo consumatore, il modulo fornitore e l'applicazione che li assembla.
@@ -185,6 +167,24 @@ La prova passa se i test Domain raggiungono codice di produzione soltanto in `sr
   * satisfiedBy: [import-boundaries.spec.ts](../../test/repository/import-boundaries.spec.ts)
   * verify: [Import del codice di produzione nei test Application](../Requirements/Workspace.md#import-del-codice-di-produzione-nei-test-application)
   * verify: [Import del codice di produzione nei test Domain](../Requirements/Workspace.md#import-del-codice-di-produzione-nei-test-domain)
+---
+
+### Prova degli import dei test degli adapter
+
+Eseguire la regola `layer-test-imports` di «Regole di architettura del backend» sui test degli adapter inbound e outbound di ogni modulo business, compresi `import type`, riesportazioni e moduli di supporto della cartella `test/`, e sulle sue fixture negative.
+
+#### Details
+La prova passa se i test inbound raggiungono codice di produzione solo dal proprio adapter inbound e dall'Application del modulo, senza Domain, e i test outbound solo dal proprio adapter outbound, dall'Application e dal Domain del modulo, senza adapter inbound, con il proprio adapter definito dal contratto, e se le fixture negative falliscono con il nome della regola. Fallisce se un test raggiunge altro codice di produzione, anche tramite un import di soli tipi. Runner, librerie di asserzione, tecnologie degli adapter e fake locali non sono codice di produzione del modulo.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della struttura del monorepo](#verifica-della-struttura-del-monorepo)
+  * satisfiedBy: [architecture-rules.ts](../../test/repository/architecture-rules.ts)
+  * satisfiedBy: [import-boundaries.spec.ts](../../test/repository/import-boundaries.spec.ts)
+  * verify: [Import del codice di produzione nei test degli adapter inbound](../Requirements/Workspace.md#import-del-codice-di-produzione-nei-test-degli-adapter-inbound)
+  * verify: [Import del codice di produzione nei test degli adapter outbound](../Requirements/Workspace.md#import-del-codice-di-produzione-nei-test-degli-adapter-outbound)
 ---
 
 ### Prova degli import delle API pubbliche nelle applicazioni

@@ -206,6 +206,17 @@ All'avvio la composition root legge per primo l'ambiente di esecuzione, poi la c
   * define: [Caricamento iniziale della configurazione del backend](../Requirements/ServerFoundation.md#caricamento-iniziale-della-configurazione-del-backend)
 ---
 
+### Profilo di installazione delle dipendenze del backend
+
+Il backend applica le regole sulle dipendenze di «Profilo di installazione con pnpm e Corepack» al `package.json` della radice, di `apps/server` e di `packages/conversations`: ogni dipendenza diretta ha la versione esatta risolta in `pnpm-lock.yaml`, salvo `@ambrogio/conversations`, dichiarata da `apps/server` con `workspace:*`. `allowBuilds` in `pnpm-workspace.yaml` ammette soltanto `koffi` e `vosk-koffi`, i cui script di installazione preparano la libreria nativa usata dal riconoscimento vocale Vosk. `pnpm-workspace.yaml` non dichiara `minimumReleaseAge` né `minimumReleaseAgeExclude`: il backend non ha eccezioni all'attesa per le nuove versioni.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Installazione delle dipendenze del backend con pnpm e Corepack](../Requirements/ServerFoundation.md#installazione-delle-dipendenze-del-backend-con-pnpm-e-corepack)
+---
+
 ### Profilo di irrobustimento dei workflow GitHub Actions
 
 Il backend applica «Profilo comune dei workflow GitHub Actions» ai workflow `.github/workflows/ci.yml`, `.github/workflows/secret-scan.yml` e `.github/workflows/publish-image.yml`, che sono i soli del repository, con questi valori propri.
@@ -373,15 +384,4 @@ Una variante contiene solo `kind` oppure aggiunge campi propri, tipizzati, che a
 
 #### Relations
   * define: [Campi specifici dei rifiuti previsti](../Requirements/ServerFoundation.md#campi-specifici-dei-rifiuti-previsti)
----
-
-### Profilo di installazione delle dipendenze del backend
-
-Il backend applica le regole sulle dipendenze di «Profilo di installazione con pnpm e Corepack» al `package.json` della radice, di `apps/server` e di `packages/conversations`: ogni dipendenza diretta ha la versione esatta risolta in `pnpm-lock.yaml`, salvo `@ambrogio/conversations`, dichiarata da `apps/server` con `workspace:*`. `allowBuilds` in `pnpm-workspace.yaml` ammette soltanto `koffi` e `vosk-koffi`, i cui script di installazione preparano la libreria nativa usata dal riconoscimento vocale Vosk. `pnpm-workspace.yaml` non dichiara `minimumReleaseAge` né `minimumReleaseAgeExclude`: il backend non ha eccezioni all'attesa per le nuove versioni.
-
-#### Metadata
-  * type: specification
-
-#### Relations
-  * define: [Installazione delle dipendenze del backend con pnpm e Corepack](../Requirements/ServerFoundation.md#installazione-delle-dipendenze-del-backend-con-pnpm-e-corepack)
 ---

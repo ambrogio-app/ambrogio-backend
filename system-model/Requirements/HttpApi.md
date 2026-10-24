@@ -5,7 +5,7 @@
 Quando una richiesta HTTP fallisce per un errore di protocollo rilevato prima dell'invocazione del caso d'uso, il server deve tradurlo centralmente in un problema del catalogo comune dei problemi di protocollo, distinto dagli esiti dei casi d'uso e senza esporre dettagli del parser, del validatore o del framework.
 
 #### Details
-Origine: baseline Reqvire «Common catalog of protocol problems», adattata: il catalogo comprende il rifiuto dell'apertura della sessione conversazionale, non comprende l'autenticazione, rimandata, e usa due soli codici pubblici di validazione.
+Origine: baseline Reqvire «Common catalog of protocol problems», adattata: il catalogo comprende il rifiuto dell'apertura della sessione conversazionale, non comprende problemi di autenticazione, perché il backend non ha autenticazione applicativa, e usa due soli codici pubblici di validazione.
 
 #### Metadata
   * type: requirement

@@ -2,13 +2,12 @@
 
 ## Ambito e decisioni del progetto
 
-Queste istruzioni si applicano all'intero progetto.
+Queste istruzioni si applicano al lavoro in questo repository. Le regole comuni a tutti i repository di Ambrogio (un solo modello, Reqvire solo da CLI, il modello comanda, baseline Reqvire, dati di installazione, CI, scansione dei segreti) sono in `ambrogio-model/AGENTS.md`, nel repository `ambrogio-model` affiancato a questo nella cartella di lavoro; qui si aggiungono soltanto le indicazioni proprie del backend.
 
-- Questo repository contiene il backend e i suoi package business. Il client terminale vive nel repository separato `ambrogio-cli`; eventuali altri client avranno repository e modelli Reqvire propri dopo una decisione esplicita.
-- Prima di usare Reqvire, identificare repository Git, branch e radice del workspace interessato. Non trattare modelli o copertura di repository diversi come un unico grafo. Il contratto HTTP pubblico è posseduto dal backend; il modello del client ne registra la versione compatibile e le proprie obbligazioni.
-- Il modello ingegneristico risiede in `system-model/`.
-- Il sito e la documentazione utente appartengono a repository separati. Non aggiungerli a questo repository senza una nuova decisione esplicita.
-- Quando cambia un comportamento pubblico, valutare anche l'impatto su sito e documentazione utente e indicare gli aggiornamenti necessari. La validazione locale non dimostra la coerenza di quei repository esterni.
+- Questo repository contiene il backend e i suoi package business. I client conversazionali vivono nei propri repository e usano soltanto le interfacce pubbliche del backend: il protocollo conversazionale e le API HTTP pubbliche, oltre all'ingresso di prova pubblico per le loro prove di integrazione.
+- La parte del modello Reqvire che appartiene al backend risiede in `system-model/`; insieme a `ambrogio-model` e agli altri repository affiancati forma un solo modello. I requisiti del backend specificano le capability di `ambrogio-model` e raffinano con `derivedFrom` le decisioni comuni; il backend non si collega mai ai repository dei client.
+- Il backend possiede il protocollo e le API HTTP pubbliche. I client non fissano una revisione del backend: un cambio incompatibile di un'interfaccia pubblica introduce una nuova versione maggiore, mantenendo la precedente come elemento distinto del modello del backend finché un client la usa.
+- La documentazione utente appartiene a `ambrogio-docs`. Quando cambia un comportamento pubblico, una configurazione, un limite, un messaggio o una versione d'interfaccia del backend, aggiornare nello stesso lavoro le pagine interessate, come prescrive `ambrogio-model/AGENTS.md`.
 - Prima di introdurre una scelta tecnica o architetturale non già stabilita dal modello Reqvire o da una decisione esplicita della persona, presentare le alternative e le conseguenze, chiedere la decisione e concordarla con la persona. Registrare la decisione nel punto pertinente di `system-model/` prima di implementarla; codice, test e commit non sostituiscono questa registrazione. Non assumere che un incarico generale di implementazione autorizzi scelte tecniche nuove. Non chiedere di riconfermare decisioni già prese e pubblicate.
 
 ## Fonte autorevole
@@ -54,17 +53,17 @@ Il progetto usa soltanto la CLI Reqvire, sia per leggere e modificare il modello
 
 ### Preparazione
 
-Eseguire gli esempi dalla radice del repository. La funzione seguente è una comodità shell locale e fissa la versione usata anche in CI.
+Il modello si legge e si valida dalla cartella di lavoro che contiene `ambrogio-model`, questo repository e gli altri repository affiancati; eseguire gli esempi da quella cartella. La funzione seguente è una comodità shell locale e usa la versione di Reqvire scritta in `ambrogio-model/.reqvire-version`, la stessa della CI.
 
 ```bash
 rv() {
-  npm_config_loglevel=error npx -y @reqvire-org/reqvire@1.3.2 --workspace "$PWD" "$@"
+  npm_config_loglevel=error npx -y "@reqvire-org/reqvire@$(cat ambrogio-model/.reqvire-version)" --workspace "$PWD" "$@"
 }
 rv --version
 rv --help
 ```
 
-Verificare i sottocomandi con `rv <comando> --help`; non copiare ciecamente esempi di un'altra versione. Al cambio di versione di Reqvire aggiornare insieme sviluppo e CI.
+Verificare i sottocomandi con `rv <comando> --help`; non copiare ciecamente esempi di un'altra versione. Il cambio di versione di Reqvire è una modifica di `ambrogio-model`.
 
 ### Strumenti per ciascuna fase
 
@@ -83,20 +82,19 @@ Mantenere gli otto passi dell'ordine di lavoro anche nelle spiegazioni e nei pia
 
 Quando la CLI non offre l'operazione, per esempio la modifica del testo di un elemento esistente, si modifica direttamente il file Markdown del modello; poi si eseguono `rv format`, `rv validate` e `rv lint`.
 
-Controlli:
+Controlli, dalla cartella di lavoro:
 
 ```bash
 rv submodels --json
 rv search --filter-type capability --short
 rv collect "Nome della capability"
-rv validate
-rv lint
+ambrogio-model/scripts/model-checks
 rv coverage
 rv traces
-rv change-impact --git-commit HEAD
+ambrogio-model/scripts/change-impact-composite
 ```
 
-`HEAD` confronta lo stato corrente con l'ultimo commit; prima della revisione di una PR scegliere la revisione base appropriata, presente localmente, invece di assumere che `HEAD` rappresenti tutte le modifiche della PR. Il report di copertura non certifica che i test siano passati e le verifiche segnalate da change-impact richiedono revisione, non sono automaticamente test falliti.
+`ambrogio-model/scripts/model-checks` esegue validazione, lint senza rilievi, integrità del modello e controllo del grafo fra repository, come la CI. `ambrogio-model/scripts/change-impact-composite` confronta ogni repository con la propria base rispetto a `main` e copre così tutte le modifiche di un branch, anche su più repository. Il report di copertura non certifica che i test siano passati e le verifiche segnalate da change-impact richiedono revisione, non sono automaticamente test falliti.
 
 Fonti: [User Guide](https://reqvire.org/user-guide/).
 
@@ -107,7 +105,8 @@ Fonti: [User Guide](https://reqvire.org/user-guide/).
 - Prima di cambiare codice funzionale, leggere i requisiti, i contratti e le verifiche pertinenti e aggiornarli se cambia l'obbligo del sistema. Riutilizzare il modello esistente quando descrive già correttamente il comportamento.
 - Non creare requisiti o test artificiali per ogni modifica cosmetica o amministrativa: mantenere la tracciabilità al livello degli obblighi ingegneristici significativi.
 - Usare l'analisi di impatto per guidare la revisione; l'AI deve interpretare le dipendenze esplicite del modello e segnalare quelle mancanti.
-- Eseguire Reqvire dalla radice canonica o indicarla esplicitamente con `--workspace`. Prima dell'uso, assicurarsi che esista un repository Git valido; la sola presenza della directory `.git` non lo garantisce.
+- Eseguire Reqvire dalla cartella di lavoro o indicarla esplicitamente con `--workspace`. Prima dell'uso, assicurarsi che ogni repository affiancato sia un repository Git valido sul branch previsto; la sola presenza della directory `.git` non lo garantisce. Un cambiamento che tocca più repository usa lo stesso nome di branch in ciascuno.
 - Al termine, riportare cosa è cambiato, quali controlli sono stati eseguiti e quali eventuali lacune o attività esterne restano aperte.
-- Segreti: il repository usa gitleaks 8.30.1 in CI su tutta la storia (`.github/workflows/secret-scan.yml`, richiesto anche dalla pubblicazione dell'immagine) e in locale con l'hook `.githooks/pre-commit`, da attivare in ogni clone con `git config core.hooksPath .githooks` e con `gitleaks` nel `PATH`. Non aggirare l'hook con `--no-verify`; un ritrovamento si risolve rimuovendo il segreto, e ruotandolo se è già stato committato. Esempi e test usano solo valori segnaposto.
-- Dati di installazione: il modello Reqvire registra obblighi e decisioni del prodotto, non dati di una specifica installazione. Non riportare in modelli, codice, test, commit o documentazione indirizzi IP, nomi host, domini, percorsi personali, credenziali, identificativi di dispositivi o entità, nomi di stanze, né la configurazione effettiva di chi usa il prodotto. Le evidenze di prove su installazioni reali descrivono l'ambiente in termini generici: per esempio «l'installazione di riferimento», l'architettura, l'hardware o la versione usata. Gli esempi usano valori segnaposto o indirizzi di esempio.
+- CI del backend: `.github/workflows/ci.yml` esegue il checkout di questo repository in `workspace/ambrogio-backend`, scarica affiancati `ambrogio-model` e gli altri repository con `ambrogio-model/scripts/checkout-workspace`, esegue `ambrogio-model/scripts/model-checks` e poi typecheck, build e test del backend.
+- Segreti: il repository segue le regole comuni di `ambrogio-model/AGENTS.md`; la scansione in CI (`.github/workflows/secret-scan.yml`) è richiesta anche dalla pubblicazione dell'immagine, e l'hook `.githooks/pre-commit` si attiva in ogni clone con `git config core.hooksPath .githooks`, con `gitleaks` nel `PATH`. Esempi e test usano solo valori segnaposto.
+- Dati di installazione: valgono le regole comuni di `ambrogio-model/AGENTS.md`; le configurazioni d'esempio degli agenti e dei componenti del backend usano soltanto valori segnaposto o indirizzi di esempio.

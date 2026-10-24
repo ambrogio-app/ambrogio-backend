@@ -54,7 +54,7 @@ La prova passa se `turn.completed` arriva una sola volta come ultimo messaggio d
 Con un produttore controllato, eseguire turni testuali e vocali in cui la risposta chiede una replica e turni in cui conclude lo scambio. Ripetere con un produttore che non fornisce l'indicazione o la fornisce con tipo invalido. Osservare le chiamate al modello.
 
 #### Details
-La prova passa se l'agente produce il booleano strutturato `expectsReply` durante la stessa generazione della risposta, senza una seconda chiamata dedicata alla classificazione, e `turn.completed` porta il valore corretto per turni testuali e vocali, indipendentemente dal tipo di contenuto della risposta. Un'indicazione mancante o invalida produce l'esito di errore del turno e non `expectsReply: false`. Turni rifiutati, falliti o interrotti non portano `expectsReply`. Fallisce se il valore è dedotto dal testo, se differisce per canale o se un valore mancante viene presentato come `false`. Il comportamento dei client che usano l'indicazione è verificato nei rispettivi modelli. Verifica definita per il protocollo `ambrogio.v1`.
+La prova passa se l'agente produce il booleano strutturato `expectsReply` durante la stessa generazione della risposta, senza una seconda chiamata dedicata alla classificazione, e `turn.completed` porta il valore corretto per turni testuali e vocali, indipendentemente dal tipo di contenuto della risposta. Un'indicazione mancante o invalida produce l'esito di errore del turno e non `expectsReply: false`. Turni rifiutati, falliti o interrotti non portano `expectsReply`. Fallisce se il valore è dedotto dal testo, se differisce per canale o se un valore mancante viene presentato come `false`. Il comportamento dei client che usano l'indicazione è verificato nei repository dei client. Verifica definita per il protocollo `ambrogio.v1`.
 
 #### Metadata
   * type: test-verification
@@ -303,149 +303,6 @@ La prova passa se il client ottiene un token con `client_credentials` senza logi
   * verify: [Autenticazione OAuth tra servizi del client MCP](../Requirements/FamilyConversation.md#autenticazione-oauth-tra-servizi-del-client-mcp)
 ---
 
-### Verifica dell'interazione vocale
-
-Raggruppa le verifiche della trascrizione, della risposta parlata, della conservazione solo testuale e del ciclo di vita delle interazioni vocali.
-
-#### Metadata
-  * type: verification-objective
----
-
-### Prova degli ingressi testuali senza voce
-
-Avviare un'installazione con la configurazione e le risorse vocali assenti, mantenendo configurati i soli componenti necessari alla chat testuale. Eseguire un turno tramite la chat testuale.
-
-#### Details
-La prova passa se l'ingresso conversazionale si avvia e completa un turno testuale senza caricare configurazione vocale né costruire componenti vocali. Fallisce se l'ingresso richiede un file o una risorsa solo vocale o non può conversare.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
-  * satisfiedBy: [config-bootstrap.test.ts](../../apps/server/test/runtime/config-bootstrap.test.ts)
-  * verify: [Ingressi testuali indipendenti dalla voce](../Requirements/FamilyConversation.md#ingressi-testuali-indipendenti-dalla-voce)
----
-
-### Prova dell'assenza di audio persistente
-
-Eseguire un turno vocale con risposta parlata, riavviare Ambrogio e ispezionare lo stato persistente prodotto dalla prova.
-
-#### Details
-La prova passa se lo storico conserva solo testo e dati non audio e se nessuna registrazione dell'input o dell'output vocale è presente tra i dati persistenti della prova. Fallisce se un file o un campo persistente contiene audio del turno o della risposta.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
-  * satisfiedBy: [session-lifecycle.test.ts](../../apps/server/test/runtime/session-lifecycle.test.ts)
-  * verify: [Conservazione solo testuale della conversazione](../Requirements/FamilyConversation.md#conservazione-solo-testuale-della-conversazione)
----
-
-### Prova della scelta del motore di sintesi
-
-Caricare file vocali di prova con directory di voce fittizie per entrambi i motori: `voiceEngine` uguale a `piper` senza `voiceSpeaker` né `voiceLanguage`; uguale a `kokoro` con `voiceSpeaker` 0, 35 e 52 e `voiceLanguage` `it`, `en` e `pt-br`; directory Kokoro con `model.onnx` e con un unico `model.int8.onnx`. Provare poi i casi invalidi: `voiceEngine` assente, vuoto o sconosciuto; `voiceSpeaker` o `voiceLanguage` presenti con `piper`; uno dei due assente con `kokoro`; `voiceSpeaker` negativo, decimale, stringa numerica o nome di voce come `if_sara`; `voiceLanguage` vuoto o non stringa; directory Kokoro priva di file `.onnx`, con due file `.onnx` o priva di `voices.bin`, `tokens.txt` o `espeak-ng-data/`. Con il motore di sintesi controllato costruire il sintetizzatore per ciascun motore, sintetizzare una frase e registrare la configurazione passata a `createAsync` e il `sid` di ogni generazione; ripetere con un motore controllato che dichiara meno voci del `voiceSpeaker` configurato. Quando la variabile d'ambiente che indica una directory Kokoro reale è presente, sintetizzare inoltre una breve frase italiana con le voci 35 e 36 e una breve frase inglese con la voce 0 e lingua `en`.
-
-#### Details
-La prova passa se i file validi sono accettati con il motore, la voce e la lingua indicati; ogni caso invalido rende il file vocale invalido oppure la directory della voce non disponibile prima della costruzione del sintetizzatore; con `piper` la configurazione contiene la sola sezione `vits` con i file della directory e ogni generazione usa `sid` 0; con `kokoro` la configurazione contiene la sola sezione `kokoro` con l'unico file `.onnx`, `voices.bin`, `tokens.txt`, `espeak-ng-data/` e `lang` uguale a `voiceLanguage`, e ogni generazione usa `sid` uguale a `voiceSpeaker`; un `voiceSpeaker` non inferiore a `numSpeakers` impedisce la costruzione del sintetizzatore; caricamento unico, `numThreads` e formato dell'audio restano quelli della prova della sintesi nel processo backend. Con il modello Kokoro reale la prova passa se l'audio di ogni voce provata è non vuoto alla frequenza del modello. Fallisce se un file invalido è accettato, se il motore, la voce o la lingua usati differiscono da quelli configurati, se la lingua o la voce sono imposte dal backend o se una voce fuori intervallo raggiunge la sintesi.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
-  * satisfiedBy: [sherpa-synthesizer.test.ts](../../packages/conversations/test/adapters/in/sherpa-synthesizer.test.ts)
-  * satisfiedBy: [voice-config.test.ts](../../packages/conversations/test/adapters/out/voice-config.test.ts)
-  * verify: [Scelta del motore di sintesi vocale](../Requirements/FamilyConversation.md#scelta-del-motore-di-sintesi-vocale)
----
-
-### Prova della selezione vocale per lingua
-
-Preparare un file con profili italiani e inglesi che indicano percorsi espliciti alle directory incluse e a directory esterne montate, scegliendo tra più voci della stessa lingua, Piper e Kokoro. Provare la lingua effettiva italiana e inglese, il profilo attivo mancante, i campi invalidi nell'altro profilo, il formato precedente a profilo singolo e la voce disabilitata. Osservare risorse caricate, lingua Vosk, voce e lingua di fonetizzazione Kokoro.
-
-#### Details
-La prova passa se ciascuna lingua seleziona esattamente i percorsi indicati, anche quando provengono da un mount o quando esistono più voci della stessa lingua; il profilo mancante o strutturalmente invalido rende il file invalido, l'altro profilo non carica i modelli, il formato precedente funziona e la voce disabilitata non carica modelli. Fallisce se una lingua carica percorsi diversi da quelli indicati, se un profilo mancante o invalido è accettato o se vengono caricati modelli di un profilo non attivo o della voce disabilitata.
-
-I casi di configurazione sono provati da `voice-config.test.ts`, la selezione dei profili e della voce montata con i modelli dell'immagine da `scripts/verify-docker-image.mjs` e l'avvio senza voce da `config-bootstrap.test.ts`.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
-  * satisfiedBy: [config-bootstrap.test.ts](../../apps/server/test/runtime/config-bootstrap.test.ts)
-  * satisfiedBy: [voice-config.test.ts](../../packages/conversations/test/adapters/out/voice-config.test.ts)
-  * satisfiedBy: [verify-docker-image.mjs](../../scripts/verify-docker-image.mjs)
-  * verify: [Selezione dei modelli vocali inclusi per lingua](../Requirements/FamilyConversation.md#selezione-dei-modelli-vocali-inclusi-per-lingua)
----
-
-### Prova della sintesi senza marcatura Markdown
-
-Con il motore di sintesi controllato, sintetizzare risposte frammentate che contengono grassetto e corsivo con asterischi e trattini bassi, un nome composto con trattino basso, tilde doppie, codice in linea, un collegamento, un titolo, una citazione, un elenco puntato, un elenco numerato, una tabella con riga di separazione, una linea orizzontale e un grassetto spezzato fra due frammenti, conservando i frammenti consegnati al sintetizzatore.
-
-#### Details
-La prova passa se i testi consegnati al motore non contengono asterischi, tilde doppie, apici inversi, segni di titolo, citazione o elenco puntato iniziali, barre di tabella né indirizzi dei collegamenti; conservano il testo leggibile, il nome composto con trattino basso e il numero dell'elenco numerato; la riga di tabella diventa celle separate da virgole; la riga di separazione e la linea orizzontale non sono sintetizzate; il grassetto spezzato fra frammenti è ripulito; i frammenti ricevuti dal sintetizzatore, che sono lo stesso testo trasmesso e conservato, restano invariati. Fallisce se un simbolo di formattazione previsto raggiunge la sintesi, se si perde testo leggibile o se i frammenti ricevuti vengono alterati.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
-  * satisfiedBy: [sherpa-synthesizer.test.ts](../../packages/conversations/test/adapters/in/sherpa-synthesizer.test.ts)
-  * verify: [Risposta parlata senza marcatura testuale](../Requirements/FamilyConversation.md#risposta-parlata-senza-marcatura-testuale)
----
-
-### Prova della sintesi vocale nel processo backend
-
-Con un motore di sintesi controllato, che espone `createAsync`, `generateAsync` e `sampleRate` e registra le chiamate, costruire il sintetizzatore, eseguire più trasmissioni con testo frammentato in più frasi, anche contemporanee, interromperne una dopo la prima frase e chiudere il sintetizzatore. Verificare che una sintesi controllata lenta non blocchi l'event loop. Quando la variabile d'ambiente che indica una directory di voce reale è presente, caricare inoltre il modello reale e sintetizzare una breve frase italiana.
-
-#### Details
-La prova passa se la voce è caricata una sola volta per tutte le trasmissioni, con `numThreads` pari al minimo fra 4 e il parallelismo disponibile; ogni frase completa è sintetizzata con `generateAsync` appena disponibile e la parte residua alla fine del testo; due trasmissioni contemporanee non hanno mai due generazioni in corso insieme e ciascuna riceve solo il proprio audio; l'audio è PCM16 little-endian mono con campioni convertiti correttamente e la frequenza esposta è quella del modello; dopo l'interruzione non viene sintetizzata alcuna frase successiva; un timer dell'event loop scatta mentre una sintesi è in corso; un errore di caricamento rifiuta la costruzione. Con la voce reale la prova passa se l'audio prodotto è non vuoto e la frequenza è quella del modello. Fallisce se la voce viene ricaricata per una trasmissione, se viene usata la sintesi sincrona, se l'audio non rispetta il formato, se le generazioni si sovrappongono o se una frase successiva a un'interruzione viene sintetizzata.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
-  * satisfiedBy: [sherpa-synthesizer.test.ts](../../packages/conversations/test/adapters/in/sherpa-synthesizer.test.ts)
-  * verify: [Risposta parlata su richiesta del client](../Requirements/FamilyConversation.md#risposta-parlata-su-richiesta-del-client)
----
-
-### Prova della trascrizione e della risposta parlata
-
-Inviare un turno audio trascrivibile con testo atteso e `reply: "audio"`, ottenendo una risposta controllata; ripetere con un turno testuale e `reply: "audio"`.
-
-#### Details
-La prova passa se il turno conservato contiene la trascrizione testuale attesa, `turn.accepted` riporta lo stesso testo, la risposta è trasmessa in audio con la frequenza della voce configurata e il suo testo compare nello scambio conservato. Fallisce se manca la trascrizione, se la risposta non viene trasmessa in audio quando richiesto o se lo scambio conserva audio invece di testo. Verifica definita per il protocollo `ambrogio.v1`.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
-  * satisfiedBy: [session-lifecycle.test.ts](../../apps/server/test/runtime/session-lifecycle.test.ts)
-  * satisfiedBy: [sherpa-synthesizer.test.ts](../../packages/conversations/test/adapters/in/sherpa-synthesizer.test.ts)
-  * verify: [Risposta parlata su richiesta del client](../Requirements/FamilyConversation.md#risposta-parlata-su-richiesta-del-client)
-  * verify: [Trascrizione del turno vocale](../Requirements/FamilyConversation.md#trascrizione-del-turno-vocale)
----
-
-### Prova della trascrizione non riuscita
-
-Simulare un errore del servizio di trascrizione e una trascrizione composta solo da spazi, con risposta richiesta in audio.
-
-#### Details
-La prova passa se entrambi i tentativi ricevono la trasmissione del messaggio pubblico e `turn.rejected` con `reason: "transcription_failed"`, senza `turn.accepted`, e nessuno genera uno scambio nello storico. Fallisce se compare un turno o un esito persistente per tali tentativi o se il motivo è diverso. Verifica definita per il protocollo `ambrogio.v1`.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dell'interazione vocale](#verifica-dellinterazione-vocale)
-  * satisfiedBy: [session-rejections.test.ts](../../apps/server/test/runtime/session-rejections.test.ts)
-  * verify: [Trascrizione vocale non riuscita](../Requirements/FamilyConversation.md#trascrizione-vocale-non-riuscita)
----
-
 ### Verifica dell'organizzazione delle conversazioni
 
 Raggruppa i controlli sulla collocazione dei flussi testuali e vocali nel modulo business «Conversazioni».
@@ -606,7 +463,7 @@ Non automatizzabile: giudicare se il nome di una porta descrive la capacità dal
 
 #### Relations
   * derivedFrom: [Verifica dell'organizzazione delle conversazioni](#verifica-dellorganizzazione-delle-conversazioni)
-  * verify: [Forma TypeScript dei contratti Application](../Requirements/FamilyConversation.md#forma-typescript-dei-contratti-application)
+  * verify: [Forma TypeScript dei contratti Application nel backend](../Requirements/FamilyConversation.md#forma-typescript-dei-contratti-application-nel-backend)
   * verify: [Nomi delle porte Application secondo la capacità richiesta](../Requirements/FamilyConversation.md#nomi-delle-porte-application-secondo-la-capacità-richiesta)
 ---
 
@@ -674,7 +531,7 @@ La prova passa se `tsc` termina con stato 0 senza diagnostiche e se ogni import 
 #### Relations
   * derivedFrom: [Verifica dell'organizzazione delle conversazioni](#verifica-dellorganizzazione-delle-conversazioni)
   * satisfiedBy: [domain-application-independence.test.ts](../../test/repository/domain-application-independence.test.ts)
-  * verify: [Indipendenza tecnica di Domain e Application](../Requirements/FamilyConversation.md#indipendenza-tecnica-di-domain-e-application)
+  * verify: [Indipendenza tecnica di Domain e Application nel backend](../Requirements/FamilyConversation.md#indipendenza-tecnica-di-domain-e-application-nel-backend)
 ---
 
 ### Verifica della concorrenza dei turni
@@ -690,7 +547,7 @@ Raggruppa le verifiche sul singolo turno attivo per conversazione, sull'elaboraz
 Avviare un turno nella conversazione A e, mentre è in elaborazione, inviare dallo stesso e da un altro client nuovi turni testuali e vocali sulla conversazione A e su una conversazione B. Ripetere dopo la conclusione di A.
 
 #### Details
-La prova passa se, finché il turno di A non ha un esito conservato, ogni nuovo turno testuale o vocale su A è rifiutato come `occupied` senza essere conservato né accodato, mentre i turni su B e quelli che aprono nuove conversazioni sono ammessi e completati prima della conclusione di A; dopo la conclusione A torna utilizzabile. La prova copre la parte di questa obbligazione che spetta al backend, cioè l'ammissione dei turni condivisa da tutti i client. La disabilitazione dell'ingresso locale durante elaborazione e riproduzione è un obbligo dei client e si verifica nei rispettivi modelli; il recupero dopo un arresto è verificato dalle prove degli stati persistenti dei turni.
+La prova passa se, finché il turno di A non ha un esito conservato, ogni nuovo turno testuale o vocale su A è rifiutato come `occupied` senza essere conservato né accodato, mentre i turni su B e quelli che aprono nuove conversazioni sono ammessi e completati prima della conclusione di A; dopo la conclusione A torna utilizzabile. La prova copre la parte di questa obbligazione che spetta al backend, cioè l'ammissione dei turni condivisa da tutti i client. La disabilitazione dell'ingresso locale durante elaborazione e riproduzione è un obbligo dei client e si verifica nei repository dei client; il recupero dopo un arresto è verificato dalle prove degli stati persistenti dei turni.
 
 #### Metadata
   * type: test-verification
@@ -784,6 +641,149 @@ La prova passa se un errore non lascia transizioni parziali e il chiamante non r
   * satisfiedBy: [conversation-server.test.ts](../../apps/server/test/runtime/conversation-server.test.ts)
   * satisfiedBy: [sqlite-conversation-write.test.ts](../../packages/conversations/test/adapters/out/sqlite-conversation-write.test.ts)
   * verify: [Scritture atomiche dello stato dei turni](../Requirements/FamilyConversation.md#scritture-atomiche-dello-stato-dei-turni)
+---
+
+### Verifica della conversazione a voce
+
+Raggruppa le verifiche della trascrizione, della risposta parlata, della conservazione solo testuale e del ciclo di vita dei turni vocali.
+
+#### Metadata
+  * type: verification-objective
+---
+
+### Prova degli ingressi testuali senza voce
+
+Avviare un'installazione con la configurazione e le risorse vocali assenti, mantenendo configurati i soli componenti necessari alla chat testuale. Eseguire un turno tramite la chat testuale.
+
+#### Details
+La prova passa se l'ingresso conversazionale si avvia e completa un turno testuale senza caricare configurazione vocale né costruire componenti vocali. Fallisce se l'ingresso richiede un file o una risorsa solo vocale o non può conversare.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
+  * satisfiedBy: [config-bootstrap.test.ts](../../apps/server/test/runtime/config-bootstrap.test.ts)
+  * verify: [Ingressi testuali indipendenti dalla voce](../Requirements/FamilyConversation.md#ingressi-testuali-indipendenti-dalla-voce)
+---
+
+### Prova dell'assenza di audio persistente
+
+Eseguire un turno vocale con risposta parlata, riavviare Ambrogio e ispezionare lo stato persistente prodotto dalla prova.
+
+#### Details
+La prova passa se lo storico conserva solo testo e dati non audio e se nessuna registrazione dell'input o dell'output vocale è presente tra i dati persistenti della prova. Fallisce se un file o un campo persistente contiene audio del turno o della risposta.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
+  * satisfiedBy: [session-lifecycle.test.ts](../../apps/server/test/runtime/session-lifecycle.test.ts)
+  * verify: [Conservazione solo testuale della conversazione](../Requirements/FamilyConversation.md#conservazione-solo-testuale-della-conversazione)
+---
+
+### Prova della scelta del motore di sintesi
+
+Caricare file vocali di prova con directory di voce fittizie per entrambi i motori: `voiceEngine` uguale a `piper` senza `voiceSpeaker` né `voiceLanguage`; uguale a `kokoro` con `voiceSpeaker` 0, 35 e 52 e `voiceLanguage` `it`, `en` e `pt-br`; directory Kokoro con `model.onnx` e con un unico `model.int8.onnx`. Provare poi i casi invalidi: `voiceEngine` assente, vuoto o sconosciuto; `voiceSpeaker` o `voiceLanguage` presenti con `piper`; uno dei due assente con `kokoro`; `voiceSpeaker` negativo, decimale, stringa numerica o nome di voce come `if_sara`; `voiceLanguage` vuoto o non stringa; directory Kokoro priva di file `.onnx`, con due file `.onnx` o priva di `voices.bin`, `tokens.txt` o `espeak-ng-data/`. Con il motore di sintesi controllato costruire il sintetizzatore per ciascun motore, sintetizzare una frase e registrare la configurazione passata a `createAsync` e il `sid` di ogni generazione; ripetere con un motore controllato che dichiara meno voci del `voiceSpeaker` configurato. Quando la variabile d'ambiente che indica una directory Kokoro reale è presente, sintetizzare inoltre una breve frase italiana con le voci 35 e 36 e una breve frase inglese con la voce 0 e lingua `en`.
+
+#### Details
+La prova passa se i file validi sono accettati con il motore, la voce e la lingua indicati; ogni caso invalido rende il file vocale invalido oppure la directory della voce non disponibile prima della costruzione del sintetizzatore; con `piper` la configurazione contiene la sola sezione `vits` con i file della directory e ogni generazione usa `sid` 0; con `kokoro` la configurazione contiene la sola sezione `kokoro` con l'unico file `.onnx`, `voices.bin`, `tokens.txt`, `espeak-ng-data/` e `lang` uguale a `voiceLanguage`, e ogni generazione usa `sid` uguale a `voiceSpeaker`; un `voiceSpeaker` non inferiore a `numSpeakers` impedisce la costruzione del sintetizzatore; caricamento unico, `numThreads` e formato dell'audio restano quelli della prova della sintesi nel processo backend. Con il modello Kokoro reale la prova passa se l'audio di ogni voce provata è non vuoto alla frequenza del modello. Fallisce se un file invalido è accettato, se il motore, la voce o la lingua usati differiscono da quelli configurati, se la lingua o la voce sono imposte dal backend o se una voce fuori intervallo raggiunge la sintesi.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
+  * satisfiedBy: [sherpa-synthesizer.test.ts](../../packages/conversations/test/adapters/in/sherpa-synthesizer.test.ts)
+  * satisfiedBy: [voice-config.test.ts](../../packages/conversations/test/adapters/out/voice-config.test.ts)
+  * verify: [Scelta del motore di sintesi vocale](../Requirements/FamilyConversation.md#scelta-del-motore-di-sintesi-vocale)
+---
+
+### Prova della selezione vocale per lingua
+
+Preparare un file con profili italiani e inglesi che indicano percorsi espliciti alle directory incluse e a directory esterne montate, scegliendo tra più voci della stessa lingua, Piper e Kokoro. Provare la lingua effettiva italiana e inglese, il profilo attivo mancante, i campi invalidi nell'altro profilo, il formato precedente a profilo singolo e la voce disabilitata. Osservare risorse caricate, lingua Vosk, voce e lingua di fonetizzazione Kokoro.
+
+#### Details
+La prova passa se ciascuna lingua seleziona esattamente i percorsi indicati, anche quando provengono da un mount o quando esistono più voci della stessa lingua; il profilo mancante o strutturalmente invalido rende il file invalido, l'altro profilo non carica i modelli, il formato precedente funziona e la voce disabilitata non carica modelli. Fallisce se una lingua carica percorsi diversi da quelli indicati, se un profilo mancante o invalido è accettato o se vengono caricati modelli di un profilo non attivo o della voce disabilitata.
+
+I casi di configurazione sono provati da `voice-config.test.ts`, la selezione dei profili e della voce montata con i modelli dell'immagine da `scripts/verify-docker-image.mjs` e l'avvio senza voce da `config-bootstrap.test.ts`.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
+  * satisfiedBy: [config-bootstrap.test.ts](../../apps/server/test/runtime/config-bootstrap.test.ts)
+  * satisfiedBy: [voice-config.test.ts](../../packages/conversations/test/adapters/out/voice-config.test.ts)
+  * satisfiedBy: [verify-docker-image.mjs](../../scripts/verify-docker-image.mjs)
+  * verify: [Selezione dei modelli vocali inclusi per lingua](../Requirements/FamilyConversation.md#selezione-dei-modelli-vocali-inclusi-per-lingua)
+---
+
+### Prova della sintesi senza marcatura Markdown
+
+Con il motore di sintesi controllato, sintetizzare risposte frammentate che contengono grassetto e corsivo con asterischi e trattini bassi, un nome composto con trattino basso, tilde doppie, codice in linea, un collegamento, un titolo, una citazione, un elenco puntato, un elenco numerato, una tabella con riga di separazione, una linea orizzontale e un grassetto spezzato fra due frammenti, conservando i frammenti consegnati al sintetizzatore.
+
+#### Details
+La prova passa se i testi consegnati al motore non contengono asterischi, tilde doppie, apici inversi, segni di titolo, citazione o elenco puntato iniziali, barre di tabella né indirizzi dei collegamenti; conservano il testo leggibile, il nome composto con trattino basso e il numero dell'elenco numerato; la riga di tabella diventa celle separate da virgole; la riga di separazione e la linea orizzontale non sono sintetizzate; il grassetto spezzato fra frammenti è ripulito; i frammenti ricevuti dal sintetizzatore, che sono lo stesso testo trasmesso e conservato, restano invariati. Fallisce se un simbolo di formattazione previsto raggiunge la sintesi, se si perde testo leggibile o se i frammenti ricevuti vengono alterati.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
+  * satisfiedBy: [sherpa-synthesizer.test.ts](../../packages/conversations/test/adapters/in/sherpa-synthesizer.test.ts)
+  * verify: [Risposta parlata senza marcatura testuale](../Requirements/FamilyConversation.md#risposta-parlata-senza-marcatura-testuale)
+---
+
+### Prova della sintesi vocale nel processo backend
+
+Con un motore di sintesi controllato, che espone `createAsync`, `generateAsync` e `sampleRate` e registra le chiamate, costruire il sintetizzatore, eseguire più trasmissioni con testo frammentato in più frasi, anche contemporanee, interromperne una dopo la prima frase e chiudere il sintetizzatore. Verificare che una sintesi controllata lenta non blocchi l'event loop. Quando la variabile d'ambiente che indica una directory di voce reale è presente, caricare inoltre il modello reale e sintetizzare una breve frase italiana.
+
+#### Details
+La prova passa se la voce è caricata una sola volta per tutte le trasmissioni, con `numThreads` pari al minimo fra 4 e il parallelismo disponibile; ogni frase completa è sintetizzata con `generateAsync` appena disponibile e la parte residua alla fine del testo; due trasmissioni contemporanee non hanno mai due generazioni in corso insieme e ciascuna riceve solo il proprio audio; l'audio è PCM16 little-endian mono con campioni convertiti correttamente e la frequenza esposta è quella del modello; dopo l'interruzione non viene sintetizzata alcuna frase successiva; un timer dell'event loop scatta mentre una sintesi è in corso; un errore di caricamento rifiuta la costruzione. Con la voce reale la prova passa se l'audio prodotto è non vuoto e la frequenza è quella del modello. Fallisce se la voce viene ricaricata per una trasmissione, se viene usata la sintesi sincrona, se l'audio non rispetta il formato, se le generazioni si sovrappongono o se una frase successiva a un'interruzione viene sintetizzata.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
+  * satisfiedBy: [sherpa-synthesizer.test.ts](../../packages/conversations/test/adapters/in/sherpa-synthesizer.test.ts)
+  * verify: [Risposta parlata su richiesta del client](../Requirements/FamilyConversation.md#risposta-parlata-su-richiesta-del-client)
+---
+
+### Prova della trascrizione e della risposta parlata
+
+Inviare un turno audio trascrivibile con testo atteso e `reply: "audio"`, ottenendo una risposta controllata; ripetere con un turno testuale e `reply: "audio"`.
+
+#### Details
+La prova passa se il turno conservato contiene la trascrizione testuale attesa, `turn.accepted` riporta lo stesso testo, la risposta è trasmessa in audio con la frequenza della voce configurata e il suo testo compare nello scambio conservato. Fallisce se manca la trascrizione, se la risposta non viene trasmessa in audio quando richiesto o se lo scambio conserva audio invece di testo. Verifica definita per il protocollo `ambrogio.v1`.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
+  * satisfiedBy: [session-lifecycle.test.ts](../../apps/server/test/runtime/session-lifecycle.test.ts)
+  * satisfiedBy: [sherpa-synthesizer.test.ts](../../packages/conversations/test/adapters/in/sherpa-synthesizer.test.ts)
+  * verify: [Risposta parlata su richiesta del client](../Requirements/FamilyConversation.md#risposta-parlata-su-richiesta-del-client)
+  * verify: [Trascrizione del turno vocale](../Requirements/FamilyConversation.md#trascrizione-del-turno-vocale)
+---
+
+### Prova della trascrizione non riuscita
+
+Simulare un errore del servizio di trascrizione e una trascrizione composta solo da spazi, con risposta richiesta in audio.
+
+#### Details
+La prova passa se entrambi i tentativi ricevono la trasmissione del messaggio pubblico e `turn.rejected` con `reason: "transcription_failed"`, senza `turn.accepted`, e nessuno genera uno scambio nello storico. Fallisce se compare un turno o un esito persistente per tali tentativi o se il motivo è diverso. Verifica definita per il protocollo `ambrogio.v1`.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
+  * satisfiedBy: [session-rejections.test.ts](../../apps/server/test/runtime/session-rejections.test.ts)
+  * verify: [Trascrizione vocale non riuscita](../Requirements/FamilyConversation.md#trascrizione-vocale-non-riuscita)
 ---
 
 ### Verifica della conversazione testuale

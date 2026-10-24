@@ -1,5 +1,20 @@
 # Elements
 
+### Ispezione delle istruzioni per gli agenti del backend
+
+Durante la revisione di ogni modifica di `AGENTS.md` del backend o di `ambrogio-model/AGENTS.md`, leggere le istruzioni del backend e confrontarle con quelle di `ambrogio-model` e con i requisiti della capability «Sviluppo governato dal modello».
+
+#### Details
+L'ispezione passa se le istruzioni del backend rimandano a `ambrogio-model/AGENTS.md` per le regole comuni, descrivono un solo modello letto e validato dalla cartella di lavoro con la versione di Reqvire di `ambrogio-model/.reqvire-version` e i controlli di `ambrogio-model/scripts/model-checks`, non contraddicono alcun requisito e aggiungono soltanto indicazioni proprie del backend. Fallisce se le istruzioni descrivono un modello autonomo del backend, fissano una versione di Reqvire propria, nominano revisioni fissate fra repository o contraddicono un requisito. Non automatizzabile: stabilire che istruzioni in prosa applicano o contraddicono un requisito richiede di leggerle.
+
+#### Metadata
+  * type: inspection-verification
+
+#### Relations
+  * derivedFrom: [Verifica del governo del modello](../../../ambrogio-model/system-model/Verifications/ModelDrivenDevelopment.md#verifica-del-governo-del-modello)
+  * verify: [Istruzioni per gli agenti del backend](../Requirements/Workspace.md#istruzioni-per-gli-agenti-del-backend)
+---
+
 ### Verifica del workspace pnpm
 
 Raggruppa le verifiche della configurazione del workspace comune e dell'installazione delle dipendenze con pnpm.
@@ -13,7 +28,7 @@ Raggruppa le verifiche della configurazione del workspace comune e dell'installa
 In un checkout pulito, individuare i pacchetti del workspace dalla radice e installare le dipendenze con pnpm.
 
 #### Details
-La prova passa se il workspace radice include l'applicazione server e i suoi package business e se `pnpm install` dalla radice completa l'installazione delle loro dipendenze senza errori. Fallisce se uno dei pacchetti non appartiene al workspace o richiede un'installazione separata fuori dal workspace. La prova è eseguita dalla CI del backend a ogni push sul branch principale e a ogni pull request: il job parte da un checkout pulito ed esegue `pnpm install --frozen-lockfile` dalla radice prima di compilare e testare tutti i pacchetti.
+La prova passa se il workspace radice include l'applicazione server e i suoi package business e se `pnpm install` dalla radice completa l'installazione delle loro dipendenze senza errori. Fallisce se uno dei pacchetti non appartiene al workspace o richiede un'installazione separata fuori dal workspace. La prova è eseguita dalla CI del backend a ogni push sul branch principale e a ogni pull request: il job parte da un checkout pulito ed esegue `pnpm install --frozen-lockfile` dalla radice del repository, `workspace/ambrogio-backend` nella cartella di lavoro della CI, prima di compilare e testare tutti i pacchetti.
 
 #### Metadata
   * type: test-verification
@@ -22,64 +37,6 @@ La prova passa se il workspace radice include l'applicazione server e i suoi pac
   * derivedFrom: [Verifica del workspace pnpm](#verifica-del-workspace-pnpm)
   * satisfiedBy: [ci.yml](../../.github/workflows/ci.yml)
   * verify: [Gestione pnpm del workspace](../Requirements/Workspace.md#gestione-pnpm-del-workspace)
----
-
-### Verifica dell'integrità del modello
-
-Raggruppa le verifiche delle regole di integrità del modello Reqvire che `validate` e `lint` non coprono.
-
-#### Metadata
-  * type: verification-objective
----
-
-### Ispezione delle decisioni sostituite
-
-Durante la revisione di ogni modifica che registra una decisione in sostituzione di un'altra, cercare nel modello gli elementi che affermano la decisione sostituita, con `change-impact` e con una ricerca testuale dei suoi termini chiave.
-
-#### Details
-L'ispezione passa se, dopo la modifica, nessun requisito, contratto o verifica afferma ancora la decisione sostituita. Fallisce se un elemento la afferma ancora. Non automatizzabile: riconoscere che un testo afferma una decisione sostituita richiede di leggerlo; lo script copre soltanto date e formule di storia.
-
-#### Metadata
-  * type: inspection-verification
-
-#### Relations
-  * derivedFrom: [Verifica dell'integrità del modello](#verifica-dellintegrità-del-modello)
-  * verify: [Decisioni sostituite rimosse nella stessa modifica](../Requirements/Workspace.md#decisioni-sostituite-rimosse-nella-stessa-modifica)
----
-
-### Ispezione delle dipendenze fra contratti
-
-Durante la revisione di ogni modifica che aggiunge o modifica un contratto, leggere il contratto e i contratti dei requisiti da cui dipende, ed eseguire `change-impact` sulla modifica.
-
-#### Details
-L'ispezione passa se il contratto afferma soltanto la decisione del proprio requisito e ogni dipendenza da un contratto posseduto da un altro requisito è dichiarata come Contract Reference dal requisito proprietario del contratto dipendente, così che `change-impact` la segnali. Fallisce se un contratto ripete contenuto posseduto da un altro requisito o se una dipendenza non è dichiarata. Non automatizzabile: stabilire se due testi affermano lo stesso fatto richiede di leggerli.
-
-#### Metadata
-  * type: inspection-verification
-
-#### Relations
-  * derivedFrom: [Verifica dell'integrità del modello](#verifica-dellintegrità-del-modello)
-  * verify: [Dipendenze fra contratti dichiarate come riferimenti](../Requirements/Workspace.md#dipendenze-fra-contratti-dichiarate-come-riferimenti)
----
-
-### Prova dell'integrità del modello
-
-Eseguire `node scripts/check-model.mjs` nella radice del repository, come fa la CI dopo la validazione e il lint del modello.
-
-#### Details
-La prova passa se lo script non segnala storia delle decisioni, formule non normative, verifiche manuali senza «Non automatizzabile:» né file di governo non riferiti dal modello, e termina con stato 0. Fallisce se lo script segnala una violazione o non riesce a eseguire.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dell'integrità del modello](#verifica-dellintegrità-del-modello)
-  * satisfiedBy: [check-model.mjs](../../scripts/check-model.mjs)
-  * verify: [Controllo automatico dell'integrità del modello](../Requirements/Workspace.md#controllo-automatico-dellintegrità-del-modello)
-  * verify: [Decisioni sostituite rimosse nella stessa modifica](../Requirements/Workspace.md#decisioni-sostituite-rimosse-nella-stessa-modifica)
-  * verify: [File di governo collegati al modello](../Requirements/Workspace.md#file-di-governo-collegati-al-modello)
-  * verify: [Formulazione normativa degli obblighi](../Requirements/Workspace.md#formulazione-normativa-degli-obblighi)
-  * verify: [Verifiche manuali giustificate](../Requirements/Workspace.md#verifiche-manuali-giustificate)
 ---
 
 ### Verifica della struttura del monorepo
@@ -157,23 +114,6 @@ Non automatizzabile: riconoscere un package generico di condivisione indipendent
 #### Relations
   * derivedFrom: [Verifica della struttura del monorepo](#verifica-della-struttura-del-monorepo)
   * verify: [Introduzione controllata dei package generici](../Requirements/Workspace.md#introduzione-controllata-dei-package-generici)
----
-
-### Controllo del confine tra repository
-
-Esaminare il repository backend e quello del client terminale, i rispettivi workspace Reqvire e le dipendenze fra i due.
-
-#### Details
-Il controllo passa se ciascun repository possiede il proprio modello e il client dipende dal contratto HTTP pubblico del backend senza importare codice interno o assumere un workspace Reqvire condiviso.
-
-Non automatizzabile: richiede di esaminare insieme due repository distinti, mentre gli strumenti di ciascun repository vedono soltanto il proprio.
-
-#### Metadata
-  * type: inspection-verification
-
-#### Relations
-  * derivedFrom: [Verifica della struttura del monorepo](#verifica-della-struttura-del-monorepo)
-  * verify: [Confine del repository backend](../Requirements/Workspace.md#confine-del-repository-backend)
 ---
 
 ### Controllo della collocazione dei test business

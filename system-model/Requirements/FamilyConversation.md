@@ -4,6 +4,9 @@
 
 Quando un componente tecnico esterno viene integrato come ingresso del modulo «Conversazioni» o come implementazione di una sua porta Application, l'adapter deve risiedere nel package «Conversazioni», rispettivamente in `src/adapters/in/` o `src/adapters/out/`.
 
+#### Details
+Origine: baseline Reqvire «Technical adapters inside the module package», adottata.
+
 #### Metadata
   * type: requirement
 
@@ -11,7 +14,8 @@ Quando un componente tecnico esterno viene integrato come ingresso del modulo «
   * [Responsabilità di Domain Application e adapter](../Contracts/FamilyConversation.md#responsabilità-di-domain-application-e-adapter)
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * derivedFrom: [Struttura in layer dei componenti](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#struttura-in-layer-dei-componenti)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
 ### Agente specializzato senza connettore MCP
@@ -25,12 +29,15 @@ Quando il file di un agente specializzato non contiene un connettore MCP, Ambrog
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
   * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
   * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Assemblaggio delle porte nella composition root
 
 Quando l'applicazione server assembla il modulo «Conversazioni», deve scegliere e fornire le implementazioni delle porte Application tramite la propria composition root.
+
+#### Details
+Origine: baseline Reqvire «Explicit wiring without service locator», adottata.
 
 #### Metadata
   * type: requirement
@@ -39,7 +46,8 @@ Quando l'applicazione server assembla il modulo «Conversazioni», deve sceglier
   * [Responsabilità di Domain Application e adapter](../Contracts/FamilyConversation.md#responsabilità-di-domain-application-e-adapter)
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * derivedFrom: [Capacità dell'ambiente fornite dalla composition root](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#capacità-dellambiente-fornite-dalla-composition-root)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
 ### Assenza di accodamento dei turni
@@ -54,7 +62,7 @@ Quando Ambrogio non è in grado di avviare l'elaborazione di un nuovo turno al m
 
 #### Relations
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Autenticazione Bearer del client MCP
@@ -66,7 +74,7 @@ Quando un agente specializzato accede al proprio server MCP tramite Streamable H
 
 #### Relations
   * satisfiedBy: [mcp-tool-client.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.ts)
-  * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
+  * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
 ---
 
 ### Autenticazione OAuth tra servizi del client MCP
@@ -78,7 +86,7 @@ Quando la configurazione TypeScript di un agente specializzato richiede OAuth `c
 
 #### Relations
   * satisfiedBy: [mcp-tool-client.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.ts)
-  * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
+  * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
 ---
 
 ### Avvio dell'ingresso dei turni conversazionali
@@ -91,12 +99,15 @@ Quando il server avvia la conversazione con agenti configurati, deve rendere dis
 #### Relations
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
   * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Cartelle del modulo Conversazioni
 
 Il package del modulo business «Conversazioni» deve collocare il codice Domain in `src/domain/`, Application in `src/application/` e gli adapter che appartengono al package in `src/adapters/`.
+
+#### Details
+Origine: baseline Reqvire «Layer folders of a business module», adottata.
 
 #### Metadata
   * type: requirement
@@ -105,12 +116,16 @@ Il package del modulo business «Conversazioni» deve collocare il codice Domain
   * [Responsabilità di Domain Application e adapter](../Contracts/FamilyConversation.md#responsabilità-di-domain-application-e-adapter)
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * derivedFrom: [Struttura in layer dei componenti](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#struttura-in-layer-dei-componenti)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
 ### Chiusura della risorsa SQLite conversazionale
 
 Quando il server termina normalmente o fallisce durante l'avvio dopo aver creato la risorsa SQLite/Kysely dell'archivio, il proprietario deve chiudere la risorsa dopo le operazioni che ne dipendono.
+
+#### Details
+Origine: baseline Reqvire «Closing the database resource», adottata.
 
 #### Metadata
   * type: requirement
@@ -119,7 +134,7 @@ Quando il server termina normalmente o fallisce durante l'avvio dopo aver creato
   * [Ciclo di vita della risorsa SQLite conversazionale](../Contracts/FamilyConversation.md#ciclo-di-vita-della-risorsa-sqlite-conversazionale)
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Chiusura della sessione conversazionale
@@ -131,19 +146,22 @@ Quando la sessione conversazionale di un client si chiude, Ambrogio deve rilasci
 
 #### Relations
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Classificazione degli esiti delle scritture conversazionali
 
 Quando l'adapter SQLite dell'archivio esegue una mutazione conversazionale, deve comunicare un rifiuto previsto della porta soltanto se l'esito tecnico dimostra la condizione prevista dal contratto dell'operazione; deve propagare come guasto inatteso gli esiti non classificabili e non deve comunicare un successo senza che la postcondizione della mutazione sia soddisfatta.
 
+#### Details
+Origine: baseline Reqvire «Classified outcomes of database writes», adottata; «Failed update outcomes by ascertained cause», adottata.
+
 #### Metadata
   * type: requirement
 
 #### Relations
   * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Client MCP comune ai connettori
@@ -155,7 +173,7 @@ Quando Ambrogio abilita un connettore a un server MCP configurato, deve usare un
 
 #### Relations
   * satisfiedBy: [mcp-tool-client.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.ts)
-  * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
+  * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
 ---
 
 ### Completamento del turno accettato dopo disconnessione
@@ -171,7 +189,7 @@ Quando il backend ha ammesso un turno e la sessione del client si chiude durante
 #### Relations
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Comunicazione degli identificativi del turno ammesso
@@ -187,7 +205,7 @@ Quando ammette un turno, il backend deve comunicare al client l'identificativo d
 
 #### Relations
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Conferma del completamento del turno
@@ -203,7 +221,7 @@ Quando il backend completa correttamente un turno, deve inviare al client la con
 #### Relations
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Configurazione MCP dell'agente specializzato
@@ -216,7 +234,7 @@ Quando il server attiva un agente con connettore MCP, deve leggere la configuraz
 #### Relations
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
   * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
-  * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
+  * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
 ---
 
 ### Configurazione del fuso orario della conversazione
@@ -228,7 +246,7 @@ Il server deve leggere il fuso orario della famiglia dal modulo TypeScript local
 
 #### Relations
   * satisfiedBy: [conversation-config.ts](../../packages/conversations/src/adapters/out/conversation-config.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Configurazione del modello per agente
@@ -242,7 +260,7 @@ Quando il server attiva un agente, incluso l'orchestratore, deve leggere il modu
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
   * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
   * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Configurazione della paginazione conversazionale
@@ -260,7 +278,7 @@ Quando il server prepara la consultazione dell'elenco delle conversazioni, deve 
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
   * satisfiedBy: [conversation-config-path.ts](../../apps/server/src/runtime/conversation-config-path.ts)
   * satisfiedBy: [conversation-config.ts](../../packages/conversations/src/adapters/out/conversation-config.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Configurazione pronta del connettore Home Assistant
@@ -275,7 +293,7 @@ Il repository deve fornire un modulo TypeScript pronto dell'agente Home Assistan
 
 #### Relations
   * satisfiedBy: [home-assistant.ts](../../examples/agents/home-assistant.ts)
-  * specify: [Interazione domestica tramite Home Assistant](../Capabilities/FamilyAssistance.md#interazione-domestica-tramite-home-assistant)
+  * specify: [Interazione domestica tramite Home Assistant](../../../ambrogio-model/system-model/Capabilities/Product.md#interazione-domestica-tramite-home-assistant)
 ---
 
 ### Connettore Home Assistant tramite il server MCP di Home Assistant
@@ -288,18 +306,21 @@ Dove l'installazione abilita il connettore Home Assistant, il server deve raggiu
 #### Relations
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
   * satisfiedBy: [home-assistant.ts](../../examples/agents/home-assistant.ts)
-  * specify: [Interazione domestica tramite Home Assistant](../Capabilities/FamilyAssistance.md#interazione-domestica-tramite-home-assistant)
+  * specify: [Interazione domestica tramite Home Assistant](../../../ambrogio-model/system-model/Capabilities/Product.md#interazione-domestica-tramite-home-assistant)
 ---
 
 ### Conservazione del testo originale del turno
 
 Quando Ambrogio accetta un turno testuale dalla chat o dalla trascrizione vocale, deve conservare il testo ricevuto senza rimuovere né modificare gli spazi iniziali, finali o interni. L'eventuale rimozione degli spazi per verificare se il testo è vuoto non modifica il testo accettato.
 
+#### Details
+Origine: baseline Reqvire «Meaningful distinctions preserved», adottata.
+
 #### Metadata
   * type: requirement
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Conservazione dello scambio testuale
@@ -310,7 +331,7 @@ Quando Ambrogio comunica l'esito di un turno rappresentato come testo, deve cons
   * type: requirement
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Conservazione dell'errore dopo risposta parziale
@@ -328,7 +349,7 @@ Quando il backend ha trasmesso parte della risposta a un turno e poi lo conclude
   * derivedFrom: [Conservazione dello scambio testuale](#conservazione-dello-scambio-testuale)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Conservazione solo testuale della conversazione
@@ -340,7 +361,7 @@ Quando Ambrogio conserva una conversazione, deve conservarne la rappresentazione
 
 #### Relations
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Continuazione di ogni conversazione da qualunque client
@@ -355,7 +376,7 @@ Quando un client invia un turno con l'identificativo di una conversazione conser
 
 #### Relations
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Continuità del turno dopo un guasto di consegna
@@ -371,7 +392,7 @@ Quando la consegna di una notifica di un turno già ammesso all'ingresso fallisc
 #### Relations
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Contratti delle porte nei termini di Conversazioni
@@ -385,12 +406,16 @@ Quando un caso d'uso del modulo «Conversazioni» richiede una capacità esterna
   * [Adozione di AI SDK nei layer conversazionali](../Contracts/AiSdkIntegration.md#adozione-di-ai-sdk-nei-layer-conversazionali)
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * derivedFrom: [Contratti Application nei termini del componente](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#contratti-application-nei-termini-del-componente)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
 ### Contratti di lettura separati dell'archivio conversazioni
 
 Quando Application del modulo «Conversazioni» consulta lo storico o l'elenco delle conversazioni, deve usare contratti di lettura distinti dalle operazioni di scrittura e adatti ai dati richiesti dal caso d'uso.
+
+#### Details
+Origine: baseline Reqvire «Separate read contracts for queries», adottata.
 
 #### Metadata
   * type: requirement
@@ -398,30 +423,36 @@ Quando Application del modulo «Conversazioni» consulta lo storico o l'elenco d
 #### Relations
   * satisfiedBy: [conversation-history-read.ts](../../packages/conversations/src/application/conversation-history-read.ts)
   * satisfiedBy: [conversation-list-read.ts](../../packages/conversations/src/application/conversation-list-read.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Contratto di scrittura dell'archivio conversazioni
 
 Quando Application del modulo «Conversazioni» conserva turni o esiti, deve usare un contratto di persistenza dedicato al modello di scrittura della conversazione, con semantica sufficiente alle transizioni richieste dai casi d'uso. Il contratto espone il salvataggio dell'aggregato oppure operazioni di transizione esplicite; non deve imporre un'interfaccia CRUD universale ai casi d'uso.
 
+#### Details
+Origine: baseline Reqvire «Dedicated write contract without universal CRUD», adottata.
+
 #### Metadata
   * type: requirement
 
 #### Relations
   * satisfiedBy: [conversation-write.ts](../../packages/conversations/src/application/conversation-write.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Conversione esplicita dei dati conversazionali persistenti
 
 Quando un adapter del modulo «Conversazioni» legge o scrive l'archivio SQLite, deve convertire esplicitamente tra le rappresentazioni tecniche delle righe e i valori Domain o le proiezioni Application previsti dai rispettivi contratti, senza esporre righe o tipi Kysely a Domain e Application.
 
+#### Details
+Origine: baseline Reqvire «Explicit conversion at the persistence boundary», adottata.
+
 #### Metadata
   * type: requirement
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Creazione della conversazione all'ammissione del turno
@@ -436,7 +467,7 @@ Quando un client invia un turno senza identificativo di conversazione, Ambrogio 
 
 #### Relations
   * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Data e ora correnti per gli agenti specializzati
@@ -450,7 +481,7 @@ Quando un agente specializzato formula la risposta di un turno, Ambrogio deve fo
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
   * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
   * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Dati Application dei casi d'uso conversazionali
@@ -464,7 +495,8 @@ Quando un caso d'uso del modulo «Conversazioni» riceve dati di ingresso o prod
   * [Adozione di AI SDK nei layer conversazionali](../Contracts/AiSdkIntegration.md#adozione-di-ai-sdk-nei-layer-conversazionali)
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * derivedFrom: [Contratti Application nei termini del componente](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#contratti-application-nei-termini-del-componente)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
 ### Descrizione degli agenti specializzati per l'orchestrazione
@@ -477,7 +509,7 @@ Quando Ambrogio prepara un agente specializzato da un modulo TypeScript, deve re
 #### Relations
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
   * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Determinazione della replica attesa
@@ -493,7 +525,7 @@ Quando produce la risposta a un turno, il backend deve determinare se essa richi
 #### Relations
   * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione a voce](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-a-voce)
 ---
 
 ### Diagnostica del guasto nella produzione della risposta
@@ -507,7 +539,7 @@ Quando un turno ammesso si conclude con l'errore pubblico per un guasto tecnico 
   * derivedFrom: [Diagnostica dei guasti nei componenti tecnici](ServerFoundation.md#diagnostica-dei-guasti-nei-componenti-tecnici)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
 ### Diagnostica del guasto tecnico di consegna
@@ -520,7 +552,7 @@ Quando la consegna di una notifica conversazionale fallisce per un guasto tecnic
 #### Relations
   * derivedFrom: [Diagnostica dei guasti nei componenti tecnici](ServerFoundation.md#diagnostica-dei-guasti-nei-componenti-tecnici)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
 ### Disabilitazione degli ingressi durante un turno
@@ -534,12 +566,15 @@ Quando un client elabora un turno o ne riproduce la risposta, deve impedire nuov
   * [Occupazione della conversazione e ammissione dei turni](../Contracts/FamilyConversation.md#occupazione-della-conversazione-e-ammissione-dei-turni)
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Disponibilità degli agenti dai moduli TypeScript
 
 Quando il server avvia la conversazione con la directory degli agenti, deve rendere disponibile all'orchestratore ogni agente specializzato descritto da un file `<id>.ts` valido presente nella directory, con o senza connettore MCP, senza richiedere un elenco separato di agenti da abilitare, e non deve avviare la conversazione se la directory non contiene almeno un agente specializzato.
+
+#### Details
+Origine: baseline Reqvire «Configuration module per component reading environment variables», adattata: il modulo TypeScript di ogni componente è fornito dall'installazione fuori dalla build e può contenere i valori, oltre a leggerli dalle variabili d'ambiente.
 
 #### Metadata
   * type: requirement
@@ -547,7 +582,7 @@ Quando il server avvia la conversazione con la directory degli agenti, deve rend
 #### Relations
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
   * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
-  * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
+  * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
 ---
 
 ### Disponibilità dello storico dopo riavvio
@@ -555,9 +590,9 @@ Quando il server avvia la conversazione con la directory degli agenti, deve rend
 Quando Ambrogio viene riavviato, deve rendere nuovamente disponibili alla famiglia le conversazioni e gli scambi testuali conservati prima del riavvio.
 
 #### Concept References
-  * [Famiglia](../Thesaurus/Lessico.md#famiglia)
-  * [Conversazione](../Thesaurus/Lessico.md#conversazione)
-  * [Scambio](../Thesaurus/Lessico.md#scambio)
+  * [Famiglia](../../../ambrogio-model/system-model/Thesaurus/Lessico.md#famiglia)
+  * [Conversazione](../../../ambrogio-model/system-model/Thesaurus/Lessico.md#conversazione)
+  * [Scambio](../../../ambrogio-model/system-model/Thesaurus/Lessico.md#scambio)
 
 #### Metadata
   * type: requirement
@@ -566,7 +601,7 @@ Quando Ambrogio viene riavviato, deve rendere nuovamente disponibili alla famigl
   * [Struttura testuale dello scambio](../Contracts/FamilyConversation.md#struttura-testuale-dello-scambio)
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Elaborazione parallela di conversazioni diverse
@@ -582,12 +617,15 @@ Quando riceve turni validi destinati a conversazioni diverse mentre è operativo
 #### Relations
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Elenco paginato delle conversazioni
 
 Quando la famiglia consulta l'elenco delle conversazioni conservate, Ambrogio deve fornirlo a pagine invece di restituire l'intero elenco in una sola risposta.
+
+#### Details
+Origine: baseline Reqvire «List or pagination chosen per query», adottata.
 
 #### Metadata
   * type: requirement
@@ -596,7 +634,7 @@ Quando la famiglia consulta l'elenco delle conversazioni conservate, Ambrogio de
   * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
   * satisfiedBy: [sqlite-conversation-list-read.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-list-read.adapter.ts)
   * satisfiedBy: [list-conversations.use-case.ts](../../packages/conversations/src/application/list-conversations.use-case.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Esempi degli agenti in inglese
@@ -607,12 +645,13 @@ Quando il progetto distribuisce esempi di configurazione per generic.ts, orchest
   * type: requirement
 
 #### Relations
+  * derivedFrom: [Esempi distribuiti in inglese](../../../ambrogio-model/system-model/Requirements/ModelDrivenDevelopment.md#esempi-distribuiti-in-inglese)
   * satisfiedBy: [generic.ts](../../examples/agents/generic.ts)
   * satisfiedBy: [orchestrator.ts](../../examples/agents/orchestrator.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Sviluppo governato dal modello](../../../ambrogio-model/system-model/Capabilities/Engineering.md#sviluppo-governato-dal-modello)
 ---
 
-### Forma TypeScript dei contratti Application
+### Forma TypeScript dei contratti Application nel backend
 
 Quando Application del modulo «Conversazioni» dichiara una porta outbound a oggetto con metodi nominati, deve usare `interface`; quando dichiara dati, unioni o contratti callable, deve usare `type`.
 
@@ -620,24 +659,32 @@ Quando Application del modulo «Conversazioni» dichiara una porta outbound a og
   * type: requirement
 
 #### Relations
+  * derivedFrom: [Forma TypeScript dei contratti Application](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#forma-typescript-dei-contratti-application)
   * satisfiedBy: [conversation-write.ts](../../packages/conversations/src/application/conversation-write.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
 ### Fornitura esplicita dell'ora corrente alla conversazione
 
 Quando un caso d'uso Application del modulo «Conversazioni» richiede l'ora corrente per accettare un turno o valutare una regola temporale, deve ottenerla da una capacità di orologio fornita dalla composition root e passare l'istante necessario al Domain, senza leggere l'ora ambientale nel Domain.
 
+#### Details
+Origine: baseline Reqvire «External facts supplied by the Application», adottata.
+
 #### Metadata
   * type: requirement
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * derivedFrom: [Capacità dell'ambiente fornite dalla composition root](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#capacità-dellambiente-fornite-dalla-composition-root)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
 ### Generazione degli identificativi prima del Domain
 
 Quando un caso d'uso Application del modulo «Conversazioni» crea una conversazione o un turno, deve ottenere il nuovo identificativo tramite una capacità di generazione fornita dalla composition root e passarlo al Domain prima della creazione dello stato, senza generarlo dentro Domain o l'adapter di persistenza.
+
+#### Details
+Origine: baseline Reqvire «External facts supplied by the Application», adottata.
 
 #### Metadata
   * type: requirement
@@ -646,7 +693,8 @@ Quando un caso d'uso Application del modulo «Conversazioni» crea una conversaz
   * [Identità di conversazioni e turni](../Contracts/FamilyConversation.md#identità-di-conversazioni-e-turni)
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * derivedFrom: [Capacità dell'ambiente fornite dalla composition root](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#capacità-dellambiente-fornite-dalla-composition-root)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
 ### Gestione del turno ammesso senza storico utilizzabile
@@ -659,18 +707,21 @@ Quando, dopo l'ammissione di un turno, il server non riesce a leggere uno storic
 #### Relations
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Identificativi UUID v4 di conversazioni e turni
 
 Quando Ambrogio crea una nuova conversazione o accetta un nuovo turno, deve assegnargli un identificativo UUID v4 distinto, stabile nello storico e dopo il riavvio.
 
+#### Details
+Origine: baseline Reqvire «Identifiers preserved by persistence», adottata; «Stable Entity identity», adottata.
+
 #### Metadata
   * type: requirement
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Import del Domain entro il proprio componente
@@ -684,7 +735,8 @@ Il codice di produzione Domain del modulo «Conversazioni» deve importare solta
   * [Responsabilità di Domain Application e adapter](../Contracts/FamilyConversation.md#responsabilità-di-domain-application-e-adapter)
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * derivedFrom: [Indipendenza tecnica di Domain e Application](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#indipendenza-tecnica-di-domain-e-application)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
 ### Import dell'Application entro il proprio modulo
@@ -698,10 +750,11 @@ Il codice di produzione Application del modulo «Conversazioni» deve importare 
   * [Responsabilità di Domain Application e adapter](../Contracts/FamilyConversation.md#responsabilità-di-domain-application-e-adapter)
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * derivedFrom: [Indipendenza tecnica di Domain e Application](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#indipendenza-tecnica-di-domain-e-application)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
-### Indipendenza tecnica di Domain e Application
+### Indipendenza tecnica di Domain e Application nel backend
 
 Il codice di produzione Domain e Application del modulo «Conversazioni» deve usare API standard ECMAScript indipendenti dall'ambiente e non deve dipendere da API Node.js né da package npm usati a runtime.
 
@@ -712,12 +765,13 @@ Il codice di produzione Domain e Application del modulo «Conversazioni» deve u
   * [Responsabilità di Domain Application e adapter](../Contracts/FamilyConversation.md#responsabilità-di-domain-application-e-adapter)
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * derivedFrom: [Indipendenza tecnica di Domain e Application](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#indipendenza-tecnica-di-domain-e-application)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
 ### Ingressi testuali indipendenti dalla voce
 
-Quando un'installazione non abilita l'interazione vocale, Ambrogio deve consentire l'uso della chat testuale senza richiedere la configurazione o l'avvio dei componenti necessari soltanto alla voce.
+Quando la voce non è abilitata nell'installazione, Ambrogio deve consentire l'uso della chat testuale senza richiedere la configurazione o l'avvio dei componenti necessari soltanto alla voce.
 
 #### Metadata
   * type: requirement
@@ -725,7 +779,7 @@ Quando un'installazione non abilita l'interazione vocale, Ambrogio deve consenti
 #### Relations
   * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
   * satisfiedBy: [voice-config.ts](../../packages/conversations/src/adapters/out/voice-config.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione a voce](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-a-voce)
 ---
 
 ### Integrazione esterna tramite porte e adapter
@@ -739,31 +793,38 @@ Quando un caso d'uso del modulo «Conversazioni» richiede una capacità tecnica
   * [Responsabilità di Domain Application e adapter](../Contracts/FamilyConversation.md#responsabilità-di-domain-application-e-adapter)
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * derivedFrom: [Struttura in layer dei componenti](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#struttura-in-layer-dei-componenti)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
 ### Integrità dello stato del turno nel Domain
 
 Quando il modulo «Conversazioni» crea, modifica o ricostruisce lo stato di un turno, Domain deve ammettere soltanto stati e transizioni validi per quel turno, preservando identità e testo, e lasciare invariato lo stato se una transizione è rifiutata.
 
+#### Details
+Origine: baseline Reqvire «Entity by identity», adottata; «Invariants preserved on every Domain path», adottata.
+
 #### Metadata
   * type: requirement
 
 #### Relations
   * satisfiedBy: [turn.ts](../../packages/conversations/src/domain/turn.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Istanti validi e protetti della conversazione
 
 Quando Application e Domain rappresentano un istante della conversazione, devono usare un `Date` valido. Gli oggetti Domain che ricevono o espongono un `Date` devono proteggerlo con copie difensive in ingresso e in uscita.
 
+#### Details
+Origine: baseline Reqvire «Domain state without shared mutable references», adottata; «Valid and protected Date values», adottata.
+
 #### Metadata
   * type: requirement
 
 #### Relations
   * satisfiedBy: [turn.ts](../../packages/conversations/src/domain/turn.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Istruzioni del server MCP per l'agente
@@ -780,12 +841,15 @@ Se la lettura dei prompt fallisce, Ambrogio deve concludere il turno con il guas
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
   * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
   * satisfiedBy: [mcp-tool-client.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.ts)
-  * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
+  * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
 ---
 
 ### Istruzioni dell'agente nel modulo TypeScript dell'utente
 
 Quando il server attiva un agente, incluso l'orchestratore, deve leggere le istruzioni destinate a quell'agente dal suo modulo TypeScript locale gestito dall'utente e consegnarle soltanto al modello dell'agente interessato.
+
+#### Details
+Origine: baseline Reqvire «Configuration module per component reading environment variables», adattata: il modulo TypeScript di ogni componente è fornito dall'installazione fuori dalla build e può contenere i valori, oltre a leggerli dalle variabili d'ambiente.
 
 #### Metadata
   * type: requirement
@@ -794,7 +858,7 @@ Quando il server attiva un agente, incluso l'orchestratore, deve leggere le istr
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
   * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
   * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Lettura HTTP dell'elenco conversazioni
@@ -810,7 +874,7 @@ Quando un client della chat testuale consulta l'elenco delle conversazioni conse
 #### Relations
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
   * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Lettura HTTP dello storico conversazionale
@@ -823,7 +887,7 @@ Quando un client della chat testuale consulta una conversazione conservata, il b
 #### Relations
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
   * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Limite delle chiamate agli strumenti per agente
@@ -835,7 +899,7 @@ Quando un agente specializzato usa gli strumenti del proprio connettore MCP per 
 
 #### Relations
   * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
-  * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
+  * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
 ---
 
 ### Lingua configurata nelle risposte degli agenti
@@ -849,7 +913,7 @@ Quando un agente specializzato produce una risposta per la famiglia, il backend 
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
   * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
   * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Localizzazione dell'errore conversazionale inatteso
@@ -862,18 +926,21 @@ Quando un turno ammesso termina con un guasto inatteso, Ambrogio deve comunicare
 #### Relations
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
   * satisfiedBy: [conversation-config.ts](../../packages/conversations/src/adapters/out/conversation-config.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Migrazione automatica dell'archivio delle conversazioni
 
 Quando l'archivio SQLite richiede migrazioni per la versione del server avviata, Ambrogio deve applicarle automaticamente prima di accettare nuovi turni e impedire l'avvio degli ingressi conversazionali se una migrazione fallisce.
 
+#### Details
+Origine: baseline Reqvire «Automatic schema migrations at startup», adottata.
+
 #### Metadata
   * type: requirement
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Modulo business unico per la conversazione
@@ -884,7 +951,7 @@ I flussi applicativi di conversazione testuale e vocale del server devono appart
   * type: requirement
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Nessuna ripetizione automatica del turno interrotto
@@ -898,7 +965,7 @@ Quando Ambrogio riconosce dopo un riavvio un turno interrotto senza esito conser
   * [Stati persistenti dei turni conversazionali](../Contracts/FamilyConversation.md#stati-persistenti-dei-turni-conversazionali)
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Nomi degli strumenti MCP offerti al modello
@@ -910,7 +977,7 @@ Quando offre al modello di un agente specializzato gli strumenti del proprio con
 
 #### Relations
   * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
-  * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
+  * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
 ---
 
 ### Nomi delle porte Application secondo la capacità richiesta
@@ -921,8 +988,9 @@ Quando Application del modulo «Conversazioni» dichiara una porta verso una cap
   * type: requirement
 
 #### Relations
+  * derivedFrom: [Contratti Application nei termini del componente](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#contratti-application-nei-termini-del-componente)
   * satisfiedBy: [turn-capabilities.ts](../../packages/conversations/src/application/turn-capabilities.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
 ### Orchestrazione della risposta conversazionale
@@ -934,7 +1002,7 @@ Quando Ambrogio elabora un turno della famiglia, l'agente orchestratore deve sce
 
 #### Relations
   * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Continuità dell'agente nella conversazione
@@ -953,7 +1021,7 @@ Quando l'orchestratore sceglie l'agente per un turno di una conversazione con tu
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
   * satisfiedBy: [get-conversation.use-case.ts](../../packages/conversations/src/application/get-conversation.use-case.ts)
   * satisfiedBy: [turn.ts](../../packages/conversations/src/domain/turn.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Ordinamento delle conversazioni per ultima attività
@@ -969,24 +1037,30 @@ Quando Ambrogio fornisce una pagina dell'elenco delle conversazioni, deve ordina
 
 #### Relations
   * satisfiedBy: [sqlite-conversation-list-read.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-list-read.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Persistenza degli istanti conversazionali in millisecondi Unix
 
 Quando l'adapter dell'archivio salva o ricostruisce un istante della conversazione, deve convertirlo esplicitamente tra un `Date` valido nel codice e un intero di millisecondi trascorsi dall'epoca Unix nella riga SQLite, preservando esattamente l'istante.
 
+#### Details
+Origine: baseline Reqvire «Instants stored as Unix milliseconds», adottata.
+
 #### Metadata
   * type: requirement
 
 #### Relations
   * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Precondizioni contestuali nel caso d'uso conversazionale
 
 Quando un turno supera la validazione dell'ingresso, il caso d'uso Application deve coordinare le precondizioni dipendenti dal contesto della conversazione tramite le proprie porte e interrompere il flusso con un rifiuto previsto quando esse non sono soddisfatte, lasciando al Domain gli invarianti del turno e all'archivio SQLite la garanzia atomica dell'unico turno attivo per conversazione.
+
+#### Details
+Origine: baseline Reqvire «Contextual preconditions in the use case», adottata; «Global guarantees assigned to their enforcer», adottata.
 
 #### Metadata
   * type: requirement
@@ -996,18 +1070,21 @@ Quando un turno supera la validazione dell'ingresso, il caso d'uso Application d
 
 #### Relations
   * satisfiedBy: [begin-turn.use-case.ts](../../packages/conversations/src/application/begin-turn.use-case.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Proprietà della risorsa SQLite conversazionale
 
 Quando il server usa l'archivio delle conversazioni, la sua composition root deve creare un solo proprietario della risorsa SQLite/Kysely per quell'archivio e fornire agli adapter le capacità necessarie senza trasferire loro la responsabilità di chiuderla.
 
+#### Details
+Origine: baseline Reqvire «Explicit wiring without service locator», adottata; «Single owner of the database resource», adottata.
+
 #### Metadata
   * type: requirement
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Recupero dello storico per il turno
@@ -1022,7 +1099,7 @@ Quando il backend riceve un nuovo turno con l'identificativo di una conversazion
   * [Archivio SQLite con Kysely](../Contracts/FamilyConversation.md#archivio-sqlite-con-kysely)
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Registrazione dei turni conversazionali accettati
@@ -1036,30 +1113,36 @@ Quando Ambrogio accetta un turno rappresentato come testo dalla chat o dalla tra
   * [Stati persistenti dei turni conversazionali](../Contracts/FamilyConversation.md#stati-persistenti-dei-turni-conversazionali)
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Riconoscimento del turno interrotto dopo riavvio
 
 Quando il server si avvia e trova turni conservati come «In elaborazione» senza esito, Ambrogio deve contrassegnarli tutti come «Interrotti» prima di accettare nuovi turni e mostrarli come tali nelle rispettive conversazioni.
 
+#### Details
+Origine: baseline Reqvire «Ordered startup before accepting work», adottata.
+
 #### Metadata
   * type: requirement
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Rifiuto dei turni concorrenti nella stessa conversazione
 
 Quando una conversazione ha un turno accettato il cui esito non è ancora conservato, Ambrogio deve rifiutare come esito previsto ogni nuovo turno destinato alla stessa conversazione, da qualunque client o ingresso, senza accettarlo né conservarlo.
 
+#### Details
+Origine: baseline Reqvire «Declared concurrency guarantee per operation», adottata.
+
 #### Metadata
   * type: requirement
 
 #### Relations
   * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Rifiuto del turno prima dell'ammissione
@@ -1072,7 +1155,7 @@ Quando un turno non è ammesso, il backend deve comunicare al client il rifiuto 
 #### Relations
   * derivedFrom: [Esclusione dei dettagli tecnici dal messaggio pubblico](ServerFoundation.md#esclusione-dei-dettagli-tecnici-dal-messaggio-pubblico)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Rifiuto del turno nella conversazione occupata
@@ -1088,12 +1171,15 @@ Quando il backend riceve un turno valido destinato a una conversazione che sta g
 #### Relations
   * derivedFrom: [Rifiuto del turno prima dell'ammissione](#rifiuto-del-turno-prima-dellammissione)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Rifiuto del turno testuale vuoto
 
 Quando il testo di un turno testuale è vuoto o contiene soltanto spazi bianchi, il backend deve rifiutare il turno con il motivo `invalid`, senza creare una conversazione né aggiungere uno scambio.
+
+#### Details
+Origine: baseline Reqvire «Meaningful distinctions preserved», adottata.
 
 #### Metadata
   * type: requirement
@@ -1105,7 +1191,7 @@ Quando il testo di un turno testuale è vuoto o contiene soltanto spazi bianchi,
 #### Relations
   * derivedFrom: [Rifiuto del turno prima dell'ammissione](#rifiuto-del-turno-prima-dellammissione)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Rifiuto della continuazione con conversazione inesistente
@@ -1121,7 +1207,7 @@ Quando un turno contiene un testo valido o un audio e un identificativo di conve
 #### Relations
   * derivedFrom: [Rifiuto del turno prima dell'ammissione](#rifiuto-del-turno-prima-dellammissione)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Trascrizione vocale non riuscita
@@ -1137,7 +1223,7 @@ Se Ambrogio non ottiene una trascrizione utilizzabile di un turno vocale, non de
 #### Relations
   * derivedFrom: [Rifiuto del turno prima dell'ammissione](#rifiuto-del-turno-prima-dellammissione)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione a voce](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-a-voce)
 ---
 
 ### Rifiuto dell'avvio con uno strumento MCP elencato non disponibile
@@ -1152,12 +1238,12 @@ Se un nome dell'elenco degli strumenti MCP ammessi di un agente specializzato no
 
 #### Relations
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
-  * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
+  * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
 ---
 
 ### Risposta parlata su richiesta del client
 
-Quando un client chiede la risposta in audio e l'interazione vocale è abilitata, Ambrogio deve pronunciare alla famiglia la risposta e ogni messaggio pubblico del turno, trasmettendoli in audio.
+Quando un client chiede la risposta in audio e la voce è abilitata nell'installazione, Ambrogio deve pronunciare alla famiglia la risposta e ogni messaggio pubblico del turno, trasmettendoli in audio.
 
 #### Metadata
   * type: requirement
@@ -1169,7 +1255,7 @@ Quando un client chiede la risposta in audio e l'interazione vocale è abilitata
 #### Relations
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * satisfiedBy: [sherpa-synthesizer.ts](../../packages/conversations/src/adapters/in/session/sherpa-synthesizer.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione a voce](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-a-voce)
 ---
 
 ### Risposta parlata senza marcatura testuale
@@ -1183,25 +1269,25 @@ Quando Ambrogio pronuncia una risposta o un messaggio pubblico che contiene marc
   * derivedFrom: [Risposta parlata su richiesta del client](#risposta-parlata-su-richiesta-del-client)
   * satisfiedBy: [sentences.ts](../../packages/conversations/src/adapters/in/session/sentences.ts)
   * satisfiedBy: [sherpa-synthesizer.ts](../../packages/conversations/src/adapters/in/session/sherpa-synthesizer.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione a voce](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-a-voce)
 ---
 
 ### Scelta del motore di sintesi vocale
 
-Quando l'interazione vocale è abilitata, Ambrogio deve pronunciare le risposte con il motore di sintesi, il modello, la voce e la lingua indicati nella configurazione vocale dell'installazione, scegliendo fra le voci Piper VITS e i modelli Kokoro, senza limitare la lingua o la voce a un elenco fissato dal prodotto.
+Quando la voce è abilitata nell'installazione, Ambrogio deve pronunciare le risposte con il motore di sintesi, il modello, la voce e la lingua indicati nella configurazione vocale dell'installazione, scegliendo fra le voci Piper VITS e i modelli Kokoro, senza limitare la lingua o la voce a un elenco fissato dal prodotto.
 
 #### Metadata
   * type: requirement
 
 #### Contract Bindings
-  * [Configurazione facoltativa dell'interazione vocale](../Contracts/FamilyConversation.md#configurazione-facoltativa-dellinterazione-vocale)
+  * [Configurazione facoltativa della voce](../Contracts/FamilyConversation.md#configurazione-facoltativa-della-voce)
 
 #### Relations
   * derivedFrom: [Risposta parlata su richiesta del client](#risposta-parlata-su-richiesta-del-client)
   * satisfiedBy: [local-speech-components.ts](../../packages/conversations/src/adapters/in/session/local-speech-components.ts)
   * satisfiedBy: [sherpa-synthesizer.ts](../../packages/conversations/src/adapters/in/session/sherpa-synthesizer.ts)
   * satisfiedBy: [voice-config.ts](../../packages/conversations/src/adapters/out/voice-config.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione a voce](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-a-voce)
 ---
 
 ### Risposta testuale nella conversazione
@@ -1213,7 +1299,7 @@ Quando la famiglia invia un turno, Ambrogio deve produrre una risposta testuale 
 
 #### Relations
   * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Scoperta delle configurazioni degli agenti
@@ -1225,12 +1311,15 @@ Quando il server prepara gli agenti attivi, deve cercare i rispettivi modulo Typ
 
 #### Relations
   * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Scritture atomiche dello stato dei turni
 
 Quando Ambrogio accetta, conclude o interrompe un turno, deve confermare insieme lo stato persistente del turno e l'occupazione della conversazione interessata in una transazione SQLite.
+
+#### Details
+Origine: baseline Reqvire «Atomic persistent state transitions», adottata; «Declared concurrency guarantee per operation», adottata.
 
 #### Metadata
   * type: requirement
@@ -1239,7 +1328,7 @@ Quando Ambrogio accetta, conclude o interrompe un turno, deve confermare insieme
   * satisfiedBy: [migrations.ts](../../packages/conversations/src/adapters/out/sqlite/migrations.ts)
   * satisfiedBy: [recover-pending-turns.ts](../../packages/conversations/src/adapters/out/sqlite/recover-pending-turns.ts)
   * satisfiedBy: [sqlite-conversation-write.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-write.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Segnalazione dell'errore dopo l'ammissione
@@ -1256,7 +1345,7 @@ Quando un errore impedisce di completare la risposta a un turno ammesso, il back
 #### Relations
   * derivedFrom: [Esclusione dei dettagli tecnici dal messaggio pubblico](ServerFoundation.md#esclusione-dei-dettagli-tecnici-dal-messaggio-pubblico)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Segnalazione della replica attesa
@@ -1271,7 +1360,7 @@ Quando conferma il completamento di un turno, il backend deve indicare esplicita
 
 #### Relations
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione a voce](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-a-voce)
 ---
 
 ### Selezione degli strumenti MCP offerti all'agente
@@ -1285,7 +1374,7 @@ Dove il modulo TypeScript di un agente specializzato elenca gli strumenti MCP am
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
   * satisfiedBy: [agent-config.ts](../../apps/server/src/runtime/agent-config.ts)
   * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
-  * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
+  * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
 ---
 
 ### Selezione dei modelli vocali inclusi per lingua
@@ -1300,12 +1389,15 @@ Quando la voce è abilitata con profili vocali per lingua, Ambrogio deve selezio
   * satisfiedBy: [voice.ts](../../examples/voice.ts)
   * satisfiedBy: [voice-config.ts](../../packages/conversations/src/adapters/out/voice-config.ts)
   * satisfiedBy: [voice-config.test.ts](../../packages/conversations/test/adapters/out/voice-config.test.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione a voce](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-a-voce)
 ---
 
 ### Selezione dell'archivio conversazionale all'avvio
 
 Quando il server prepara l'ingresso conversazionale, deve aprire l'archivio SQLite al percorso dichiarato nella configurazione locale del componente «Conversazioni» e impedire l'avvio se il percorso manca o è invalido.
+
+#### Details
+Origine: baseline Reqvire «SQLite as embedded database», adottata.
 
 #### Metadata
   * type: requirement
@@ -1314,12 +1406,15 @@ Quando il server prepara l'ingresso conversazionale, deve aprire l'archivio SQLi
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
   * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * satisfiedBy: [conversation-config.ts](../../packages/conversations/src/adapters/out/conversation-config.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Separazione degli adapter di ingresso e uscita
 
 Nel package del modulo business «Conversazioni», gli adapter d'ingresso presenti devono risiedere in `src/adapters/in/` e gli adapter che implementano porte Application presenti devono risiedere in `src/adapters/out/`.
+
+#### Details
+Origine: baseline Reqvire «Inbound and outbound adapter folders», adottata.
 
 #### Metadata
   * type: requirement
@@ -1328,7 +1423,8 @@ Nel package del modulo business «Conversazioni», gli adapter d'ingresso presen
   * [Responsabilità di Domain Application e adapter](../Contracts/FamilyConversation.md#responsabilità-di-domain-application-e-adapter)
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * derivedFrom: [Struttura in layer dei componenti](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#struttura-in-layer-dei-componenti)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
 ### Separazione delle responsabilità nel modulo Conversazioni
@@ -1339,12 +1435,16 @@ Il modulo business «Conversazioni» deve distinguere Domain, Application e adap
   * type: requirement
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * derivedFrom: [Struttura in layer dei componenti](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#struttura-in-layer-dei-componenti)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
 ### Tempo massimo della produzione della risposta
 
 Quando la produzione della risposta di un turno ammesso non termina entro il tempo massimo previsto, Ambrogio deve annullare le richieste ancora in corso verso modelli e connettori e concludere il turno con il messaggio pubblico di errore, liberando la conversazione per i turni successivi.
+
+#### Details
+Origine: baseline Reqvire «Time limit with cancellation of remote work», adottata.
 
 #### Metadata
   * type: requirement
@@ -1355,12 +1455,15 @@ Quando la produzione della risposta di un turno ammesso non termina entro il tem
   * satisfiedBy: [mcp-tool-client.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.ts)
   * satisfiedBy: [system-deadlines.adapter.ts](../../packages/conversations/src/adapters/out/system-deadlines.adapter.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Transazioni brevi dell'archivio conversazioni
 
 Quando Ambrogio esegue chiamate ad agenti o connettori oppure trasmette la risposta progressiva di un turno, non deve mantenere aperta una transazione SQLite relativa a quel turno.
+
+#### Details
+Origine: baseline Reqvire «No open transaction during remote work», adottata.
 
 #### Metadata
   * type: requirement
@@ -1369,7 +1472,7 @@ Quando Ambrogio esegue chiamate ad agenti o connettori oppure trasmette la rispo
   * [Confini atomici dell'archivio conversazioni](../Contracts/FamilyConversation.md#confini-atomici-dellarchivio-conversazioni)
 
 #### Relations
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Trascrizione del turno vocale
@@ -1385,7 +1488,7 @@ Quando la famiglia pronuncia un turno vocale trascrivibile, Ambrogio deve rappre
 #### Relations
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * satisfiedBy: [vosk-transcriber.ts](../../packages/conversations/src/adapters/in/session/vosk-transcriber.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione a voce](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-a-voce)
 ---
 
 ### Trasmissione progressiva della risposta del turno
@@ -1397,7 +1500,7 @@ Quando il backend produce la risposta a un turno ammesso, deve trasmetterla prog
 
 #### Relations
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Trasporto HTTP dei connettori MCP
@@ -1409,24 +1512,30 @@ Quando Ambrogio connette un agente specializzato al suo server MCP nella prima i
 
 #### Relations
   * satisfiedBy: [mcp-tool-client.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.ts)
-  * specify: [Estensione tramite connettori MCP](../Capabilities/FamilyAssistance.md#estensione-tramite-connettori-mcp)
+  * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
 ---
 
 ### Validazione del formato negli ingressi conversazionali
 
 Quando il canale conversazionale riceve un messaggio, il suo adapter deve verificarne forma e decodifica rispetto allo schema del protocollo prima di invocare il caso d'uso conversazionale, interrompendo il flusso per input non validi senza attribuirsi le regole di stato della conversazione.
 
+#### Details
+Origine: baseline Reqvire «Shape validation in inbound adapters», adottata.
+
 #### Metadata
   * type: requirement
 
 #### Relations
   * satisfiedBy: [protocol-decoder.ts](../../packages/conversations/src/adapters/in/session/protocol-decoder.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Validazione strutturale delle richieste conversazionali HTTP
 
 Quando un ingresso HTTP riceve una richiesta per le operazioni conversazionali, deve verificare la forma dei dati ricevuti prima di invocare il caso d'uso, rifiutando le rappresentazioni non valide senza modificare implicitamente i valori.
+
+#### Details
+Origine: baseline Reqvire «Shape validation in inbound adapters», adottata; «Structural validation of HTTP requests», adottata.
 
 #### Metadata
   * type: requirement
@@ -1435,5 +1544,5 @@ Quando un ingresso HTTP riceve una richiesta per le operazioni conversazionali, 
   * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * satisfiedBy: [history-route.adapter.ts](../../packages/conversations/src/adapters/in/http/history-route.adapter.ts)
   * satisfiedBy: [list-route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-route.adapter.ts)
-  * specify: [Conversazione familiare](../Capabilities/FamilyAssistance.md#conversazione-familiare)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---

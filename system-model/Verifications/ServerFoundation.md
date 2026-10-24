@@ -572,12 +572,12 @@ Raggruppa i controlli che impediscono l'ingresso di credenziali nella storia Git
   * type: verification-objective
 ---
 
-### Prova dell'hook pre-commit dei segreti
+### Prova dell'hook pre-commit dei segreti del backend
 
 In un repository Git temporaneo che contiene l'hook `.githooks/pre-commit` del repository, con `core.hooksPath` impostato a `.githooks`, mettere in staging un file con un token fittizio nel formato dei token di accesso personali GitHub, costruito durante la prova, e tentare il commit; ripetere con un file privo di segreti; ripetere con un `PATH` che contiene soltanto `git`.
 
 #### Details
-La prova passa se il commit con il token è impedito e l'output non mostra il valore, se il commit senza segreti riesce e se, senza `gitleaks` nel `PATH`, il commit è impedito con un messaggio che nomina gitleaks e indica dove ottenerlo. Fallisce se viene creato un commit con il token, se il valore compare nell'output, se il commit senza segreti è impedito, se l'assenza dello scanner lascia passare il commit oppure se `gitleaks` non è disponibile nel `PATH` della prova. La CI installa lo scanner secondo «Profilo di scansione dei segreti con gitleaks» prima della suite Vitest.
+La prova passa se il commit con il token è impedito e l'output non mostra il valore, se il commit senza segreti riesce e se, senza `gitleaks` nel `PATH`, il commit è impedito con un messaggio che nomina gitleaks e indica dove ottenerlo. Fallisce se viene creato un commit con il token, se il valore compare nell'output, se il commit senza segreti è impedito, se l'assenza dello scanner lascia passare il commit oppure se `gitleaks` non è disponibile nel `PATH` della prova. La CI installa lo scanner secondo «Profilo di scansione dei segreti del backend» prima della suite Vitest.
 
 #### Metadata
   * type: test-verification
@@ -588,12 +588,12 @@ La prova passa se il commit con il token è impedito e l'output non mostra il va
   * verify: [Blocco locale dei commit con segreti](../Requirements/ServerFoundation.md#blocco-locale-dei-commit-con-segreti)
 ---
 
-### Prova della configurazione della scansione dei segreti in CI
+### Prova della configurazione della scansione dei segreti in CI del backend
 
-Leggere come testo `.github/workflows/secret-scan.yml` e `.github/workflows/publish-image.yml` e confrontarli con «Profilo di scansione dei segreti con gitleaks».
+Leggere come testo `.github/workflows/secret-scan.yml` e `.github/workflows/publish-image.yml` e confrontarli con «Profilo di scansione dei segreti con gitleaks» e «Profilo di scansione dei segreti del backend».
 
 #### Details
-La prova passa se la scansione parte a ogni push su qualunque branch (`'**'`), a ogni pull request, su richiesta manuale e con `workflow_call`; se il checkout dichiara `fetch-depth: 0` e `persist-credentials: false`; se il workflow fissa la versione 8.30.1 e l'impronta SHA-256 del contratto, scarica `gitleaks_8.30.1_linux_x64.tar.gz` dalla release ufficiale e lo verifica con `sha256sum --check --strict` prima di estrarlo; se il job `Scan history for secrets` esegue `gitleaks git --redact --no-banner --exit-code 1 .`; e se il job `publish` dichiara `needs` sul job che richiama `secret-scan.yml`. Fallisce se un evento manca, se la storia è troncata, se versione o impronta differiscono dal contratto, se l'archivio è estratto senza verifica, se il comando differisce o se la pubblicazione non dipende dalla scansione. Che una scansione fallita impedisca l'integrazione è verificato da «Ispezione della protezione del merge».
+La prova passa se la scansione parte a ogni push su qualunque branch (`'**'`), a ogni pull request, su richiesta manuale e con `workflow_call`; se il checkout dichiara `fetch-depth: 0` e `persist-credentials: false`; se il workflow fissa la versione 8.30.1 e l'impronta SHA-256 del contratto, scarica `gitleaks_8.30.1_linux_x64.tar.gz` dalla release ufficiale e lo verifica con `sha256sum --check --strict` prima di estrarlo; se il job `Scan history for secrets` esegue `gitleaks git --redact --no-banner --exit-code 1 .`; e se il job `publish` dichiara `needs` sul job che richiama `secret-scan.yml`. Fallisce se un evento manca, se la storia è troncata, se versione o impronta differiscono dal contratto, se l'archivio è estratto senza verifica, se il comando differisce o se la pubblicazione non dipende dalla scansione. Che una scansione fallita impedisca l'integrazione è verificato da «Ispezione della protezione del merge del backend».
 
 #### Metadata
   * type: test-verification
@@ -710,7 +710,7 @@ Non automatizzabile: richiede di esaminare la documentazione operativa e di giud
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * verify: [Perimetro iniziale dei segnali di osservabilità](../Requirements/ServerFoundation.md#perimetro-iniziale-dei-segnali-di-osservabilità)
+  * verify: [Perimetro iniziale dei segnali di osservabilità del backend](../Requirements/ServerFoundation.md#perimetro-iniziale-dei-segnali-di-osservabilità-del-backend)
 ---
 
 ### Controllo dell'assenza di autenticazione applicativa
@@ -764,7 +764,7 @@ Non automatizzabile: riconoscere un gestore HTTP che aggira Fastify richiede di 
   * verify: [Implementazione Fastify dell'API HTTP](../Requirements/ServerFoundation.md#implementazione-fastify-dellapi-http)
 ---
 
-### Ispezione dei nomi secondo le responsabilità
+### Ispezione dei nomi secondo le responsabilità nel backend
 
 #### Details
 Partire dall'elenco completo dei file di produzione, dalle porte Application e dai punti di ingresso; non limitare la ricerca ai nomi che contengono già `.adapter` o `.use-case`. Per ciascun componente interessato registrare percorso, responsabilità, eventuale porta implementata o caso d'uso invocato, classificazione e nome atteso.
@@ -780,7 +780,7 @@ Non automatizzabile: la classificazione dei file per responsabilità richiede gi
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * verify: [Nomi dei file secondo il ruolo architetturale](../Requirements/ServerFoundation.md#nomi-dei-file-secondo-il-ruolo-architetturale)
+  * verify: [Nomi dei file secondo il ruolo architetturale nel backend](../Requirements/ServerFoundation.md#nomi-dei-file-secondo-il-ruolo-architetturale-nel-backend)
 ---
 
 ### Ispezione del limite dei corpi HTTP
@@ -800,12 +800,12 @@ Non automatizzabile: richiede di stabilire quali rotte accettano un corpo; le ro
   * verify: [Limite dei corpi delle richieste HTTP](../Requirements/ServerFoundation.md#limite-dei-corpi-delle-richieste-http)
 ---
 
-### Ispezione della protezione del merge
+### Ispezione della protezione del merge del backend
 
 Leggere con `gh api repos/<proprietario>/<repository>/rulesets` e con il dettaglio del ruleset `main` le regole attive sul branch principale.
 
 #### Details
-L'ispezione passa se il ruleset corrisponde al contratto: applicazione attiva sul branch predefinito, nessun attore escluso, integrazione solo tramite pull request, controlli richiesti con i nomi del contratto, riscrittura forzata e cancellazione vietate; e se un push diretto sul branch principale viene rifiutato. Fallisce se il ruleset manca, è disattivato, ha attori esclusi o differisce dal contratto. I controlli richiesti `Backend checks` e `Scan history for secrets` sono i job verificati da «Prova della configurazione della CI del server» e da «Prova della configurazione della scansione dei segreti in CI»: l'ispezione stabilisce che un loro fallimento impedisce l'integrazione. Non automatizzabile: il ruleset è un'impostazione del repository GitHub e non un file del repository, e leggerlo richiede credenziali con accesso amministrativo che la CI non possiede.
+L'ispezione passa se il ruleset corrisponde a «Ruleset del branch principale» e a «Ruleset del branch principale del backend»: applicazione attiva sul branch predefinito, nessun attore escluso, integrazione solo tramite pull request, controlli richiesti con i nomi del contratto del backend, riscrittura forzata e cancellazione vietate; e se un push diretto sul branch principale viene rifiutato. Fallisce se il ruleset manca, è disattivato, ha attori esclusi o differisce dal contratto. I controlli richiesti `Backend checks` e `Scan history for secrets` sono i job verificati da «Prova della configurazione della CI del server» e da «Prova della configurazione della scansione dei segreti in CI del backend»: l'ispezione stabilisce che un loro fallimento impedisce l'integrazione. Non automatizzabile: il ruleset è un'impostazione del repository GitHub e non un file del repository, e leggerlo richiede credenziali con accesso amministrativo che la CI non possiede.
 
 #### Metadata
   * type: inspection-verification
@@ -813,7 +813,7 @@ L'ispezione passa se il ruleset corrisponde al contratto: applicazione attiva su
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
   * verify: [Controlli CI delle modifiche funzionali del server](../Requirements/ServerFoundation.md#controlli-ci-delle-modifiche-funzionali-del-server)
-  * verify: [Controlli obbligatori prima del merge](../Requirements/ServerFoundation.md#controlli-obbligatori-prima-del-merge)
+  * verify: [Controlli obbligatori prima del merge del backend](../Requirements/ServerFoundation.md#controlli-obbligatori-prima-del-merge-del-backend)
   * verify: [Scansione dei segreti nella CI del backend](../Requirements/ServerFoundation.md#scansione-dei-segreti-nella-ci-del-backend)
 ---
 
@@ -940,9 +940,25 @@ La prova passa se il progetto produce un'immagine eseguibile, il server si avvia
   * verify: [Esecuzione del server senza Docker Compose](../Requirements/ServerFoundation.md#esecuzione-del-server-senza-docker-compose)
 ---
 
+### Prova dell'ingresso di prova del server conversazionale
+
+Importare soltanto l'ingresso di prova dal backend compilato e avviare il server con un produttore di risposte, un trascrittore e un sintetizzatore deterministici, un archivio temporaneo e una porta libera; aprire una sessione `ambrogio.v1`, inviare un turno testuale e un turno audio con la risposta chiesta in audio, leggere elenco e storico con le API HTTP pubbliche, anche da un'origine consentita e da una non consentita, e chiudere il server due volte; ripetere l'avvio senza trascrittore e sintetizzatore e inviare un turno audio.
+
+#### Details
+La prova passa se l'ingresso restituisce un indirizzo locale raggiungibile e un'operazione di chiusura; se i turni sono ammessi, ricevono le risposte del produttore deterministico e si concludono con `turn.completed`; se la risposta in audio al turno audio, prodotta dal sintetizzatore deterministico, contiene il testo ottenuto dal trascrittore deterministico; se elenco e storico riportano gli scambi conservati e soltanto l'origine consentita riceve l'intestazione CORS; se dopo la chiusura il server non accetta connessioni e l'archivio temporaneo è rilasciato; e se, senza trascrittore e sintetizzatore, il turno audio è rifiutato con `audio_unavailable`. Fallisce se l'avvio legge configurazioni dell'installazione, variabili d'ambiente o modelli vocali, contatta servizi esterni, richiede l'import di altri moduli del backend o se un esito differisce dai contratti del protocollo.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
+  * satisfiedBy: [test-server.test.ts](../../apps/server/test/runtime/test-server.test.ts)
+  * verify: [Ingresso di prova pubblico del server conversazionale](../Requirements/ServerFoundation.md#ingresso-di-prova-pubblico-del-server-conversazionale)
+---
+
 ### Prova dell'irrobustimento dei workflow
 
-Leggere come testo `.github/workflows/ci.yml`, `.github/workflows/secret-scan.yml` e `.github/workflows/publish-image.yml` e confrontare permessi, riferimenti delle action, runner, `timeout-minutes`, opzioni di checkout, uso del `GITHUB_TOKEN`, installazione dello scanner dei segreti e richiami `workflow_call` con «Profilo di irrobustimento dei workflow GitHub Actions».
+Leggere come testo `.github/workflows/ci.yml`, `.github/workflows/secret-scan.yml` e `.github/workflows/publish-image.yml` e confrontare permessi, riferimenti delle action, runner, `timeout-minutes`, opzioni di checkout, uso del `GITHUB_TOKEN`, installazione dello scanner dei segreti e richiami `workflow_call` con «Profilo comune dei workflow GitHub Actions» e «Profilo di irrobustimento dei workflow GitHub Actions».
 
 #### Details
 La prova passa se ogni workflow dichiara `permissions` con il solo `contents: read`; se soltanto il job `publish` dichiara permessi propri, `contents: read` e `packages: write`; se ogni `uses` di un passo indica un'action esterna con un'impronta di 40 caratteri esadecimali seguita dal commento della versione e `actions/checkout` e `actions/setup-node` usano le impronte del contratto; se ogni job con passi usa `ubuntu-24.04` e dichiara `timeout-minutes` 20 per `checks`, 10 per `gitleaks` e 60 per `publish`; se ogni passo `actions/checkout` imposta `persist-credentials: false`; se `secrets.GITHUB_TOKEN` compare soltanto nell'`env` del passo di login al registro; se i job `checks` e `gitleaks` installano gitleaks con la stessa versione e la stessa impronta verificata; e se `ci.yml` e `secret-scan.yml` dichiarano `workflow_call` e `publish-image.yml` li richiama come job `checks` e `secret-scan`, da cui il job `publish` dipende con `needs`. Fallisce se un job riceve permessi non previsti, se un'action è indicata con un tag o un branch, se un job non ha il limite di durata del contratto, se un checkout conserva le credenziali o se la pubblicazione duplica i controlli invece di richiamarli.
@@ -1028,7 +1044,7 @@ La prova passa se HSTS è assente quando la configurazione pubblica è HTTP o no
 Leggere come testo `.github/workflows/ci.yml` e i file di prova dei package sotto `packages/`.
 
 #### Details
-La prova passa se il workflow parte a ogni push su `main`, a ogni pull request, su richiesta manuale e con `workflow_call`; se il job `Backend checks` esegue `pnpm install --frozen-lockfile`, `validate` di Reqvire 1.3.2, `lint --json` di Reqvire 1.3.2 con il controllo `jq -e` che le liste `auto_fixable` e `needs_manual_review` siano vuote, `node scripts/check-model.mjs`, `pnpm typecheck`, `pnpm build` e `pnpm test`, con l'installazione dipendenze per prima e con `pnpm build` e l'installazione verificata di gitleaks prima di `pnpm test`; se nessun passo o job dichiara `continue-on-error`; e se ogni file di prova che importa un adapter di persistenza di `src/adapters/out/sqlite/` importa anche `better-sqlite3`, così da esercitare un database SQLite reale. Fallisce se manca un evento o una fase, se l'ordine richiesto non è rispettato, se un fallimento è tollerato o se una prova di un adapter SQLite non usa il driver reale. Che un controllo fallito impedisca l'integrazione è verificato da «Ispezione della protezione del merge».
+La prova passa se il workflow parte a ogni push su `main`, a ogni pull request, su richiesta manuale e con `workflow_call`; se il job `Backend checks` dichiara `BRANCH` pari a `${{ github.head_ref || github.ref_name }}`, esegue il checkout del repository in `workspace/ambrogio-backend` con `fetch-depth: 0`, clona `ambrogio-model` in `workspace/ambrogio-model` sul branch `BRANCH` se esiste sul remoto e altrimenti su `main`, esegue poi `workspace/ambrogio-model/scripts/checkout-workspace workspace "$BRANCH"` e `workspace/ambrogio-model/scripts/model-checks --workspace workspace`, e infine, nella cartella `workspace/ambrogio-backend`, `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm build` e `pnpm test`, con l'installazione delle dipendenze prima degli altri passi pnpm e con `pnpm build` e l'installazione verificata di gitleaks prima di `pnpm test`; se il workflow non nomina un pacchetto o una versione di Reqvire né uno script di integrità locale; se nessun passo o job dichiara `continue-on-error`; e se ogni file di prova che importa un adapter di persistenza di `src/adapters/out/sqlite/` importa anche `better-sqlite3`, così da esercitare un database SQLite reale. Fallisce se manca un evento o una fase, se l'ordine richiesto non è rispettato, se un fallimento è tollerato o se una prova di un adapter SQLite non usa il driver reale. Che un controllo fallito impedisca l'integrazione è verificato da «Ispezione della protezione del merge del backend».
 
 #### Metadata
   * type: test-verification

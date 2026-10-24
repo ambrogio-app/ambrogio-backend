@@ -5,10 +5,10 @@
 Chat testuale e voce usano un unico protocollo conversazionale di Ambrogio, `ambrogio.v1`, trasportato su WebSocket. Il protocollo è posseduto dal backend e non dipende da Micdrop né dal formato UI Message Stream di AI SDK.
 
 #### Decisioni
-- Il backend non offre altri canali per i turni: non esistono il profilo SSE della chat basato su UI Message Stream di AI SDK né il protocollo vocale Micdrop. Client testuali e vocali registrano nei rispettivi modelli la revisione del backend con cui sono compatibili.
+- Il backend non offre altri canali per i turni: non esistono il profilo SSE della chat basato su UI Message Stream di AI SDK né il protocollo vocale Micdrop.
 - Testo e voce condividono gli stessi messaggi: ogni richiesta e ogni contenuto per la famiglia è una trasmissione con apertura, contenuto e chiusura, e il tipo di contenuto, testo o audio, è dichiarato all'apertura. Rifiuti, errori ed esiti seguono le stesse regole per ogni client.
 - Trascrizione con Vosk e sintesi vocale restano nel backend: un client vocale trasmette e riceve audio, un client testuale trasmette e riceve testo.
-- Una sessione WebSocket per client trasporta turni di più conversazioni; la conversazione non dipende dalla connessione. Il client decide se continuare una conversazione esistente o iniziarne una nuova, e il backend applica le stesse regole di continuazione a turni testuali e vocali. La regola per cui il satellite apre una nuova conversazione a ogni attivazione con la wake word e prosegue la stessa solo per le repliche immediate appartiene al modello del satellite.
+- Una sessione WebSocket per client trasporta turni di più conversazioni; la conversazione non dipende dalla connessione. Il client decide se continuare una conversazione esistente o iniziarne una nuova, e il backend applica le stesse regole di continuazione a turni testuali e vocali. Le regole con cui un client sceglie fra una nuova conversazione e quella in corso, per esempio a ogni attivazione di un client vocale, appartengono al client.
 - Ogni turno completato comunica `expectsReply`, indipendentemente dal tipo di contenuto; la produzione della risposta segue un unico percorso con l'indicazione strutturata della replica attesa.
 - Elenco e storico delle conversazioni restano rotte HTTP GET.
 - La definizione macchina dei messaggi è uno schema JSON versionato nel repository backend.
@@ -17,10 +17,10 @@ Chat testuale e voce usano un unico protocollo conversazionale di Ambrogio, `amb
 #### Alternative e conseguenze
 Sono state considerate la conservazione dei due protocolli, SSE di AI SDK per il testo e Micdrop per la voce, un protocollo solo testuale con trascrizione e sintesi sul satellite, e una connessione per conversazione. La conservazione dei protocolli lasciava regole diverse per canale: rifiuti HTTP per il testo e risposte parlate per la voce, conferma di successo soltanto nel testo, `expectsReply` soltanto nella voce, una copia della conversazione nella memoria di Micdrop, patch locali del client Micdrop e la stima della fine della risposta tramite silenzio. Trascrizione e sintesi sul satellite avrebbero spostato modelli e scelta della voce su ogni dispositivo, contro la decisione di includere le voci Piper nell'immagine backend. Una connessione per conversazione avrebbe obbligato la chat a riconnettersi a ogni cambio di conversazione.
 
-Le regole su ammissione atomica per conversazione, completamento dopo disconnessione, esiti conservati, diagnostica, configurazione e lingua sono definite dai rispettivi contratti e valgono per ogni client del protocollo. Una revisione incompatibile del protocollo richiede di aggiornare i modelli, i contratti di compatibilità e le prove di integrazione dei client.
+Le regole su ammissione atomica per conversazione, completamento dopo disconnessione, esiti conservati, diagnostica, configurazione e lingua sono definite dai rispettivi contratti e valgono per ogni client del protocollo. Un cambio incompatibile del protocollo segue «Compatibilità fra release per versione d'interfaccia»: introduce una nuova versione maggiore del protocollo, e la versione precedente resta un elemento distinto del modello del backend finché un client la usa.
 
-#### Impatto sulle guide esterne
-Sito e documentazione utente risiedono in repository separati e descrivono il protocollo nei propri esempi di integrazione. La validazione locale non dimostra l'allineamento di quei repository.
+#### Documentazione utente
+Un cambiamento del protocollo aggiorna nello stesso lavoro la documentazione utente secondo «Documentazione utente aggiornata con i cambiamenti pubblici».
 
 #### Metadata
   * type: specification
@@ -100,7 +100,7 @@ Un turno non ammesso riceve una trasmissione del server con il messaggio pubblic
 - `unavailable`: l'archivio rifiuta temporaneamente l'ammissione, il server sta arrestandosi, oppure gli ingressi sono disabilitati fino al riavvio perché non è stato possibile conservare l'esito di un turno già ammesso; «Service temporarily unavailable.» oppure «Servizio temporaneamente non disponibile.».
 - `too_large`: il testo supera 64 KiB o l'audio supera 60 secondi; «Request too large.» oppure «Richiesta troppo grande.».
 - `transcription_failed`: la trascrizione dell'audio non è utilizzabile; «I didn't understand the request.» oppure «Non ho capito la richiesta.».
-- `audio_unavailable`: l'interazione vocale non è abilitata e il turno trasmette audio o chiede la risposta in audio; «Voice is not available.» oppure «La voce non è disponibile.». Il messaggio è trasmesso sempre in testo.
+- `audio_unavailable`: la voce non è abilitata nell'installazione e il turno trasmette audio o chiede la risposta in audio; «Voice is not available.» oppure «La voce non è disponibile.». Il messaggio è trasmesso sempre in testo.
 - `failure`: un guasto tecnico inatteso avviene prima dell'ammissione; il messaggio standard del guasto conversazionale nella lingua configurata.
 
 #### Metadata
@@ -112,7 +112,7 @@ Un turno non ammesso riceve una trasmissione del server con il messaggio pubblic
 
 ### Schema JSON del protocollo Ambrogio v1
 
-La forma dei messaggi JSON di `ambrogio.v1`, in entrambe le direzioni, è definita in JSON Schema 2020-12 dal file `protocol/ambrogio-v1.schema.json` del repository backend. Lo schema espone le definizioni `clientMessage` e `serverMessage`. Il server valida ogni messaggio ricevuto rispetto a `clientMessage` prima di interpretarlo, usando Ajv come per le richieste HTTP, senza coercizione dei tipi, valori predefiniti impliciti o rimozione dei campi aggiuntivi; gli oggetti dei messaggi sono chiusi. La composition root del server legge lo schema all'avvio e lo fornisce all'adapter del canale. I messaggi inviati dal server sono conformi a `serverMessage`. Una modifica incompatibile dello schema richiede una nuova versione del sottoprotocollo. I client fissano la revisione dello schema compatibile e la usano nelle proprie prove. Lo schema descrive la forma dei messaggi e non sostituisce i contratti di comportamento del turno.
+La forma dei messaggi JSON di `ambrogio.v1`, in entrambe le direzioni, è definita in JSON Schema 2020-12 dal file `protocol/ambrogio-v1.schema.json` del repository backend. Lo schema espone le definizioni `clientMessage` e `serverMessage`. Il server valida ogni messaggio ricevuto rispetto a `clientMessage` prima di interpretarlo, usando Ajv come per le richieste HTTP, senza coercizione dei tipi, valori predefiniti impliciti o rimozione dei campi aggiuntivi; gli oggetti dei messaggi sono chiusi. La composition root del server legge lo schema all'avvio e lo fornisce all'adapter del canale. I messaggi inviati dal server sono conformi a `serverMessage`. Una modifica incompatibile dello schema richiede una nuova versione del sottoprotocollo. Le prove dei client usano lo schema del repository backend affiancato nella cartella di lavoro, senza fissarne una revisione. Lo schema descrive la forma dei messaggi e non sostituisce i contratti di comportamento del turno.
 
 #### Metadata
   * type: specification

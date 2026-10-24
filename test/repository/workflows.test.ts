@@ -125,32 +125,42 @@ test('the secret scan covers the whole history with the verified gitleaks and ga
 });
 
 // Verification: Prova della configurazione della CI del server
-test('the CI runs every required check in order and tolerates no failure', () => {
+test('the CI checks the whole model from the side-by-side workspace, then the backend, and tolerates no failure', () => {
   expect(ci.document.on).toEqual({
     pull_request: '', push: { branches: ['main'] }, workflow_dispatch: '', workflow_call: '',
   });
   const job = ci.document.jobs.checks;
   expect(job.name).toBe('Backend checks');
+  expect(job.env).toEqual({ BRANCH: '${{ github.head_ref || github.ref_name }}' });
   expect(ci.text).not.toMatch(/continue-on-error/);
-  const reqvire = 'npx --yes @reqvire-org/reqvire@1.3.2 --workspace "$PWD"';
+  // The Reqvire version is resolved by ambrogio-model, never repeated here.
+  expect(ci.text).not.toMatch(/reqvire-org|check-model/);
+  const checkout = stepsOf(job).find((step) => String(step.uses).startsWith('actions/checkout@'));
+  expect(checkout?.with).toEqual({
+    path: 'workspace/ambrogio-backend', 'fetch-depth': '0', 'persist-credentials': 'false',
+  });
+  const model = indexOfRun(job, /git clone --quiet --branch "\$ref" "\$url" workspace\/ambrogio-model/);
+  const modelRun = runs(job)[model] ?? '';
+  expect(modelRun).toContain('set -euo pipefail');
+  expect(modelRun).toContain('url="https://github.com/ambrogio-app/ambrogio-model.git"');
+  expect(modelRun).toContain('git ls-remote --exit-code --heads "$url" "$BRANCH"');
+  const sideBySide = indexOfRun(job, /^workspace\/ambrogio-model\/scripts\/checkout-workspace workspace "\$BRANCH"\s*$/);
+  const modelChecks = indexOfRun(job, /^workspace\/ambrogio-model\/scripts\/model-checks --workspace workspace\s*$/);
   const install = indexOfRun(job, /^pnpm install --frozen-lockfile\s*$/);
-  const validate = indexOfRun(job, new RegExp(`^${escape(reqvire)} validate\\s*$`));
-  const lint = indexOfRun(job, new RegExp(`${escape(reqvire)} lint --json > "\\$report"`));
-  const integrity = indexOfRun(job, /^node scripts\/check-model\.mjs\s*$/);
   const typecheck = indexOfRun(job, /^pnpm typecheck\s*$/);
   const build = indexOfRun(job, /^pnpm build\s*$/);
   const tests = indexOfRun(job, /^pnpm test\s*$/);
   const gitleaks = stepsOf(job).indexOf(installStep(job));
-  for (const index of [install, validate, lint, integrity, typecheck, build, tests]) expect(index).toBeGreaterThanOrEqual(0);
-  expect(Math.min(validate, lint, integrity, typecheck, build, tests, gitleaks)).toBeGreaterThan(install);
+  for (const index of [model, sideBySide, modelChecks, install, typecheck, build, tests]) expect(index).toBeGreaterThanOrEqual(0);
+  expect(sideBySide).toBeGreaterThan(model);
+  expect(modelChecks).toBeGreaterThan(sideBySide);
+  expect(Math.min(typecheck, build, tests)).toBeGreaterThan(install);
   expect(tests).toBeGreaterThan(Math.max(build, gitleaks));
-  const lintRun = runs(job)[lint]!;
-  expect(lintRun).toContain('set -euo pipefail');
-  expect(lintRun).toContain(`jq -e '.auto_fixable == [] and .needs_manual_review == []' "$report"`);
+  for (const index of [install, typecheck, build, tests]) {
+    expect(stepsOf(job)[index]!['working-directory']).toBe('workspace/ambrogio-backend');
+  }
   expectVerifiedInstall(job);
 });
-
-const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // Verification: Prova della configurazione della CI del server
 test('every SQLite persistence adapter test drives a real SQLite database', () => {

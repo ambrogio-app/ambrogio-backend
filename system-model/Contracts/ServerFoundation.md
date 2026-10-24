@@ -251,8 +251,6 @@ Nel workflow `.github/workflows/secret-scan.yml` la scansione è il job `gitleak
 
 Il job `checks` di `.github/workflows/ci.yml` dichiara le stesse variabili, installa lo stesso archivio di gitleaks con lo stesso passo di download e verifica dell'impronta del job `gitleaks` e aggiunge lo scanner al `PATH` prima della suite Vitest, che esercita l'hook `.githooks/pre-commit` in un repository Git temporaneo.
 
-Alternative considerate: l'action `gitleaks/gitleaks-action` richiede una chiave di licenza per i repository di organizzazioni e aggiunge una dipendenza di terze parti al percorso di pubblicazione, mentre il binario fissato con impronta verificata non dipende da licenze; un controllo solo in CI lascerebbe entrare il segreto nella storia locale e lo bloccherebbe soltanto al push; un controllo solo locale dipenderebbe dall'attivazione dell'hook in ogni clone e non proteggerebbe integrazione e pubblicazione.
-
 #### Metadata
   * type: specification
 

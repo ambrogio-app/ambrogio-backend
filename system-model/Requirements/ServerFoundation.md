@@ -1355,6 +1355,11 @@ Quando un'operazione Domain, un caso d'uso Application o una porta Application d
 
 Prima della pubblicazione di un'immagine di release del backend, la pipeline di pubblicazione deve eseguire la scansione dei segreti sull'intera storia del repository e deve impedire la pubblicazione se la scansione rileva un segreto o non si completa.
 
+#### Details
+Alternative: l'action `gitleaks/gitleaks-action` (richiede una chiave di licenza per i repository di organizzazioni e aggiunge una dipendenza di terze parti al percorso di pubblicazione); il solo controllo in CI (il segreto entra nella storia locale ed è bloccato soltanto al push); il solo controllo locale (dipende dall'attivazione dell'hook in ogni clone e non protegge integrazione e pubblicazione).
+
+Motivo: il binario fissato con impronta verificata non dipende da licenze né da action di terze parti, e l'hook locale insieme alla scansione in CI blocca il segreto prima del commit e lo rileva comunque prima dell'integrazione e della pubblicazione.
+
 #### Metadata
   * type: requirement
 

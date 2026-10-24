@@ -1625,6 +1625,13 @@ Origine: baseline Reqvire «Inbound and outbound adapter folders», adottata.
 
 Il modulo business «Conversazioni» deve distinguere Domain, Application e adapter secondo le rispettive responsabilità definite per il modulo.
 
+#### Details
+Alternative per il trasporto della chat: un trasporto SSE locale, `@fastify/sse` o il protocollo UI di AI SDK (regole diverse per testo e voce, contro il protocollo conversazionale comune di «Adozione del protocollo conversazionale Ambrogio v1»).
+
+Alternative per più provider: il client ufficiale `openai` per i provider compatibili con OpenAI e gli SDK nativi degli altri provider (per ogni famiglia di API vanno reimplementati lo streaming dell'output strutturato, il ciclo delle chiamate agli strumenti e la propagazione dell'annullamento); un gateway self-hosted (un servizio in più da gestire in ogni installazione); un servizio di instradamento esterno (le conversazioni passano da un intermediario invece che dalla chiave diretta del provider).
+
+Motivo: AI SDK offre negli adapter degli agenti generazione, tool calling, output strutturato e streaming senza meccanismi tecnici duplicati; ogni pacchetto `@ai-sdk/<provider>` dipende soltanto da `@ai-sdk/provider` e `@ai-sdk/provider-utils`, già presenti, quindi un provider in più aggiunge un solo pacchetto, nessuna dipendenza transitiva nuova e nessun secondo percorso di generazione.
+
 #### Metadata
   * type: requirement
 

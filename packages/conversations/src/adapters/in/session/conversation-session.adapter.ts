@@ -75,6 +75,7 @@ function normalizeError(value: unknown): Error {
 class Queue<T> implements AsyncIterable<T> {
   private readonly items: T[] = [];
   private ended = false;
+  private aborted = false;
   private wake?: () => void;
 
   push(item: T): void {
@@ -88,8 +89,16 @@ class Queue<T> implements AsyncIterable<T> {
     this.wake?.();
   }
 
+  /** The request will not be completed: the consumer stops with an error instead of a normal end. */
+  abort(): void {
+    this.aborted = true;
+    this.items.length = 0;
+    this.end();
+  }
+
   async *[Symbol.asyncIterator](): AsyncIterator<T> {
     for (;;) {
+      if (this.aborted) throw new Error('Request interrupted');
       if (this.items.length) { yield this.items.shift()!; continue; }
       if (this.ended) return;
       await new Promise<void>(resolve => { this.wake = resolve; });
@@ -282,6 +291,7 @@ class ConversationSession {
   private discard(request: OpenRequest): void {
     this.close(request);
     request.text.length = 0;
+    request.transcription?.frames.abort();
     request.transcription = undefined;
     this.discarded.set(request.requestId, request.stream);
     const turn: ActiveTurn = { requestId: request.requestId, reply: request.reply, finished: false };
@@ -422,7 +432,7 @@ class ConversationSession {
     this.closed = true;
     clearInterval(this.ping);
     // Unfinished requests are discarded: their transcription ends without effects.
-    for (const request of this.requests.values()) request.transcription?.frames.end();
+    for (const request of this.requests.values()) request.transcription?.frames.abort();
     this.requests.clear();
     this.inputStreams.clear();
     this.discarded.clear();

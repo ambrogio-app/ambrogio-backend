@@ -1052,7 +1052,7 @@ Origine: baseline Reqvire «Exhaustive rejection mapping with assertNever», ado
 
 ### Modelli vocali italiani e inglesi inclusi
 
-Quando il progetto distribuisce l'immagine Docker del backend, deve includere modelli Vosk per italiano e inglese, almeno una voce Piper per ciascuna lingua e un modello Kokoro multilingue con voci utilizzabili in entrambe le lingue, verificando provenienza e integrità degli archivi durante la build.
+Quando il progetto distribuisce l'immagine Docker del backend, deve includere un modello di trascrizione utilizzabile per italiano e inglese, almeno una voce Piper per ciascuna lingua e un modello Kokoro multilingue con voci utilizzabili in entrambe le lingue, verificando provenienza e integrità degli archivi durante la build.
 
 #### Metadata
   * type: requirement

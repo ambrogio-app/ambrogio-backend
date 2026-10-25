@@ -1505,6 +1505,31 @@ Quando la famiglia invia un turno, Ambrogio deve produrre una risposta testuale 
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
+### Scelta del motore di trascrizione
+
+Quando la voce è abilitata nell'installazione, Ambrogio deve trascrivere i turni vocali con il motore e il modello di trascrizione indicati dal profilo vocale della lingua effettiva, fra le famiglie di modelli supportate dal backend, e deve impedire l'avvio quando il motore indicato non è supportato o il modello non è caricabile.
+
+#### Details
+Il backend supporta la famiglia Whisper di sherpa-onnx; un'altra famiglia, come i transducer o i modelli in streaming, si aggiunge come nuovo valore di `AMBROGIO_VOICE_<LINGUA>_STT_ENGINE` insieme al codice che la supporta. È stato scelto Whisper perché i suoi modelli multilingue riconoscono l'italiano, mentre i modelli in streaming pronti di sherpa-onnx non lo comprendono. Il modello incluso nell'immagine è Whisper base in versione int8, più accurato in italiano di Whisper tiny a fronte di una decodifica più lenta; la scelta del modello in base all'hardware spetta a chi installa.
+
+#### Concept References
+  * [Turno vocale](../../../ambrogio-model/system-model/Thesaurus/Lessico.md#turno-vocale)
+
+#### Metadata
+  * type: requirement
+
+#### Contract Bindings
+  * [Configurazione facoltativa della voce](../Contracts/FamilyConversation.md#configurazione-facoltativa-della-voce)
+  * [Modelli vocali scaricati nell'immagine del backend](../Contracts/ExternalContracts.md#modelli-vocali-scaricati-nellimmagine-del-backend)
+
+#### Relations
+  * derivedFrom: [Elaborazione vocale locale con sherpa-onnx](../../../ambrogio-model/system-model/Requirements/VoiceConversation.md#elaborazione-vocale-locale-con-sherpa-onnx)
+  * satisfiedBy: [local-speech-components.ts](../../packages/conversations/src/adapters/in/session/local-speech-components.ts)
+  * satisfiedBy: [sherpa-transcriber.ts](../../packages/conversations/src/adapters/in/session/sherpa-transcriber.ts)
+  * satisfiedBy: [voice-config.ts](../../packages/conversations/src/adapters/out/voice-config.ts)
+  * specify: [Conversazione a voce](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-a-voce)
+---
+
 ### Scoperta delle configurazioni degli agenti
 
 Quando il server prepara gli agenti attivi, deve cercare i rispettivi file nella directory degli agenti configurata e distinguere la configurazione dell'orchestratore da quelle degli agenti specializzati.
@@ -1582,7 +1607,7 @@ Dove il file di un agente specializzato elenca gli strumenti MCP ammessi, Ambrog
 
 ### Selezione dei modelli vocali inclusi per lingua
 
-Quando la voce è abilitata con profili vocali per lingua, Ambrogio deve selezionare il modello Vosk e la voce Piper o Kokoro indicati dalle variabili del profilo della lingua effettiva della conversazione, accettando sia modelli inclusi nell'immagine sia modelli montati dall'installazione, e non deve caricare modelli vocali quando la voce è disabilitata.
+Quando la voce è abilitata con profili vocali per lingua, Ambrogio deve selezionare il modello di trascrizione e la voce Piper o Kokoro indicati dalle variabili del profilo della lingua effettiva della conversazione, accettando sia modelli inclusi nell'immagine sia modelli montati dall'installazione, e non deve caricare modelli vocali quando la voce è disabilitata.
 
 #### Metadata
   * type: requirement
@@ -1732,7 +1757,7 @@ Quando la famiglia pronuncia un turno vocale trascrivibile, Ambrogio deve rappre
 
 #### Relations
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
-  * satisfiedBy: [vosk-transcriber.ts](../../packages/conversations/src/adapters/in/session/vosk-transcriber.ts)
+  * satisfiedBy: [sherpa-transcriber.ts](../../packages/conversations/src/adapters/in/session/sherpa-transcriber.ts)
   * specify: [Conversazione a voce](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-a-voce)
 ---
 

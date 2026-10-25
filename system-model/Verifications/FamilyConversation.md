@@ -595,7 +595,7 @@ Non automatizzabile: riconoscere una capacità tecnica esterna richiesta da un c
 Esaminare i componenti del modulo «Conversazioni» e seguire il percorso completo di un turno testuale e di un turno vocale nel canale conversazionale. Classificare regole di dominio, coordinamento applicativo, porte, gestione degli agenti, trascrizione e sintesi, persistenza e trasporto.
 
 #### Details
-Il controllo passa se Domain contiene stati e transizioni, Application coordina ammissione ed esito tramite porte e gli adapter possiedono i tipi e i meccanismi di AI SDK, Fastify, WebSocket, Vosk, sherpa-onnx, MCP e SQLite. Un callback SDK può invocare un caso d'uso attraverso dati tradotti; non determina autonomamente una transizione persistente. Verificare anche gli import solo di tipi. Gli adapter contengono conversioni e politiche di integrazione necessarie, senza duplicare un framework agentico o un secondo protocollo dei turni. Fallisce se una dipendenza tecnica raggiunge i layer interni, se un adapter diventa autorità delle regole comuni ai turni o se resta un percorso tecnico parallelo privo di obbligo applicativo.
+Il controllo passa se Domain contiene stati e transizioni, Application coordina ammissione ed esito tramite porte e gli adapter possiedono i tipi e i meccanismi di AI SDK, Fastify, WebSocket, sherpa-onnx, MCP e SQLite. Un callback SDK può invocare un caso d'uso attraverso dati tradotti; non determina autonomamente una transizione persistente. Verificare anche gli import solo di tipi. Gli adapter contengono conversioni e politiche di integrazione necessarie, senza duplicare un framework agentico o un secondo protocollo dei turni. Fallisce se una dipendenza tecnica raggiunge i layer interni, se un adapter diventa autorità delle regole comuni ai turni o se resta un percorso tecnico parallelo privo di obbligo applicativo.
 
 Non automatizzabile: la classificazione di regole, coordinamento e meccanismi tecnici richiede giudizio umano.
 
@@ -910,7 +910,7 @@ La prova passa se le configurazioni valide sono accettate con il motore, la voce
 
 ### Prova della selezione vocale per lingua
 
-Preparare profili vocali italiani e inglesi con variabili che indicano percorsi espliciti alle directory incluse e a directory esterne montate, scegliendo tra più voci della stessa lingua, Piper e Kokoro. Provare la lingua effettiva italiana e inglese, la lingua effettiva assente da `AMBROGIO_VOICE_LANGUAGES`, una lingua sconosciuta o ripetuta nell'elenco, variabili invalide nell'altro profilo elencato e la voce disabilitata con `AMBROGIO_VOICE_LANGUAGES` assente o vuota. Osservare risorse caricate, lingua Vosk, voce e lingua di fonetizzazione Kokoro.
+Preparare profili vocali italiani e inglesi con variabili che indicano percorsi espliciti alle directory incluse e a directory esterne montate, scegliendo tra più voci della stessa lingua, Piper e Kokoro. Provare la lingua effettiva italiana e inglese, la lingua effettiva assente da `AMBROGIO_VOICE_LANGUAGES`, una lingua sconosciuta o ripetuta nell'elenco, variabili invalide nell'altro profilo elencato e la voce disabilitata con `AMBROGIO_VOICE_LANGUAGES` assente o vuota. Osservare risorse caricate, modello e lingua della trascrizione, voce e lingua di fonetizzazione Kokoro.
 
 #### Details
 La prova passa se ciascuna lingua seleziona esattamente i percorsi indicati, anche quando provengono da un mount o quando esistono più voci della stessa lingua; un elenco invalido o un profilo elencato con variabili invalide rende invalida la configurazione, l'altro profilo non carica i modelli e la voce disabilitata non legge altre variabili né carica modelli. Fallisce se una lingua carica percorsi diversi da quelli indicati, se un elenco o un profilo invalido è accettato o se vengono caricati modelli di un profilo non attivo o della voce disabilitata.
@@ -958,6 +958,23 @@ La prova passa se la voce è caricata una sola volta per tutte le trasmissioni, 
   * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
   * satisfiedBy: [sherpa-synthesizer.spec.ts](../../packages/conversations/src/adapters/in/session/sherpa-synthesizer.spec.ts)
   * verify: [Risposta parlata su richiesta del client](../Requirements/FamilyConversation.md#risposta-parlata-su-richiesta-del-client)
+---
+
+### Prova della trascrizione con Whisper
+
+Con un riconoscitore sherpa-onnx simulato costruire il trascrittore Whisper da una directory con encoder, decoder e file dei token; trascrivere audio di 5, 30, 45 e 60 secondi consegnato in frame di dimensioni diverse; avviare due trascrizioni che si chiudono quasi insieme; interrompere una trascrizione prima della chiusura. Registrare la configurazione passata a `createAsync`, le finestre decodificate e l'ordine delle decodifiche. Leggere configurazioni vocali con `AMBROGIO_VOICE_<LINGUA>_STT_ENGINE` assente o diverso da `whisper` e con directory di trascrizione priva di encoder, con due decoder o senza file dei token.
+
+#### Details
+La prova passa se la configurazione passata a `createAsync` contiene la sola sezione `whisper` con l'encoder e il decoder della directory, la lingua del profilo e `task` uguale a `transcribe`, e i token della directory; se ogni finestra dura al massimo 30 secondi e le finestre coprono tutto l'audio nell'ordine di arrivo; se la trascrizione è l'unione dei testi non vuoti delle finestre; se le decodifiche contemporanee non si sovrappongono; se una trascrizione interrotta non decodifica nulla; e se ogni configurazione invalida è rifiutata prima della costruzione del riconoscitore. Fallisce altrimenti. La trascrizione con il modello reale è provata nell'immagine da «Prova del catalogo vocale bilingue dell'immagine».
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
+  * satisfiedBy: [sherpa-transcriber.spec.ts](../../packages/conversations/src/adapters/in/session/sherpa-transcriber.spec.ts)
+  * satisfiedBy: [voice-config.spec.ts](../../packages/conversations/src/adapters/out/voice-config.spec.ts)
+  * verify: [Scelta del motore di trascrizione](../Requirements/FamilyConversation.md#scelta-del-motore-di-trascrizione)
 ---
 
 ### Prova della trascrizione e della risposta parlata

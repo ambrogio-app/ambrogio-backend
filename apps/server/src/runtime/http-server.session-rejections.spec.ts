@@ -187,6 +187,7 @@ test('rejects audio beyond 60 seconds and stops its transcription at the limit',
   expect(client.errors()).toEqual([]);
   // Transcription started while receiving, but no audio beyond the limit reached it.
   expect(server.speech.transcriptions).toBe(2);
+  expect(server.speech.interruptedTranscriptions).toBe(1);
   expect(server.speech.receivedBytes[1]).toBeLessThanOrEqual(maxAudioBytes);
   expect(await server.conversationIds()).toHaveLength(1);
 });

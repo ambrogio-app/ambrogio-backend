@@ -7,19 +7,20 @@ the Ambrogio source code and retain their own licenses.
 
 | Model | Source | SHA-256 |
 |---|---|---|
-| `vosk-model-small-it-0.22.zip` | [Vosk models](https://alphacephei.com/vosk/models) | `9ec65e75861d1c6c2e457cccd932705340dcdf233f5b239f00733b4de0bf3267` |
-| `vosk-model-small-en-us-0.15.zip` | [Vosk models](https://alphacephei.com/vosk/models) | `30f26242c4eb449f948e42cb302dd7a686cb29a3423a8367f99ff41780942498` |
+| `sherpa-onnx-whisper-base.tar.bz2` | [sherpa-onnx ASR models](https://github.com/k2-fsa/sherpa-onnx/releases/tag/asr-models) | `911b2083efd7c0dca2ac3b358b75222660dc09fb716d64fbfc417ba6c99ff3de` |
 | `vits-piper-it_IT-riccardo-x_low.tar.bz2` | [sherpa-onnx TTS models](https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models) | `8ad0791558ae2b3e96054fc5756ae3ae2f6457fb1765bc01f43bbab85e0a7021` |
 | `vits-piper-it_IT-paola-medium.tar.bz2` | [sherpa-onnx TTS models](https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models) | `7541f75778afa164e44e34baaef63befad7698595df26a95ca944b63ef1a16b4` |
 | `vits-piper-en_US-kristin-medium.tar.bz2` | [sherpa-onnx TTS models](https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models) | `c2206f572df2956c50b1ae3367eebce3853c663e890cba8048cd62b1e4dbe6c7` |
 | `kokoro-multi-lang-v1_0.tar.bz2` | [sherpa-onnx TTS models](https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models) | `c5f7e2d2caf082bc1d20fb70334a61d99d20b484500aad32e7cf84c128ea3298` |
 
-Vosk models are under Apache-2.0 according to the [Vosk catalogue](https://alphacephei.com/vosk/models).
+The Whisper archive holds OpenAI's multilingual Whisper base model converted for sherpa-onnx, under the
+[MIT license of Whisper](https://github.com/openai/whisper/blob/main/LICENSE); the image keeps only
+`base-encoder.int8.onnx`, `base-decoder.int8.onnx` and `base-tokens.txt`.
 The Piper voice folders contain their `MODEL_CARD` files; the source voices
 come from the [Piper catalogue](https://huggingface.co/rhasspy/piper-voices)
 under MIT. The bundled Kokoro archive contains its Apache-2.0 `LICENSE` file.
 
-The image paths are `/opt/ambrogio/models/<vosk-model>`,
+The image paths are `/opt/ambrogio/models/sherpa-onnx-whisper-base`,
 `/opt/ambrogio/voices/<piper-voice>`, and
 `/opt/ambrogio/kokoro/kokoro-multi-lang-v1_0`. A read-only mount can
 replace a bundled directory to use other models. Piper is the practical

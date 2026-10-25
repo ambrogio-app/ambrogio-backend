@@ -27,18 +27,19 @@ Prova d'integrazione: «Prova della configurazione dell'adapter AI SDK» control
 
 ### Modelli vocali scaricati nell'immagine del backend
 
-Fonte: la release `tts-models` di k2-fsa/sherpa-onnx, https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models , per le voci Piper e il modello Kokoro, e il catalogo dei modelli Vosk, https://alphacephei.com/vosk/models , per i modelli Vosk. La release `tts-models` non ha versioni: ogni archivio è identificato dal nome e dall'impronta SHA-256 fissata. La build scarica gli archivi seguenti e ne verifica l'impronta prima dell'estrazione; la directory estratta di ciascuno ha il nome dell'archivio senza estensione.
+Fonte: la release `tts-models` di k2-fsa/sherpa-onnx, https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models , per le voci Piper e il modello Kokoro, e la release `asr-models` della stessa organizzazione, https://github.com/k2-fsa/sherpa-onnx/releases/tag/asr-models , per il modello Whisper. Le due release non hanno versioni: ogni archivio è identificato dal nome e dall'impronta SHA-256 fissata. La build scarica gli archivi seguenti e ne verifica l'impronta prima dell'estrazione; la directory estratta di ciascuno ha il nome dell'archivio senza estensione.
 
 | Archivio | Uso | Origine | SHA-256 | Licenza |
 |---|---|---|---|---|
-| `vosk-model-small-it-0.22.zip` | Trascrizione italiana | Catalogo Vosk | `9ec65e75861d1c6c2e457cccd932705340dcdf233f5b239f00733b4de0bf3267` | Apache-2.0 |
-| `vosk-model-small-en-us-0.15.zip` | Trascrizione inglese | Catalogo Vosk | `30f26242c4eb449f948e42cb302dd7a686cb29a3423a8367f99ff41780942498` | Apache-2.0 |
+| `sherpa-onnx-whisper-base.tar.bz2` | Trascrizione italiana e inglese | Release `asr-models` | `911b2083efd7c0dca2ac3b358b75222660dc09fb716d64fbfc417ba6c99ff3de` | MIT, modello Whisper di OpenAI |
 | `vits-piper-it_IT-riccardo-x_low.tar.bz2` | Sintesi Piper italiana | Release `tts-models` | `8ad0791558ae2b3e96054fc5756ae3ae2f6457fb1765bc01f43bbab85e0a7021` | MIT, voce di rhasspy/piper-voices |
 | `vits-piper-it_IT-paola-medium.tar.bz2` | Sintesi Piper italiana | Release `tts-models` | `7541f75778afa164e44e34baaef63befad7698595df26a95ca944b63ef1a16b4` | MIT, voce di rhasspy/piper-voices |
 | `vits-piper-en_US-kristin-medium.tar.bz2` | Sintesi Piper inglese | Release `tts-models` | `c2206f572df2956c50b1ae3367eebce3853c663e890cba8048cd62b1e4dbe6c7` | MIT, voce di rhasspy/piper-voices |
 | `kokoro-multi-lang-v1_0.tar.bz2` | Sintesi Kokoro multilingue, voci italiane e inglesi | Release `tts-models` | `c5f7e2d2caf082bc1d20fb70334a61d99d20b484500aad32e7cf84c128ea3298` | Apache-2.0, file `LICENSE` nell'archivio |
 
-Fonti dell'informazione: `scripts/fetch-speech-models.mjs` e `voices/README.md` del backend; le licenze dal catalogo Vosk, dal catalogo https://huggingface.co/rhasspy/piper-voices e dal file `LICENSE` dell'archivio Kokoro.
+L'archivio Whisper contiene il modello multilingue base di OpenAI convertito per sherpa-onnx, con encoder e decoder in virgola mobile e int8 e il file dei token `base-tokens.txt`; l'immagine conserva soltanto `base-encoder.int8.onnx`, `base-decoder.int8.onnx` e `base-tokens.txt`.
+
+Fonti dell'informazione: `scripts/fetch-speech-models.mjs` e `voices/README.md` del backend; la licenza di Whisper da https://github.com/openai/whisper/blob/main/LICENSE , le licenze delle voci dal catalogo https://huggingface.co/rhasspy/piper-voices e dal file `LICENSE` dell'archivio Kokoro.
 
 Prova d'integrazione: la build dell'immagine verifica le impronte con `scripts/fetch-speech-models.mjs`; «Prova del catalogo vocale bilingue dell'immagine» e «Prova delle voci incluse e sostituibili» caricano i modelli nell'immagine e producono trascrizioni e sintesi; «Prova della coerenza dei modelli vocali registrati» confronta questa tabella con lo script di download e con `voices/README.md`.
 

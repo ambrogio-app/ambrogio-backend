@@ -8,10 +8,12 @@ const writeAgent = (filename, value) => writeFileSync(filename, `${JSON.stringif
 // The variables of the bundled voices, as an installation sets them.
 const piperVoices = {
   AMBROGIO_VOICE_LANGUAGES: 'it,en',
-  AMBROGIO_VOICE_IT_VOSK_MODEL_PATH: '/opt/ambrogio/models/vosk-model-small-it-0.22',
+  AMBROGIO_VOICE_IT_STT_ENGINE: 'whisper',
+  AMBROGIO_VOICE_IT_STT_MODEL_DIR: '/opt/ambrogio/models/sherpa-onnx-whisper-base',
   AMBROGIO_VOICE_IT_ENGINE: 'piper',
   AMBROGIO_VOICE_IT_MODEL_DIR: '/opt/ambrogio/voices/vits-piper-it_IT-paola-medium',
-  AMBROGIO_VOICE_EN_VOSK_MODEL_PATH: '/opt/ambrogio/models/vosk-model-small-en-us-0.15',
+  AMBROGIO_VOICE_EN_STT_ENGINE: 'whisper',
+  AMBROGIO_VOICE_EN_STT_MODEL_DIR: '/opt/ambrogio/models/sherpa-onnx-whisper-base',
   AMBROGIO_VOICE_EN_ENGINE: 'piper',
   AMBROGIO_VOICE_EN_MODEL_DIR: '/opt/ambrogio/voices/vits-piper-en_US-kristin-medium',
 };
@@ -55,7 +57,7 @@ try {
     'test -d /etc/ambrogio/agents && test -z "$(ls -A /etc/ambrogio/agents)" && ' +
     'test -z "$(find /etc/ambrogio -type f)" && test ! -e /workspace/.env && test ! -e /workspace/.env.example && ' +
     'test ! -e /workspace/examples && test ! -e /data/conversations.sqlite && ' +
-    'test ! -e /opt/piper && ! command -v python3 >/dev/null && cd /workspace/packages/conversations && node -e "require(\'vosk-koffi\')"');
+    'test ! -e /opt/piper && ! command -v python3 >/dev/null && cd /workspace/packages/conversations && node -e "require(\'sherpa-onnx-node\')"');
   // Each bundled voice is loaded and spoken with the image's own synthesizer code.
   const synthesis = [
     "import { SherpaSynthesizer } from '/workspace/packages/conversations/dist/adapters/in/session/sherpa-synthesizer.js';",
@@ -85,18 +87,18 @@ try {
     'dir="/opt/ambrogio/voices/$voice"; ' +
     'test -s "$dir/MODEL_CARD"; test -s "$dir/tokens.txt"; test -d "$dir/espeak-ng-data"; ' +
     'test "$(ls "$dir"/*.onnx | wc -l)" = 1; test -s "$(ls "$dir"/*.onnx)"; done; ' +
-    'for model in vosk-model-small-it-0.22 vosk-model-small-en-us-0.15; do ' +
-    'dir="/opt/ambrogio/models/$model"; test -s "$dir/am/final.mdl"; ' +
-    'test -s "$dir/graph/HCLr.fst"; done; ' +
+    // Only the int8 Whisper model is kept in the image.
+    'dir=/opt/ambrogio/models/sherpa-onnx-whisper-base; test "$(ls "$dir" | tr "\\n" " ")" = "base-decoder.int8.onnx base-encoder.int8.onnx base-tokens.txt "; ' +
+    'test -s "$dir/base-encoder.int8.onnx"; test -s "$dir/base-decoder.int8.onnx"; test -s "$dir/base-tokens.txt"; ' +
     'dir=/opt/ambrogio/kokoro/kokoro-multi-lang-v1_0; ' +
     'test -s "$dir/model.onnx"; test -s "$dir/voices.bin"; test -s "$dir/LICENSE"');
   console.log(docker('run', '--rm', '--entrypoint', 'node', image, '--input-type=module', '-e', synthesis));
   const recognition = [
-    "import { VoskTranscriber } from '/workspace/packages/conversations/dist/adapters/in/session/vosk-transcriber.js';",
+    "import { SherpaTranscriber } from '/workspace/packages/conversations/dist/adapters/in/session/sherpa-transcriber.js';",
     "import { SherpaSynthesizer } from '/workspace/packages/conversations/dist/adapters/in/session/sherpa-synthesizer.js';",
-    "import { voiceModel } from '/workspace/packages/conversations/dist/adapters/out/voice-config.js';",
-    "for (const [name, voice, words] of [['vosk-model-small-it-0.22', 'vits-piper-it_IT-riccardo-x_low', 'Ciao, come stai oggi?'], ['vosk-model-small-en-us-0.15', 'vits-piper-en_US-kristin-medium', 'Hello, how are you today?']]) {",
-    "  const transcriber = new VoskTranscriber('/opt/ambrogio/models/' + name);",
+    "import { transcriptionModel, voiceModel } from '/workspace/packages/conversations/dist/adapters/out/voice-config.js';",
+    "for (const [name, voice, words] of [['it', 'vits-piper-it_IT-riccardo-x_low', 'Ciao, come stai oggi?'], ['en', 'vits-piper-en_US-kristin-medium', 'Hello, how are you today?']]) {",
+    "  const transcriber = await SherpaTranscriber.load(await transcriptionModel({ sttEngine: 'whisper', sttModelDir: '/opt/ambrogio/models/sherpa-onnx-whisper-base', sttLanguage: name }));",
     "  const synthesizer = await SherpaSynthesizer.load(await voiceModel({ voiceEngine: 'piper', voiceModelDir: '/opt/ambrogio/voices/' + voice }));",
     "  try {",
     "    async function* text() { yield words; }",
@@ -119,9 +121,9 @@ try {
   console.log(docker('run', '--rm', '--entrypoint', 'node', image, '--input-type=module', '-e', recognition));
   const profiles = [
     "import { loadVoiceConfig } from '/workspace/packages/conversations/dist/adapters/out/voice-config.js';",
-    "for (const [language, vosk, voice] of [['it', 'vosk-model-small-it-0.22', 'vits-piper-it_IT-paola-medium'], ['en', 'vosk-model-small-en-us-0.15', 'vits-piper-en_US-kristin-medium']]) {",
+    "for (const [language, voice] of [['it', 'vits-piper-it_IT-paola-medium'], ['en', 'vits-piper-en_US-kristin-medium']]) {",
     "  const config = await loadVoiceConfig(JSON.parse(process.env.PIPER_VOICES), language);",
-    "  if (!config.voskModelPath.endsWith(vosk) || !config.voiceModelDir.endsWith(voice)) throw new Error('Wrong voice profile: ' + language);",
+    "  if (config.sttEngine !== 'whisper' || config.sttModelDir !== '/opt/ambrogio/models/sherpa-onnx-whisper-base' || config.sttLanguage !== language || !config.voiceModelDir.endsWith(voice)) throw new Error('Wrong voice profile: ' + language);",
     "  console.log('Selected ' + language + ': ' + voice);",
     "  const kokoro = await loadVoiceConfig(JSON.parse(process.env.KOKORO_VOICES), language);",
     "  if (kokoro.voiceEngine !== 'kokoro' || kokoro.voiceLanguage !== language || kokoro.voiceSpeaker !== (language === 'it' ? 35 : 3)) throw new Error('Wrong Kokoro profile: ' + language);",
@@ -190,7 +192,7 @@ try {
   if (!existsSync(join(data, 'conversations.sqlite'))) {
     throw new Error('SQLite archive was not created in the external mount');
   }
-  console.log('Docker image verification passed: configuration from environment variables, mounted JSON agents and external SQLite, language profiles, bundled Italian and English Vosk, Piper and Kokoro models, replaceable Piper voices, voice-enabled HTTP 200, no Compose.');
+  console.log('Docker image verification passed: configuration from environment variables, mounted JSON agents and external SQLite, language profiles, bundled Whisper, Piper and Kokoro models in Italian and English, replaceable Piper voices, voice-enabled HTTP 200, no Compose.');
 } finally {
   if (container) {
     try { docker('rm', '--force', container); } catch { /* preserve the verification failure */ }

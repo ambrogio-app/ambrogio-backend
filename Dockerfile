@@ -1,7 +1,7 @@
 FROM node:24-bookworm-slim AS build
 
 WORKDIR /workspace
-RUN apt-get update && apt-get install -y --no-install-recommends bzip2 unzip && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends bzip2 && rm -rf /var/lib/apt/lists/*
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable
 
@@ -14,19 +14,19 @@ COPY apps/server/src/ apps/server/src/
 COPY packages/conversations/src/ packages/conversations/src/
 RUN pnpm build
 COPY scripts/fetch-speech-models.mjs /tmp/fetch-speech-models.mjs
-RUN node /tmp/fetch-speech-models.mjs /opt/ambrogio/voices /opt/ambrogio/models /opt/ambrogio/kokoro
+RUN node /tmp/fetch-speech-models.mjs /opt/ambrogio/voices /opt/ambrogio/models
 
 FROM node:24-bookworm-slim
 
 WORKDIR /workspace
 LABEL org.opencontainers.image.source="https://github.com/ambrogio-app/ambrogio-backend" \
       org.opencontainers.image.licenses="MIT"
-RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 && rm -rf /var/lib/apt/lists/*
 RUN mkdir -p /etc/ambrogio/agents /data
 COPY --from=build /opt/ambrogio/voices/ /opt/ambrogio/voices/
 COPY --from=build /opt/ambrogio/models/ /opt/ambrogio/models/
-COPY --from=build /opt/ambrogio/kokoro/ /opt/ambrogio/kokoro/
 COPY voices/README.md /opt/ambrogio/voices/README.md
+# OpenMDW 1.1 requires its text next to the distributed model.
+COPY voices/OpenMDW-1.1.txt /opt/ambrogio/models/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11/LICENSE
 COPY --from=build /workspace/package.json ./
 COPY protocol/ protocol/
 COPY --from=build /workspace/node_modules/ node_modules/

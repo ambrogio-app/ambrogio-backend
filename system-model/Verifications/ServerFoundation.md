@@ -61,7 +61,7 @@ La prova passa se l'unico comando di audit dei workflow è `pnpm audit --audit-l
 Leggere come testo i `package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`, i workflow e il `Dockerfile` del backend.
 
 #### Details
-La prova passa se `packageManager` dichiara una versione esatta di pnpm; se nessun workflow né il `Dockerfile` installano pnpm con `npm install --global` o lo eseguono con `npx`; se il job `Backend checks` dichiara `COREPACK_ENABLE_DOWNLOAD_PROMPT` uguale a `0` ed esegue `corepack enable` prima di ogni comando `pnpm`; se la fase di build del `Dockerfile` parte da `node:24`, dichiara `ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0` ed esegue `corepack enable` prima di `pnpm install --frozen-lockfile`, primo comando pnpm della fase; se ogni dipendenza diretta dei tre `package.json` ha la versione esatta risolta nel lockfile, salvo il package interno dichiarato con `workspace:*`; se `allowBuilds` ammette soltanto `koffi` e `vosk-koffi`; e se `pnpm-workspace.yaml` non dichiara `minimumReleaseAge` né eccezioni all'attesa. Fallisce se una di queste condizioni manca.
+La prova passa se `packageManager` dichiara una versione esatta di pnpm; se nessun workflow né il `Dockerfile` installano pnpm con `npm install --global` o lo eseguono con `npx`; se il job `Backend checks` dichiara `COREPACK_ENABLE_DOWNLOAD_PROMPT` uguale a `0` ed esegue `corepack enable` prima di ogni comando `pnpm`; se la fase di build del `Dockerfile` parte da `node:24`, dichiara `ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0` ed esegue `corepack enable` prima di `pnpm install --frozen-lockfile`, primo comando pnpm della fase; se ogni dipendenza diretta dei tre `package.json` ha la versione esatta risolta nel lockfile, salvo il package interno dichiarato con `workspace:*`; se `pnpm-workspace.yaml` non dichiara `allowBuilds`; e se `pnpm-workspace.yaml` non dichiara `minimumReleaseAge` né eccezioni all'attesa. Fallisce se una di queste condizioni manca.
 
 #### Metadata
   * type: test-verification
@@ -503,7 +503,7 @@ La prova passa se, per ciascun caso e ciascun ingresso presente, il confine emet
 Creare il logger di base del backend su un flusso di prova, derivarne due logger con campi diversi ed emettere eventi con campi sensibili annidati, nomi di variabili delle credenziali e un `err`; costruire il server HTTP e la sessione conversazionale con un logger di prova che registra le chiamate e provocare un guasto inatteso in una rotta e in una sessione. Leggere gli import dei componenti che ricevono il logger.
 
 #### Details
-La prova passa se le righe dei logger derivati contengono ciascuna soltanto i propri campi fissi e il logger di base resta invariato; se i valori dei campi sensibili e delle variabili delle credenziali sono sostituiti da `[redacted]` a ogni profondità senza modificare gli oggetti originali; se il livello minimo è `warn`; se gli eventi della rotta e della sessione arrivano al logger iniettato tramite un logger derivato con il `correlationId` della richiesta; e se nessun componente fuori da `apps/server/src/runtime/logger.ts` importa Pino. Fallisce se un evento passa dal logger di Fastify o da un'istanza Pino diversa, se un valore sensibile compare in una riga o se un logger derivato altera il logger di base.
+La prova passa se le righe dei logger derivati contengono ciascuna soltanto i propri campi fissi e il logger di base resta invariato; se i valori dei campi sensibili e delle variabili delle credenziali sono sostituiti da `[redacted]` a ogni profondità senza modificare gli oggetti originali; se il livello minimo è `info`, con gli eventi `debug` scartati; se gli eventi della rotta e della sessione arrivano al logger iniettato tramite un logger derivato con il `correlationId` della richiesta; e se nessun componente fuori da `apps/server/src/runtime/logger.ts` importa Pino. Fallisce se un evento passa dal logger di Fastify o da un'istanza Pino diversa, se un valore sensibile compare in una riga o se un logger derivato altera il logger di base.
 
 #### Metadata
   * type: test-verification
@@ -1063,10 +1063,10 @@ La prova passa se il processo legge una volta all'avvio soltanto la configurazio
 
 ### Prova del catalogo vocale bilingue dell'immagine
 
-Costruire l'immagine e ispezionare gli archivi fissati, le impronte verificate e i file runtime di Vosk italiano e inglese, delle voci Piper italiane e inglesi e del modello Kokoro multilingue. Eseguire una breve trascrizione e una sintesi per ogni lingua e motore disponibile nell'immagine.
+Costruire l'immagine e ispezionare gli archivi fissati, le impronte verificate e i file runtime del modello Nemotron, e delle voci Piper italiane e inglesi. Eseguire una breve trascrizione e una sintesi per ogni lingua.
 
 #### Details
-La prova passa se tutte le risorse sono leggibili dentro il container senza mount, le impronte corrispondono a quelle fissate e Vosk, Piper e Kokoro producono risultati non vuoti in entrambe le lingue. Fallisce se una risorsa manca o richiede un mount, se un'impronta non corrisponde o se un motore produce un risultato vuoto in una lingua.
+La prova passa se tutte le risorse sono leggibili dentro il container senza mount, le impronte corrispondono a quelle fissate, la directory Nemotron contiene soltanto i file int8 dell'encoder, del decoder e del joiner, il file dei token e la licenza, e Nemotron e Piper producono risultati non vuoti in entrambe le lingue. Fallisce se una risorsa manca o richiede un mount, se un'impronta non corrisponde o se un motore produce un risultato vuoto in una lingua.
 
 La build dell'immagine verifica le impronte degli archivi con `scripts/fetch-speech-models.mjs`; `scripts/verify-docker-image.mjs` esegue gli altri controlli nel job di pubblicazione, perché richiedono la build Docker con il download dei modelli.
 
@@ -1284,7 +1284,7 @@ La prova passa se la build usa `tsc`, produce JavaScript ESM e l'artefatto si av
 Leggere la tabella degli archivi della fonte «Modelli vocali scaricati nell'immagine del backend», gli archivi con le impronte SHA-256 di `scripts/fetch-speech-models.mjs` e la tabella di `voices/README.md`.
 
 #### Details
-La prova passa se le tre fonti elencano gli stessi sei archivi con le stesse impronte. Fallisce se un archivio o un'impronta cambia in una sola di esse, così che un aggiornamento di un modello scaricato richieda la modifica esplicita dell'elemento `source`.
+La prova passa se le tre fonti elencano gli stessi cinque archivi con le stesse impronte. Fallisce se un archivio o un'impronta cambia in una sola di esse, così che un aggiornamento di un modello scaricato richieda la modifica esplicita dell'elemento `source`.
 
 #### Metadata
   * type: test-verification

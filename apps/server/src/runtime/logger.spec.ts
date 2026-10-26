@@ -6,18 +6,20 @@ import { errorView, redactSensitive } from './logger.js';
 
 describe('base logger of the backend', () => {
   // Verification: Prova del logger minimo del backend
-  it('emits one JSON line per event from level warn, and derived loggers add context without changing the base', () => {
+  it('emits one JSON line per event from level info, and derived loggers add context without changing the base', () => {
     const { log, lines } = capturedBaseLogger();
     const first = log.child({ correlationId: 'first' });
     const second = first.child({ operation: 'second' });
     log.debug({ event: 'hidden_debug' });
-    log.info({ event: 'hidden_info' });
+    log.info({ event: 'base_info' });
     log.warn({ event: 'base_event' }, 'Base');
     first.error({ event: 'first_event' });
     second.error({ event: 'second_event' });
     log.error({ event: 'base_again' });
     const rows = lines();
-    expect(rows.map(row => row.event)).toEqual(['base_event', 'first_event', 'second_event', 'base_again']);
+    expect(rows.map(row => row.event)).toEqual(['base_info', 'base_event', 'first_event', 'second_event', 'base_again']);
+    expect(rows[0]).toMatchObject({ level: 30 });
+    rows.shift();
     expect(rows[0]).toMatchObject({ level: 40, msg: 'Base' });
     expect(rows[0]).not.toHaveProperty('correlationId');
     expect(rows[1]).toMatchObject({ correlationId: 'first' });

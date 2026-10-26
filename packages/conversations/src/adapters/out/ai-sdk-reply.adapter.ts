@@ -3,13 +3,24 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createMistral } from '@ai-sdk/mistral';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
-import { generateText, jsonSchema, Output, stepCountIs, streamText, tool, type LanguageModel,
+import { generateText, hasToolCall, jsonSchema, Output, stepCountIs, streamText, tool, type LanguageModel,
   type ModelMessage } from 'ai';
 import { ProjectError } from '../../domain/project-error.js';
 import type { ConversationHistory } from '../../application/conversation-history-read.port.js';
 import type { ProduceConversationReply, ReplyCancellation, ReplyPart }
   from '../../application/produce-conversation-reply.port.js';
 import type { AvailableMcpTool } from './mcp-tool-client.js';
+import type { Logger } from '../in/logger.js';
+
+/** A monotonic clock in milliseconds, for the reply timing. */
+export type Clock = () => number;
+const monotonic: Clock = () => performance.now();
+
+/** What an agent measured while producing one reply: model calls, MCP calls and the text before the first of them. */
+export type ReplyMeasures = { modelSteps: number; toolCalls?: number; toolMs?: number; announcementMs?: number };
+
+/** The final tool of every specialist reply: its only argument is the reply expectation. */
+export const finishToolName = 'finish';
 
 /** The providers this adapter can build a model for. */
 export const llmProviders = ['mistral', 'openai', 'anthropic', 'google', 'openai-compatible'] as const;
@@ -45,7 +56,8 @@ export type DiscoveredMcp = Readonly<{ tools: readonly AvailableMcpTool[]; promp
 
 /** The MCP name when every provider accepts it; otherwise the reserved positional name. */
 function presentedToolName(name: string, index: number): string {
-  return /^[A-Za-z_][A-Za-z0-9_-]{0,63}$/.test(name) && !/^mcp_\d+$/.test(name) ? name : `mcp_${index}`;
+  return /^[A-Za-z_][A-Za-z0-9_-]{0,63}$/.test(name) && !/^mcp_\d+$/.test(name) && name !== finishToolName
+    ? name : `mcp_${index}`;
 }
 
 export function aiSdkOptions(value?: AgentSettings['options']): Readonly<{
@@ -111,11 +123,6 @@ function throwStreamError(error: unknown): never {
   throw new ProjectError('AI SDK response failed', { cause: error });
 }
 
-const replyOutput = Output.object({ schema: jsonSchema<{ answer: string; expectsReply: boolean }>({
-  type: 'object', properties: { answer: { type: 'string' }, expectsReply: { type: 'boolean' } },
-  required: ['answer', 'expectsReply'], additionalProperties: false,
-}) });
-
 function withServerPrompts(instructions: string, prompts: readonly string[]): string {
   return prompts.length === 0 ? instructions
     : `${instructions}\n\nInstructions and context from the connected MCP server:\n${prompts.join('\n\n')}`;
@@ -134,37 +141,65 @@ function withCurrentTime(settings: AgentSettings): string {
 function replyInstructions(instructions: string, language?: 'en' | 'it'): string {
   const languageLine = language === undefined ? ''
     : `\nAnswer in ${language === 'it' ? 'Italian' : 'English'}.`;
-  return `${instructions}${languageLine}\nPut the words of your reply in answer. `
-    + 'Set expectsReply to true only when the answer asks the user to reply; otherwise set it to false.';
+  // Asked only to end with the tool, models also wrote its call in the text, which would be spoken.
+  return `${instructions}${languageLine}\nYour text is spoken to the family exactly as you write it, so write only `
+    + `the words of your reply. When the reply is complete, call the ${finishToolName} tool; never write tool calls or `
+    + 'JSON in your text.';
 }
 
-async function* answerParts(response: Readonly<{
-  partialOutputStream: AsyncIterable<{ answer?: unknown }>;
-}>): AsyncGenerator<ReplyPart, string, void> {
-  let emitted = '';
-  for await (const partial of response.partialOutputStream) {
-    const candidate = (partial as { answer?: unknown }).answer;
-    if (typeof candidate !== 'string') continue;
-    if (!candidate.startsWith(emitted)) throw new ProjectError('Answer changed during streaming');
-    const delta = candidate.slice(emitted.length);
-    emitted = candidate;
-    if (delta) yield { kind: 'text', text: delta };
-  }
-  return emitted;
-}
+/** The rules added to the reply instructions of an agent with MCP tools («Frase d'azione prima degli strumenti»). */
+const actionReplyRules = '\nBefore your first tool call for an action, say in one short sentence what you are about '
+  + 'to do. Do not say it for a request for information. Write nothing between tool calls. When an action you '
+  + 'announced succeeds, write nothing more. When an action succeeds without an announcement, confirm it in a few '
+  + 'words. When an action fails, say what did not work.';
 
-/** Emit the part of the final answer not yet streamed, then the structured reply expectation. */
-async function* concludeAnswer(response: Readonly<{
-  output: PromiseLike<{ answer: string; expectsReply: boolean } | undefined>;
-}>, emitted: string): AsyncGenerator<ReplyPart, void, void> {
-  const output = await response.output;
-  if (!output || typeof output.answer !== 'string' || typeof output.expectsReply !== 'boolean') {
-    throw new ProjectError('Missing reply expectation');
+/** `finish` has no execution: the reply ends at its call, which carries the reply expectation. */
+const finishTool = tool({
+  description: 'Ends the reply. Set expectsReply to true only when your reply asks the family to reply; otherwise false.',
+  inputSchema: jsonSchema<{ expectsReply: boolean }>({ type: 'object', properties: { expectsReply: { type: 'boolean' } },
+    required: ['expectsReply'], additionalProperties: false }),
+});
+
+type ReplyStream = Readonly<{ fullStream: AsyncIterable<{ type: string } & Record<string, unknown>> }>;
+
+/**
+ * The text of every step as it is written, a line break between the text of different steps, then the expectation
+ * given to `finish`. `onText` and `onToolCall` tell the measures when text is written and when an MCP tool is called.
+ */
+async function* replyParts(response: ReplyStream, onText: () => void, onToolCall: () => void,
+  limit: () => ProjectError | undefined): AsyncGenerator<ReplyPart, void, void> {
+  let expectsReply: boolean | undefined;
+  let stepWritten = false;
+  let stepBroken = false;
+  let separate = false;
+  for await (const part of response.fullStream) {
+    if (part.type === 'text-delta' && typeof part.text === 'string' && part.text) {
+      if (separate) { yield { kind: 'text', text: '\n' }; separate = false; }
+      onText();
+      stepWritten = true;
+      yield { kind: 'text', text: part.text };
+    } else if (part.type === 'finish-step') {
+      if (stepWritten && !stepBroken) separate = true;
+      stepWritten = false;
+      stepBroken = false;
+    } else if (part.type === 'tool-call') {
+      if (part.toolName === finishToolName) {
+        const input = part.input as { expectsReply?: unknown } | undefined;
+        if (typeof input?.expectsReply === 'boolean') expectsReply = input.expectsReply;
+      } else {
+        // The speech splits sentences only at punctuation followed by a space or a line break, and the step ends only
+        // after its tools have run: the text before a tool call gets its line break now, so it is spoken meanwhile.
+        if (stepWritten && !stepBroken) { stepBroken = true; yield { kind: 'text', text: '\n' }; }
+        onToolCall();
+      }
+    } else if (part.type === 'tool-error') {
+      // The call limit fails the turn: the model is not given the chance to answer after it.
+      const exceeded = limit();
+      if (exceeded) throw exceeded;
+    } else if (part.type === 'error') throw part.error;
   }
-  if (!output.answer.startsWith(emitted)) throw new ProjectError('Answer changed after streaming');
-  const remaining = output.answer.slice(emitted.length);
-  if (remaining) yield { kind: 'text', text: remaining };
-  yield { kind: 'reply_expectation', expectsReply: output.expectsReply };
+  if (expectsReply === undefined) throw new ProjectError('Missing reply expectation');
+  yield { kind: 'reply_expectation', expectsReply };
 }
 
 export class AiSdkToolAgentReply implements ProduceConversationReply {
@@ -174,7 +209,7 @@ export class AiSdkToolAgentReply implements ProduceConversationReply {
   constructor(private readonly settings: AgentSettings,
     private readonly discovered: DiscoveredMcp,
     private readonly mcp: ToolClient, private readonly maxToolCalls: number,
-    model?: LanguageModel) {
+    model?: LanguageModel, private readonly now: Clock = monotonic) {
     if (!Number.isSafeInteger(maxToolCalls) || maxToolCalls < 1) {
       throw new ProjectError('Invalid agent tool call limit');
     }
@@ -182,11 +217,19 @@ export class AiSdkToolAgentReply implements ProduceConversationReply {
     this.model = modelFor(settings, model);
   }
 
-  async *produce(history: ConversationHistory, cancellation: ReplyCancellation): AsyncIterable<ReplyPart> {
+  produce(history: ConversationHistory, cancellation: ReplyCancellation): AsyncIterable<ReplyPart> {
+    return this.measured(history, cancellation, { modelSteps: 0 });
+  }
+
+  async *measured(history: ConversationHistory, cancellation: ReplyCancellation,
+    measures: ReplyMeasures): AsyncIterable<ReplyPart> {
+    const started = this.now();
+    measures.toolCalls = 0;
+    measures.toolMs = 0;
     const signal = abortSignalFor(cancellation);
     let used = 0;
-    // Structured output reports a failed step only as a missing object; keep the limit failure.
     let limitExceeded: ProjectError | undefined;
+    let toolCalled = false;
     // Read at every turn, so changes on the server apply without a restart.
     const prompts: string[] = [];
     for (const name of this.discovered.prompts) prompts.push(await this.mcp.getPrompt(name, signal));
@@ -202,24 +245,31 @@ export class AiSdkToolAgentReply implements ProduceConversationReply {
             limitExceeded = new ProjectError('MCP tool call limit exceeded');
             throw limitExceeded;
           }
-          return this.mcp.callTool(available.name, input, abortSignal ?? signal);
+          const called = this.now();
+          try { return await this.mcp.callTool(available.name, input, abortSignal ?? signal); }
+          finally {
+            measures.toolCalls! += 1;
+            measures.toolMs! += this.now() - called;
+          }
         },
       }),
     ]]));
     const response = streamText({ model: this.model,
       system: replyInstructions(withServerPrompts(withCurrentTime(this.settings), prompts),
-        this.settings.responseLanguage),
-      messages: messagesFor(history), tools, output: replyOutput,
-      toolCallConcurrency: 1, stopWhen: stepCountIs(this.maxToolCalls + 1),
+        this.settings.responseLanguage) + actionReplyRules,
+      messages: messagesFor(history), tools: { ...tools, [finishToolName]: finishTool }, toolChoice: 'required',
+      toolCallConcurrency: 1, stopWhen: [stepCountIs(this.maxToolCalls + 1), hasToolCall(finishToolName)],
       maxRetries: 0, abortSignal: signal, ...this.options });
     try {
-      const emitted = yield* answerParts(response);
-      yield* concludeAnswer(response, emitted);
+      yield* replyParts(response as unknown as ReplyStream,
+        () => { if (!toolCalled && measures.announcementMs === undefined) measures.announcementMs = this.now() - started; },
+        () => { toolCalled = true; }, () => limitExceeded);
+      measures.modelSteps = (await response.steps).length;
     } catch (error) { throwStreamError(limitExceeded ?? error); }
   }
 }
 
-/** An agent without MCP: it answers with its own model and instructions, without tools. */
+/** An agent without MCP: it answers with its own model and instructions; `finish` is its only tool. */
 export class AiSdkKnowledgeAgentReply implements ProduceConversationReply {
   private readonly model: LanguageModel;
   private readonly options: ReturnType<typeof aiSdkOptions>;
@@ -229,20 +279,34 @@ export class AiSdkKnowledgeAgentReply implements ProduceConversationReply {
     this.model = modelFor(settings, model);
   }
 
-  async *produce(history: ConversationHistory, cancellation: ReplyCancellation): AsyncIterable<ReplyPart> {
+  produce(history: ConversationHistory, cancellation: ReplyCancellation): AsyncIterable<ReplyPart> {
+    return this.measured(history, cancellation, { modelSteps: 0 });
+  }
+
+  async *measured(history: ConversationHistory, cancellation: ReplyCancellation,
+    measures: ReplyMeasures): AsyncIterable<ReplyPart> {
     const signal = abortSignalFor(cancellation);
+    // `finish` is the only tool: it carries the reply expectation.
     const response = streamText({ model: this.model,
       system: replyInstructions(withCurrentTime(this.settings), this.settings.responseLanguage),
-      messages: messagesFor(history), output: replyOutput, maxRetries: 0, abortSignal: signal, ...this.options });
+      messages: messagesFor(history), tools: { [finishToolName]: finishTool }, toolChoice: 'required',
+      stopWhen: [stepCountIs(2), hasToolCall(finishToolName)], maxRetries: 0, abortSignal: signal, ...this.options });
     try {
-      const emitted = yield* answerParts(response);
-      yield* concludeAnswer(response, emitted);
+      yield* replyParts(response as unknown as ReplyStream, () => undefined, () => undefined, () => undefined);
+      measures.modelSteps = (await response.steps).length;
     } catch (error) { throwStreamError(error); }
   }
 }
 
-export type DelegatedAgent = Readonly<{ id: string; description: string;
-  reply: Pick<ProduceConversationReply, 'produce'> }>;
+/** A specialist reply; `measured` also fills the measures of the reply timing. */
+type SpecialistReply = Pick<ProduceConversationReply, 'produce'> & Readonly<{
+  measured?(history: ConversationHistory, cancellation: ReplyCancellation, measures: ReplyMeasures): AsyncIterable<ReplyPart>;
+}>;
+
+export type DelegatedAgent = Readonly<{ id: string; description: string; reply: SpecialistReply }>;
+
+/** Where the orchestrator writes the timing of each reply («Evento diagnostico dei tempi della risposta»). */
+export type ReplyTimingLog = Readonly<{ log: Logger; now?: Clock }>;
 
 function routerInstructions(instructions: string, agents: readonly DelegatedAgent[]): string {
   return `${instructions}\nAvailable agents:\n${agents.map(agent => `- ${agent.id}: ${agent.description}`).join('\n')}\n`
@@ -258,9 +322,13 @@ export class AiSdkOrchestratorReply implements ProduceConversationReply {
   private readonly agents: ReadonlyMap<string, DelegatedAgent>;
   private readonly choice: ReturnType<typeof Output.object<{ agent: string }>>;
 
+  private readonly now: Clock;
+
   constructor(private readonly settings: AgentSettings,
-    private readonly specialists: readonly DelegatedAgent[], model?: LanguageModel) {
+    private readonly specialists: readonly DelegatedAgent[], model?: LanguageModel,
+    private readonly timing?: ReplyTimingLog) {
     if (specialists.length === 0) throw new ProjectError('No specialist agent configured');
+    this.now = timing?.now ?? monotonic;
     this.options = aiSdkOptions(settings.options);
     this.model = modelFor(settings, model);
     this.agents = new Map(specialists.map(agent => [agent.id, agent]));
@@ -272,6 +340,7 @@ export class AiSdkOrchestratorReply implements ProduceConversationReply {
 
   async *produce(history: ConversationHistory, cancellation: ReplyCancellation): AsyncIterable<ReplyPart> {
     const signal = abortSignalFor(cancellation);
+    const routing = this.now();
     let agent: DelegatedAgent | undefined;
     try {
       const result = await generateText({ model: this.model,
@@ -287,8 +356,17 @@ export class AiSdkOrchestratorReply implements ProduceConversationReply {
       }
     } catch (error) { throwStreamError(error); }
     if (!agent) throw new ProjectError('Invalid agent choice');
+    const routerMs = this.now() - routing;
     yield { kind: 'agent', agent: agent.id };
     // The chosen agent answers the original turn from the stored history.
-    yield* agent.reply.produce(history, cancellation);
+    const started = this.now();
+    const measures: ReplyMeasures = { modelSteps: 0 };
+    yield* agent.reply.measured ? agent.reply.measured(history, cancellation, measures)
+      : agent.reply.produce(history, cancellation);
+    const ms = (value: number) => Math.max(0, Math.round(value));
+    this.timing?.log.info({ event: 'conversation_reply_timing', agent: agent.id, routerMs: ms(routerMs),
+      agentMs: ms(this.now() - started), modelSteps: measures.modelSteps,
+      ...(measures.toolCalls === undefined ? {} : { toolCalls: measures.toolCalls, toolMs: ms(measures.toolMs ?? 0) }),
+      ...(measures.announcementMs === undefined ? {} : { announcementMs: ms(measures.announcementMs) }) });
   }
 }

@@ -115,9 +115,9 @@ I casi d'uso ricevono e restituiscono identificativi come stringhe: convertono u
 
 ### Configurazione facoltativa della voce
 
-L'ingresso vocale è facoltativo per l'installazione. L'assenza della variabile `AMBROGIO_VOICE_LANGUAGES`, o il suo valore vuoto, lo disabilita: la composition root non legge altre variabili della voce e non costruisce né avvia Vosk o la sintesi vocale. I turni testuali del canale conversazionale restano utilizzabili con le proprie dipendenze, e i turni che trasmettono audio o chiedono la risposta in audio ricevono il rifiuto previsto.
+L'ingresso vocale è facoltativo per l'installazione. L'assenza della variabile `AMBROGIO_VOICE_LANGUAGES`, o il suo valore vuoto, lo disabilita: la composition root non legge altre variabili della voce e non costruisce né avvia la trascrizione o la sintesi vocale. I turni testuali del canale conversazionale restano utilizzabili con le proprie dipendenze, e i turni che trasmettono audio o chiedono la risposta in audio ricevono il rifiuto previsto.
 
-Quando la voce è abilitata, il profilo di ogni lingua elencata usa le variabili con prefisso `AMBROGIO_VOICE_<LINGUA>_`, dove `<LINGUA>` è `IT` o `EN`: `VOSK_MODEL_PATH` (directory del modello Vosk), `ENGINE` (motore di sintesi, `piper` oppure `kokoro`), `MODEL_DIR` (directory della voce o del modello di sintesi) e, soltanto con `kokoro`, `SPEAKER` (identificativo numerico della voce nel modello Kokoro, un intero non negativo) e `LANGUAGE` (codice di lingua espeak-ng per la fonetizzazione). Nessuna di queste variabili ha un valore predefinito. Rendono la configurazione invalida una variabile richiesta mancante, un motore diverso da `piper` e `kokoro`, `SPEAKER` o `LANGUAGE` presenti con `piper`, uno dei due assente con `kokoro` e uno `SPEAKER` che non è un intero decimale non negativo, compresi i nomi di voce. L'intervallo di inattività della replica è configurato dal client. All'avvio la directory Vosk deve essere leggibile. Con `piper` la directory della voce deve contenere esattamente un file `.onnx`, il file `tokens.txt` e la directory `espeak-ng-data/`; con `kokoro` deve contenere esattamente un file `.onnx`, il file `voices.bin`, il file `tokens.txt` e la directory `espeak-ng-data/`; tutti devono essere leggibili. Un valore mancante o invalido, una risorsa assente o illeggibile, il fallimento del caricamento della voce o uno `SPEAKER` fuori dalle voci del modello impediscono l'avvio prima dell'ascolto del server. I percorsi indicano modelli inclusi nell'immagine oppure modelli esterni montati. La scelta del profilo per lingua è definita dalla specifica «Selezione della voce inclusa dalla lingua conversazionale».
+Quando la voce è abilitata, il profilo di ogni lingua elencata usa le variabili con prefisso `AMBROGIO_VOICE_<LINGUA>_`, dove `<LINGUA>` è `IT` o `EN`: `STT_MODEL_DIR` (directory del modello di trascrizione in streaming) e `MODEL_DIR` (directory della voce Piper VITS). Nessuna delle due variabili ha un valore predefinito e una variabile mancante rende la configurazione invalida. L'intervallo di inattività della replica è configurato dal client. La directory del modello di trascrizione deve contenere esattamente un file il cui nome contiene `encoder` e termina con `.onnx`, esattamente uno il cui nome contiene `decoder` e termina con `.onnx`, esattamente uno il cui nome contiene `joiner` e termina con `.onnx` ed esattamente un file il cui nome termina con `tokens.txt`. La directory della voce deve contenere esattamente un file `.onnx`, il file `tokens.txt` e la directory `espeak-ng-data/`; tutti devono essere leggibili. Un valore mancante o invalido, una risorsa assente o illeggibile, o il fallimento del caricamento del modello di trascrizione o della voce impediscono l'avvio prima dell'ascolto del server. I percorsi indicano modelli inclusi nell'immagine oppure modelli esterni montati. La scelta del profilo per lingua è definita dalla specifica «Selezione della voce inclusa dalla lingua conversazionale».
 
 #### Metadata
   * type: specification
@@ -150,7 +150,7 @@ Application richiede la persistenza delle transizioni complete del turno al repo
 
 ### Conteggio delle chiamate agli strumenti MCP per turno
 
-Ogni file di agente specializzato con sezione `mcp` contiene al primo livello `maxToolCalls`, un intero positivo. Il valore è obbligatorio per tali agenti e vale solo per quell'agente; il file di un agente senza `mcp` non contiene `maxToolCalls`, e la sua presenza rende il file invalido. Per ogni turno delegato, Ambrogio conta ogni chiamata a uno strumento MCP effettivamente richiesta dal modello dell'agente, anche quando più chiamate sono richieste nella stessa risposta del modello. Prima di inoltrare una chiamata che eccederebbe `maxToolCalls`, interrompe la produzione del turno con un guasto; il caso d'uso comunica e conserva il messaggio pubblico standard senza dettagli tecnici. Il contatore riparte da zero al turno successivo. Il limite non impedisce al modello di formulare una risposta finale dopo l'ultima chiamata consentita.
+Ogni file di agente specializzato con sezione `mcp` contiene al primo livello `maxToolCalls`, un intero positivo. Il valore è obbligatorio per tali agenti e vale solo per quell'agente; il file di un agente senza `mcp` non contiene `maxToolCalls`, e la sua presenza rende il file invalido. Per ogni turno delegato, Ambrogio conta ogni chiamata a uno strumento MCP effettivamente richiesta dal modello dell'agente, anche quando più chiamate sono richieste nella stessa risposta del modello. Prima di inoltrare una chiamata che eccederebbe `maxToolCalls`, interrompe la produzione del turno con un guasto; il caso d'uso comunica e conserva il messaggio pubblico standard senza dettagli tecnici. Il contatore riparte da zero al turno successivo. Il limite non impedisce al modello di formulare una risposta finale dopo l'ultima chiamata consentita. La chiamata dello strumento finale `finish` non è una chiamata MCP e non è conteggiata.
 
 #### Metadata
   * type: specification
@@ -266,6 +266,48 @@ Una trascrizione è utilizzabile quando il testo restituito, eliminati gli spazi
   * define: [Trascrizione vocale non riuscita](../Requirements/FamilyConversation.md#trascrizione-vocale-non-riuscita)
 ---
 
+### Evento diagnostico dei tempi del turno vocale
+
+Quando un turno con ingresso audio si conclude con l'invio di `turn.completed`, l'adapter del canale emette con il logger derivato della sessione una sola riga Pino di livello `info` con `event: "conversation_voice_turn_timing"`. Oltre ai campi che il logger di base aggiunge a ogni riga, al `correlationId` e a `event`, la riga contiene soltanto le durate seguenti, in millisecondi interi non negativi:
+
+- `audioMs`: la durata dell'audio ricevuto per la richiesta, calcolata dal numero di byte PCM16 a 16 kHz;
+
+e, misurate con un orologio monotono dalla ricezione di `input.end`:
+
+- `transcriptionMs`: fino alla trascrizione completa della richiesta;
+- `firstTextMs`: fino al primo frammento di testo della risposta prodotto dagli agenti;
+- `firstAudioMs`: fino all'invio del primo frame audio della risposta, presente soltanto quando la risposta è trasmessa in audio e almeno un frame è stato inviato;
+- `completedMs`: fino all'invio di `turn.completed`.
+
+La riga non contiene il testo trascritto, il testo della risposta, audio, identificativi del client, della conversazione o del turno. I turni con ingresso testuale e i turni rifiutati, falliti o interrotti non producono la riga.
+
+#### Metadata
+  * type: input-output
+
+#### Relations
+  * define: [Registrazione dei tempi dei turni vocali](../Requirements/FamilyConversation.md#registrazione-dei-tempi-dei-turni-vocali)
+---
+
+### Evento diagnostico dei tempi della risposta
+
+Quando la produzione della risposta di un turno termina senza guasti, l'adapter dell'orchestratore emette con il logger di base del backend una sola riga Pino di livello `info` con `event: "conversation_reply_timing"`. Oltre ai campi che il logger di base aggiunge a ogni riga e a `event`, la riga contiene soltanto:
+
+- `agent`: l'identificativo dell'agente scelto;
+- `routerMs`: la durata della chiamata dell'orchestratore che sceglie l'agente;
+- `agentMs`: la durata della produzione dell'agente scelto, dal suo avvio all'ultima parte della risposta;
+- `modelSteps`: il numero di chiamate al modello della generazione della risposta dell'agente;
+- `toolCalls` e `toolMs`: il numero di chiamate agli strumenti MCP e il tempo complessivo trascorso in esse, presenti soltanto per gli agenti con connettore MCP;
+- `announcementMs`: il tempo dall'avvio dell'agente al primo frammento di testo consegnato prima della prima chiamata a uno strumento MCP, presente soltanto quando l'agente ha scritto testo prima di quella chiamata.
+
+Le durate sono millisecondi interi non negativi misurati con un orologio monotono. La riga non contiene testi della conversazione, istruzioni, nomi o argomenti degli strumenti; non contiene il `correlationId` della sessione, che il produttore della risposta non riceve, e si collega all'evento dei tempi del turno vocale tramite l'ora.
+
+#### Metadata
+  * type: input-output
+
+#### Relations
+  * define: [Registrazione dei tempi della risposta degli agenti](../Requirements/FamilyConversation.md#registrazione-dei-tempi-della-risposta-degli-agenti)
+---
+
 ### Formato JSON dei file degli agenti
 
 Ogni file della directory degli agenti è un documento JSON UTF-8 di soli dati, il cui oggetto radice contiene esclusivamente i campi ammessi:
@@ -296,6 +338,19 @@ Esempio di agente specializzato senza connettore MCP:
 
 #### Relations
   * define: [File JSON di soli dati per gli agenti](../Requirements/ServerFoundation.md#file-json-di-soli-dati-per-gli-agenti)
+---
+
+### Frase d'azione prima degli strumenti
+
+Le istruzioni della generazione della risposta di un agente specializzato con connettore MCP chiedono che, prima della prima chiamata a uno strumento per eseguire un'azione, l'agente scriva una sola frase breve che dice cosa sta per fare, e che non la scriva per una richiesta di informazioni; che non scriva altro tra una chiamata e l'altra; che, quando un'azione annunciata riesce, non aggiunga altro; che, quando un'azione riesce senza essere stata annunciata, la confermi in poche parole; e che, quando un'azione non riesce, dica cosa non è riuscito.
+
+La frase è testo della stessa generazione della risposta: l'adapter la consegna come frammento testuale appena il modello la scrive, prima che lo strumento sia eseguito, così che il canale la trasmetta e la sintesi la pronunci subito, e la separa con un a capo dal testo dei passi successivi. Quando il modello chiama uno strumento dopo aver scritto testo nello stesso passo, l'a capo è consegnato appena arriva la chiamata, prima dell'esecuzione dello strumento, perché la sintesi considera completa una frase soltanto quando dopo la punteggiatura finale arriva uno spazio o un a capo: senza, la frase resterebbe in attesa per tutta la durata degli strumenti. Non esiste una chiamata al modello separata per l'annuncio. Una risposta che dopo la frase non contiene altro testo conclude il turno come riuscito. La frase fa parte del testo della risposta conservato nell'archivio.
+
+#### Metadata
+  * type: behavior
+
+#### Relations
+  * define: [Annuncio dell'azione dell'agente con connettore MCP](../Requirements/FamilyConversation.md#annuncio-dellazione-dellagente-con-connettore-mcp)
 ---
 
 ### Fuso orario del componente Conversazioni
@@ -350,7 +405,7 @@ Ogni nuova conversazione e ogni nuovo turno ricevono un UUID versione 4. Il caso
 
 ### Indicazione della replica attesa
 
-Durante la generazione della risposta a ogni turno, il caso d'uso condiviso riceve dall'agente il booleano strutturato `expectsReply` insieme al testo, senza una seconda chiamata al modello dedicata alla classificazione. Il backend lo comunica nel campo `expectsReply` di `turn.completed`. Il valore vale soltanto per quella risposta, non si deduce dalla punteggiatura e non dipende dal tipo di contenuto del turno o della risposta. Un valore mancante o non booleano costituisce un guasto della produzione della risposta e non viene presentato come `false`. I turni rifiutati, falliti o interrotti non comunicano `expectsReply` e il client li tratta come conclusivi. L'uso dell'indicazione, per esempio l'apertura di una replica senza wake word, è responsabilità del client.
+Durante la generazione della risposta a ogni turno, l'agente specializzato scrive il testo della risposta come testo libero e la conclude chiamando lo strumento finale `finish`, il cui unico argomento è il booleano `expectsReply`; il caso d'uso condiviso riceve i frammenti di testo e poi il booleano, nella stessa generazione, senza una seconda chiamata al modello dedicata alla classificazione. L'adapter offre `finish` a ogni agente specializzato insieme ai suoi strumenti MCP, senza eseguirlo; chiede al modello di chiamare uno strumento a ogni passo, così che la generazione termini sempre con `finish`, e si ferma alla prima chiamata di `finish`. Il testo scritto in passi diversi è separato da un a capo. Le istruzioni della generazione ricordano che il testo è pronunciato alla famiglia così come è scritto e chiedono di scrivere soltanto le parole della risposta, di chiamare `finish` quando la risposta è completa e di non scrivere nel testo chiamate a strumenti o JSON; la descrizione di `finish` chiede di porre `expectsReply` a vero soltanto quando la risposta chiede alla famiglia di replicare. Una formulazione che chiedeva soltanto di concludere chiamando `finish` portava il modello a scrivere la chiamata anche nel testo. Il backend lo comunica nel campo `expectsReply` di `turn.completed`. Il valore vale soltanto per quella risposta, non si deduce dalla punteggiatura e non dipende dal tipo di contenuto del turno o della risposta. Un valore mancante o non booleano costituisce un guasto della produzione della risposta e non viene presentato come `false`. I turni rifiutati, falliti o interrotti non comunicano `expectsReply` e il client li tratta come conclusivi. L'uso dell'indicazione, per esempio l'apertura di una replica senza wake word, è responsabilità del client.
 
 #### Metadata
   * type: specification
@@ -431,7 +486,7 @@ Per un guasto inatteso di un turno già ammesso, il server sceglie il messaggio 
 
 Motivazione: il nome dello strumento aiuta il modello a sceglierlo, per esempio `HassTurnOff` o `GetLiveContext` di Home Assistant.
 
-L'adapter presenta al modello ogni strumento scoperto con il nome dichiarato dal server MCP quando il nome rispetta l'espressione `^[A-Za-z_][A-Za-z0-9_-]{0,63}$` e non ha la forma riservata `mcp_<cifre>`. L'espressione è la regola prudente comune ai provider ammessi: i fornitori compatibili con le API di OpenAI accettano lettere, cifre, trattini bassi e trattini fino a 64 caratteri, e la documentazione di Mistral non dichiara i caratteri ammessi; i nomi MCP ammettono anche il punto, che quei fornitori rifiutano. Uno strumento con un nome diverso è presentato con il nome `mcp_<indice>`, dove l'indice è la posizione nella lista scoperta a partire da 0; la forma riservata impedisce collisioni con i nomi dichiarati. La descrizione e lo schema degli argomenti restano quelli del server. Una chiamata del modello è inoltrata con il nome originale dello strumento corrispondente e conta per `maxToolCalls`.
+L'adapter presenta al modello ogni strumento scoperto con il nome dichiarato dal server MCP quando il nome rispetta l'espressione `^[A-Za-z_][A-Za-z0-9_-]{0,63}$` e non ha la forma riservata `mcp_<cifre>` né il nome `finish`, riservato allo strumento finale della risposta. L'espressione è la regola prudente comune ai provider ammessi: i fornitori compatibili con le API di OpenAI accettano lettere, cifre, trattini bassi e trattini fino a 64 caratteri, e la documentazione di Mistral non dichiara i caratteri ammessi; i nomi MCP ammettono anche il punto, che quei fornitori rifiutano. Uno strumento con un nome diverso è presentato con il nome `mcp_<indice>`, dove l'indice è la posizione nella lista scoperta a partire da 0; la forma riservata impedisce collisioni con i nomi dichiarati. La descrizione e lo schema degli argomenti restano quelli del server. Una chiamata del modello è inoltrata con il nome originale dello strumento corrispondente e conta per `maxToolCalls`.
 
 Il primo carattere è una lettera o un trattino basso perché l'API Gemini richiede che il nome di una funzione inizi così: un nome che inizia con una cifra o un trattino riceve il nome posizionale. Fonte: https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/rest/Shared.Types/FunctionDeclaration .
 
@@ -510,9 +565,9 @@ Ogni file di agente specializzato contiene al primo livello `description`, una s
 
 La produzione delle risposte dell'orchestratore e degli agenti specializzati usa un adapter del componente «Conversazioni» basato su Vercel AI SDK, con il provider indicato nel file di ciascun agente. L'adapter implementa la porta applicativa `ProduceConversationReply`: riceve a ogni turno lo storico dall'archivio comune e la richiesta di annullamento, che converte in un `AbortSignal` dell'SDK, restituisce l'identificativo dell'agente scelto, i frammenti testuali della risposta e l'indicazione strutturata `expectsReply`, con un unico percorso di generazione indipendente dal tipo di contenuto del turno, e mantiene i tipi dell'SDK fuori da Domain e Application. L'adapter del canale conversazionale presenta frammenti ed esito secondo il protocollo `ambrogio.v1`.
 
-`llm.provider` sceglie il pacchetto di provider ufficiale di AI SDK con cui l'adapter costruisce il modello dell'agente. I valori ammessi sono `mistral` (`@ai-sdk/mistral`), `openai` (`@ai-sdk/openai`), `anthropic` (`@ai-sdk/anthropic`), `google` (`@ai-sdk/google`, API Gemini di Google AI Studio) e `openai-compatible` (`@ai-sdk/openai-compatible`). Con i primi quattro l'adapter usa l'endpoint predefinito del provider e la configurazione non contiene un URL. Con `openai-compatible` la configurazione contiene `llm.baseURL`, URL HTTP o HTTPS assoluto di un'API compatibile con OpenAI, per esempio un server locale o un aggregatore di modelli; l'adapter dichiara al pacchetto il supporto dell'output strutturato, così che la richiesta contenga lo schema JSON (`response_format` di tipo `json_schema`). Gli altri provider non ammettono `baseURL`. I provider che richiedono credenziali diverse da una chiave API, come Amazon Bedrock, Google Vertex AI o Azure OpenAI, non sono supportati.
+`llm.provider` sceglie il pacchetto di provider ufficiale di AI SDK con cui l'adapter costruisce il modello dell'agente. I valori ammessi sono `mistral` (`@ai-sdk/mistral`), `openai` (`@ai-sdk/openai`), `anthropic` (`@ai-sdk/anthropic`), `google` (`@ai-sdk/google`, API Gemini di Google AI Studio) e `openai-compatible` (`@ai-sdk/openai-compatible`). Con i primi quattro l'adapter usa l'endpoint predefinito del provider e la configurazione non contiene un URL. Con `openai-compatible` la configurazione contiene `llm.baseURL`, URL HTTP o HTTPS assoluto di un'API compatibile con OpenAI, per esempio un server locale o un aggregatore di modelli; l'adapter dichiara al pacchetto il supporto dell'output strutturato, così che la richiesta dell'orchestratore contenga lo schema JSON (`response_format` di tipo `json_schema`). Gli altri provider non ammettono `baseURL`. I provider che richiedono credenziali diverse da una chiave API, come Amazon Bedrock, Google Vertex AI o Azure OpenAI, non sono supportati.
 
-Il file dell'agente contiene `llm.provider`, `model`, `apiKeyEnv`, `baseURL` soltanto con `openai-compatible`, e le sole `options` facoltative `temperature` e `max_tokens`, uguali per tutti i provider. L'adapter valida le opzioni prima dell'attivazione e le traduce nelle impostazioni comuni dell'AI SDK `temperature` e `maxOutputTokens`; omette quelle assenti. Il provider e il modello scelti devono supportare il tool calling e l'output strutturato con schema JSON e, per gli agenti con connettore MCP, entrambi nella stessa richiesta: per esempio i modelli Gemini li combinano soltanto dalla serie 3. Un errore del provider dovuto a una funzionalità non supportata è un guasto della produzione della risposta: il turno termina con il messaggio pubblico standard. Il client MCP comune esistente conserva connessione, autenticazione e ciclo di vita; i suoi tool sono adattati all'AI SDK senza esporre credenziali al modello. L'orchestratore sceglie un solo agente per turno secondo il contratto della scelta dell'agente; gli agenti con connettore MCP rispettano il limite di chiamate per turno previsto dagli altri contratti.
+Il file dell'agente contiene `llm.provider`, `model`, `apiKeyEnv`, `baseURL` soltanto con `openai-compatible`, e le sole `options` facoltative `temperature` e `max_tokens`, uguali per tutti i provider. L'adapter valida le opzioni prima dell'attivazione e le traduce nelle impostazioni comuni dell'AI SDK `temperature` e `maxOutputTokens`; omette quelle assenti. Il modello dell'orchestratore deve supportare l'output strutturato con schema JSON. Il modello di ogni agente specializzato deve supportare il tool calling con la chiamata a uno strumento richiesta a ogni passo, scrivendo testo nella stessa risposta, perché ogni risposta termina con lo strumento finale `finish`. Un errore del provider dovuto a una funzionalità non supportata è un guasto della produzione della risposta: il turno termina con il messaggio pubblico standard. Il client MCP comune esistente conserva connessione, autenticazione e ciclo di vita; i suoi tool sono adattati all'AI SDK senza esporre credenziali al modello. L'orchestratore sceglie un solo agente per turno secondo il contratto della scelta dell'agente; gli agenti con connettore MCP rispettano il limite di chiamate per turno previsto dagli altri contratti.
 
 #### Metadata
   * type: specification
@@ -551,7 +606,7 @@ Per la prima implementazione, ogni agente specializzato usa il medesimo client M
 
 ### Profilo dell'ingresso conversazionale con agenti
 
-L'ingresso eseguibile valida prima dell'ascolto la configurazione dei componenti HTTP, Conversazioni e degli agenti attivi e, se abilitata, quella della voce, apre l'archivio e recupera i turni pendenti, prepara gli adapter dei provider e i client MCP degli agenti specializzati che hanno un connettore MCP, quindi registra il canale conversazionale `/api/session` insieme ai due GET già disponibili. Il canale usa l'agente orchestratore come produttore concreto della risposta tramite la porta Application `ProduceConversationReply`: l'orchestratore sceglie l'agente e l'agente scelto formula la risposta. Quando la voce è configurata usa Vosk per trascrivere i turni audio e sherpa-onnx, con la voce caricata prima dell'ascolto, per le risposte richieste in audio. La politica CORS riguarda le rotte GET; l'apertura del canale segue il controllo dell'origine definito per la sessione. L'arresto dell'ingresso segue la politica generale del ciclo di vita del server; le richieste ai provider e ai connettori vengono annullate esplicitamente solo alla scadenza del tempo massimo della produzione della risposta.
+L'ingresso eseguibile valida prima dell'ascolto la configurazione dei componenti HTTP, Conversazioni e degli agenti attivi e, se abilitata, quella della voce, apre l'archivio e recupera i turni pendenti, prepara gli adapter dei provider e i client MCP degli agenti specializzati che hanno un connettore MCP, quindi registra il canale conversazionale `/api/session` insieme ai due GET già disponibili. Il canale usa l'agente orchestratore come produttore concreto della risposta tramite la porta Application `ProduceConversationReply`: l'orchestratore sceglie l'agente e l'agente scelto formula la risposta. Quando la voce è configurata usa sherpa-onnx, con il modello di trascrizione e la voce caricati prima dell'ascolto, per trascrivere i turni audio e per le risposte richieste in audio. La politica CORS riguarda le rotte GET; l'apertura del canale segue il controllo dell'origine definito per la sessione. L'arresto dell'ingresso segue la politica generale del ciclo di vita del server; le richieste ai provider e ai connettori vengono annullate esplicitamente solo alla scadenza del tempo massimo della produzione della risposta.
 
 #### Metadata
   * type: specification
@@ -706,7 +761,7 @@ L'unico esito negativo previsto del caso d'uso, la conversazione inesistente, pr
 
 ### Risposta dell'agente senza connettore MCP
 
-Un agente specializzato il cui file non contiene `mcp` è preparato senza aprire connessioni MCP e senza scoprire strumenti. Quando l'orchestratore lo sceglie, l'adapter AI SDK gli consegna le sue istruzioni, con la stessa indicazione del formato della risposta degli altri agenti, e lo storico conservato della conversazione, senza offrire strumenti al modello; l'agente produce in streaming il testo della risposta e l'indicazione `expectsReply` con lo stesso output strutturato degli altri agenti. Per questo agente non si applica un limite di chiamate agli strumenti. Lo stesso agente ammette un modello diverso da quello degli altri agenti, indicato nel proprio `llm`; per esempio un agente generico che risponde con la conoscenza del modello.
+Un agente specializzato il cui file non contiene `mcp` è preparato senza aprire connessioni MCP e senza scoprire strumenti. Quando l'orchestratore lo sceglie, l'adapter AI SDK gli consegna le sue istruzioni, con la stessa indicazione del formato della risposta degli altri agenti, e lo storico conservato della conversazione, offrendo al modello il solo strumento finale `finish`; l'agente produce in streaming il testo della risposta e conclude con `finish` e l'indicazione `expectsReply`, come gli altri agenti. Per questo agente non si applica un limite di chiamate agli strumenti. Lo stesso agente ammette un modello diverso da quello degli altri agenti, indicato nel proprio `llm`; per esempio un agente generico che risponde con la conoscenza del modello.
 
 #### Metadata
   * type: behavior
@@ -745,7 +800,7 @@ Lo schema controlla la forma del protocollo. L'adapter converte esplicitamente l
 
 ### Selezione della voce inclusa dalla lingua conversazionale
 
-La lingua effettiva del componente Conversazioni è la sorgente comune per messaggi pubblici, trascrizione Vosk e sintesi. `AMBROGIO_VOICE_LANGUAGES` è un elenco di lingue distinte separate da virgole tra `it` ed `en`; per ciascuna lingua elencata le variabili `AMBROGIO_VOICE_<LINGUA>_…` definite da «Configurazione facoltativa della voce» formano il suo profilo. I percorsi sono quelli visibili nel container: puntano alle directory incluse nell'immagine oppure a directory montate nel container, senza ID di catalogo o tabella fissa di modelli. L'elenco deve contenere la lingua effettiva indicata da `AMBROGIO_LANGUAGE`; un elenco con una lingua sconosciuta o ripetuta, o privo della lingua effettiva, rende invalida la configurazione. All'avvio vengono validati e caricati i modelli del profilo della lingua effettiva; gli altri profili elencati vengono validati nelle variabili, senza caricarne i modelli. La voce resta disabilitata quando `AMBROGIO_VOICE_LANGUAGES` manca o è vuota.
+La lingua effettiva del componente Conversazioni è la sorgente comune per messaggi pubblici, trascrizione e sintesi. `AMBROGIO_VOICE_LANGUAGES` è un elenco di lingue distinte separate da virgole tra `it` ed `en`; per ciascuna lingua elencata le variabili `AMBROGIO_VOICE_<LINGUA>_…` definite da «Configurazione facoltativa della voce» formano il suo profilo. I percorsi sono quelli visibili nel container: puntano alle directory incluse nell'immagine oppure a directory montate nel container, senza ID di catalogo o tabella fissa di modelli. L'elenco deve contenere la lingua effettiva indicata da `AMBROGIO_LANGUAGE`; un elenco con una lingua sconosciuta o ripetuta, o privo della lingua effettiva, rende invalida la configurazione. All'avvio vengono validati e caricati i modelli del profilo della lingua effettiva; gli altri profili elencati vengono validati nelle variabili, senza caricarne i modelli. La voce resta disabilitata quando `AMBROGIO_VOICE_LANGUAGES` manca o è vuota.
 
 #### Metadata
   * type: specification
@@ -778,32 +833,13 @@ Per ogni mutazione dell'archivio, la porta di scrittura definisce la postcondizi
   * define: [Classificazione degli esiti delle scritture conversazionali](../Requirements/FamilyConversation.md#classificazione-degli-esiti-delle-scritture-conversazionali)
 ---
 
-### Sintesi vocale con Kokoro
-
-Oltre alle voci Piper VITS, il backend sintetizza con un modello Kokoro della release `tts-models` di k2-fsa/sherpa-onnx, eseguito dalla stessa libreria `sherpa-onnx-node` 1.13.8. Il motore si sceglie per installazione e per lingua con la variabile `AMBROGIO_VOICE_<LINGUA>_ENGINE`. Sono state considerate la sostituzione completa di Piper con Kokoro e la sintesi Kokoro con una libreria Python separata: la prima avrebbe reso la voce inutilizzabile sui server modesti, la seconda avrebbe reintrodotto un processo esterno.
-
-Il prodotto non vincola la lingua né il modello Kokoro: oltre al modello incluso nell'immagine secondo la fonte «Modelli vocali scaricati nell'immagine del backend», il backend accetta qualunque modello Kokoro caricabile da sherpa-onnx, comprese le varianti int8 e le altre versioni del modello multilingue montate dall'installazione; la voce è indicata con `AMBROGIO_VOICE_<LINGUA>_SPEAKER`, l'identificativo numerico `sid` della voce nel modello, e la lingua di fonetizzazione con `AMBROGIO_VOICE_<LINGUA>_LANGUAGE`, un codice di lingua espeak-ng come `it`, `en`, `es`, `fr`, `hi` o `pt-br`. Sono state considerate l'estensione a tutte le famiglie di modelli TTS di sherpa-onnx, la scelta della voce per nome con una tabella mantenuta nel backend, la lingua ricavata dal nome della voce e un campo per i file di lessico: la prima richiede un intervento molto più ampio, la seconda e la terza legano il backend all'elenco delle voci di un modello, l'ultima non è necessaria per le lingue fonetizzate da espeak-ng. Il backend non passa file di lessico; le lingue che sherpa-onnx fonetizza soltanto tramite lessico, come il cinese dei modelli multilingue, non sono supportate. La scelta del modello in base alle prestazioni della macchina spetta a chi installa.
-
-Motivazione: su CPU di classe bassa a 4 core senza AVX la sintesi Kokoro richiede più tempo della durata dell'audio prodotto e non segue il parlato, mentre una voce Piper resta molto più rapida; per queste CPU resta indicata una voce Piper e Kokoro è destinato a CPU più potenti, sulle quali la variante int8 non è più veloce della variante in virgola mobile.
-
-Con il motore `kokoro` il backend passa a `OfflineTts.createAsync` la sezione `kokoro` con l'unico file `.onnx`, `voices.bin`, `tokens.txt` ed `espeak-ng-data/` della directory `AMBROGIO_VOICE_<LINGUA>_MODEL_DIR` e con `lang` uguale al codice di `AMBROGIO_VOICE_<LINGUA>_LANGUAGE`, e usa il valore di `AMBROGIO_VOICE_<LINGUA>_SPEAKER` come `sid` di ogni generazione. Dopo il caricamento, uno `SPEAKER` non inferiore al numero di voci dichiarato dal modello (`numSpeakers`) impedisce l'avvio. Il backend non controlla il codice di lingua contro l'elenco di espeak-ng. Con il motore `piper` il backend passa la sezione `vits` e usa `sid` 0. Caricamento unico, generazione asincrona, sintesi delle frasi una alla volta, formato PCM16 alla frequenza del modello caricato (24 kHz per i modelli Kokoro multilingue), interruzione e arresto seguono la sintesi sherpa-onnx esistente.
-
-Un modello Kokoro esterno è utilizzabile montando la directory estratta in sola lettura in un percorso distinto da `/opt/ambrogio/voices`.
-
-#### Metadata
-  * type: specification
-
-#### Relations
-  * define: [Scelta del motore di sintesi vocale](../Requirements/FamilyConversation.md#scelta-del-motore-di-sintesi-vocale)
----
-
 ### Sintesi vocale con sherpa-onnx nel processo backend
 
-La risposta parlata è sintetizzata nel processo del backend con la libreria `sherpa-onnx-node` 1.13.8 (licenza Apache-2.0), con la voce Piper VITS indicata dalla configurazione vocale, per esempio una di quelle di «Catalogo bilingue dei modelli vocali nell'immagine backend». Non viene avviato alcun processo Piper né mantenuto un processo di riserva. La stessa libreria esegue anche il modello Kokoro, scelto dall'installazione con `AMBROGIO_VOICE_<LINGUA>_ENGINE` secondo la specifica «Sintesi vocale con Kokoro».
+La risposta parlata è sintetizzata nel processo del backend con la libreria `sherpa-onnx-node` 1.13.8 (licenza Apache-2.0), con la voce Piper VITS indicata dalla configurazione vocale, per esempio una di quelle di «Catalogo bilingue dei modelli vocali nell'immagine backend». Non viene avviato alcun processo Piper né mantenuto un processo di riserva.
 
 Motivazione: la sintesi nel processo backend è veloce quanto un processo Piper già avviato, mentre un processo Piper separato richiede secondi per avviarsi e rallenta la sintesi in corso quando si avvia il processo successivo. La sintesi nel processo evita quindi avvii di processi, il processo di riserva e la contesa della CPU, con un'architettura più semplice.
 
-All'avvio, quando la voce è abilitata, il backend carica una sola volta la voce configurata, con il motore indicato da `AMBROGIO_VOICE_<LINGUA>_ENGINE`, tramite `OfflineTts.createAsync`, con `numThreads` pari al minimo fra 4 e `os.availableParallelism()`; un errore di caricamento impedisce l'avvio prima dell'ascolto. Ogni frase è sintetizzata con `generateAsync`, che non blocca l'event loop; la variante sincrona `generate` non è usata. Le frasi sono sintetizzate appena complete secondo la regola di separazione delle frasi esistente, la parte residua alla fine del testo. Poiché la voce caricata è unica e la libreria non documenta generazioni concorrenti sulla stessa istanza, le frasi di trasmissioni contemporanee sono sintetizzate una alla volta, nell'ordine di richiesta. L'audio è PCM16 little-endian mono alla frequenza di campionamento del modello caricato, ottenuto convertendo i campioni in virgola mobile prodotti dalla libreria. Un'interruzione della trasmissione impedisce la sintesi delle frasi successive e scarta l'audio non ancora inviato; la trasmissione termina dopo l'ultima frase sintetizzata. All'arresto il backend rilascia il riferimento alla voce caricata e non avvia nuove sintesi.
+All'avvio, quando la voce è abilitata, il backend carica una sola volta la voce configurata tramite `OfflineTts.createAsync`, con la sola sezione `vits` che indica l'unico file `.onnx`, `tokens.txt` ed `espeak-ng-data/` della directory `AMBROGIO_VOICE_<LINGUA>_MODEL_DIR` e con `numThreads` pari al minimo fra 4 e `os.availableParallelism()`; un errore di caricamento impedisce l'avvio prima dell'ascolto. Ogni frase è sintetizzata con `generateAsync`, che non blocca l'event loop, e con `sid` 0, l'unica voce di un modello Piper; la variante sincrona `generate` non è usata. Le frasi sono sintetizzate appena complete secondo la regola di separazione delle frasi esistente, la parte residua alla fine del testo. Poiché la voce caricata è unica e la libreria non documenta generazioni concorrenti sulla stessa istanza, le frasi di trasmissioni contemporanee sono sintetizzate una alla volta, nell'ordine di richiesta. L'audio è PCM16 little-endian mono alla frequenza di campionamento del modello caricato, ottenuto convertendo i campioni in virgola mobile prodotti dalla libreria. Un'interruzione della trasmissione impedisce la sintesi delle frasi successive e scarta l'audio non ancora inviato; la trasmissione termina dopo l'ultima frase sintetizzata. All'arresto il backend rilascia il riferimento alla voce caricata e non avvia nuove sintesi.
 
 #### Metadata
   * type: behavior
@@ -832,6 +868,21 @@ Lo storico di una conversazione è una sequenza ordinata di scambi. Ogni scambio
 
 #### Relations
   * define: [Conservazione dello scambio testuale](../Requirements/FamilyConversation.md#conservazione-dello-scambio-testuale)
+---
+
+### Trascrizione vocale in streaming con sherpa-onnx
+
+Il backend trascrive i turni vocali nel proprio processo con la libreria `sherpa-onnx-node` 1.13.8 (licenza Apache-2.0) e un modello transducer in streaming, senza servizi esterni. Poiché in quella libreria la decodifica in streaming è soltanto sincrona, il riconoscitore `OnlineRecognizer` gira in un worker thread di Node.js, così che la decodifica non blocchi l'event loop. All'avvio, quando la voce è abilitata, il backend avvia il worker, che crea una sola volta il riconoscitore passando nella sezione `transducer` l'encoder, il decoder e il joiner della directory `AMBROGIO_VOICE_<LINGUA>_STT_MODEL_DIR`, il file dei token della stessa directory come `tokens`, caratteristiche a 80 dimensioni su audio a 16 kHz, la ricerca `greedy_search`, il rilevamento della fine del parlato disattivato e `numThreads` pari al minimo fra 2 e `os.availableParallelism()`; un errore di caricamento impedisce l'avvio prima dell'ascolto. Il modello riconosce da sé la lingua parlata.
+
+Per ogni richiesta audio il worker apre un flusso e vi aggiunge 1 secondo di silenzio prima dell'audio della richiesta. Ogni frame PCM16 mono a 16 kHz ricevuto è convertito in virgola mobile e inoltrato subito al worker, che lo aggiunge al flusso e decodifica finché il riconoscitore ha audio pronto; i frame sono elaborati nell'ordine di arrivo, anche fra richieste contemporanee, e l'audio non è scritto su disco. A `input.end` il worker aggiunge 0,8 secondi di silenzio, chiude il flusso, completa la decodifica e restituisce come trascrizione il testo privato degli spazi iniziali e finali. Se la CPU non tiene il passo dell'audio, i frame attendono nella coda del worker e la trascrizione arriva più tardi, senza perdita di audio; la coda è limitata dalla durata massima di una richiesta audio del protocollo. Una richiesta interrotta prima della chiusura scarta il proprio flusso senza completare la decodifica.
+
+Un errore della decodifica è un errore del servizio di trascrizione secondo «Esito della trascrizione vocale». Se il worker termina per un guasto, le trascrizioni in corso falliscono come errori del servizio di trascrizione e la richiesta audio successiva avvia un nuovo worker. All'arresto il backend termina il worker e non avvia nuove trascrizioni. Documentazione dei modelli di sherpa-onnx: https://k2-fsa.github.io/sherpa/onnx/pretrained_models/index.html .
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Trascrizione in streaming del turno vocale](../Requirements/FamilyConversation.md#trascrizione-in-streaming-del-turno-vocale)
 ---
 
 ### Valori Date della conversazione

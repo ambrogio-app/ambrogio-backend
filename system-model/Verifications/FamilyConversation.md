@@ -54,7 +54,7 @@ La prova passa se `turn.completed` arriva una sola volta come ultimo messaggio d
 Con un produttore controllato, eseguire turni testuali e vocali in cui la risposta chiede una replica e turni in cui conclude lo scambio. Ripetere con un produttore che non fornisce l'indicazione o la fornisce con tipo invalido. Osservare le chiamate al modello.
 
 #### Details
-La prova passa se l'agente produce il booleano strutturato `expectsReply` durante la stessa generazione della risposta, senza una seconda chiamata dedicata alla classificazione, e `turn.completed` porta il valore corretto per turni testuali e vocali, indipendentemente dal tipo di contenuto della risposta. Un'indicazione mancante o invalida produce l'esito di errore del turno e non `expectsReply: false`. Turni rifiutati, falliti o interrotti non portano `expectsReply`. Fallisce se il valore è dedotto dal testo, se differisce per canale o se un valore mancante viene presentato come `false`. Il comportamento dei client che usano l'indicazione è verificato nei repository dei client. Verifica definita per il protocollo `ambrogio.v1`.
+La prova passa se l'agente produce il booleano `expectsReply` chiamando lo strumento finale `finish` nella stessa generazione della risposta, senza una seconda chiamata dedicata alla classificazione, se la generazione si ferma alla chiamata di `finish` e chiede al modello uno strumento a ogni passo, e `turn.completed` porta il valore corretto per turni testuali e vocali, indipendentemente dal tipo di contenuto della risposta. Un'indicazione mancante o invalida produce l'esito di errore del turno e non `expectsReply: false`. Turni rifiutati, falliti o interrotti non portano `expectsReply`. Fallisce se il valore è dedotto dal testo, se differisce per canale o se un valore mancante viene presentato come `false`. Il comportamento dei client che usano l'indicazione è verificato nei repository dei client. Verifica definita per il protocollo `ambrogio.v1`.
 
 #### Metadata
   * type: test-verification
@@ -62,6 +62,7 @@ La prova passa se l'agente produce il booleano strutturato `expectsReply` durant
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](ConversationProtocol.md#verifica-del-protocollo-conversazionale)
   * satisfiedBy: [http-server.session-turns.spec.ts](../../apps/server/src/runtime/http-server.session-turns.spec.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
   * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
   * verify: [Determinazione della replica attesa](../Requirements/FamilyConversation.md#determinazione-della-replica-attesa)
   * verify: [Segnalazione della replica attesa](../Requirements/FamilyConversation.md#segnalazione-della-replica-attesa)
@@ -134,10 +135,10 @@ Non automatizzabile: richiede un'istanza reale di Home Assistant con entità esp
 
 ### Prova dei nomi degli strumenti MCP
 
-Preparare un agente specializzato con strumenti scoperti di nome `HassTurnOff`, `GetLiveContext`, `light.toggle`, un nome di 65 caratteri, `mcp_7`, `_private`, `1st-tool` e `-dash`, e un modello controllato che registra i nomi offerti e chiama alcuni strumenti con nomi presentati. Osservare i nomi offerti al modello e le chiamate ricevute dal client MCP.
+Preparare un agente specializzato con strumenti scoperti di nome `HassTurnOff`, `GetLiveContext`, `light.toggle`, un nome di 65 caratteri, `mcp_7`, `finish`, `_private`, `1st-tool` e `-dash`, e un modello controllato che registra i nomi offerti e chiama alcuni strumenti con nomi presentati. Osservare i nomi offerti al modello e le chiamate ricevute dal client MCP.
 
 #### Details
-La prova passa se `HassTurnOff`, `GetLiveContext` e `_private` sono offerti con il proprio nome, `light.toggle`, il nome di 65 caratteri, `mcp_7`, `1st-tool` e `-dash` sono offerti come `mcp_<indice>` secondo la posizione nella lista scoperta, descrizioni e schemi restano quelli del server, ogni chiamata del modello raggiunge il client MCP con il nome originale dello strumento corrispondente e il limite `maxToolCalls` continua a valere. Fallisce se un nome ammesso viene sostituito, se un nome non ammesso viene offerto al modello o se una chiamata raggiunge uno strumento diverso.
+La prova passa se `HassTurnOff`, `GetLiveContext` e `_private` sono offerti con il proprio nome, `light.toggle`, il nome di 65 caratteri, `mcp_7`, lo strumento MCP `finish`, `1st-tool` e `-dash` sono offerti come `mcp_<indice>` secondo la posizione nella lista scoperta, descrizioni e schemi restano quelli del server, ogni chiamata del modello raggiunge il client MCP con il nome originale dello strumento corrispondente e il limite `maxToolCalls` continua a valere. Fallisce se un nome ammesso viene sostituito, se un nome non ammesso viene offerto al modello o se una chiamata raggiunge uno strumento diverso.
 
 #### Metadata
   * type: test-verification
@@ -187,7 +188,7 @@ La prova passa se ogni agente riceve soltanto l'endpoint MCP definito nel propri
 Preparare due agenti specializzati con limiti di chiamata differenti nei rispettivi JSON e usare modelli controllati che richiedano più chiamate MCP dei limiti previsti. Osservare le chiamate inoltrate ai due server MCP, l'esito pubblico e lo storico del turno.
 
 #### Details
-La prova passa se ciascun agente usa il proprio limite, nessuna chiamata viene inoltrata oltre tale limite e il turno eccedente termina con il messaggio pubblico di guasto nella propria conversazione. Fallisce se un limite viene condiviso tra agenti, se viene eseguita una chiamata eccedente o se il guasto espone dettagli tecnici.
+La prova passa se ciascun agente usa il proprio limite, se la chiamata finale `finish` non è conteggiata, nessuna chiamata viene inoltrata oltre tale limite e il turno eccedente termina con il messaggio pubblico di guasto nella propria conversazione. Fallisce se un limite viene condiviso tra agenti, se viene eseguita una chiamata eccedente o se il guasto espone dettagli tecnici.
 
 #### Metadata
   * type: test-verification
@@ -196,6 +197,38 @@ La prova passa se ciascun agente usa il proprio limite, nessuna chiamata viene i
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
   * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
   * verify: [Limite delle chiamate agli strumenti per agente](../Requirements/FamilyConversation.md#limite-delle-chiamate-agli-strumenti-per-agente)
+---
+
+### Prova dell'annuncio dell'azione
+
+Con un modello simulato e un client MCP controllato, produrre risposte di un agente con connettore MCP nei casi seguenti: il modello scrive una frase, chiama uno strumento e poi chiama `finish` senza altro testo; il modello chiama subito lo strumento e poi scrive una conferma prima di `finish`; il modello risponde a una domanda senza strumenti. Registrare l'ordine delle parti consegnate rispetto all'esecuzione dello strumento, il numero di chiamate al modello e le istruzioni inviate.
+
+#### Details
+La prova passa se nel primo caso la frase e l'a capo che la segue sono consegnati come frammenti testuali prima che lo strumento termini e dopo di essi arriva soltanto l'indicazione `expectsReply`; se nel secondo caso la conferma segue l'esecuzione dello strumento ed è separata da un a capo dal testo precedente; se nel terzo caso le parti sono il testo e l'indicazione; se ogni risposta richiede soltanto le chiamate al modello della propria generazione, senza una chiamata separata per l'annuncio; se le istruzioni contengono le regole sulla frase d'azione prima della prima chiamata, sul silenzio tra le chiamate, sul silenzio dopo un'azione annunciata riuscita, sulla conferma breve e sui guasti. Fallisce se la frase o il suo a capo arrivano dopo l'esecuzione dello strumento o se viene fatta una chiamata al modello in più.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
+  * verify: [Annuncio dell'azione dell'agente con connettore MCP](../Requirements/FamilyConversation.md#annuncio-dellazione-dellagente-con-connettore-mcp)
+---
+
+### Prova dell'evento dei tempi della risposta
+
+Con un orologio controllato, un logger di prova, modelli simulati e un client MCP controllato, produrre una risposta delegata a un agente con connettore MCP che chiama due strumenti e consegna un annuncio, una risposta delegata a un agente senza connettore MCP e una risposta il cui agente fallisce; registrare le righe emesse.
+
+#### Details
+La prova passa se le due risposte riuscite producono ciascuna una sola riga di livello `info` con `event` uguale a `conversation_reply_timing`, l'identificativo dell'agente scelto e le durate e i conteggi uguali a quelli dell'orologio e delle chiamate simulate; se la riga dell'agente senza connettore MCP non contiene `toolCalls`, `toolMs` e `announcementMs`; se la risposta fallita non produce la riga. Fallisce se una riga contiene testi della conversazione, istruzioni, nomi o argomenti degli strumenti.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
+  * verify: [Registrazione dei tempi della risposta degli agenti](../Requirements/FamilyConversation.md#registrazione-dei-tempi-della-risposta-degli-agenti)
 ---
 
 ### Prova della configurazione pronta di Home Assistant
@@ -595,7 +628,7 @@ Non automatizzabile: riconoscere una capacità tecnica esterna richiesta da un c
 Esaminare i componenti del modulo «Conversazioni» e seguire il percorso completo di un turno testuale e di un turno vocale nel canale conversazionale. Classificare regole di dominio, coordinamento applicativo, porte, gestione degli agenti, trascrizione e sintesi, persistenza e trasporto.
 
 #### Details
-Il controllo passa se Domain contiene stati e transizioni, Application coordina ammissione ed esito tramite porte e gli adapter possiedono i tipi e i meccanismi di AI SDK, Fastify, WebSocket, Vosk, sherpa-onnx, MCP e SQLite. Un callback SDK può invocare un caso d'uso attraverso dati tradotti; non determina autonomamente una transizione persistente. Verificare anche gli import solo di tipi. Gli adapter contengono conversioni e politiche di integrazione necessarie, senza duplicare un framework agentico o un secondo protocollo dei turni. Fallisce se una dipendenza tecnica raggiunge i layer interni, se un adapter diventa autorità delle regole comuni ai turni o se resta un percorso tecnico parallelo privo di obbligo applicativo.
+Il controllo passa se Domain contiene stati e transizioni, Application coordina ammissione ed esito tramite porte e gli adapter possiedono i tipi e i meccanismi di AI SDK, Fastify, WebSocket, sherpa-onnx, MCP e SQLite. Un callback SDK può invocare un caso d'uso attraverso dati tradotti; non determina autonomamente una transizione persistente. Verificare anche gli import solo di tipi. Gli adapter contengono conversioni e politiche di integrazione necessarie, senza duplicare un framework agentico o un secondo protocollo dei turni. Fallisce se una dipendenza tecnica raggiunge i layer interni, se un adapter diventa autorità delle regole comuni ai turni o se resta un percorso tecnico parallelo privo di obbligo applicativo.
 
 Non automatizzabile: la classificazione di regole, coordinamento e meccanismi tecnici richiede giudizio umano.
 
@@ -891,26 +924,25 @@ La prova passa se lo storico conserva solo testo e dati non audio e se nessuna r
   * verify: [Conservazione solo testuale della conversazione](../Requirements/FamilyConversation.md#conservazione-solo-testuale-della-conversazione)
 ---
 
-### Prova della scelta del motore di sintesi
+### Prova dell'evento dei tempi del turno vocale
 
-Leggere configurazioni vocali di prova con directory di voce fittizie per entrambi i motori: `AMBROGIO_VOICE_<LINGUA>_ENGINE` uguale a `piper` senza `SPEAKER` né `LANGUAGE`; uguale a `kokoro` con `SPEAKER` 0, 35 e 52 e `LANGUAGE` `it`, `en` e `pt-br`; directory Kokoro con `model.onnx` e con un unico `model.int8.onnx`. Provare poi i casi invalidi: motore assente o sconosciuto; `SPEAKER` o `LANGUAGE` presenti con `piper`; uno dei due assente con `kokoro`; `SPEAKER` negativo, decimale o nome di voce come `if_sara`; directory Kokoro priva di file `.onnx`, con due file `.onnx` o priva di `voices.bin`, `tokens.txt` o `espeak-ng-data/`. Con il motore di sintesi controllato costruire il sintetizzatore per ciascun motore, sintetizzare una frase e registrare la configurazione passata a `createAsync` e il `sid` di ogni generazione; ripetere con un motore controllato che dichiara meno voci dello `SPEAKER` configurato. Quando la variabile d'ambiente che indica una directory Kokoro reale è presente, sintetizzare inoltre una breve frase italiana con le voci 35 e 36 e una breve frase inglese con la voce 0 e lingua `en`.
+Con trascrittore, agenti e sintetizzatore controllati, un orologio controllato e un logger di prova, eseguire in una sessione un turno audio con risposta in audio, un turno audio con risposta in testo, un turno testuale e un turno audio rifiutato perché la trascrizione è vuota; registrare le righe emesse.
 
 #### Details
-La prova passa se le configurazioni valide sono accettate con il motore, la voce e la lingua indicati; ogni caso invalido rende invalida la configurazione vocale oppure la directory della voce non disponibile prima della costruzione del sintetizzatore; con `piper` la configurazione contiene la sola sezione `vits` con i file della directory e ogni generazione usa `sid` 0; con `kokoro` la configurazione contiene la sola sezione `kokoro` con l'unico file `.onnx`, `voices.bin`, `tokens.txt`, `espeak-ng-data/` e `lang` uguale alla lingua configurata, e ogni generazione usa `sid` uguale allo `SPEAKER` configurato; uno `SPEAKER` non inferiore a `numSpeakers` impedisce la costruzione del sintetizzatore; caricamento unico, `numThreads` e formato dell'audio restano quelli della prova della sintesi nel processo backend. Con il modello Kokoro reale la prova passa se l'audio di ogni voce provata è non vuoto alla frequenza del modello. Fallisce se una configurazione invalida è accettata, se il motore, la voce o la lingua usati differiscono da quelli configurati, se la lingua o la voce sono imposte dal backend o se una voce fuori intervallo raggiunge la sintesi.
+La prova passa se il turno audio con risposta in audio produce una sola riga di livello `info` con `event` uguale a `conversation_voice_turn_timing`, il `correlationId` della sessione e le sole durate `audioMs`, uguale alla durata dell'audio inviato, `transcriptionMs`, `firstTextMs`, `firstAudioMs` e `completedMs`, uguali agli intervalli dell'orologio controllato dalla ricezione di `input.end`; se il turno audio con risposta in testo produce la stessa riga senza `firstAudioMs`; se il turno testuale e il turno rifiutato non producono la riga. Fallisce se una riga contiene il testo trascritto, il testo della risposta, l'identificativo della conversazione o del turno, o se un turno produce più di una riga.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
-  * satisfiedBy: [sherpa-synthesizer.spec.ts](../../packages/conversations/src/adapters/in/session/sherpa-synthesizer.spec.ts)
-  * satisfiedBy: [voice-config.spec.ts](../../packages/conversations/src/adapters/out/voice-config.spec.ts)
-  * verify: [Scelta del motore di sintesi vocale](../Requirements/FamilyConversation.md#scelta-del-motore-di-sintesi-vocale)
+  * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
+  * verify: [Registrazione dei tempi dei turni vocali](../Requirements/FamilyConversation.md#registrazione-dei-tempi-dei-turni-vocali)
 ---
 
 ### Prova della selezione vocale per lingua
 
-Preparare profili vocali italiani e inglesi con variabili che indicano percorsi espliciti alle directory incluse e a directory esterne montate, scegliendo tra più voci della stessa lingua, Piper e Kokoro. Provare la lingua effettiva italiana e inglese, la lingua effettiva assente da `AMBROGIO_VOICE_LANGUAGES`, una lingua sconosciuta o ripetuta nell'elenco, variabili invalide nell'altro profilo elencato e la voce disabilitata con `AMBROGIO_VOICE_LANGUAGES` assente o vuota. Osservare risorse caricate, lingua Vosk, voce e lingua di fonetizzazione Kokoro.
+Preparare profili vocali italiani e inglesi con variabili che indicano percorsi espliciti alle directory incluse e a directory esterne montate, scegliendo tra più voci Piper della stessa lingua. Provare la lingua effettiva italiana e inglese, la lingua effettiva assente da `AMBROGIO_VOICE_LANGUAGES`, una lingua sconosciuta o ripetuta nell'elenco, variabili invalide nell'altro profilo elencato e la voce disabilitata con `AMBROGIO_VOICE_LANGUAGES` assente o vuota. Osservare risorse caricate, modello di trascrizione e voce.
 
 #### Details
 La prova passa se ciascuna lingua seleziona esattamente i percorsi indicati, anche quando provengono da un mount o quando esistono più voci della stessa lingua; un elenco invalido o un profilo elencato con variabili invalide rende invalida la configurazione, l'altro profilo non carica i modelli e la voce disabilitata non legge altre variabili né carica modelli. Fallisce se una lingua carica percorsi diversi da quelli indicati, se un elenco o un profilo invalido è accettato o se vengono caricati modelli di un profilo non attivo o della voce disabilitata.
@@ -978,6 +1010,25 @@ La prova passa se il turno conservato contiene la trascrizione testuale attesa, 
   * verify: [Trascrizione del turno vocale](../Requirements/FamilyConversation.md#trascrizione-del-turno-vocale)
 ---
 
+### Prova della trascrizione in streaming
+
+Con un riconoscitore in streaming simulato provare la logica del worker, e con un worker simulato il trascrittore: trascrivere audio di 5 e 60 secondi consegnato in frame di dimensioni diverse, osservando quando ogni frame raggiunge il riconoscitore; avviare due trascrizioni contemporanee; interrompere una trascrizione prima della chiusura; far fallire una decodifica; terminare il worker durante una trascrizione e poi avviarne un'altra; chiudere il trascrittore. Leggere configurazioni vocali con directory di trascrizione priva di joiner, con due encoder o senza file dei token. Nell'immagine, con il worker reale e il modello incluso, trascrivere un turno italiano e uno inglese consegnati a ritmo reale.
+
+#### Details
+La prova passa se la configurazione del riconoscitore contiene la sezione `transducer` con l'encoder, il decoder e il joiner della directory, i token della directory, `greedy_search` e il rilevamento della fine del parlato disattivato; se ogni flusso riceve 1 secondo di silenzio prima del primo frame della richiesta; se ogni frame raggiunge il riconoscitore prima di `input.end`; se alla chiusura il flusso riceve 0,8 secondi di silenzio e la fine dell'ingresso prima della lettura del testo; se le richieste contemporanee usano flussi separati; se una trascrizione interrotta non produce testo; se un errore della decodifica e la terminazione del worker fanno fallire le trascrizioni in corso e la trascrizione successiva riesce con un nuovo worker; se la chiusura termina il worker; se ogni directory non conforme è rifiutata prima dell'avvio del worker; e se nell'immagine i due turni, che iniziano senza silenzio, producono il testo pronunciato, prima parola compresa. Fallisce altrimenti.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
+  * satisfiedBy: [streaming-recognition.spec.ts](../../packages/conversations/src/adapters/in/session/streaming-recognition.spec.ts)
+  * satisfiedBy: [streaming-transcriber.spec.ts](../../packages/conversations/src/adapters/in/session/streaming-transcriber.spec.ts)
+  * satisfiedBy: [voice-config.spec.ts](../../packages/conversations/src/adapters/out/voice-config.spec.ts)
+  * satisfiedBy: [verify-docker-image.mjs](../../scripts/verify-docker-image.mjs)
+  * verify: [Trascrizione in streaming del turno vocale](../Requirements/FamilyConversation.md#trascrizione-in-streaming-del-turno-vocale)
+---
+
 ### Prova della trascrizione non riuscita
 
 Simulare un errore del servizio di trascrizione e una trascrizione composta solo da spazi, con risposta richiesta in audio.
@@ -992,6 +1043,23 @@ La prova passa se entrambi i tentativi ricevono la trasmissione del messaggio pu
   * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
   * satisfiedBy: [http-server.session-rejections.spec.ts](../../apps/server/src/runtime/http-server.session-rejections.spec.ts)
   * verify: [Trascrizione vocale non riuscita](../Requirements/FamilyConversation.md#trascrizione-vocale-non-riuscita)
+---
+
+### Prova della voce Piper configurata
+
+Leggere configurazioni vocali di prova con una directory di voce Piper fittizia valida, con un file `model.onnx` e con un unico file `model.int8.onnx`, e con directory invalide: priva di file `.onnx`, con due file `.onnx`, priva di `tokens.txt` o di `espeak-ng-data/`. Con il motore di sintesi controllato costruire il sintetizzatore, sintetizzare una frase e registrare la configurazione passata a `createAsync` e il `sid` di ogni generazione.
+
+#### Details
+La prova passa se le directory valide sono accettate con la voce indicata; ogni directory invalida rende la voce non disponibile prima della costruzione del sintetizzatore; la configurazione passata a `createAsync` contiene la sola sezione `vits` con l'unico file `.onnx`, `tokens.txt` ed `espeak-ng-data/` della directory configurata e ogni generazione usa `sid` 0; caricamento unico, `numThreads` e formato dell'audio restano quelli della prova della sintesi nel processo backend. Fallisce se una directory invalida è accettata, se la voce usata differisce da quella configurata o se la lingua o la voce sono imposte dal backend.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
+  * satisfiedBy: [sherpa-synthesizer.spec.ts](../../packages/conversations/src/adapters/in/session/sherpa-synthesizer.spec.ts)
+  * satisfiedBy: [voice-config.spec.ts](../../packages/conversations/src/adapters/out/voice-config.spec.ts)
+  * verify: [Sintesi con la voce Piper configurata](../Requirements/FamilyConversation.md#sintesi-con-la-voce-piper-configurata)
 ---
 
 ### Verifica della conversazione testuale
@@ -1160,7 +1228,7 @@ La prova passa se il caso d'uso chiede alla porta una scadenza di 30 secondi; se
 Preparare la directory degli agenti con l'orchestratore, un agente con `mcp` e un agente `generic` con soli `description`, `instructions` e `llm`. Con un modello controllato, far scegliere all'orchestratore l'agente `generic` ed eseguire il turno; eseguire anche un turno sul canale conversazionale avviato con il solo agente senza MCP.
 
 #### Details
-La prova passa se l'agente senza MCP viene attivato senza aprire connessioni MCP, se la richiesta al suo modello usa le sue istruzioni con l'indicazione del formato della risposta e lo storico della conversazione senza offrire strumenti, e se il testo e `expectsReply` prodotti dall'agente sono la risposta del turno, comunicata e conservata. Fallisce se l'agente senza MCP non viene attivato, se vengono aperte connessioni o offerti strumenti, o se la risposta non proviene dal suo modello.
+La prova passa se l'agente senza MCP viene attivato senza aprire connessioni MCP, se la richiesta al suo modello usa le sue istruzioni con l'indicazione del formato della risposta e lo storico della conversazione offrendo il solo strumento finale `finish`, e se il testo e `expectsReply` prodotti dall'agente sono la risposta del turno, comunicata e conservata. Fallisce se l'agente senza MCP non viene attivato, se vengono aperte connessioni o offerti strumenti diversi da `finish`, o se la risposta non proviene dal suo modello.
 
 #### Metadata
   * type: test-verification

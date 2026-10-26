@@ -107,10 +107,8 @@ test('names an invalid configuration variable and the unmet condition without it
     'Invalid environment variable AMBROGIO_HTTP_PORT: expected an integer from 1 to 65535');
   expectReported(await startupError({ ...environment, AMBROGIO_ENV: secret }),
     'Invalid environment variable AMBROGIO_ENV: expected development, test or production');
-  expectReported(await startupError({ ...environment, AMBROGIO_VOICE_LANGUAGES: 'en',
-    AMBROGIO_VOICE_EN_VOSK_MODEL_PATH: secret, AMBROGIO_VOICE_EN_ENGINE: 'kokoro', AMBROGIO_VOICE_EN_MODEL_DIR: secret,
-    AMBROGIO_VOICE_EN_SPEAKER: secret, AMBROGIO_VOICE_EN_LANGUAGE: 'en' }),
-  'Invalid environment variable AMBROGIO_VOICE_EN_SPEAKER: expected an integer from 0');
+  expectReported(await startupError({ ...environment, AMBROGIO_VOICE_LANGUAGES: secret }),
+    'Invalid environment variable AMBROGIO_VOICE_LANGUAGES: expected distinct languages among it and en');
 });
 
 // Verification: Prova della diagnostica del mancato avvio

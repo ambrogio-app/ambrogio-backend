@@ -32,6 +32,25 @@ Quando il file di un agente specializzato non contiene un connettore MCP, Ambrog
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
+### Annuncio dell'azione dell'agente con connettore MCP
+
+Quando un agente specializzato con connettore MCP elabora un messaggio della famiglia che chiede un'azione, Ambrogio deve trasmettere una breve frase dello stesso agente che annuncia l'azione prima che l'agente esegua gli strumenti; quando l'azione annunciata riesce, l'agente deve concludere il turno senza altre parole, quando riesce senza annuncio deve confermarla brevemente e quando non riesce deve dire cosa non è riuscito.
+
+#### Details
+Un'azione eseguita con gli strumenti richiede più chiamate in sequenza al modello e al server MCP e dura spesso diversi secondi; senza annuncio la famiglia attende in silenzio. L'annuncio segue il pattern della preamble dei modelli vocali, raccomandato dalla guida OpenAI per i modelli realtime: lo stesso modello, nella stessa generazione, scrive una frase breve che descrive l'azione subito prima di chiamare gli strumenti. Prove con Mistral e con agenti reali di musica e Home Assistant hanno prodotto la frase circa mezzo secondo dopo l'inizio della generazione, prima della chiamata allo strumento, e nessuna frase per le domande di informazione. La frase è chiesta soltanto prima della prima chiamata a uno strumento, con il silenzio tra le chiamate: chiesta prima di ogni chiamata, il modello commentava ogni passo dell'azione. Poiché l'agente sa se ha annunciato, la regola sul silenzio dopo un'azione riuscita non lascia la famiglia senza conferma. Il pattern richiede che il testo della risposta sia libero: per questo gli agenti specializzati scrivono testo libero e comunicano la replica attesa con lo strumento finale `finish`, invece dell'uscita strutturata, che AI SDK impone a ogni passo della generazione, compresi quelli con gli strumenti.
+
+Sono state considerate e scartate: una seconda chiamata breve al modello dell'agente, in parallelo alla risposta, che produce soltanto l'annuncio, provata e scartata perché con le istruzioni del server MCP il modello lasciava l'annuncio vuoto anche per una richiesta d'azione, perché costa una chiamata in più e perché la risposta non sa se l'annuncio è stato pronunciato; l'annuncio dell'orchestratore, che conosce soltanto le descrizioni degli agenti e annuncerebbe azioni che l'agente non sempre esegue; uno strumento locale di annuncio offerto all'agente, che lo costringe a fingere un'azione per parlare; un campo di annuncio nell'uscita strutturata, che il modello scrive soltanto dopo l'ultima chiamata agli strumenti; una frase o un tono fissi, che non dicono cosa l'agente sta facendo.
+
+Fonti: guida OpenAI ai modelli realtime, https://developers.openai.com/api/docs/guides/realtime-models-prompting ; documentazione AI SDK sul controllo del ciclo, https://ai-sdk.dev/docs/agents/loop-control .
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
+  * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
+---
+
 ### Assemblaggio delle porte nella composition root
 
 Quando l'applicazione server assembla il modulo «Conversazioni», deve scegliere e fornire le implementazioni delle porte Application tramite la propria composition root.
@@ -1285,6 +1304,41 @@ Quando il backend riceve un nuovo turno con l'identificativo di una conversazion
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
+### Registrazione dei tempi dei turni vocali
+
+Quando un turno con ingresso audio si conclude con una risposta, il backend deve registrare un evento diagnostico informativo con la durata dell'audio ricevuto e con i tempi della trascrizione, del primo testo della risposta, del primo audio della risposta e della conclusione del turno, misurati dalla fine della richiesta, senza testi, audio o identificativi della conversazione e del turno.
+
+#### Details
+L'evento rende misurabile, su ogni installazione, il ritardo fra la fine della richiesta e la risposta parlata e mostra quale fase lo determina: trascrizione, risposta degli agenti o sintesi. Ha livello `info` perché registra un esito riuscito e non un guasto.
+
+#### Concept References
+  * [Turno vocale](../../../ambrogio-model/system-model/Thesaurus/Lessico.md#turno-vocale)
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
+  * specify: [Conversazione a voce](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-a-voce)
+---
+
+### Registrazione dei tempi della risposta degli agenti
+
+Quando la produzione della risposta di un turno si conclude, il backend deve registrare un evento diagnostico informativo con l'agente scelto, la durata della scelta dell'orchestratore e del lavoro dell'agente, il numero di chiamate dell'agente al modello e agli strumenti, il tempo passato negli strumenti e, quando c'è, il momento dell'annuncio, senza testi della conversazione.
+
+#### Details
+L'evento mostra in quale fase si spende il tempo fra la richiesta e la risposta: la scelta dell'agente, le chiamate al modello linguistico o le chiamate agli strumenti. Ha livello `info` perché registra un esito riuscito e non un guasto.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
+  * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
+---
+
 ### Registrazione dei turni conversazionali accettati
 
 Quando Ambrogio accetta un turno rappresentato come testo dalla chat o dalla trascrizione vocale, deve conservarne il testo e lo stato in elaborazione prima di avviarne l'elaborazione, affinché il turno sia riconoscibile dopo un riavvio.
@@ -1474,9 +1528,14 @@ Quando Ambrogio pronuncia una risposta o un messaggio pubblico che contiene marc
   * specify: [Conversazione a voce](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-a-voce)
 ---
 
-### Scelta del motore di sintesi vocale
+### Sintesi con la voce Piper configurata
 
-Quando la voce è abilitata nell'installazione, Ambrogio deve pronunciare le risposte con il motore di sintesi, il modello, la voce e la lingua indicati nella configurazione vocale dell'installazione, scegliendo fra le voci Piper VITS e i modelli Kokoro, senza limitare la lingua o la voce a un elenco fissato dal prodotto.
+Quando la voce è abilitata nell'installazione, Ambrogio deve pronunciare le risposte con la voce Piper VITS indicata nella configurazione vocale dell'installazione, senza limitare la lingua o la voce a un elenco fissato dal prodotto.
+
+#### Details
+Il prodotto usa un solo motore di sintesi, le voci Piper VITS eseguite da `sherpa-onnx-node`: una voce Piper inclusa nell'immagine o montata dall'installazione si sceglie con la sola directory del modello, senza variabili di motore, di voce o di lingua.
+
+È stato considerato il modello Kokoro multilingue, eseguito dalla stessa libreria come motore alternativo scelto per lingua, con la voce indicata dall'identificativo numerico nel modello e la lingua di fonetizzazione indicata da un codice espeak-ng. Non è adottato: il backend sintetizza una frase alla volta e una frase si ascolta solo quando è completa, e Kokoro impiega alcuni secondi per ogni frase anche su una CPU desktop a 4 core, dove una voce Piper ne impiega meno di mezzo, mentre su CPU di classe bassa senza AVX è più lento del parlato. Il ritardo prima della risposta parlata annullerebbe il vantaggio della trascrizione in streaming, e un solo motore mantiene più semplici configurazione, codice e immagine.
 
 #### Metadata
   * type: requirement
@@ -1582,7 +1641,7 @@ Dove il file di un agente specializzato elenca gli strumenti MCP ammessi, Ambrog
 
 ### Selezione dei modelli vocali inclusi per lingua
 
-Quando la voce è abilitata con profili vocali per lingua, Ambrogio deve selezionare il modello Vosk e la voce Piper o Kokoro indicati dalle variabili del profilo della lingua effettiva della conversazione, accettando sia modelli inclusi nell'immagine sia modelli montati dall'installazione, e non deve caricare modelli vocali quando la voce è disabilitata.
+Quando la voce è abilitata con profili vocali per lingua, Ambrogio deve selezionare il modello di trascrizione e la voce Piper indicati dalle variabili del profilo della lingua effettiva della conversazione, accettando sia modelli inclusi nell'immagine sia modelli montati dall'installazione, e non deve caricare modelli vocali quando la voce è disabilitata.
 
 #### Metadata
   * type: requirement
@@ -1732,7 +1791,38 @@ Quando la famiglia pronuncia un turno vocale trascrivibile, Ambrogio deve rappre
 
 #### Relations
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
-  * satisfiedBy: [vosk-transcriber.ts](../../packages/conversations/src/adapters/in/session/vosk-transcriber.ts)
+  * satisfiedBy: [streaming-transcriber.ts](../../packages/conversations/src/adapters/in/session/streaming-transcriber.ts)
+  * specify: [Conversazione a voce](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-a-voce)
+---
+
+### Trascrizione in streaming del turno vocale
+
+Quando la voce è abilitata nell'installazione, Ambrogio deve trascrivere l'audio di ogni turno vocale mentre la richiesta è aperta, con il modello transducer in streaming di sherpa-onnx indicato dal profilo vocale della lingua effettiva, così che alla chiusura della richiesta resti da decodificare soltanto l'ultima parte, e deve impedire l'avvio quando il modello non è caricabile.
+
+#### Details
+Il backend supporta una sola famiglia di modelli di trascrizione, i transducer in streaming di sherpa-onnx. Il modello incluso nell'immagine è Nemotron 3.5 ASR streaming 0.6B di NVIDIA, multilingue con l'italiano, che riconosce da sé la lingua parlata. Un modello della stessa famiglia si sostituisce cambiando la directory; un'altra famiglia richiede una modifica del codice.
+
+La trascrizione durante il parlato è una richiesta della persona: rende il ritardo dopo la fine della frase indipendente dalla durata del turno. Sono stati scartati i modelli offline, come Parakeet TDT v3 e Whisper, che decodificano soltanto alla chiusura della richiesta pur con un'accuratezza simile in italiano; il supporto di più famiglie selezionabili dalla configurazione, per mantenere un solo percorso di codice; Qwen3-ASR e Omnilingual, più lenti del tempo reale.
+
+Ogni flusso comincia con un secondo di silenzio perché il modello incluso perde la prima parola quando il parlato inizia subito; il satellite invia già una riserva di audio precedente al parlato, ma la trascrizione non deve dipendere dal client. La trascrizione in tempo reale richiede una CPU x86_64 con istruzioni AVX2; su una CPU senza AVX2 la decodifica resta indietro rispetto al parlato e il testo arriva dopo la fine della frase con un ritardo che cresce con la durata del turno.
+
+#### Concept References
+  * [Turno vocale](../../../ambrogio-model/system-model/Thesaurus/Lessico.md#turno-vocale)
+
+#### Metadata
+  * type: requirement
+
+#### Contract Bindings
+  * [Configurazione facoltativa della voce](../Contracts/FamilyConversation.md#configurazione-facoltativa-della-voce)
+  * [Modelli vocali scaricati nell'immagine del backend](../Contracts/ExternalContracts.md#modelli-vocali-scaricati-nellimmagine-del-backend)
+
+#### Relations
+  * derivedFrom: [Elaborazione vocale locale con sherpa-onnx](../../../ambrogio-model/system-model/Requirements/VoiceConversation.md#elaborazione-vocale-locale-con-sherpa-onnx)
+  * satisfiedBy: [local-speech-components.ts](../../packages/conversations/src/adapters/in/session/local-speech-components.ts)
+  * satisfiedBy: [streaming-recognition.ts](../../packages/conversations/src/adapters/in/session/streaming-recognition.ts)
+  * satisfiedBy: [streaming-recognizer.worker.ts](../../packages/conversations/src/adapters/in/session/streaming-recognizer.worker.ts)
+  * satisfiedBy: [streaming-transcriber.ts](../../packages/conversations/src/adapters/in/session/streaming-transcriber.ts)
+  * satisfiedBy: [voice-config.ts](../../packages/conversations/src/adapters/out/voice-config.ts)
   * specify: [Conversazione a voce](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-a-voce)
 ---
 

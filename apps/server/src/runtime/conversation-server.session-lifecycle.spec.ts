@@ -49,8 +49,9 @@ test('closing a session releases only its own resources', async () => {
   pending.release();
   await waitUntil(async () => (await server.turns(admitted.conversationId as string))[0]?.status === 'answered',
     'admitted turn answered after close');
-  // The unfinished audio request was being transcribed while received; closing discards it.
+  // The unfinished audio request was being transcribed while received; closing interrupts it.
   expect(server.speech.transcriptions).toBe(1);
+  expect(server.speech.interruptedTranscriptions).toBe(1);
   expect(await server.conversationIds()).toHaveLength(2);
 });
 

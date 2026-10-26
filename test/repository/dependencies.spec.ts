@@ -44,8 +44,8 @@ test.each(['.', 'apps/server', 'packages/conversations'])('every direct dependen
   expect(existsSync(join(repositoryRoot, 'package-lock.json'))).toBe(false);
 });
 
-test('only koffi and vosk-koffi may run build scripts during installation', () => {
-  expect(/^allowBuilds:\n((?: {2}.+\n)*)/m.exec(workspace)?.[1]).toBe('  koffi: true\n  vosk-koffi: true\n');
+test('no dependency runs build scripts during installation', () => {
+  expect(workspace).not.toMatch(/^allowBuilds:/m);
 });
 
 test('the pnpm minimum release age stays active without exceptions', () => {

@@ -1013,7 +1013,10 @@ Origine: baseline Reqvire «Error log at the public fallback», adottata.
 
 ### Logger minimo del backend
 
-I componenti tecnici del backend che registrano eventi diagnostici devono ricevere il logger minimo creato una sola volta da `main.ts` con Pino al livello minimo `warn`, o dall'ingresso di prova pubblico per il proprio processo, e il confine HTTP deve passare alle rotte e alle sessioni conversazionali un logger derivato con il `correlationId` della richiesta.
+I componenti tecnici del backend che registrano eventi diagnostici devono ricevere il logger minimo creato una sola volta da `main.ts` con Pino al livello minimo `info`, o dall'ingresso di prova pubblico per il proprio processo, e il confine HTTP deve passare alle rotte e alle sessioni conversazionali un logger derivato con il `correlationId` della richiesta.
+
+#### Details
+Il livello minimo è `info` perché gli eventi informativi, come i tempi dei turni vocali, servono a misurare il comportamento di un'installazione; il livello `debug` resta escluso.
 
 #### Metadata
   * type: requirement
@@ -1052,7 +1055,7 @@ Origine: baseline Reqvire «Exhaustive rejection mapping with assertNever», ado
 
 ### Modelli vocali italiani e inglesi inclusi
 
-Quando il progetto distribuisce l'immagine Docker del backend, deve includere modelli Vosk per italiano e inglese, almeno una voce Piper per ciascuna lingua e un modello Kokoro multilingue con voci utilizzabili in entrambe le lingue, verificando provenienza e integrità degli archivi durante la build.
+Quando il progetto distribuisce l'immagine Docker del backend, deve includere un modello di trascrizione utilizzabile per italiano e inglese, almeno una voce Piper per ciascuna lingua, verificando provenienza e integrità degli archivi durante la build.
 
 #### Metadata
   * type: requirement

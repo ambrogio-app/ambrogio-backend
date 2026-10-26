@@ -10,13 +10,13 @@ Fonte: le API dei fornitori raggiunte dai pacchetti di provider ufficiali di AI 
 | `openai` | API OpenAI `v1`, Responses | `https://api.openai.com/v1/responses` | `Authorization: Bearer` |
 | `anthropic` | API Anthropic Messages `v1`, intestazione `anthropic-version: 2023-06-01` | `https://api.anthropic.com/v1/messages` | `x-api-key` |
 | `google` | API Gemini di Google AI Studio `v1beta`, `streamGenerateContent` | `https://generativelanguage.googleapis.com/v1beta/models/<modello>:streamGenerateContent` | `x-goog-api-key` |
-| `openai-compatible` | API Chat Completions compatibile con OpenAI, con `response_format` di tipo `json_schema` | `<baseURL>/chat/completions` | `Authorization: Bearer` |
+| `openai-compatible` | API Chat Completions compatibile con OpenAI, con `response_format` di tipo `json_schema` per l'orchestratore e `tool_choice` `required` per gli agenti specializzati | `<baseURL>/chat/completions` | `Authorization: Bearer` |
 
 Fonti dell'informazione: gli indirizzi e le intestazioni inviati dai pacchetti `@ai-sdk/*` del lockfile, osservati dalla prova dell'adapter; la documentazione dei fornitori: https://docs.mistral.ai/api/ , https://platform.openai.com/docs/api-reference/responses , https://docs.anthropic.com/en/api/versioning , https://ai.google.dev/api . La versione dell'API cambia soltanto con l'aggiornamento del pacchetto di provider che la usa, governato dal lockfile.
 
-Modello d'esempio: gli esempi distribuiti usano `mistral-medium-latest`, un alias mobile che Mistral AI assegna all'ultima versione di Mistral Medium; il modello effettivo cambia quando Mistral AI sposta l'alias, senza una modifica di Ambrogio. È il modello consigliato per l'orchestratore. Il prodotto non fissa un modello: lo sceglie l'installazione nel file di ciascun agente, e il modello scelto deve supportare tool calling e output strutturato con schema JSON.
+Modello d'esempio: gli esempi distribuiti usano `mistral-medium-latest`, un alias mobile che Mistral AI assegna all'ultima versione di Mistral Medium; il modello effettivo cambia quando Mistral AI sposta l'alias, senza una modifica di Ambrogio. È il modello consigliato per l'orchestratore. Il prodotto non fissa un modello: lo sceglie l'installazione nel file di ciascun agente, e il modello scelto deve supportare l'output strutturato con schema JSON per l'orchestratore e il tool calling con chiamata obbligatoria a uno strumento per gli agenti specializzati.
 
-Prova d'integrazione: «Prova della configurazione dell'adapter AI SDK» controlla per ogni provider indirizzo, credenziale e corpo della richiesta con risposte controllate; il supporto reale di tool calling e output strutturato è osservato soltanto con il modello linguistico reale della «Dimostrazione del connettore Home Assistant su un'installazione reale», che non registra provider né modello usati.
+Prova d'integrazione: «Prova della configurazione dell'adapter AI SDK» controlla per ogni provider indirizzo, credenziale e corpo della richiesta con risposte controllate; il supporto reale dell'output strutturato e del tool calling con chiamata obbligatoria è osservato soltanto con il modello linguistico reale della «Dimostrazione del connettore Home Assistant su un'installazione reale», che non registra provider né modello usati.
 
 #### Metadata
   * type: source
@@ -27,18 +27,18 @@ Prova d'integrazione: «Prova della configurazione dell'adapter AI SDK» control
 
 ### Modelli vocali scaricati nell'immagine del backend
 
-Fonte: la release `tts-models` di k2-fsa/sherpa-onnx, https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models , per le voci Piper e il modello Kokoro, e il catalogo dei modelli Vosk, https://alphacephei.com/vosk/models , per i modelli Vosk. La release `tts-models` non ha versioni: ogni archivio è identificato dal nome e dall'impronta SHA-256 fissata. La build scarica gli archivi seguenti e ne verifica l'impronta prima dell'estrazione; la directory estratta di ciascuno ha il nome dell'archivio senza estensione.
+Fonte: la release `tts-models` di k2-fsa/sherpa-onnx, https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models , per le voci Piper, e la release `asr-models` della stessa organizzazione, https://github.com/k2-fsa/sherpa-onnx/releases/tag/asr-models , per il modello Nemotron. Le due release non hanno versioni: ogni archivio è identificato dal nome e dall'impronta SHA-256 fissata. La build scarica gli archivi seguenti e ne verifica l'impronta prima dell'estrazione; la directory estratta di ciascuno ha il nome dell'archivio senza estensione.
 
 | Archivio | Uso | Origine | SHA-256 | Licenza |
 |---|---|---|---|---|
-| `vosk-model-small-it-0.22.zip` | Trascrizione italiana | Catalogo Vosk | `9ec65e75861d1c6c2e457cccd932705340dcdf233f5b239f00733b4de0bf3267` | Apache-2.0 |
-| `vosk-model-small-en-us-0.15.zip` | Trascrizione inglese | Catalogo Vosk | `30f26242c4eb449f948e42cb302dd7a686cb29a3423a8367f99ff41780942498` | Apache-2.0 |
+| `sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11.tar.bz2` | Trascrizione in streaming multilingue, italiano e inglese compresi | Release `asr-models` | `c6bf5e0df765f9d5b43bc9e0536d4b4b3e7d40bdf5ecf13e45f134c51c05ae3a` | OpenMDW 1.1, modello Nemotron 3.5 ASR streaming 0.6B di NVIDIA |
 | `vits-piper-it_IT-riccardo-x_low.tar.bz2` | Sintesi Piper italiana | Release `tts-models` | `8ad0791558ae2b3e96054fc5756ae3ae2f6457fb1765bc01f43bbab85e0a7021` | MIT, voce di rhasspy/piper-voices |
 | `vits-piper-it_IT-paola-medium.tar.bz2` | Sintesi Piper italiana | Release `tts-models` | `7541f75778afa164e44e34baaef63befad7698595df26a95ca944b63ef1a16b4` | MIT, voce di rhasspy/piper-voices |
 | `vits-piper-en_US-kristin-medium.tar.bz2` | Sintesi Piper inglese | Release `tts-models` | `c2206f572df2956c50b1ae3367eebce3853c663e890cba8048cd62b1e4dbe6c7` | MIT, voce di rhasspy/piper-voices |
-| `kokoro-multi-lang-v1_0.tar.bz2` | Sintesi Kokoro multilingue, voci italiane e inglesi | Release `tts-models` | `c5f7e2d2caf082bc1d20fb70334a61d99d20b484500aad32e7cf84c128ea3298` | Apache-2.0, file `LICENSE` nell'archivio |
 
-Fonti dell'informazione: `scripts/fetch-speech-models.mjs` e `voices/README.md` del backend; le licenze dal catalogo Vosk, dal catalogo https://huggingface.co/rhasspy/piper-voices e dal file `LICENSE` dell'archivio Kokoro.
+L'archivio Nemotron contiene il modello Nemotron 3.5 ASR streaming 0.6B di NVIDIA, con blocchi da 560 ms, convertito per sherpa-onnx, con encoder, decoder e joiner int8, il file `tokens.txt`, un `README.md` e registrazioni di prova; l'immagine conserva soltanto `encoder.int8.onnx`, `decoder.int8.onnx`, `joiner.int8.onnx` e `tokens.txt`. La licenza OpenMDW 1.1 richiede che una distribuzione conservi una copia della licenza e le note d'origine: l'immagine aggiunge alla directory del modello il testo della licenza come `LICENSE`, da `voices/OpenMDW-1.1.txt`, e `voices/README.md` riporta l'origine.
+
+Fonti dell'informazione: `scripts/fetch-speech-models.mjs` e `voices/README.md` del backend; la licenza e le lingue di Nemotron dalla scheda del modello https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b e il testo della licenza da https://openmdw.ai/license/1-1/ , le licenze delle voci dal catalogo https://huggingface.co/rhasspy/piper-voices .
 
 Prova d'integrazione: la build dell'immagine verifica le impronte con `scripts/fetch-speech-models.mjs`; «Prova del catalogo vocale bilingue dell'immagine» e «Prova delle voci incluse e sostituibili» caricano i modelli nell'immagine e producono trascrizioni e sintesi; «Prova della coerenza dei modelli vocali registrati» confronta questa tabella con lo script di download e con `voices/README.md`.
 

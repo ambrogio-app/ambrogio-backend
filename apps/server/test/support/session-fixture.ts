@@ -71,7 +71,7 @@ export function echoReply(expectsReply = false) {
  * audio, `FAIL` makes transcription throw, and synthesis emits the UTF-8 bytes of the text.
  */
 export function fakeSpeech() {
-  const state = { transcriptions: 0, synthesisAborts: 0, synthesisGate: undefined as Promise<void> | undefined,
+  const state = { transcriptions: 0, interruptedTranscriptions: 0, synthesisAborts: 0, synthesisGate: undefined as Promise<void> | undefined,
     closed: false, receivedBytes: [] as number[] };
   const components: SpeechComponents = {
     transcriber: {
@@ -80,9 +80,15 @@ export function fakeSpeech() {
         state.transcriptions += 1;
         state.receivedBytes[index] = 0;
         const parts: Buffer[] = [];
-        for await (const chunk of audio) {
-          parts.push(Buffer.from(chunk));
-          state.receivedBytes[index]! += chunk.length;
+        try {
+          for await (const chunk of audio) {
+            parts.push(Buffer.from(chunk));
+            state.receivedBytes[index]! += chunk.length;
+          }
+        } catch (error) {
+          // An unfinished request interrupts the audio instead of ending it: nothing is transcribed.
+          state.interruptedTranscriptions += 1;
+          throw error;
         }
         const transcript = Buffer.concat(parts).toString('utf8');
         if (transcript.includes('FAIL')) throw new Error('Simulated transcription failure');
@@ -123,7 +129,7 @@ export async function startSessionServer(options: Readonly<{
   const built = await buildConversationServer({ host: '127.0.0.1', port: 0,
     allowedOrigins: [...(options.allowedOrigins ?? [])], publicHttps: false }, prepared,
   options.reply ?? echoReply().reply,
-  options.voice ? { voskModelPath: '/fake/vosk', voiceEngine: 'piper', voiceModelDir: '/fake/voice' }
+  options.voice ? { sttModelDir: '/fake/transcription', voiceModelDir: '/fake/voice' }
     : undefined,
   options.voice ? speech.factory : undefined,
   { ...surfaceOptions(), sessionPingIntervalMs: options.pingIntervalMs ?? 30_000 });

@@ -15,11 +15,10 @@ Alla richiesta di arresto ordinato, il server impedisce subito nuove ammissioni 
 
 L'immagine runtime include i modelli elencati, con archivio, origine, impronta SHA-256 e licenza, dalla fonte «Modelli vocali scaricati nell'immagine del backend», ciascuno nella directory che ha il nome dell'archivio senza estensione:
 
-- in `/opt/ambrogio/models` i modelli Vosk per italiano e inglese;
-- in `/opt/ambrogio/voices` le voci Piper VITS convertite per sherpa-onnx, ciascuna con un solo modello `.onnx`, `tokens.txt`, `espeak-ng-data/` e la scheda `MODEL_CARD`, insieme a una nota di provenienza e licenza (`README.md`);
-- in `/opt/ambrogio/kokoro` il modello Kokoro multilingue, con voci italiane e inglesi, `voices.bin` e il file `LICENSE`.
+- in `/opt/ambrogio/models` il modello in streaming Nemotron 3.5 ASR 0.6B multilingue per italiano e inglese, con i soli file int8 dell'encoder, del decoder e del joiner, il file dei token e il testo della licenza `LICENSE`;
+- in `/opt/ambrogio/voices` le voci Piper VITS convertite per sherpa-onnx, ciascuna con un solo modello `.onnx`, `tokens.txt`, `espeak-ng-data/` e la scheda `MODEL_CARD`, insieme a una nota di provenienza e licenza (`README.md`).
 
-La build scarica gli archivi della fonte, ne verifica l'impronta SHA-256 fissata in `scripts/fetch-speech-models.mjs` prima dell'estrazione e si interrompe se un'impronta differisce o se il contenuto estratto non ha la struttura attesa. Gli esempi selezionano Piper per le macchine modeste; Kokoro è disponibile senza download aggiuntivo e viene caricato solo se indicato dal profilo attivo. I profili vocali indicano i modelli con percorsi espliciti e ammettono anche modelli esterni montati. Non è prevista la scelta della voce durante una conversazione.
+La build scarica gli archivi della fonte, ne verifica l'impronta SHA-256 fissata in `scripts/fetch-speech-models.mjs` prima dell'estrazione e si interrompe se un'impronta differisce o se il contenuto estratto non ha la struttura attesa; dall'archivio Nemotron rimuove le registrazioni di prova e il `README.md`. I profili vocali indicano i modelli con percorsi espliciti e ammettono anche modelli esterni montati. Non è prevista la scelta della voce durante una conversazione.
 
 #### Metadata
   * type: specification
@@ -41,7 +40,7 @@ Il confine tecnico usa il valore catturato come `err` senza crearne un altro qua
 
 ### Distribuzione dei modelli vocali
 
-Quando la voce è abilitata, Vosk e la sintesi vocale sherpa-onnx sono eseguiti nel processo backend del medesimo container Docker. Le librerie necessarie a Vosk e a sherpa-onnx appartengono all'immagine runtime, insieme ai modelli del catalogo definito da «Catalogo bilingue dei modelli vocali nell'immagine backend»; l'immagine non contiene un ambiente Python né il binario Piper. Il componente vocale riceve i percorsi dalla configurazione validata e ne verifica la disponibilità prima di attivare l'ingresso vocale; un modello necessario assente, illeggibile o non caricabile impedisce l'avvio. Quando la voce è disabilitata, i percorsi dei modelli non sono richiesti.
+Quando la voce è abilitata, la trascrizione e la sintesi vocale sono eseguite con `sherpa-onnx-node` nel processo backend del medesimo container Docker. La libreria e i suoi binari nativi appartengono all'immagine runtime, insieme ai modelli del catalogo definito da «Catalogo bilingue dei modelli vocali nell'immagine backend»; l'immagine non contiene un ambiente Python né il binario Piper. Il componente vocale riceve i percorsi dalla configurazione validata e ne verifica la disponibilità prima di attivare l'ingresso vocale; un modello necessario assente, illeggibile o non caricabile impedisce l'avvio. Quando la voce è disabilitata, i percorsi dei modelli non sono richiesti.
 
 #### Metadata
   * type: specification
@@ -91,7 +90,7 @@ La definizione TypeScript locale a un modulo business è `type Result<T, E> = Re
 
 ### Ingresso di prova del server conversazionale
 
-L'ingresso di prova è il modulo `apps/server/dist/runtime/test-server.js` del backend compilato, distinto dall'avvio di produzione, che esporta la funzione asincrona `startTestServer(options)`. `options` contiene `directory`, la cartella di un archivio temporaneo posseduta dalla prova; `language`, `it` oppure `en`; `reply`, il produttore di risposte deterministico al posto dell'orchestratore e degli agenti, con la forma della porta di produzione della risposta; facoltativi `speech`, la fabbrica di un trascrittore e di un sintetizzatore deterministici al posto di Vosk e della sintesi vocale, `allowedOrigins`, le origini consentite del componente HTTP, e `sessionPingIntervalMs`. Senza `speech` la voce non è abilitata.
+L'ingresso di prova è il modulo `apps/server/dist/runtime/test-server.js` del backend compilato, distinto dall'avvio di produzione, che esporta la funzione asincrona `startTestServer(options)`. `options` contiene `directory`, la cartella di un archivio temporaneo posseduta dalla prova; `language`, `it` oppure `en`; `reply`, il produttore di risposte deterministico al posto dell'orchestratore e degli agenti, con la forma della porta di produzione della risposta; facoltativi `speech`, la fabbrica di un trascrittore e di un sintetizzatore deterministici al posto della trascrizione e della sintesi vocale, `allowedOrigins`, le origini consentite del componente HTTP, e `sessionPingIntervalMs`. Senza `speech` la voce non è abilitata.
 
 L'ingresso avvia lo stesso server conversazionale dell'avvio di produzione, con il canale `ambrogio.v1`, le API HTTP pubbliche e gli stessi contratti di comportamento del turno, in ascolto su `127.0.0.1` con una porta libera, e restituisce `origin`, l'origine HTTP del server, `sessionUrl`, l'URL della sessione `ambrogio.v1`, e `close()`, che smette di accettare turni, interrompe quelli in corso, chiude le sessioni, il listener e l'archivio, ed è idempotente. Non legge le variabili d'ambiente del processo né i file degli agenti, non carica modelli vocali e non contatta servizi esterni. La configurazione del componente Conversazioni è letta dal suo modulo di configurazione da un ambiente costruito dall'ingresso, con l'ambiente di esecuzione `test`, l'archivio nella cartella indicata e la lingua indicata, così che gli altri valori siano i predefiniti del modulo. Un cambio incompatibile della forma dell'ingresso si fa nella stessa modifica delle prove dei client che lo usano, secondo «Compatibilità fra release per versione d'interfaccia», senza conservare la forma precedente.
 
@@ -208,7 +207,7 @@ All'avvio la composition root legge per primo l'ambiente di esecuzione, poi la c
 
 ### Profilo di installazione delle dipendenze del backend
 
-Il backend applica le regole sulle dipendenze di «Profilo di installazione con pnpm e Corepack» al `package.json` della radice, di `apps/server` e di `packages/conversations`: ogni dipendenza diretta ha la versione esatta risolta in `pnpm-lock.yaml`, salvo `@ambrogio/conversations`, dichiarata da `apps/server` con `workspace:*`. `allowBuilds` in `pnpm-workspace.yaml` ammette soltanto `koffi` e `vosk-koffi`, i cui script di installazione preparano la libreria nativa usata dal riconoscimento vocale Vosk. `pnpm-workspace.yaml` non dichiara `minimumReleaseAge` né `minimumReleaseAgeExclude`: il backend non ha eccezioni all'attesa per le nuove versioni.
+Il backend applica le regole sulle dipendenze di «Profilo di installazione con pnpm e Corepack» al `package.json` della radice, di `apps/server` e di `packages/conversations`: ogni dipendenza diretta ha la versione esatta risolta in `pnpm-lock.yaml`, salvo `@ambrogio/conversations`, dichiarata da `apps/server` con `workspace:*`. `pnpm-workspace.yaml` non dichiara `allowBuilds`, perché nessuna dipendenza richiede script di installazione: i binari nativi di `sherpa-onnx-node` arrivano come pacchetti per piattaforma. `pnpm-workspace.yaml` non dichiara `minimumReleaseAge` né `minimumReleaseAgeExclude`: il backend non ha eccezioni all'attesa per le nuove versioni.
 
 #### Metadata
   * type: specification

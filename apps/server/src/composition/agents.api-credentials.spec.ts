@@ -24,10 +24,14 @@ test('passes each credential named by an agent file to its own controlled Mistra
           message: { role: 'assistant', content: '{"agent":"bearer"}' }, finish_reason: 'stop' }],
         usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } });
     }
-    const event = { id: 'controlled-1', object: 'chat.completion.chunk', created: 0,
-      model: 'mistral-small-latest', choices: [{ index: 0, delta: { content: '{"answer":"answer","expectsReply":false}' },
-        finish_reason: null }] };
-    return new Response(`data: ${JSON.stringify(event)}\n\ndata: [DONE]\n\n`, {
+    const reply = (text: string) => [
+      { id: 'controlled-1', object: 'chat.completion.chunk', created: 0, model: 'mistral-small-latest',
+        choices: [{ index: 0, delta: { content: text }, finish_reason: null }] },
+      { id: 'controlled-1', object: 'chat.completion.chunk', created: 0, model: 'mistral-small-latest',
+        choices: [{ index: 0, delta: { tool_calls: [{ id: 'finish0001', type: 'function',
+          function: { name: 'finish', arguments: '{"expectsReply":false}' } }] }, finish_reason: 'tool_calls' }] },
+    ].map(event => `data: ${JSON.stringify(event)}\n\n`).join('') + 'data: [DONE]\n\n';
+    return new Response(reply('answer'), {
       status: 200, headers: { 'content-type': 'text/event-stream' },
     });
   });

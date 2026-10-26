@@ -38,7 +38,7 @@ export type PreparedConversationServer = Readonly<{
  */
 export async function prepareConversationServer(environment: NodeJS.ProcessEnv, log: Logger,
   prepare: PrepareAgents = (directory, timeZone, language) =>
-    prepareAgents(directory, environment, undefined, { timeZone, clock: new SystemCurrentTime() }, language),
+    prepareAgents(directory, environment, undefined, { timeZone, clock: new SystemCurrentTime() }, language, log),
 ): Promise<PreparedConversationServer> {
   const runtime = readRuntimeEnvironment(environment);
   const http = readHttpConfig(environment, runtime);

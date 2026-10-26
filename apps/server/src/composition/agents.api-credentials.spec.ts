@@ -65,9 +65,11 @@ test('passes each credential named by an agent file to its own controlled Mistra
         for await (const _chunk of specialist.reply.produce(history, { requested: new Promise<void>(() => { /* never */ }) })) { /* consume response */ }
       }
       expect(seen.map(request => request.authorization)).toEqual([
-        // The orchestrator chooses the bearer agent, which answers; then each agent answers directly.
+        // The orchestrator chooses the bearer agent, which answers; then each agent answers directly. Every agent
+        // with MCP also makes its announcement call with its own key.
         'Bearer orchestrator-json-key', 'Bearer specialist-json-key', 'Bearer specialist-json-key',
-        'Bearer oauth-agent-json-key',
+        'Bearer specialist-json-key', 'Bearer specialist-json-key',
+        'Bearer oauth-agent-json-key', 'Bearer oauth-agent-json-key',
       ]);
       expect(seen.every(request => (request.body as { model?: string }).model
         === 'mistral-small-latest')).toBe(true);

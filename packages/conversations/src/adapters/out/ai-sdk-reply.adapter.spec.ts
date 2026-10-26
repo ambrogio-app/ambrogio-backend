@@ -36,6 +36,10 @@ function answer(text: string, expectsReply = false) {
   return textParts(JSON.stringify({ answer: text, expectsReply }));
 }
 
+const actionRules = '\nWhen you carried out the requested action successfully, leave answer empty: '
+  + 'a short announcement of the action is spoken separately. When an action fails, say in answer what did not '
+  + 'work. When the family asks for information, write it in answer.';
+
 /** A server without prompts never has them read. */
 const getPrompt = async (): Promise<string> => { throw new Error('Unexpected prompt read'); };
 const text = (value: string): ReplyPart => ({ kind: 'text', text: value });
@@ -278,7 +282,7 @@ test('specialists receive the current date and time in the configured time zone 
   const [first, second] = toolModel.doStreamCalls.map(call => String(call.prompt[0]?.content));
   expect(first).toBe(`${settings.instructions}\n${line('Monday, 19 October 2026 at 09:41 (Europe/Rome)')}`
     + '\n\nInstructions and context from the connected MCP server:\nServer context\nPut the words of your reply in answer. '
-    + 'Set expectsReply to true only when the answer asks the user to reply; otherwise set it to false.');
+    + 'Set expectsReply to true only when the answer asks the user to reply; otherwise set it to false.' + actionRules);
   expect(second).toContain(line('Tuesday, 20 October 2026 at 09:41 (Europe/Rome)'));
 
   now = new Date('2026-10-19T07:41:00Z');
@@ -312,7 +316,7 @@ test('specialist reads the server prompts at every turn and puts them before the
   const systems = model.doStreamCalls.map(call => String(call.prompt[0]?.content));
   expect(systems[0]).toBe(`${settings.instructions}\n\nInstructions and context from the connected MCP server:\n`
     + `${versions[0]}\nPut the words of your reply in answer. `
-    + 'Set expectsReply to true only when the answer asks the user to reply; otherwise set it to false.');
+    + 'Set expectsReply to true only when the answer asks the user to reply; otherwise set it to false.' + actionRules);
   expect(systems[1]).toContain(versions[1]);
   expect(systems[1]).not.toContain(`${versions[0]}\n`);
 });
@@ -437,4 +441,155 @@ test('an OpenAI-compatible agent without an endpoint is rejected before any requ
     .toThrow('Invalid agent configuration');
   expect(() => new AiSdkKnowledgeAgentReply({ ...settings, baseURL: 'https://models.example/v1' }))
     .toThrow('Invalid agent configuration');
+});
+
+/** A model whose reply steps and announcement are scripted; the announcement resolves when `release` is called. */
+function announcing(steps: Array<{ parts: object[]; reason: 'stop' | 'tool-calls' }>,
+  announcement: Readonly<{ text?: string; fail?: boolean }>) {
+  let release!: () => void;
+  const released = new Promise<void>(resolve => { release = resolve; });
+  let next = 0;
+  const model = new MockLanguageModelV4({
+    doStream: async () => {
+      const step = steps[next++];
+      if (!step) throw new Error('Unexpected model step');
+      return { stream: simulateReadableStream({ chunks: [...step.parts, { type: 'finish',
+        finishReason: { unified: step.reason, raw: undefined }, usage }] as any[] }) };
+    },
+    doGenerate: async ({ abortSignal }) => {
+      await Promise.race([released, new Promise((_, reject) =>
+        abortSignal?.addEventListener('abort', () => reject(new Error('aborted')), { once: true }))]);
+      if (announcement.fail) throw new Error('Announcement failed');
+      return { content: [{ type: 'text', text: JSON.stringify({ announcement: announcement.text ?? '' }) }],
+        warnings: [], finishReason: { unified: 'stop', raw: undefined }, usage } as any;
+    },
+  });
+  return { model, release };
+}
+
+const lookupTool = { prompts: [], tools: [{ name: 'lookup', inputSchema: { type: 'object' } }] };
+
+// Verification: Prova dell'annuncio dell'azione
+test('the announcement is spoken while the tool runs, and a successful action ends without other words', async () => {
+  const order: string[] = [];
+  const { model, release } = announcing([
+    { parts: [callPart('lookup', {})], reason: 'tool-calls' },
+    { parts: answer(''), reason: 'stop' },
+  ], { text: '  I am looking for a song by Neffa and playing it. ' });
+  let finishTool!: () => void;
+  const toolDone = new Promise<void>(resolve => { finishTool = resolve; });
+  const reply = new AiSdkToolAgentReply({ ...settings, responseLanguage: 'it' }, lookupTool, { getPrompt,
+    async callTool() {
+      order.push('tool started');
+      release();
+      await toolDone;
+      order.push('tool finished');
+      return { isError: false, content: [{ type: 'text', text: 'playing' }] };
+    } }, 2, model);
+  const parts: ReplyPart[] = [];
+  for await (const part of reply.produce(history, never())) {
+    if (part.kind === 'text') { order.push('announcement'); finishTool(); }
+    parts.push(part);
+  }
+  expect(parts).toEqual([text('I am looking for a song by Neffa and playing it.\n'), expectation(false)]);
+  expect(order).toEqual(['tool started', 'announcement', 'tool finished']);
+  const call = model.doGenerateCalls[0]!;
+  expect(call.tools ?? []).toEqual([]);
+  expect(call.responseFormat).toMatchObject({ type: 'json', schema: { properties: { announcement: { type: 'string' } },
+    required: ['announcement'] } });
+  expect(String(call.prompt[0]?.content)).toBe(`${settings.instructions}\nWrite in Italian.\nYou are not answering now. `
+    + 'Decide only whether the last message of the family asks you to carry out an action with your tools. If it does, '
+    + 'write in announcement one short sentence that tells the family what you are about to do, for example '
+    + '"I am looking for a song by Neffa and playing it." If the message asks for information, or you are not sure, '
+    + 'leave announcement empty. Do not carry out the action.');
+  expect(String(model.doStreamCalls[0]?.prompt[0]?.content)).toContain(actionRules);
+});
+
+// Verification: Prova dell'annuncio dell'azione
+test.each([
+  ['empty', { text: '' }, true],
+  ['too long', { text: 'x'.repeat(201) }, true],
+  ['failed', { fail: true }, true],
+  ['late', { text: 'I am checking the weather.' }, false],
+] as const)('a %s announcement leaves the reply parts unchanged', async (_case, announcement, releaseEarly) => {
+  const { model, release } = announcing([{ parts: answer('It is sunny.'), reason: 'stop' }], announcement);
+  if (releaseEarly) release();
+  const reply = new AiSdkToolAgentReply(settings, lookupTool, { getPrompt,
+    async callTool() { throw new Error('Unexpected tool call'); } }, 1, model);
+  const parts = await collect(reply.produce(history, never()));
+  release();
+  expect(parts).toEqual([text('It is sunny.'), expectation(false)]);
+  // A late announcement is stopped once the reply has its first part.
+  if (!releaseEarly) expect(model.doGenerateCalls[0]?.abortSignal?.aborted).toBe(true);
+});
+
+// Verification: Prova dell'annuncio dell'azione
+test('the cancellation stops the announcement too, and an agent without MCP makes no announcement call', async () => {
+  let request!: () => void;
+  const stop = { requested: new Promise<void>(resolve => { request = resolve; }) };
+  const { model } = announcing([{ parts: [callPart('lookup', {})], reason: 'tool-calls' },
+    { parts: answer('Done.'), reason: 'stop' }], { text: 'Never spoken.' });
+  let toolCalled!: () => void;
+  const called = new Promise<void>(resolve => { toolCalled = resolve; });
+  const reply = new AiSdkToolAgentReply(settings, lookupTool, { getPrompt, async callTool(_name, _args, signal) {
+    toolCalled();
+    await new Promise((_, reject) => signal?.addEventListener('abort', () => reject(new Error('stopped')),
+      { once: true }));
+    throw new Error('Unreachable');
+  } }, 1, model);
+  const produced = collect(reply.produce(history, stop)).catch(() => 'stopped');
+  await called;
+  request();
+  await produced;
+  expect(model.doGenerateCalls[0]?.abortSignal?.aborted).toBe(true);
+  expect(model.doStreamCalls[0]?.abortSignal?.aborted).toBe(true);
+
+  const knowledgeModel = announcing([{ parts: answer('Hello.'), reason: 'stop' }], { text: 'Never asked.' });
+  knowledgeModel.release();
+  const knowledge = new AiSdkKnowledgeAgentReply(settings, knowledgeModel.model);
+  expect(await collect(knowledge.produce(history, never()))).toEqual([text('Hello.'), expectation(false)]);
+  expect(knowledgeModel.model.doGenerateCalls).toHaveLength(0);
+  expect(knowledgeModel.model.doStreamCalls).toHaveLength(1);
+});
+
+// Verification: Prova dell'evento dei tempi della risposta
+test('the orchestrator logs the timing of each completed reply without conversation texts', async () => {
+  let clock = 0;
+  const events: Array<{ level: string; fields: Record<string, unknown> }> = [];
+  const record = (level: string) => (fields: Record<string, unknown>) => { events.push({ level, fields }); };
+  const log = { debug: record('debug'), info: record('info'), warn: record('warn'), error: record('error'),
+    child: () => log };
+  const router = new MockLanguageModelV4({ doGenerate: async () => {
+    clock += 300;
+    const agent = ['music', 'facts', 'broken'][router.doGenerateCalls.length - 1];
+    return { content: [{ type: 'text', text: JSON.stringify({ agent }) }], warnings: [],
+      finishReason: { unified: 'stop', raw: undefined }, usage } as any;
+  } });
+  const { model, release } = announcing([
+    { parts: [callPart('lookup', { query: 'Neffa' })], reason: 'tool-calls' },
+    { parts: [callPart('lookup', { query: 'play' }, 'call-2')], reason: 'tool-calls' },
+    { parts: answer(''), reason: 'stop' },
+  ], { text: 'I am playing Neffa.' });
+  const music = new AiSdkToolAgentReply(settings, lookupTool, { getPrompt, async callTool() {
+    if (clock === 300) { clock += 100; release(); await new Promise(resolve => setTimeout(resolve, 5)); }
+    clock += 1_000;
+    return { isError: false, content: [{ type: 'text', text: 'ok' }] };
+  } }, 2, model, () => clock);
+  const facts = new AiSdkKnowledgeAgentReply(settings, scripted({ parts: answer('Cats purr.'), reason: 'stop' }));
+  const broken = recordingAgent('broken', 'Fails', []);
+  broken.reply.produce = async function* () { throw new Error('Agent failed'); };
+  const orchestrator = new AiSdkOrchestratorReply(settings, [
+    { id: 'music', description: 'Plays music', reply: music }, { id: 'facts', description: 'Facts', reply: facts },
+    broken,
+  ], router, { log, now: () => clock });
+  await collect(orchestrator.produce(history, never()));
+  await collect(orchestrator.produce(history, never()));
+  await expect(collect(orchestrator.produce(history, never()))).rejects.toThrow();
+  expect(events).toEqual([
+    { level: 'info', fields: { event: 'conversation_reply_timing', agent: 'music', routerMs: 300, agentMs: 2_100,
+      modelSteps: 3, toolCalls: 2, toolMs: 2_100, announcementMs: 100 } },
+    { level: 'info', fields: { event: 'conversation_reply_timing', agent: 'facts', routerMs: 300, agentMs: 0,
+      modelSteps: 1 } },
+  ]);
+  expect(JSON.stringify(events)).not.toMatch(/Neffa|Cats|Find it|lookup|query/);
 });

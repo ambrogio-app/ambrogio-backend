@@ -3,6 +3,7 @@ import { SystemCurrentTime } from '@ambrogio/conversations/adapters/out/system-c
 import type { AvailableMcpTool, McpConnection } from '@ambrogio/conversations/adapters/out/mcp-tool-client';
 import { aiSdkOptions, AiSdkKnowledgeAgentReply, AiSdkOrchestratorReply, AiSdkToolAgentReply }
   from '@ambrogio/conversations/adapters/out/ai-sdk-reply';
+import type { Logger } from '@ambrogio/conversations/adapters/in/logger';
 import { loadAgentConfigs } from '../runtime/agent-config.js';
 import type { AgentConfig } from '../runtime/agent-config.js';
 import { ProjectError } from '@ambrogio/conversations/application/project-error';
@@ -29,6 +30,8 @@ export async function prepareAgents(
   // Specialists only: the orchestrator chooses the agent and does not need the date.
   currentTime: CurrentTime = { timeZone: 'UTC', clock: new SystemCurrentTime() },
   responseLanguage: 'en' | 'it' = 'en',
+  /** The base logger, where the orchestrator writes the timing of each reply. */
+  log?: Logger,
 ): Promise<Readonly<{
   orchestrator: AiSdkOrchestratorReply;
   specialists: readonly Readonly<{ id: string; description: string; maxToolCalls?: number;
@@ -76,7 +79,8 @@ export async function prepareAgents(
         maxToolCalls: config.maxToolCalls!, reply, mcp,
         tools: offered ? tools.filter((available) => offered.includes(available.name)) : tools });
     }
-    const orchestrator = new AiSdkOrchestratorReply(settingsFor(configs.orchestrator), specialists);
+    const orchestrator = new AiSdkOrchestratorReply(settingsFor(configs.orchestrator), specialists, undefined,
+      log === undefined ? undefined : { log });
     return { orchestrator, specialists,
       close: () => connections.close() };
   } catch (error) {

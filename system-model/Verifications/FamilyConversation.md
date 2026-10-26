@@ -198,6 +198,38 @@ La prova passa se ciascun agente usa il proprio limite, nessuna chiamata viene i
   * verify: [Limite delle chiamate agli strumenti per agente](../Requirements/FamilyConversation.md#limite-delle-chiamate-agli-strumenti-per-agente)
 ---
 
+### Prova dell'annuncio dell'azione
+
+Con modelli simulati per la generazione della risposta e per l'annuncio e un client MCP controllato, produrre risposte di un agente con connettore MCP nei casi seguenti: annuncio restituito mentre lo strumento è in esecuzione e risposta finale vuota; annuncio vuoto con risposta finale; annuncio restituito dopo il primo frammento della risposta; annuncio più lungo di 200 caratteri; chiamata dell'annuncio fallita; annullamento della produzione mentre l'annuncio è in corso. Produrre anche una risposta di un agente senza connettore MCP. Registrare l'ordine delle parti consegnate, le chiamate ai modelli con le istruzioni, gli strumenti e lo schema di uscita.
+
+#### Details
+La prova passa se nel primo caso il primo frammento è l'annuncio seguito da un a capo, consegnato prima che la chiamata allo strumento termini, e dopo di esso arriva soltanto l'indicazione `expectsReply`; se la chiamata dell'annuncio non offre strumenti e chiede l'uscita con il solo campo `announcement`; se negli altri casi l'annuncio non compare e le parti della risposta restano quelle della generazione; se l'annullamento interrompe entrambe le chiamate; se le istruzioni della generazione della risposta contengono le regole sulla risposta vuota; se l'agente senza connettore MCP effettua una sola chiamata al modello. Fallisce se l'annuncio compare dopo un frammento della risposta, se un guasto dell'annuncio cambia le parti consegnate o se un agente senza connettore MCP effettua la chiamata dell'annuncio.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
+  * verify: [Annuncio dell'azione dell'agente con connettore MCP](../Requirements/FamilyConversation.md#annuncio-dellazione-dellagente-con-connettore-mcp)
+---
+
+### Prova dell'evento dei tempi della risposta
+
+Con un orologio controllato, un logger di prova, modelli simulati e un client MCP controllato, produrre una risposta delegata a un agente con connettore MCP che chiama due strumenti e consegna un annuncio, una risposta delegata a un agente senza connettore MCP e una risposta il cui agente fallisce; registrare le righe emesse.
+
+#### Details
+La prova passa se le due risposte riuscite producono ciascuna una sola riga di livello `info` con `event` uguale a `conversation_reply_timing`, l'identificativo dell'agente scelto e le durate e i conteggi uguali a quelli dell'orologio e delle chiamate simulate; se la riga dell'agente senza connettore MCP non contiene `toolCalls`, `toolMs` e `announcementMs`; se la risposta fallita non produce la riga. Fallisce se una riga contiene testi della conversazione, istruzioni, nomi o argomenti degli strumenti.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
+  * verify: [Registrazione dei tempi della risposta degli agenti](../Requirements/FamilyConversation.md#registrazione-dei-tempi-della-risposta-degli-agenti)
+---
+
 ### Prova della configurazione pronta di Home Assistant
 
 Copiare `examples/agents/home-assistant.json` in una directory degli agenti di prova insieme a un orchestratore valido e caricarla con la validazione dei file degli agenti usata all'avvio, fornendo valori segnaposto alle variabili d'ambiente nominate. Esaminare i valori del file e cercare credenziali scritte nel file.

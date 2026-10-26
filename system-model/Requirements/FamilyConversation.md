@@ -32,6 +32,23 @@ Quando il file di un agente specializzato non contiene un connettore MCP, Ambrog
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
+### Annuncio dell'azione dell'agente con connettore MCP
+
+Quando un agente specializzato con connettore MCP elabora un messaggio della famiglia che chiede un'azione, Ambrogio deve trasmettere una breve frase dello stesso agente che annuncia l'azione prima che l'agente ne conosca l'esito; quando l'azione annunciata riesce, l'agente deve concludere il turno senza altre parole e, quando non riesce, deve dire cosa non è riuscito.
+
+#### Details
+Un'azione eseguita con gli strumenti richiede più chiamate in sequenza al modello e al server MCP e dura spesso diversi secondi; senza annuncio la famiglia attende in silenzio. L'annuncio è prodotto da una seconda chiamata breve al modello dello stesso agente, avviata insieme alla generazione della risposta, come le risposte progressive delle skill Alexa: l'agente conosce le proprie istruzioni e il proprio compito, e la generazione della risposta non rallenta. Il costo è una chiamata in più al modello per ogni turno degli agenti con connettore MCP.
+
+Sono state considerate e scartate: l'annuncio dell'orchestratore, che conosce soltanto le descrizioni degli agenti e annuncerebbe azioni che l'agente non sempre esegue; uno strumento locale di annuncio offerto all'agente, che lo costringe a fingere un'azione per parlare e dipende dalla scelta del modello di chiamarlo; il testo libero scritto dal modello prima delle chiamate agli strumenti, che richiede di abbandonare la risposta strutturata e dipende dal provider; un campo di annuncio nella risposta strutturata, che il modello scrive soltanto dopo l'ultima chiamata agli strumenti; una frase o un tono fissi, che non dicono cosa l'agente sta facendo.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
+  * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
+---
+
 ### Assemblaggio delle porte nella composition root
 
 Quando l'applicazione server assembla il modulo «Conversazioni», deve scegliere e fornire le implementazioni delle porte Application tramite la propria composition root.
@@ -1301,6 +1318,23 @@ L'evento rende misurabile, su ogni installazione, il ritardo fra la fine della r
 #### Relations
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Conversazione a voce](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-a-voce)
+---
+
+### Registrazione dei tempi della risposta degli agenti
+
+Quando la produzione della risposta di un turno si conclude, il backend deve registrare un evento diagnostico informativo con l'agente scelto, la durata della scelta dell'orchestratore e del lavoro dell'agente, il numero di chiamate dell'agente al modello e agli strumenti, il tempo passato negli strumenti e, quando c'è, il momento dell'annuncio, senza testi della conversazione.
+
+#### Details
+L'evento mostra in quale fase si spende il tempo fra la richiesta e la risposta: la scelta dell'agente, le chiamate al modello linguistico o le chiamate agli strumenti. Ha livello `info` perché registra un esito riuscito e non un guasto.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
+  * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Registrazione dei turni conversazionali accettati

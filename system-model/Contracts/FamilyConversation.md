@@ -30,6 +30,21 @@ Alla scadenza il caso d'uso risolve la richiesta di annullamento e smette subito
   * define: [Tempo massimo della produzione della risposta](../Requirements/FamilyConversation.md#tempo-massimo-della-produzione-della-risposta)
 ---
 
+### Annuncio in parallelo degli agenti con connettore MCP
+
+A ogni turno delegato a un agente specializzato con connettore MCP, l'adapter avvia, insieme alla generazione della risposta, una seconda chiamata al modello dello stesso agente, senza strumenti, con le istruzioni dell'agente, la data e l'ora correnti, la lingua configurata delle risposte e lo stesso storico, e con l'uscita strutturata `{ announcement: string }`. Le istruzioni di questa chiamata chiedono di scrivere in `announcement` una sola frase breve che dice alla famiglia cosa l'agente sta per fare quando l'ultimo messaggio chiede un'azione eseguibile con i suoi strumenti, e di lasciarlo vuoto quando il messaggio chiede un'informazione o in caso di dubbio, senza eseguire l'azione né rispondere.
+
+Quando la chiamata restituisce un annuncio non vuoto prima che la generazione della risposta consegni la sua prima parte, testo o indicazione `expectsReply`, l'adapter consegna l'annuncio come primo frammento testuale della risposta, seguito da un a capo, così che il canale lo trasmetta e la sintesi lo pronunci subito; altrimenti l'annuncio è scartato e la chiamata annullata. Un annuncio vuoto o più lungo di 200 caratteri, un'uscita non conforme o un guasto della chiamata non producono frammenti, non sono registrati come guasti e non modificano l'esito del turno. L'annullamento della produzione della risposta annulla anche la chiamata dell'annuncio. L'annuncio fa parte del testo della risposta conservato nell'archivio.
+
+Le istruzioni della generazione della risposta degli agenti con connettore MCP aggiungono che, quando ha eseguito con successo l'azione richiesta, l'agente lascia vuoto `answer`; che, quando un'azione non riesce, dice in `answer` cosa non è riuscito; e che, quando la famiglia chiede un'informazione, la scrive in `answer`. Una risposta finale vuota conclude il turno come riuscito senza ulteriori frammenti. Gli agenti senza connettore MCP non effettuano la chiamata dell'annuncio.
+
+#### Metadata
+  * type: behavior
+
+#### Relations
+  * define: [Annuncio dell'azione dell'agente con connettore MCP](../Requirements/FamilyConversation.md#annuncio-dellazione-dellagente-con-connettore-mcp)
+---
+
 ### Archivio SQLite con Kysely
 
 Le conversazioni e i loro scambi testuali sono conservati in un database SQLite dell'installazione. Le operazioni applicative di lettura e scrittura dell'archivio usano Kysely. La scelta riguarda l'archivio delle conversazioni; non prescrive lo stack degli altri componenti del monorepo.
@@ -286,6 +301,26 @@ La riga non contiene il testo trascritto, il testo della risposta, audio, identi
 
 #### Relations
   * define: [Registrazione dei tempi dei turni vocali](../Requirements/FamilyConversation.md#registrazione-dei-tempi-dei-turni-vocali)
+---
+
+### Evento diagnostico dei tempi della risposta
+
+Quando la produzione della risposta di un turno termina senza guasti, l'adapter dell'orchestratore emette con il logger di base del backend una sola riga Pino di livello `info` con `event: "conversation_reply_timing"`. Oltre ai campi che il logger di base aggiunge a ogni riga e a `event`, la riga contiene soltanto:
+
+- `agent`: l'identificativo dell'agente scelto;
+- `routerMs`: la durata della chiamata dell'orchestratore che sceglie l'agente;
+- `agentMs`: la durata della produzione dell'agente scelto, dal suo avvio all'ultima parte della risposta;
+- `modelSteps`: il numero di chiamate al modello della generazione della risposta dell'agente, esclusa la chiamata dell'annuncio;
+- `toolCalls` e `toolMs`: il numero di chiamate agli strumenti MCP e il tempo complessivo trascorso in esse, presenti soltanto per gli agenti con connettore MCP;
+- `announcementMs`: il tempo dall'avvio dell'agente alla consegna dell'annuncio, presente soltanto quando l'annuncio è consegnato.
+
+Le durate sono millisecondi interi non negativi misurati con un orologio monotono. La riga non contiene testi della conversazione, istruzioni, nomi o argomenti degli strumenti; non contiene il `correlationId` della sessione, che il produttore della risposta non riceve, e si collega all'evento dei tempi del turno vocale tramite l'ora.
+
+#### Metadata
+  * type: input-output
+
+#### Relations
+  * define: [Registrazione dei tempi della risposta degli agenti](../Requirements/FamilyConversation.md#registrazione-dei-tempi-della-risposta-degli-agenti)
 ---
 
 ### Formato JSON dei file degli agenti

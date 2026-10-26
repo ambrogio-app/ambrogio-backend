@@ -148,15 +148,16 @@ function replyInstructions(instructions: string, language?: 'en' | 'it'): string
 }
 
 /**
- * The rules added to the reply instructions of an agent with MCP tools («Frase d'azione prima degli strumenti»). No example
- * sentence: models copied its verb. After a bare "Fatto" in the history, models confirmed new requests without tools.
+ * The rules added to the reply instructions of an agent with MCP tools («Risposta dopo le chiamate agli strumenti»):
+ * the reply comes after the tools, when its outcome is known. No example sentence: models copied its verb. After a
+ * bare "Fatto" in the history, models confirmed new requests without tools.
  */
 const actionReplyRules = '\nEvery request to do something with your tools needs its own tool call in this reply, also when it '
   + 'repeats or refers to an earlier request: earlier replies do not show that anything was done. A message that asks '
-  + 'for nothing, such as thanks or a greeting, needs no tool except finish. Before your first tool call for an action, '
-  + 'say in one short sentence which action you are about to take and on what. Never answer only "Fatto" or "Ok". Do '
-  + 'not write that sentence for a request for information. Write nothing between tool calls and nothing after an '
-  + 'action you announced succeeds. When an action fails, say what did not work.';
+  + 'for nothing, such as thanks or a greeting, needs no tool except finish. Write nothing before or between tool '
+  + 'calls: write your reply only after your last tool call, when you know how it went. After an action, say in one '
+  + 'short sentence what you did and on what; never answer only "Fatto" or "Ok". When an action fails, say what did '
+  + 'not work.';
 
 /** `finish` has no execution: the reply ends at its call, which carries the reply expectation. */
 const finishTool = tool({

@@ -41,10 +41,10 @@ const replyFormat = 'Your text is spoken to the family exactly as you write it, 
   + 'reply. When the reply is complete, call the finish tool; never write tool calls or JSON in your text.';
 const actionRules = '\nEvery request to do something with your tools needs its own tool call in this reply, also when it '
   + 'repeats or refers to an earlier request: earlier replies do not show that anything was done. A message that asks '
-  + 'for nothing, such as thanks or a greeting, needs no tool except finish. Before your first tool call for an action, '
-  + 'say in one short sentence which action you are about to take and on what. Never answer only "Fatto" or "Ok". Do '
-  + 'not write that sentence for a request for information. Write nothing between tool calls and nothing after an '
-  + 'action you announced succeeds. When an action fails, say what did not work.';
+  + 'for nothing, such as thanks or a greeting, needs no tool except finish. Write nothing before or between tool '
+  + 'calls: write your reply only after your last tool call, when you know how it went. After an action, say in one '
+  + 'short sentence what you did and on what; never answer only "Fatto" or "Ok". When an action fails, say what did '
+  + 'not work.';
 
 /** A server without prompts never has them read. */
 const getPrompt = async (): Promise<string> => { throw new Error('Unexpected prompt read'); };
@@ -467,8 +467,8 @@ function timed(clock: { now: number }, stepMs: number, ...steps: Array<{ parts: 
 
 const lookupTool = { prompts: [], tools: [{ name: 'lookup', inputSchema: { type: 'object' } }] };
 
-// Verification: Prova dell'annuncio dell'azione
-test('the sentence written before a tool call is delivered before the tool runs, and nothing follows a success', async () => {
+// Verification: Prova della risposta dopo le azioni
+test('text written anyway before a tool call is delivered before the tool runs, with its line break', async () => {
   const order: string[] = [];
   const model = scripted(
     { parts: [...textParts('Cerco una canzone di Neffa.'), callPart('lookup', {})], reason: 'tool-calls' },
@@ -497,7 +497,7 @@ test('the sentence written before a tool call is delivered before the tool runs,
   expect(String(model.doStreamCalls[0]?.prompt[0]?.content)).toContain(actionRules);
 });
 
-// Verification: Prova dell'annuncio dell'azione
+// Verification: Prova della risposta dopo le azioni
 test('a confirmation after the tool is separated from the earlier text by a line break', async () => {
   const model = scripted(
     { parts: [...textParts('Accendo la luce.'), callPart('lookup', {})], reason: 'tool-calls' },

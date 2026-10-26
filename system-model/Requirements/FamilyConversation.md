@@ -32,27 +32,6 @@ Quando il file di un agente specializzato non contiene un connettore MCP, Ambrog
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
-### Annuncio dell'azione dell'agente con connettore MCP
-
-Quando un agente specializzato con connettore MCP elabora un messaggio della famiglia che chiede un'azione, Ambrogio deve trasmettere una breve frase dello stesso agente che dice quale azione sta per eseguire e su cosa, prima che l'agente esegua gli strumenti, e l'agente deve eseguire con i propri strumenti ogni azione chiesta da quel messaggio, anche quando ripete o richiama una richiesta precedente; quando l'azione annunciata riesce, l'agente deve concludere il turno senza altre parole e, quando non riesce, deve dire cosa non è riuscito.
-
-#### Details
-Un'azione eseguita con gli strumenti richiede più chiamate in sequenza al modello e al server MCP e dura spesso diversi secondi; senza annuncio la famiglia attende in silenzio. L'annuncio segue il pattern della preamble dei modelli vocali, raccomandato dalla guida OpenAI per i modelli realtime: lo stesso modello, nella stessa generazione, scrive una frase breve che descrive l'azione subito prima di chiamare gli strumenti. Prove con Mistral e con agenti reali di musica e Home Assistant hanno prodotto la frase circa mezzo secondo dopo l'inizio della generazione, prima della chiamata allo strumento, e nessuna frase per le domande di informazione. La frase è chiesta soltanto prima della prima chiamata a uno strumento, con il silenzio tra le chiamate: chiesta prima di ogni chiamata, il modello commentava ogni passo dell'azione. Poiché l'agente sa se ha annunciato, la regola sul silenzio dopo un'azione riuscita non lascia la famiglia senza conferma. Il pattern richiede che il testo della risposta sia libero: per questo gli agenti specializzati scrivono testo libero e comunicano la replica attesa con lo strumento finale `finish`, invece dell'uscita strutturata, che AI SDK impone a ogni passo della generazione, compresi quelli con gli strumenti.
-
-Una risposta fatta soltanto di «Fatto.» induceva il modello, nei turni successivi della stessa conversazione, a confermare le nuove richieste senza chiamare gli strumenti: lo storico mostra all'agente i testi delle risposte, non le azioni eseguite. In prove con Mistral e con l'agente Home Assistant di un'installazione reale, la richiesta «spegnila» dopo una risposta «Fatto.» non ha prodotto chiamate agli strumenti in nessuna prova, né con una regola che vieta di dichiarare eseguite le azioni non eseguite, né con il modello libero di non chiamare strumenti; dopo una risposta che nomina l'azione e il suo oggetto, la stessa richiesta ha sempre chiamato lo strumento. Per questo la frase nomina sempre l'azione e il suo oggetto, la risposta non è mai soltanto «Fatto» o «Ok» e ogni richiesta d'azione richiede una propria chiamata. Le istruzioni non contengono frasi d'esempio: con un esempio il modello ne copiava il verbo anche per azioni diverse, fino a chiamare lo strumento opposto. Un messaggio che non chiede nulla, come un ringraziamento, è escluso esplicitamente: senza l'eccezione, con la chiamata a uno strumento richiesta a ogni passo, il modello eseguiva un'azione anche per un ringraziamento.
-
-Sono state considerate e scartate: una seconda chiamata breve al modello dell'agente, in parallelo alla risposta, che produce soltanto l'annuncio, provata e scartata perché con le istruzioni del server MCP il modello lasciava l'annuncio vuoto anche per una richiesta d'azione, perché costa una chiamata in più e perché la risposta non sa se l'annuncio è stato pronunciato; l'annuncio dell'orchestratore, che conosce soltanto le descrizioni degli agenti e annuncerebbe azioni che l'agente non sempre esegue; uno strumento locale di annuncio offerto all'agente, che lo costringe a fingere un'azione per parlare; un campo di annuncio nell'uscita strutturata, che il modello scrive soltanto dopo l'ultima chiamata agli strumenti; una frase o un tono fissi, che non dicono cosa l'agente sta facendo.
-
-Fonti: guida OpenAI ai modelli realtime, https://developers.openai.com/api/docs/guides/realtime-models-prompting ; documentazione AI SDK sul controllo del ciclo, https://ai-sdk.dev/docs/agents/loop-control .
-
-#### Metadata
-  * type: requirement
-
-#### Relations
-  * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
-  * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
----
-
 ### Assemblaggio delle porte nella composition root
 
 Quando l'applicazione server assembla il modulo «Conversazioni», deve scegliere e fornire le implementazioni delle porte Application tramite la propria composition root.
@@ -1496,6 +1475,27 @@ Se un nome dell'elenco degli strumenti MCP ammessi di un agente specializzato no
 
 #### Relations
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
+  * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
+---
+
+### Risposta dopo le azioni degli agenti con connettore MCP
+
+Quando un agente specializzato con connettore MCP elabora un messaggio della famiglia che chiede un'azione, l'agente deve eseguire con i propri strumenti ogni azione chiesta da quel messaggio, anche quando ripete o richiama una richiesta precedente, e deve rispondere soltanto dopo le chiamate agli strumenti, dicendo quale azione ha eseguito e su cosa oppure che cosa non è riuscito.
+
+#### Details
+La risposta arriva quando l'agente sa com'è andata. È stata provata e tolta una frase breve che l'agente scriveva prima di chiamare gli strumenti, sul modello della preamble dei modelli vocali raccomandata dalla guida OpenAI per i modelli realtime: il modello la scriveva prima di conoscere l'esito, e quanto è già stato pronunciato non si ritira. Su un'installazione reale ha annunciato «Non riesco a trovare un lettore chiamato Ambrogio» prima di cercare il lettore, che poi ha trovato, e ha detto «sto per spegnere la luce» quando Home Assistant l'aveva già spenta, perché un'azione di Home Assistant dura pochi millisecondi. Con un server veloce la risposta dopo le azioni arriva in circa due secondi per un comando di Home Assistant e in tre o quattro per la ricerca e l'avvio di un brano.
+
+Una risposta fatta soltanto di «Fatto.» induceva il modello, nei turni successivi della stessa conversazione, a confermare le nuove richieste senza chiamare gli strumenti: lo storico mostra all'agente i testi delle risposte, non le azioni eseguite. In prove con Mistral e con l'agente Home Assistant di un'installazione reale, la richiesta «spegnila» dopo una risposta «Fatto.» non ha prodotto chiamate agli strumenti in nessuna prova, mentre dopo una risposta che nomina l'azione e il suo oggetto ha sempre chiamato lo strumento. Per questo la risposta nomina sempre l'azione e il suo oggetto, non è mai soltanto «Fatto» o «Ok», e ogni richiesta d'azione richiede una propria chiamata. Le istruzioni non contengono frasi d'esempio: con un esempio il modello ne copiava il verbo anche per azioni diverse, fino a chiamare lo strumento opposto. Un messaggio che non chiede nulla, come un ringraziamento, è escluso esplicitamente: senza l'eccezione, con la chiamata a uno strumento richiesta a ogni passo, il modello eseguiva un'azione anche per un ringraziamento. Con queste regole, nelle stesse prove, gli agenti di Home Assistant e della musica non hanno scritto testo prima delle chiamate agli strumenti.
+
+Sono state considerate e non adottate per riempire l'attesa: una parola fissa come «Ok» trasmessa dal backend appena l'orchestratore sceglie l'agente, che suonerebbe superflua prima delle risposte rapide; un suono d'attesa riprodotto dal satellite fra la fine della richiesta e la risposta. Sono state scartate per annunciare l'azione: una seconda chiamata breve al modello dell'agente in parallelo alla risposta, perché con le istruzioni del server MCP il modello lasciava l'annuncio vuoto; l'annuncio dell'orchestratore, che conosce soltanto le descrizioni degli agenti; uno strumento locale di annuncio, che costringe il modello a fingere un'azione per parlare; un campo di annuncio nell'uscita strutturata, che il modello scrive soltanto dopo l'ultima chiamata agli strumenti.
+
+Fonti: guida OpenAI ai modelli realtime, https://developers.openai.com/api/docs/guides/realtime-models-prompting ; documentazione AI SDK sul controllo del ciclo, https://ai-sdk.dev/docs/agents/loop-control .
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
   * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
 ---
 

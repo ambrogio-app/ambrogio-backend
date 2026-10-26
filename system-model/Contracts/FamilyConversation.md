@@ -340,19 +340,6 @@ Esempio di agente specializzato senza connettore MCP:
   * define: [File JSON di soli dati per gli agenti](../Requirements/ServerFoundation.md#file-json-di-soli-dati-per-gli-agenti)
 ---
 
-### Frase d'azione prima degli strumenti
-
-Le istruzioni della generazione della risposta di un agente specializzato con connettore MCP chiedono che ogni richiesta di fare qualcosa con gli strumenti abbia una propria chiamata a uno strumento nella stessa risposta, anche quando ripete o richiama una richiesta precedente, perché le risposte precedenti non mostrano che cosa è stato eseguito; che un messaggio che non chiede nulla, come un ringraziamento o un saluto, non richieda strumenti diversi da `finish`; che, prima della prima chiamata a uno strumento per un'azione, l'agente scriva una sola frase breve che dice quale azione sta per eseguire e su cosa, e che non la scriva per una richiesta di informazioni; che la risposta non sia mai soltanto «Fatto» o «Ok»; che non scriva altro tra una chiamata e l'altra né dopo un'azione annunciata e riuscita; e che, quando un'azione non riesce, dica cosa non è riuscito. Le istruzioni non contengono frasi d'esempio.
-
-La frase è testo della stessa generazione della risposta: l'adapter la consegna come frammento testuale appena il modello la scrive, prima che lo strumento sia eseguito, così che il canale la trasmetta e la sintesi la pronunci subito, e la separa con un a capo dal testo dei passi successivi. Quando il modello chiama uno strumento dopo aver scritto testo nello stesso passo, l'a capo è consegnato appena arriva la chiamata, prima dell'esecuzione dello strumento, perché la sintesi considera completa una frase soltanto quando dopo la punteggiatura finale arriva uno spazio o un a capo: senza, la frase resterebbe in attesa per tutta la durata degli strumenti. Non esiste una chiamata al modello separata per l'annuncio. Una risposta che dopo la frase non contiene altro testo conclude il turno come riuscito. La frase fa parte del testo della risposta conservato nell'archivio.
-
-#### Metadata
-  * type: behavior
-
-#### Relations
-  * define: [Annuncio dell'azione dell'agente con connettore MCP](../Requirements/FamilyConversation.md#annuncio-dellazione-dellagente-con-connettore-mcp)
----
-
 ### Fuso orario del componente Conversazioni
 
 Il fuso orario della famiglia è un valore della configurazione del componente «Conversazioni», non la variabile `TZ` del processo, così resta nella configurazione validata all'avvio.
@@ -768,6 +755,19 @@ Un agente specializzato il cui file non contiene `mcp` è preparato senza aprire
 
 #### Relations
   * define: [Agente specializzato senza connettore MCP](../Requirements/FamilyConversation.md#agente-specializzato-senza-connettore-mcp)
+---
+
+### Risposta dopo le chiamate agli strumenti
+
+Le istruzioni della generazione della risposta di un agente specializzato con connettore MCP chiedono che ogni richiesta di fare qualcosa con gli strumenti abbia una propria chiamata a uno strumento nella stessa risposta, anche quando ripete o richiama una richiesta precedente, perché le risposte precedenti non mostrano che cosa è stato eseguito; che un messaggio che non chiede nulla, come un ringraziamento o un saluto, non richieda strumenti diversi da `finish`; che l'agente non scriva nulla prima o fra le chiamate agli strumenti e scriva la risposta soltanto dopo l'ultima chiamata, quando ne conosce l'esito; che, dopo un'azione, dica in una frase breve che cosa ha fatto e su cosa, e mai soltanto «Fatto» o «Ok»; e che, quando un'azione non riesce, dica che cosa non è riuscito. Le istruzioni non contengono frasi d'esempio.
+
+Il testo che il modello scrive comunque prima di una chiamata a uno strumento è consegnato come frammento della risposta appena scritto e separato con un a capo dal testo dei passi successivi; quando il modello chiama uno strumento dopo aver scritto testo nello stesso passo, l'a capo è consegnato appena arriva la chiamata, perché la sintesi considera completa una frase soltanto quando dopo la punteggiatura finale arriva uno spazio o un a capo. Una risposta senza testo conclude il turno come riuscito senza frammenti. Il testo della risposta è conservato nell'archivio.
+
+#### Metadata
+  * type: behavior
+
+#### Relations
+  * define: [Risposta dopo le azioni degli agenti con connettore MCP](../Requirements/FamilyConversation.md#risposta-dopo-le-azioni-degli-agenti-con-connettore-mcp)
 ---
 
 ### Scelta dell'agente con risposta strutturata dell'orchestratore

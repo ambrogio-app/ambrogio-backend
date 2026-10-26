@@ -910,7 +910,7 @@ La prova passa se le configurazioni valide sono accettate con il motore, la voce
 
 ### Prova della selezione vocale per lingua
 
-Preparare profili vocali italiani e inglesi con variabili che indicano percorsi espliciti alle directory incluse e a directory esterne montate, scegliendo tra più voci della stessa lingua, Piper e Kokoro. Provare la lingua effettiva italiana e inglese, la lingua effettiva assente da `AMBROGIO_VOICE_LANGUAGES`, una lingua sconosciuta o ripetuta nell'elenco, variabili invalide nell'altro profilo elencato e la voce disabilitata con `AMBROGIO_VOICE_LANGUAGES` assente o vuota. Osservare risorse caricate, modello e lingua della trascrizione, voce e lingua di fonetizzazione Kokoro.
+Preparare profili vocali italiani e inglesi con variabili che indicano percorsi espliciti alle directory incluse e a directory esterne montate, scegliendo tra più voci della stessa lingua, Piper e Kokoro. Provare la lingua effettiva italiana e inglese, la lingua effettiva assente da `AMBROGIO_VOICE_LANGUAGES`, una lingua sconosciuta o ripetuta nell'elenco, variabili invalide nell'altro profilo elencato e la voce disabilitata con `AMBROGIO_VOICE_LANGUAGES` assente o vuota. Osservare risorse caricate, modello di trascrizione, voce e lingua di fonetizzazione Kokoro.
 
 #### Details
 La prova passa se ciascuna lingua seleziona esattamente i percorsi indicati, anche quando provengono da un mount o quando esistono più voci della stessa lingua; un elenco invalido o un profilo elencato con variabili invalide rende invalida la configurazione, l'altro profilo non carica i modelli e la voce disabilitata non legge altre variabili né carica modelli. Fallisce se una lingua carica percorsi diversi da quelli indicati, se un elenco o un profilo invalido è accettato o se vengono caricati modelli di un profilo non attivo o della voce disabilitata.
@@ -960,40 +960,6 @@ La prova passa se la voce è caricata una sola volta per tutte le trasmissioni, 
   * verify: [Risposta parlata su richiesta del client](../Requirements/FamilyConversation.md#risposta-parlata-su-richiesta-del-client)
 ---
 
-### Prova della trascrizione con Whisper
-
-Con un riconoscitore sherpa-onnx simulato costruire il trascrittore Whisper da una directory con encoder, decoder e file dei token; trascrivere audio di 5, 30, 45 e 60 secondi consegnato in frame di dimensioni diverse; avviare due trascrizioni che si chiudono quasi insieme; interrompere una trascrizione prima della chiusura. Registrare la configurazione passata a `createAsync`, le finestre decodificate e l'ordine delle decodifiche. Leggere configurazioni vocali con `AMBROGIO_VOICE_<LINGUA>_STT_ENGINE` assente o diverso da `whisper` e con directory di trascrizione priva di encoder, con due decoder o senza file dei token.
-
-#### Details
-La prova passa se la configurazione passata a `createAsync` contiene la sola sezione `whisper` con l'encoder e il decoder della directory, la lingua del profilo e `task` uguale a `transcribe`, e i token della directory; se ogni finestra dura al massimo 30 secondi e le finestre coprono tutto l'audio nell'ordine di arrivo; se la trascrizione è l'unione dei testi non vuoti delle finestre; se le decodifiche contemporanee non si sovrappongono; se una trascrizione interrotta non decodifica nulla; e se ogni configurazione invalida è rifiutata prima della costruzione del riconoscitore. Fallisce altrimenti. La trascrizione con il modello reale è provata nell'immagine da «Prova del catalogo vocale bilingue dell'immagine».
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
-  * satisfiedBy: [sherpa-transcriber.spec.ts](../../packages/conversations/src/adapters/in/session/sherpa-transcriber.spec.ts)
-  * satisfiedBy: [voice-config.spec.ts](../../packages/conversations/src/adapters/out/voice-config.spec.ts)
-  * verify: [Scelta del motore di trascrizione](../Requirements/FamilyConversation.md#scelta-del-motore-di-trascrizione)
----
-
-### Prova della trascrizione con transducer NeMo
-
-Con un riconoscitore sherpa-onnx simulato costruire il trascrittore con il motore `nemo-transducer` da una directory con encoder, decoder, joiner e file dei token; trascrivere audio di 5 e 60 secondi consegnato in frame di dimensioni diverse; avviare due trascrizioni che si chiudono quasi insieme; interrompere una trascrizione prima della chiusura. Registrare la configurazione passata a `createAsync` e l'audio di ogni decodifica. Leggere configurazioni vocali con `AMBROGIO_VOICE_<LINGUA>_STT_ENGINE` uguale a `nemo-transducer` e con directory di trascrizione priva di joiner, con due encoder o senza file dei token.
-
-#### Details
-La prova passa se la configurazione passata a `createAsync` contiene la sola sezione `transducer` con l'encoder, il decoder e il joiner della directory, `modelType` uguale a `nemo_transducer` e i token della directory, senza la lingua del profilo; se ogni richiesta è decodificata in una sola volta con tutto il suo audio; se le decodifiche contemporanee non si sovrappongono; se una trascrizione interrotta non decodifica nulla; e se ogni directory non conforme è rifiutata prima della costruzione del riconoscitore. Fallisce altrimenti. La trascrizione con il modello reale è provata nell'immagine da «Prova del catalogo vocale bilingue dell'immagine».
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
-  * satisfiedBy: [sherpa-transcriber.spec.ts](../../packages/conversations/src/adapters/in/session/sherpa-transcriber.spec.ts)
-  * satisfiedBy: [voice-config.spec.ts](../../packages/conversations/src/adapters/out/voice-config.spec.ts)
-  * verify: [Scelta del motore di trascrizione](../Requirements/FamilyConversation.md#scelta-del-motore-di-trascrizione)
----
-
 ### Prova della trascrizione e della risposta parlata
 
 Inviare un turno audio trascrivibile con testo atteso e `reply: "audio"`, ottenendo una risposta controllata; ripetere con un turno testuale e `reply: "audio"`.
@@ -1010,6 +976,25 @@ La prova passa se il turno conservato contiene la trascrizione testuale attesa, 
   * satisfiedBy: [sherpa-synthesizer.spec.ts](../../packages/conversations/src/adapters/in/session/sherpa-synthesizer.spec.ts)
   * verify: [Risposta parlata su richiesta del client](../Requirements/FamilyConversation.md#risposta-parlata-su-richiesta-del-client)
   * verify: [Trascrizione del turno vocale](../Requirements/FamilyConversation.md#trascrizione-del-turno-vocale)
+---
+
+### Prova della trascrizione in streaming
+
+Con un riconoscitore in streaming simulato provare la logica del worker, e con un worker simulato il trascrittore: trascrivere audio di 5 e 60 secondi consegnato in frame di dimensioni diverse, osservando quando ogni frame raggiunge il riconoscitore; avviare due trascrizioni contemporanee; interrompere una trascrizione prima della chiusura; far fallire una decodifica; terminare il worker durante una trascrizione e poi avviarne un'altra; chiudere il trascrittore. Leggere configurazioni vocali con directory di trascrizione priva di joiner, con due encoder o senza file dei token. Nell'immagine, con il worker reale e il modello incluso, trascrivere un turno italiano e uno inglese consegnati a ritmo reale.
+
+#### Details
+La prova passa se la configurazione del riconoscitore contiene la sezione `transducer` con l'encoder, il decoder e il joiner della directory, i token della directory, `greedy_search` e il rilevamento della fine del parlato disattivato; se ogni flusso riceve 1 secondo di silenzio prima del primo frame della richiesta; se ogni frame raggiunge il riconoscitore prima di `input.end`; se alla chiusura il flusso riceve 0,8 secondi di silenzio e la fine dell'ingresso prima della lettura del testo; se le richieste contemporanee usano flussi separati; se una trascrizione interrotta non produce testo; se un errore della decodifica e la terminazione del worker fanno fallire le trascrizioni in corso e la trascrizione successiva riesce con un nuovo worker; se la chiusura termina il worker; se ogni directory non conforme è rifiutata prima dell'avvio del worker; e se nell'immagine i due turni, che iniziano senza silenzio, producono il testo pronunciato, prima parola compresa. Fallisce altrimenti.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
+  * satisfiedBy: [streaming-recognition.spec.ts](../../packages/conversations/src/adapters/in/session/streaming-recognition.spec.ts)
+  * satisfiedBy: [streaming-transcriber.spec.ts](../../packages/conversations/src/adapters/in/session/streaming-transcriber.spec.ts)
+  * satisfiedBy: [voice-config.spec.ts](../../packages/conversations/src/adapters/out/voice-config.spec.ts)
+  * satisfiedBy: [verify-docker-image.mjs](../../scripts/verify-docker-image.mjs)
+  * verify: [Trascrizione in streaming del turno vocale](../Requirements/FamilyConversation.md#trascrizione-in-streaming-del-turno-vocale)
 ---
 
 ### Prova della trascrizione non riuscita

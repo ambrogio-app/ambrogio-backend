@@ -82,8 +82,8 @@ test('rejects an invalid value before opening the archive or the listener withou
     [{ AMBROGIO_TIME_ZONE: 'private-marker' }, 'Invalid environment variable AMBROGIO_TIME_ZONE: expected an IANA time zone name'],
     [{ AMBROGIO_ALLOWED_ORIGINS: 'private-marker' },
       'Invalid environment variable AMBROGIO_ALLOWED_ORIGINS: expected comma-separated exact HTTP or HTTPS origins'],
-    [{ AMBROGIO_VOICE_LANGUAGES: 'en', AMBROGIO_VOICE_EN_STT_ENGINE: 'private-marker' },
-      'Invalid environment variable AMBROGIO_VOICE_EN_STT_ENGINE: expected nemo-transducer or whisper'],
+    [{ AMBROGIO_VOICE_LANGUAGES: 'en', AMBROGIO_VOICE_EN_STT_MODEL_DIR: 'private-marker' },
+      'Missing environment variable AMBROGIO_VOICE_EN_MODEL_DIR'],
   ] as const) {
     let failure: unknown;
     try {

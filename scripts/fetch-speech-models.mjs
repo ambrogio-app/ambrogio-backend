@@ -10,8 +10,8 @@ import { pipeline } from 'node:stream/promises';
 const TTS_URL = 'https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models';
 const ASR_URL = 'https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models';
 const archives = [
-  { name: 'sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8', extension: 'tar.bz2',
-    sha256: '5793d0fd397c5778d2cf2126994d58e9d56b1be7c04d13c7a15bb1b4eafb16bf', kind: 'transcription' },
+  { name: 'sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11', extension: 'tar.bz2',
+    sha256: 'c6bf5e0df765f9d5b43bc9e0536d4b4b3e7d40bdf5ecf13e45f134c51c05ae3a', kind: 'transcription' },
   { name: 'vits-piper-it_IT-riccardo-x_low', extension: 'tar.bz2',
     sha256: '8ad0791558ae2b3e96054fc5756ae3ae2f6457fb1765bc01f43bbab85e0a7021', kind: 'piper' },
   { name: 'vits-piper-it_IT-paola-medium', extension: 'tar.bz2',
@@ -27,14 +27,14 @@ if (!voicesRoot || !modelsRoot || !kokoroRoot) {
   throw new Error('Usage: node scripts/fetch-speech-models.mjs <voices-root> <models-root> <kokoro-root>');
 }
 const roots = { piper: voicesRoot, transcription: modelsRoot, kokoro: kokoroRoot };
-/** The Parakeet files kept in the image: the int8 encoder, decoder and joiner and the tokens. */
+/** The Nemotron files kept in the image: the int8 encoder, decoder and joiner and the tokens. */
 const transcriptionFiles = ['decoder.int8.onnx', 'encoder.int8.onnx', 'joiner.int8.onnx', 'tokens.txt'];
 
 async function checkExtracted(name, kind, root) {
   const directory = join(root, name);
   if (!(await stat(directory)).isDirectory()) throw new Error(`Missing extracted model: ${name}`);
   if (kind === 'transcription') {
-    // Only the model is kept: the test recordings are removed.
+    // Only the model is kept: the README and the test recordings are removed.
     for (const entry of await readdir(directory)) {
       if (!transcriptionFiles.includes(entry)) await rm(join(directory, entry), { recursive: true, force: true });
     }

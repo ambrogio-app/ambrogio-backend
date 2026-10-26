@@ -8,12 +8,10 @@ const writeAgent = (filename, value) => writeFileSync(filename, `${JSON.stringif
 // The variables of the bundled voices, as an installation sets them.
 const piperVoices = {
   AMBROGIO_VOICE_LANGUAGES: 'it,en',
-  AMBROGIO_VOICE_IT_STT_ENGINE: 'nemo-transducer',
-  AMBROGIO_VOICE_IT_STT_MODEL_DIR: '/opt/ambrogio/models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8',
+  AMBROGIO_VOICE_IT_STT_MODEL_DIR: '/opt/ambrogio/models/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11',
   AMBROGIO_VOICE_IT_ENGINE: 'piper',
   AMBROGIO_VOICE_IT_MODEL_DIR: '/opt/ambrogio/voices/vits-piper-it_IT-paola-medium',
-  AMBROGIO_VOICE_EN_STT_ENGINE: 'nemo-transducer',
-  AMBROGIO_VOICE_EN_STT_MODEL_DIR: '/opt/ambrogio/models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8',
+  AMBROGIO_VOICE_EN_STT_MODEL_DIR: '/opt/ambrogio/models/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11',
   AMBROGIO_VOICE_EN_ENGINE: 'piper',
   AMBROGIO_VOICE_EN_MODEL_DIR: '/opt/ambrogio/voices/vits-piper-en_US-kristin-medium',
 };
@@ -87,18 +85,19 @@ try {
     'dir="/opt/ambrogio/voices/$voice"; ' +
     'test -s "$dir/MODEL_CARD"; test -s "$dir/tokens.txt"; test -d "$dir/espeak-ng-data"; ' +
     'test "$(ls "$dir"/*.onnx | wc -l)" = 1; test -s "$(ls "$dir"/*.onnx)"; done; ' +
-    // Only the int8 Parakeet model is kept in the image.
-    'dir=/opt/ambrogio/models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8; test "$(ls "$dir" | tr "\\n" " ")" = "decoder.int8.onnx encoder.int8.onnx joiner.int8.onnx tokens.txt "; ' +
+    // Only the int8 Nemotron model is kept in the image, with the text of its license.
+    'dir=/opt/ambrogio/models/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11; test "$(ls "$dir" | tr "\\n" " ")" = "LICENSE decoder.int8.onnx encoder.int8.onnx joiner.int8.onnx tokens.txt "; ' +
+    'grep -q "OpenMDW License Agreement, version 1.1" "$dir/LICENSE"; ' +
     'test -s "$dir/encoder.int8.onnx"; test -s "$dir/decoder.int8.onnx"; test -s "$dir/joiner.int8.onnx"; test -s "$dir/tokens.txt"; ' +
     'dir=/opt/ambrogio/kokoro/kokoro-multi-lang-v1_0; ' +
     'test -s "$dir/model.onnx"; test -s "$dir/voices.bin"; test -s "$dir/LICENSE"');
   console.log(docker('run', '--rm', '--entrypoint', 'node', image, '--input-type=module', '-e', synthesis));
   const recognition = [
-    "import { SherpaTranscriber } from '/workspace/packages/conversations/dist/adapters/in/session/sherpa-transcriber.js';",
+    "import { StreamingTranscriber } from '/workspace/packages/conversations/dist/adapters/in/session/streaming-transcriber.js';",
     "import { SherpaSynthesizer } from '/workspace/packages/conversations/dist/adapters/in/session/sherpa-synthesizer.js';",
     "import { transcriptionModel, voiceModel } from '/workspace/packages/conversations/dist/adapters/out/voice-config.js';",
     "for (const [name, voice, words] of [['it', 'vits-piper-it_IT-riccardo-x_low', 'Ciao, come stai oggi?'], ['en', 'vits-piper-en_US-kristin-medium', 'Hello, how are you today?']]) {",
-    "  const transcriber = await SherpaTranscriber.load(await transcriptionModel({ sttEngine: 'nemo-transducer', sttModelDir: '/opt/ambrogio/models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8', sttLanguage: name }));",
+    "  const transcriber = await StreamingTranscriber.load(await transcriptionModel({ sttModelDir: '/opt/ambrogio/models/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11' }));",
     "  const synthesizer = await SherpaSynthesizer.load(await voiceModel({ voiceEngine: 'piper', voiceModelDir: '/opt/ambrogio/voices/' + voice }));",
     "  try {",
     "    async function* text() { yield words; }",
@@ -111,11 +110,14 @@ try {
     "      const source = Math.min(Math.floor(i * synthesizer.sampleRate / 16000), pcm.length / 2 - 1);",
     "      audio16k.writeInt16LE(pcm.readInt16LE(source * 2), i * 2);",
     "    }",
-    "    async function* audio() { yield audio16k; yield Buffer.alloc(16000); }",
+    "    // 100 ms frames at real-time pace, as a satellite sends them, then half a second of silence.",
+    "    const paced = Buffer.concat([audio16k, Buffer.alloc(16000)]);",
+    "    let last = 0;",
+    "    async function* audio() { for (let at = 0; at < paced.length; at += 3200) { yield paced.subarray(at, at + 3200); await new Promise(r => setTimeout(r, 100)); } last = performance.now(); }",
     "    const recognized = await transcriber.transcribe(audio());",
     "    if (!recognized.trim()) throw new Error('Empty transcription for ' + name);",
-    "    console.log(name + ': ' + recognized);",
-    "  } finally { synthesizer.close(); transcriber.close(); }",
+    "    console.log(name + ': ' + recognized + ' (' + Math.round(performance.now() - last) + ' ms after the last frame)');",
+    "  } finally { synthesizer.close(); await transcriber.close(); }",
     "}",
   ].join('\n');
   console.log(docker('run', '--rm', '--entrypoint', 'node', image, '--input-type=module', '-e', recognition));
@@ -123,7 +125,7 @@ try {
     "import { loadVoiceConfig } from '/workspace/packages/conversations/dist/adapters/out/voice-config.js';",
     "for (const [language, voice] of [['it', 'vits-piper-it_IT-paola-medium'], ['en', 'vits-piper-en_US-kristin-medium']]) {",
     "  const config = await loadVoiceConfig(JSON.parse(process.env.PIPER_VOICES), language);",
-    "  if (config.sttEngine !== 'nemo-transducer' || config.sttModelDir !== '/opt/ambrogio/models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8' || config.sttLanguage !== language || !config.voiceModelDir.endsWith(voice)) throw new Error('Wrong voice profile: ' + language);",
+    "  if (config.sttModelDir !== '/opt/ambrogio/models/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11' || !config.voiceModelDir.endsWith(voice)) throw new Error('Wrong voice profile: ' + language);",
     "  console.log('Selected ' + language + ': ' + voice);",
     "  const kokoro = await loadVoiceConfig(JSON.parse(process.env.KOKORO_VOICES), language);",
     "  if (kokoro.voiceEngine !== 'kokoro' || kokoro.voiceLanguage !== language || kokoro.voiceSpeaker !== (language === 'it' ? 35 : 3)) throw new Error('Wrong Kokoro profile: ' + language);",
@@ -192,7 +194,7 @@ try {
   if (!existsSync(join(data, 'conversations.sqlite'))) {
     throw new Error('SQLite archive was not created in the external mount');
   }
-  console.log('Docker image verification passed: configuration from environment variables, mounted JSON agents and external SQLite, language profiles, bundled Parakeet, Piper and Kokoro models in Italian and English, replaceable Piper voices, voice-enabled HTTP 200, no Compose.');
+  console.log('Docker image verification passed: configuration from environment variables, mounted JSON agents and external SQLite, language profiles, bundled Nemotron streaming, Piper and Kokoro models in Italian and English, replaceable Piper voices, voice-enabled HTTP 200, no Compose.');
 } finally {
   if (container) {
     try { docker('rm', '--force', container); } catch { /* preserve the verification failure */ }

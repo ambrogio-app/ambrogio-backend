@@ -1063,10 +1063,10 @@ La prova passa se il processo legge una volta all'avvio soltanto la configurazio
 
 ### Prova del catalogo vocale bilingue dell'immagine
 
-Costruire l'immagine e ispezionare gli archivi fissati, le impronte verificate e i file runtime del modello Parakeet, delle voci Piper italiane e inglesi e del modello Kokoro multilingue. Eseguire una breve trascrizione e una sintesi per ogni lingua e motore disponibile nell'immagine.
+Costruire l'immagine e ispezionare gli archivi fissati, le impronte verificate e i file runtime del modello Nemotron, delle voci Piper italiane e inglesi e del modello Kokoro multilingue. Eseguire una breve trascrizione e una sintesi per ogni lingua e motore disponibile nell'immagine.
 
 #### Details
-La prova passa se tutte le risorse sono leggibili dentro il container senza mount, le impronte corrispondono a quelle fissate, la directory Parakeet contiene soltanto i file int8 dell'encoder, del decoder e del joiner e il file dei token, e Parakeet, Piper e Kokoro producono risultati non vuoti in entrambe le lingue. Fallisce se una risorsa manca o richiede un mount, se un'impronta non corrisponde o se un motore produce un risultato vuoto in una lingua.
+La prova passa se tutte le risorse sono leggibili dentro il container senza mount, le impronte corrispondono a quelle fissate, la directory Nemotron contiene soltanto i file int8 dell'encoder, del decoder e del joiner, il file dei token e la licenza, e Nemotron, Piper e Kokoro producono risultati non vuoti in entrambe le lingue. Fallisce se una risorsa manca o richiede un mount, se un'impronta non corrisponde o se un motore produce un risultato vuoto in una lingua.
 
 La build dell'immagine verifica le impronte degli archivi con `scripts/fetch-speech-models.mjs`; `scripts/verify-docker-image.mjs` esegue gli altri controlli nel job di pubblicazione, perché richiedono la build Docker con il download dei modelli.
 

@@ -26,6 +26,8 @@ COPY --from=build /opt/ambrogio/voices/ /opt/ambrogio/voices/
 COPY --from=build /opt/ambrogio/models/ /opt/ambrogio/models/
 COPY --from=build /opt/ambrogio/kokoro/ /opt/ambrogio/kokoro/
 COPY voices/README.md /opt/ambrogio/voices/README.md
+# OpenMDW 1.1 requires its text next to the distributed model.
+COPY voices/OpenMDW-1.1.txt /opt/ambrogio/models/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11/LICENSE
 COPY --from=build /workspace/package.json ./
 COPY protocol/ protocol/
 COPY --from=build /workspace/node_modules/ node_modules/

@@ -1505,31 +1505,6 @@ Quando la famiglia invia un turno, Ambrogio deve produrre una risposta testuale 
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
-### Scelta del motore di trascrizione
-
-Quando la voce è abilitata nell'installazione, Ambrogio deve trascrivere i turni vocali con il motore e il modello di trascrizione indicati dal profilo vocale della lingua effettiva, fra le famiglie di modelli supportate dal backend, e deve impedire l'avvio quando il motore indicato non è supportato o il modello non è caricabile.
-
-#### Details
-Il backend supporta due famiglie di modelli offline di sherpa-onnx: i transducer NeMo, come Parakeet TDT, con il motore `nemo-transducer`, e Whisper con il motore `whisper`. Un'altra famiglia si aggiunge come nuovo valore di `AMBROGIO_VOICE_<LINGUA>_STT_ENGINE` insieme al codice che la supporta. Il modello incluso nell'immagine è Parakeet TDT 0.6b v3 in versione int8, multilingue con l'italiano, che riconosce da sé la lingua parlata. È stato preferito a Whisper base e Whisper small perché nelle prove di confronto sul parlato italiano è risultato più accurato di entrambi e più rapido di Whisper base. Sono stati scartati Qwen3-ASR, Omnilingual e Whisper small perché più lenti del tempo reale su una CPU di classe bassa senza AVX, e Nemotron 3.5 in streaming, di accuratezza simile a Parakeet, perché in `sherpa-onnx-node` 1.13.8 la decodifica in streaming è soltanto sincrona e richiederebbe un thread separato e la gestione dell'arretrato per un guadagno di latenza minimo. La scelta del modello in base all'hardware spetta a chi installa.
-
-#### Concept References
-  * [Turno vocale](../../../ambrogio-model/system-model/Thesaurus/Lessico.md#turno-vocale)
-
-#### Metadata
-  * type: requirement
-
-#### Contract Bindings
-  * [Configurazione facoltativa della voce](../Contracts/FamilyConversation.md#configurazione-facoltativa-della-voce)
-  * [Modelli vocali scaricati nell'immagine del backend](../Contracts/ExternalContracts.md#modelli-vocali-scaricati-nellimmagine-del-backend)
-
-#### Relations
-  * derivedFrom: [Elaborazione vocale locale con sherpa-onnx](../../../ambrogio-model/system-model/Requirements/VoiceConversation.md#elaborazione-vocale-locale-con-sherpa-onnx)
-  * satisfiedBy: [local-speech-components.ts](../../packages/conversations/src/adapters/in/session/local-speech-components.ts)
-  * satisfiedBy: [sherpa-transcriber.ts](../../packages/conversations/src/adapters/in/session/sherpa-transcriber.ts)
-  * satisfiedBy: [voice-config.ts](../../packages/conversations/src/adapters/out/voice-config.ts)
-  * specify: [Conversazione a voce](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-a-voce)
----
-
 ### Scoperta delle configurazioni degli agenti
 
 Quando il server prepara gli agenti attivi, deve cercare i rispettivi file nella directory degli agenti configurata e distinguere la configurazione dell'orchestratore da quelle degli agenti specializzati.
@@ -1757,7 +1732,38 @@ Quando la famiglia pronuncia un turno vocale trascrivibile, Ambrogio deve rappre
 
 #### Relations
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
-  * satisfiedBy: [sherpa-transcriber.ts](../../packages/conversations/src/adapters/in/session/sherpa-transcriber.ts)
+  * satisfiedBy: [streaming-transcriber.ts](../../packages/conversations/src/adapters/in/session/streaming-transcriber.ts)
+  * specify: [Conversazione a voce](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-a-voce)
+---
+
+### Trascrizione in streaming del turno vocale
+
+Quando la voce è abilitata nell'installazione, Ambrogio deve trascrivere l'audio di ogni turno vocale mentre la richiesta è aperta, con il modello transducer in streaming di sherpa-onnx indicato dal profilo vocale della lingua effettiva, così che alla chiusura della richiesta resti da decodificare soltanto l'ultima parte, e deve impedire l'avvio quando il modello non è caricabile.
+
+#### Details
+Il backend supporta una sola famiglia di modelli di trascrizione, i transducer in streaming di sherpa-onnx. Il modello incluso nell'immagine è Nemotron 3.5 ASR streaming 0.6B di NVIDIA, multilingue con l'italiano, che riconosce da sé la lingua parlata. Un modello della stessa famiglia si sostituisce cambiando la directory; un'altra famiglia richiede una modifica del codice.
+
+La trascrizione durante il parlato è una richiesta della persona: rende il ritardo dopo la fine della frase indipendente dalla durata del turno. Sono stati scartati i modelli offline, come Parakeet TDT v3 e Whisper, che decodificano soltanto alla chiusura della richiesta pur con un'accuratezza simile in italiano; il supporto di più famiglie selezionabili dalla configurazione, per mantenere un solo percorso di codice; Qwen3-ASR e Omnilingual, più lenti del tempo reale.
+
+Ogni flusso comincia con un secondo di silenzio perché il modello incluso perde la prima parola quando il parlato inizia subito; il satellite invia già una riserva di audio precedente al parlato, ma la trascrizione non deve dipendere dal client. La trascrizione in tempo reale richiede una CPU x86_64 con istruzioni AVX2; su una CPU senza AVX2 la decodifica resta indietro rispetto al parlato e il testo arriva dopo la fine della frase con un ritardo che cresce con la durata del turno.
+
+#### Concept References
+  * [Turno vocale](../../../ambrogio-model/system-model/Thesaurus/Lessico.md#turno-vocale)
+
+#### Metadata
+  * type: requirement
+
+#### Contract Bindings
+  * [Configurazione facoltativa della voce](../Contracts/FamilyConversation.md#configurazione-facoltativa-della-voce)
+  * [Modelli vocali scaricati nell'immagine del backend](../Contracts/ExternalContracts.md#modelli-vocali-scaricati-nellimmagine-del-backend)
+
+#### Relations
+  * derivedFrom: [Elaborazione vocale locale con sherpa-onnx](../../../ambrogio-model/system-model/Requirements/VoiceConversation.md#elaborazione-vocale-locale-con-sherpa-onnx)
+  * satisfiedBy: [local-speech-components.ts](../../packages/conversations/src/adapters/in/session/local-speech-components.ts)
+  * satisfiedBy: [streaming-recognition.ts](../../packages/conversations/src/adapters/in/session/streaming-recognition.ts)
+  * satisfiedBy: [streaming-recognizer.worker.ts](../../packages/conversations/src/adapters/in/session/streaming-recognizer.worker.ts)
+  * satisfiedBy: [streaming-transcriber.ts](../../packages/conversations/src/adapters/in/session/streaming-transcriber.ts)
+  * satisfiedBy: [voice-config.ts](../../packages/conversations/src/adapters/out/voice-config.ts)
   * specify: [Conversazione a voce](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-a-voce)
 ---
 

@@ -108,7 +108,7 @@ test('names an invalid configuration variable and the unmet condition without it
   expectReported(await startupError({ ...environment, AMBROGIO_ENV: secret }),
     'Invalid environment variable AMBROGIO_ENV: expected development, test or production');
   expectReported(await startupError({ ...environment, AMBROGIO_VOICE_LANGUAGES: 'en',
-    AMBROGIO_VOICE_EN_STT_ENGINE: 'whisper', AMBROGIO_VOICE_EN_STT_MODEL_DIR: secret, AMBROGIO_VOICE_EN_ENGINE: 'kokoro', AMBROGIO_VOICE_EN_MODEL_DIR: secret,
+    AMBROGIO_VOICE_EN_STT_MODEL_DIR: secret, AMBROGIO_VOICE_EN_ENGINE: 'kokoro', AMBROGIO_VOICE_EN_MODEL_DIR: secret,
     AMBROGIO_VOICE_EN_SPEAKER: secret, AMBROGIO_VOICE_EN_LANGUAGE: 'en' }),
   'Invalid environment variable AMBROGIO_VOICE_EN_SPEAKER: expected an integer from 0');
 });

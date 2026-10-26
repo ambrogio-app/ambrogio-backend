@@ -39,10 +39,12 @@ function answer(text: string, expectsReply = false) {
 
 const replyFormat = 'Your text is spoken to the family exactly as you write it, so write only the words of your '
   + 'reply. When the reply is complete, call the finish tool; never write tool calls or JSON in your text.';
-const actionRules = '\nBefore your first tool call for an action, say in one short sentence what you are about '
-  + 'to do. Do not say it for a request for information. Write nothing between tool calls. When an action you '
-  + 'announced succeeds, write nothing more. When an action succeeds without an announcement, confirm it in a few '
-  + 'words. When an action fails, say what did not work.';
+const actionRules = '\nEvery request to do something with your tools needs its own tool call in this reply, also when it '
+  + 'repeats or refers to an earlier request: earlier replies do not show that anything was done. A message that asks '
+  + 'for nothing, such as thanks or a greeting, needs no tool except finish. Before your first tool call for an action, '
+  + 'say in one short sentence which action you are about to take and on what. Never answer only "Fatto" or "Ok". Do '
+  + 'not write that sentence for a request for information. Write nothing between tool calls and nothing after an '
+  + 'action you announced succeeds. When an action fails, say what did not work.';
 
 /** A server without prompts never has them read. */
 const getPrompt = async (): Promise<string> => { throw new Error('Unexpected prompt read'); };

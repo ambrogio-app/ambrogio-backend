@@ -1,6 +1,6 @@
 import { ProjectError } from '../../../domain/project-error.js';
 import { ConversationId, TurnId } from '../../../domain/identities.js';
-import { Turn } from '../../../domain/turn.js';
+import { checkTurnActions, Turn, type TurnAction } from '../../../domain/turn.js';
 import type { HistoryTurn } from '../../../application/conversation-history-read.port.js';
 import type { Selectable } from 'kysely';
 import type { TurnRows } from './schema.js';
@@ -22,23 +22,38 @@ type TurnRow = Selectable<TurnRows>;
 /** The stored turn checked against the current contract, before it becomes a Domain value or a projection. */
 type CheckedRow = Readonly<{ id: string; conversationId: string; text: string; acceptedAt: Date }> & (
   | Readonly<{ status: 'pending' }>
-  | Readonly<{ status: 'answered'; answer: string; finishedAt: Date; agent?: string }>
+  | Readonly<{ status: 'answered'; answer: string; finishedAt: Date; agent?: string;
+    actions?: readonly TurnAction[] }>
   | Readonly<{ status: 'failed'; error: string; finishedAt: Date }>
   | Readonly<{ status: 'interrupted'; finishedAt: Date }>);
+
+/** The stored actions, checked with the Domain rules; anything else is invalid persisted data. */
+function readActions(value: string | null): readonly TurnAction[] | undefined {
+  if (value === null) return undefined;
+  let parsed: unknown;
+  try { parsed = JSON.parse(value); } catch { throw new ProjectError('Invalid persisted turn state'); }
+  if (!Array.isArray(parsed) || parsed.length === 0) throw new ProjectError('Invalid persisted turn state');
+  try { return checkTurnActions(parsed); } catch { throw new ProjectError('Invalid persisted turn state'); }
+}
 
 function checkRow(row: TurnRow): CheckedRow {
   if (typeof row.id !== 'string' || row.id.length === 0 || typeof row.conversation_id !== 'string'
     || typeof row.text !== 'string') throw new ProjectError('Invalid persisted turn state');
   const base = { id: row.id, conversationId: row.conversation_id, text: row.text, acceptedAt: fromMillis(row.accepted_at) };
-  if (row.agent !== null && row.status !== 'answered') throw new ProjectError('Invalid persisted turn state');
+  if ((row.agent !== null || row.actions !== null) && row.status !== 'answered') {
+    throw new ProjectError('Invalid persisted turn state');
+  }
   switch (row.status) {
     case 'pending':
       if (row.answer !== null || row.error !== null || row.finished_at !== null) break;
       return { ...base, status: 'pending' };
     case 'answered':
       if (row.answer === null || row.error !== null) break;
+    {
+      const actions = readActions(row.actions);
       return { ...base, status: 'answered', answer: row.answer, finishedAt: fromMillis(row.finished_at),
-        ...(row.agent === null ? {} : { agent: row.agent }) };
+        ...(row.agent === null ? {} : { agent: row.agent }), ...(actions === undefined ? {} : { actions }) };
+    }
     case 'failed':
       if (row.error === null || row.answer !== null) break;
       return { ...base, status: 'failed', error: row.error, finishedAt: fromMillis(row.finished_at) };
@@ -71,6 +86,7 @@ export function conclusionColumns(turn: Turn) {
     answer: status === 'answered' ? turn.answerText ?? null : null,
     error: status === 'failed' ? turn.errorMessage ?? null : null,
     agent: status === 'answered' ? turn.respondingAgent ?? null : null,
+    actions: status === 'answered' && turn.actions !== undefined ? JSON.stringify(turn.actions) : null,
     finished_at: toMillis(finishedAt),
   };
 }

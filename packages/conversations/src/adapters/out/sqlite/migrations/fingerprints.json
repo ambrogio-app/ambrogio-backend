@@ -26,5 +26,9 @@
   {
     "name": "007_turn_agent",
     "sha256": "b2ec2557834ebffee13fe2e9dc6f09c55887345769dba3cea5a99bfdc213d0e7"
+  },
+  {
+    "name": "008_turn_actions",
+    "sha256": "df71ff9b7f3f4902245feb5fca4d87f41218b76ddb8e57f2aaf002527fae3570"
   }
 ]

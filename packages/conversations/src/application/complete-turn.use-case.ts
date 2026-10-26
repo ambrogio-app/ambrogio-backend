@@ -1,12 +1,12 @@
 import { ProjectError } from '../domain/project-error.js';
 import { TurnId } from '../domain/identities.js';
 import type { Result } from '../domain/result.js';
-import type { Turn, TurnTransitionRejected } from '../domain/turn.js';
+import type { Turn, TurnAction, TurnTransitionRejected } from '../domain/turn.js';
 import type { CurrentTime } from './turn-capabilities.port.js';
 import type { TurnRepository } from './turn-repository.port.js';
 
 export type CompleteTurnOutcome =
-  | Readonly<{ kind: 'answer'; text: string; agent?: string }>
+  | Readonly<{ kind: 'answer'; text: string; agent?: string; actions?: readonly TurnAction[] }>
   | Readonly<{ kind: 'error'; message: string }>
   | Readonly<{ kind: 'interrupted' }>;
 export type CompleteTurnInput = Readonly<{ turnId: string; outcome: CompleteTurnOutcome }>;
@@ -20,7 +20,7 @@ function assertNever(value: never): never {
 
 function conclude(turn: Turn, outcome: CompleteTurnOutcome, finishedAt: Date): Result<void, TurnTransitionRejected> {
   switch (outcome.kind) {
-    case 'answer': return turn.answer(outcome.text, finishedAt, outcome.agent);
+    case 'answer': return turn.answer(outcome.text, finishedAt, outcome.agent, outcome.actions);
     case 'error': return turn.fail(outcome.message, finishedAt);
     case 'interrupted': return turn.interrupt(finishedAt);
     default: return assertNever(outcome);

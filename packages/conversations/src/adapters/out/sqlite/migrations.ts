@@ -8,6 +8,7 @@ import { migration as turnOwner } from './migrations/004_turn_owner.js';
 import { migration as removeTurnOwner } from './migrations/005_remove_turn_owner.js';
 import { migration as perConversationOccupancy } from './migrations/006_per_conversation_occupancy.js';
 import { migration as turnAgent } from './migrations/007_turn_agent.js';
+import { migration as turnActions } from './migrations/008_turn_actions.js';
 
 /**
  * The single ordered sequence of the archive, one file per migration named as its key. A new migration
@@ -21,6 +22,7 @@ export const conversationMigrations: Readonly<Record<string, Migration>> = {
   '005_remove_turn_owner': removeTurnOwner,
   '006_per_conversation_occupancy': perConversationOccupancy,
   '007_turn_agent': turnAgent,
+  '008_turn_actions': turnActions,
 };
 
 /**

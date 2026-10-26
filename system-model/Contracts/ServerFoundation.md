@@ -190,7 +190,7 @@ La configurazione del backend è letta dalle variabili d'ambiente del processo d
 |---|---|---|
 | Ambiente di esecuzione | `packages/conversations/src/adapters/out/environment-variables.ts` | `AMBROGIO_ENV` |
 | HTTP | `apps/server/src/runtime/http-config.ts` | `AMBROGIO_HTTP_HOST`, `AMBROGIO_HTTP_PORT`, `AMBROGIO_PUBLIC_HTTPS`, `AMBROGIO_HSTS_MAX_AGE_SECONDS`, `AMBROGIO_ALLOWED_ORIGINS` |
-| Conversazioni | `packages/conversations/src/adapters/out/conversation-config.ts` | `AMBROGIO_ARCHIVE_PATH`, `AMBROGIO_LANGUAGE`, `AMBROGIO_TIME_ZONE`, `AMBROGIO_LIST_PAGE_SIZE`, `AMBROGIO_MAX_LIST_PAGE_SIZE` |
+| Conversazioni | `packages/conversations/src/adapters/out/conversation-config.ts` | `AMBROGIO_ARCHIVE_PATH`, `AMBROGIO_LANGUAGE`, `AMBROGIO_TIME_ZONE`, `AMBROGIO_LIST_PAGE_SIZE`, `AMBROGIO_MAX_LIST_PAGE_SIZE`, `AMBROGIO_HISTORY_TURNS` |
 | Agenti | `apps/server/src/runtime/agent-config.ts` | `AMBROGIO_AGENTS_DIR` e le variabili delle credenziali nominate dai file degli agenti |
 | Voce | `packages/conversations/src/adapters/out/voice-config.ts` | `AMBROGIO_VOICE_LANGUAGES` e, per ogni lingua elencata, le variabili `AMBROGIO_VOICE_<LINGUA>_…` |
 

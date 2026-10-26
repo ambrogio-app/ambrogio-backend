@@ -1,4 +1,5 @@
 import { ProjectError } from '../domain/project-error.js';
+import { checkTurnActions, type TurnAction } from '../domain/turn.js';
 import type { Result } from '../domain/result.js';
 import type { BeginTurn, BeginTurnInput, BeginTurnRejection } from './begin-turn.use-case.js';
 import type { CompleteTurnUseCase } from './complete-turn.use-case.js';
@@ -42,8 +43,13 @@ export function createExchangeTurn(dependencies: Readonly<{
   reply: ProduceConversationReply;
   failureMessage: string;
   deadlines: Deadlines;
+  /** How many of the latest turns, the current one included, the reply receives («Finestra dello storico dei modelli»). */
+  historyTurns: number;
 }>): ExchangeTurn {
   const failureMessage = dependencies.failureMessage;
+  if (!Number.isSafeInteger(dependencies.historyTurns) || dependencies.historyTurns < 1) {
+    throw new ProjectError('Invalid history window');
+  }
   return async (input, observer, shouldInterrupt = () => false) => {
     const admitted = await dependencies.begin(input);
     if (!admitted.ok) return admitted;
@@ -67,7 +73,7 @@ export function createExchangeTurn(dependencies: Readonly<{
       if (!found || found.turns.at(-1)?.id !== turnId || found.turns.at(-1)?.status !== 'pending') {
         throw new ProjectError('Admitted turn missing from conversation history');
       }
-      history = found;
+      history = { ...found, turns: found.turns.slice(-dependencies.historyTurns) };
     } catch (error) {
       if (shouldInterrupt()) return interrupted();
       return failAdmittedTurn(error);
@@ -77,6 +83,8 @@ export function createExchangeTurn(dependencies: Readonly<{
     let answer = '';
     let expectsReply: boolean | undefined;
     let agent: string | undefined;
+    const actions: unknown[] = [];
+    let performed: readonly TurnAction[] = [];
     let textStarted = false;
     const limit = new ProjectError('Reply production time limit exceeded');
     let requestStop!: () => void;
@@ -109,12 +117,17 @@ export function createExchangeTurn(dependencies: Readonly<{
           textStarted = true;
           answer += part.text;
           await notify(observer?.delta && (() => observer.delta!(part.text)));
+        } else if (part.kind === 'action' && agent !== undefined && expectsReply === undefined) {
+          actions.push(part.action);
         } else if (part.kind === 'reply_expectation' && expectsReply === undefined
           && typeof part.expectsReply === 'boolean') {
           expectsReply = part.expectsReply;
         } else throw new ProjectError('Invalid reply part');
       }
       if (expectsReply === undefined) throw new ProjectError('Missing reply expectation');
+      // An answer with nothing to say is a production fault, never a stored answer («Nuova richiesta della risposta vuota»).
+      if (!answer.trim()) throw new ProjectError('Empty reply');
+      performed = checkTurnActions(actions);
     } catch (error) {
       if (shouldInterrupt()) return interrupted();
       return failAdmittedTurn(expired ? limit : error);
@@ -127,7 +140,7 @@ export function createExchangeTurn(dependencies: Readonly<{
     await notify(observer?.produced && (() => observer.produced!()));
 
     const completed = await dependencies.complete({ turnId, outcome: { kind: 'answer', text: answer,
-      ...(agent === undefined ? {} : { agent }) } });
+      ...(agent === undefined ? {} : { agent }), ...(performed.length === 0 ? {} : { actions: performed }) } });
     if (!completed.ok && shouldInterrupt()) return interrupted();
     if (!completed.ok || completed.value.status !== 'answered') throw new ProjectError('Admitted turn could not be completed');
     return { ok: true, value: { conversationId, turnId, outcome: 'answered', expectsReply } };

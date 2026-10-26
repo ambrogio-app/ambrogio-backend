@@ -1481,6 +1481,23 @@ La prova passa se, dopo il riavvio, la famiglia può recuperare la conversazione
   * verify: [Disponibilità dello storico dopo riavvio](../Requirements/FamilyConversation.md#disponibilità-dello-storico-dopo-riavvio)
 ---
 
+### Prova della finestra dello storico dei modelli
+
+Leggere la configurazione del componente «Conversazioni» senza `AMBROGIO_HISTORY_TURNS`, con un valore valido e con valori non interi o non positivi. Con il caso d'uso del turno e un produttore controllato, elaborare un turno in una conversazione con più turni conservati del limite configurato, poi leggere lo storico tramite il GET HTTP.
+
+#### Details
+La prova passa se il valore predefinito è 20, se un valore invalido impedisce l'attivazione, se la produzione riceve esattamente gli ultimi turni fino al limite, nell'ordine persistente e con il turno in elaborazione per ultimo, e se il GET HTTP restituisce tutti i turni. Fallisce se la produzione riceve turni oltre il limite, perde il turno in elaborazione o se lo storico conservato viene troncato.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * satisfiedBy: [conversation-config.spec.ts](../../packages/conversations/src/adapters/out/conversation-config.spec.ts)
+  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
+  * verify: [Limite dello storico inviato ai modelli](../Requirements/FamilyConversation.md#limite-dello-storico-inviato-ai-modelli)
+---
+
 ### Prova della lettura HTTP dello storico conversazionale
 
 Leggere via GET una conversazione con turni conclusi con risposta ed errore, un turno in elaborazione e un turno interrotto. Ripetere la lettura dopo la conclusione del turno in elaborazione e verificare anche conversazione assente e guasto tecnico dell'archivio.
@@ -1512,6 +1529,23 @@ La prova passa se ogni specialista, con e senza MCP, riceve la direttiva della l
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
   * verify: [Lingua configurata nelle risposte degli agenti](../Requirements/FamilyConversation.md#lingua-configurata-nelle-risposte-degli-agenti)
+---
+
+### Prova della nuova richiesta della risposta vuota
+
+Con modelli controllati, far chiamare a un agente con connettore MCP uno strumento e poi `finish` senza testo, con `expectsReply` vero; in tentativi separati far restituire alla nuova generazione un testo, soltanto spazi, oppure far chiudere senza testo un agente senza connettore MCP. Con il caso d'uso del turno e un produttore controllato, consegnare una risposta di soli spazi seguita da `expectsReply`.
+
+#### Details
+La prova passa se la nuova generazione avviene una sola volta, senza strumenti offerti, con le istruzioni dell'agente, la richiesta aggiuntiva e il contesto che contiene la chiamata e il risultato dello strumento del turno; se il suo testo è consegnato e conservato come risposta con `expectsReply` vero; se una nuova generazione vuota, o una risposta di soli spazi consegnata al caso d'uso, conclude il turno con il messaggio pubblico del guasto senza conservare una risposta. Fallisce se una risposta vuota è conservata come riuscita, se la nuova generazione si ripete o se perde il risultato dello strumento.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
+  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
+  * verify: [Risposta non vuota dell'agente specializzato](../Requirements/FamilyConversation.md#risposta-non-vuota-dellagente-specializzato)
 ---
 
 ### Prova della ricerca delle configurazioni degli agenti
@@ -1582,6 +1616,26 @@ La prova passa se ciascun agente usa soltanto provider, modello, chiave, `baseUR
   * verify: [Configurazione del modello per agente](../Requirements/FamilyConversation.md#configurazione-del-modello-per-agente)
 ---
 
+### Prova delle azioni nello storico
+
+Con modelli e client MCP controllati, eseguire in una conversazione un turno in cui l'agente `home` chiama uno strumento che riesce e uno che fallisce, poi un secondo turno, e osservare il contesto ricevuto dall'orchestratore, dall'agente `home` e da un altro agente. Con il caso d'uso del turno e produttori controllati, consegnare azioni prima di `expectsReply` e, in tentativi separati, dopo `expectsReply` o senza agente. Con un archivio SQLite di prova, conservare e rileggere un turno con azioni e uno senza, aprire un archivio creato con le migrazioni precedenti contenente turni conclusi e leggere righe con un valore `actions` invalido. Leggere lo storico tramite il GET HTTP e osservare i messaggi del protocollo `ambrogio.v1` del turno.
+
+#### Details
+La prova passa se le azioni del primo turno sono conservate con nome, argomenti ed esito, e nel secondo turno l'agente `home` le riceve come chiamate e risultati prima del testo della risposta, con identificativi di nove caratteri alfanumerici, mentre l'orchestratore e l'altro agente ricevono soltanto i testi; se le consegne invalide producono un guasto della produzione; se la migrazione `008_turn_actions` lascia leggibili i turni preesistenti senza azioni; se i valori invalidi sono rifiutati come dati invalidi; e se le azioni non compaiono nel GET HTTP né nei messaggi del protocollo. Fallisce se le azioni si perdono, raggiungono un altro agente, l'orchestratore o i client, o se i turni preesistenti diventano illeggibili.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
+  * satisfiedBy: [sqlite-conversation-history-read.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-history-read.adapter.integration.spec.ts)
+  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
+  * satisfiedBy: [turn.spec.ts](../../packages/conversations/src/domain/turn.spec.ts)
+  * verify: [Azioni dell'agente nello storico](../Requirements/FamilyConversation.md#azioni-dellagente-nello-storico)
+---
+
 ### Prova delle istruzioni per agente
 
 Preparare due file di agenti dell'utente con istruzioni riconoscibili e diverse, uno per l'orchestratore e uno per un agente specializzato. Attivare entrambi con modelli di prova e osservare le istruzioni consegnate a ciascuno durante un turno delegato; modificare poi le istruzioni di uno solo dei file e ripetere.
@@ -1596,6 +1650,22 @@ La prova passa se ogni modello riceve le istruzioni del proprio file e la modifi
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
   * verify: [Istruzioni dell'agente nel file dell'utente](../Requirements/FamilyConversation.md#istruzioni-dellagente-nel-file-dellutente)
+---
+
+### Prova dello storico senza risposte vuote
+
+Con un orchestratore e agenti controllati, elaborare un turno in una conversazione il cui turno precedente è concluso con una risposta vuota dall'agente `home`, con e senza azioni conservate, e osservare il contesto ricevuto dall'orchestratore e dagli agenti.
+
+#### Details
+La prova passa se il turno precedente compare con il messaggio della famiglia e senza alcun messaggio dell'assistente vuoto, né indicazione `[agent: home]` per l'orchestratore, e se l'agente `home` riceve comunque le azioni conservate. Fallisce se il contesto contiene un messaggio dell'assistente senza testo e senza chiamate a strumenti, o se perde il messaggio della famiglia.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
+  * verify: [Storico senza risposte vuote](../Requirements/FamilyConversation.md#storico-senza-risposte-vuote)
 ---
 
 ### Verifica della risorsa SQLite conversazionale
@@ -1951,3 +2021,4 @@ La prova passa se le migrazioni pendenti sono applicate automaticamente prima ch
   * satisfiedBy: [conversation-archive.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/conversation-archive.integration.spec.ts)
   * verify: [Migrazione automatica dell'archivio delle conversazioni](../Requirements/FamilyConversation.md#migrazione-automatica-dellarchivio-delle-conversazioni)
 ---
+

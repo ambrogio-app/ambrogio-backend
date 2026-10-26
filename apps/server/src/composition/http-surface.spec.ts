@@ -58,7 +58,7 @@ async function composed(language: 'en' | 'it' = 'it') {
   const directory = await mkdtemp(join(tmpdir(), 'ambrogio-http-surface-'));
   directories.push(directory);
   const prepared = await prepareConfiguredConversations({ archivePath: join(directory, 'archive.sqlite'),
-    listPageSize: 20, maxListPageSize: 100, language, timeZone: 'UTC' }, new Date());
+    listPageSize: 20, maxListPageSize: 100, historyTurns: 20, language, timeZone: 'UTC' }, new Date());
   archives.push(prepared.archive);
   await prepared.archive.db.insertInto('conversations')
     .values({ id: 'c-1', created_at: 100, last_activity_at: 100 }).execute();

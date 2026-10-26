@@ -65,6 +65,21 @@ Prima di attivare gli ingressi conversazionali, il server confronta lo schema SQ
   * define: [Migrazione automatica dell'archivio delle conversazioni](../Requirements/FamilyConversation.md#migrazione-automatica-dellarchivio-delle-conversazioni)
 ---
 
+### Azioni conservate del turno
+
+La capacità Application di produzione della risposta consegna, oltre ai frammenti testuali, all'agente e a `expectsReply`, un'azione per ogni chiamata a uno strumento MCP conclusa durante la risposta, nell'ordine in cui si conclude; la chiamata a `finish` non è un'azione. Un'azione contiene `tool`, il nome dello strumento presentato al modello, `input`, l'oggetto JSON degli argomenti, e esattamente uno fra `output`, il valore JSON restituito dal client MCP, e `error`, il messaggio non vuoto del guasto della chiamata. Il caso d'uso del turno include le azioni nell'esito con risposta passato al completamento; un'azione consegnata dopo `expectsReply` o senza un agente consegnato viola il contratto della risposta ed è un guasto della produzione. Le azioni di un turno concluso con errore o interrotto non sono conservate.
+
+Nel Domain un turno concluso con risposta porta facoltativamente l'elenco non vuoto delle azioni; i turni in elaborazione, conclusi con errore o interrotti non hanno azioni. L'archivio SQLite lo conserva come testo JSON nella colonna facoltativa `actions` della tabella `turns`, aggiunta dalla migrazione `008_turn_actions`; le righe già presenti restano con valore nullo, cioè senza azioni, e restano leggibili. Un valore che non è un array JSON non vuoto di azioni valide, o un valore non nullo su un turno non concluso con risposta, è un dato persistente invalido.
+
+Quando un agente specializzato con connettore MCP riceve lo storico, ogni turno concluso con risposta che porta il suo stesso identificativo d'agente e delle azioni è presentato come messaggio della famiglia, seguito da un messaggio dell'assistente con una chiamata a strumento per ogni azione, da un messaggio di risultati con l'esito di ciascuna, `output` come risultato JSON ed `error` come testo d'errore, e infine dal testo della risposta quando non è vuoto. Gli identificativi delle chiamate sono generati alla presentazione, composti da nove caratteri alfanumerici e distinti nel contesto. L'orchestratore, gli agenti senza connettore MCP e gli altri agenti ricevono quei turni senza azioni. Le azioni sono un dato interno: non compaiono nei messaggi del protocollo `ambrogio.v1`, nello storico né nell'elenco HTTP.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Azioni dell'agente nello storico](../Requirements/FamilyConversation.md#azioni-dellagente-nello-storico)
+---
+
 ### Causa tecnica dell'errore del turno
 
 Quando il caso d'uso del turno conclude un turno ammesso con l'esito di errore perché la lettura dello storico o la produzione della risposta ha lanciato un guasto o ha violato il contratto della risposta, per esempio senza l'indicazione `expectsReply`, l'esito `failed` restituito all'adapter di ingresso porta anche la causa tecnica originale, senza modificarla. Il caso d'uso non registra log e non conserva la causa: l'esito persistente contiene soltanto il messaggio pubblico. L'adapter del canale conversazionale, che decide l'esito comunicato al client, emette un solo evento `conversation_reply_failed` con `err` normalizzato secondo il contratto di normalizzazione diagnostica e con il `correlationId` della sessione; `turn.failed` e la trasmissione dell'errore mantengono il messaggio pubblico. Un esito `failed` senza causa tecnica non produce questo evento. Motivazione: senza questo evento i guasti della produzione della risposta non lasciano alcuna diagnostica.
@@ -308,6 +323,17 @@ Le durate sono millisecondi interi non negativi misurati con un orologio monoton
   * define: [Registrazione dei tempi della risposta degli agenti](../Requirements/FamilyConversation.md#registrazione-dei-tempi-della-risposta-degli-agenti)
 ---
 
+### Finestra dello storico dei modelli
+
+Il modulo di configurazione del componente «Conversazioni» legge `AMBROGIO_HISTORY_TURNS`, intero decimale positivo, e applica in ogni ambiente il valore 20 quando manca; un valore non intero o non positivo impedisce l'attivazione. La composition root consegna il valore validato al caso d'uso del turno, che dopo aver letto lo storico dall'archivio consegna alla produzione della risposta soltanto gli ultimi turni, nell'ordine persistente, fino a quel numero e compreso il turno in elaborazione. L'orchestratore e l'agente scelto ricevono la stessa finestra. L'archivio, la consultazione HTTP dello storico e l'elenco delle conversazioni restano completi.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Limite dello storico inviato ai modelli](../Requirements/FamilyConversation.md#limite-dello-storico-inviato-ai-modelli)
+---
+
 ### Formato JSON dei file degli agenti
 
 Ogni file della directory degli agenti è un documento JSON UTF-8 di soli dati, il cui oggetto radice contiene esclusivamente i campi ammessi:
@@ -484,6 +510,19 @@ Il primo carattere è una lettera o un trattino basso perché l'API Gemini richi
   * define: [Nomi degli strumenti MCP offerti al modello](../Requirements/FamilyConversation.md#nomi-degli-strumenti-mcp-offerti-al-modello)
 ---
 
+### Nuova richiesta della risposta vuota
+
+Una risposta di un agente specializzato è vuota quando, alla chiamata di `finish`, il testo scritto in tutti i passi non contiene caratteri diversi da spazi bianchi. In questo caso l'adapter AI SDK esegue una sola nuova generazione con lo stesso modello, le stesse istruzioni e lo stesso storico del turno, a cui aggiunge le chiamate agli strumenti eseguite nel turno con i loro risultati, presentate come in «Azioni conservate del turno»; la generazione non offre strumenti e aggiunge alle istruzioni la richiesta di scrivere ora la risposta all'ultimo messaggio della famiglia. Il testo di questa generazione è consegnato in streaming come risposta del turno, e l'indicazione `expectsReply` resta quella consegnata con `finish`. La generazione conta come passo del modello nell'evento dei tempi della risposta e rientra nel tempo massimo della produzione della risposta. Se anche il suo testo non contiene caratteri diversi da spazi bianchi, la produzione termina con un guasto tecnico e il turno si conclude con il messaggio pubblico del guasto conversazionale.
+
+Il caso d'uso del turno non conserva come riuscita una risposta il cui testo non contiene caratteri diversi da spazi bianchi: la tratta come guasto della produzione e conclude il turno con errore.
+
+#### Metadata
+  * type: behavior
+
+#### Relations
+  * define: [Risposta non vuota dell'agente specializzato](../Requirements/FamilyConversation.md#risposta-non-vuota-dellagente-specializzato)
+---
+
 ### Occupazione della conversazione e ammissione dei turni
 
 L'ammissione è atomica per identificativo di conversazione ed è condivisa da tutti i turni, testuali e vocali, di qualunque client. Ogni conversazione è occupata dall'accettazione di un turno fino alla conservazione del suo esito o dello stato `interrotto`. Richieste simultanee sulla stessa conversazione ammettono al massimo un turno; le altre ricevono un rifiuto previsto, senza persistenza né accodamento. Turni di conversazioni diverse sono ammessi ed elaborati in parallelo; anche due richieste che creano conversazioni nuove non si escludono reciprocamente. Storico, risposta ed esito di un turno restano associati alla propria conversazione. L'arresto impedisce nuove ammissioni in tutte le conversazioni. Al riavvio, dopo le migrazioni e prima degli ingressi, e all'arresto, dopo la chiusura degli ingressi, il caso d'uso di interruzione carica ogni turno rimasto `in elaborazione`, lo interrompe tramite il Root e ne salva lo stato `interrotto` insieme alla liberazione della sua occupazione, in modo atomico per ciascun turno. Una conclusione tardiva non sostituisce lo stato `interrotto`. Le transazioni SQLite restano brevi: non includono produzione remota o streaming. La serializzazione delle scritture SQLite non impone la serializzazione dell'intera elaborazione.
@@ -498,6 +537,17 @@ L’occupazione è memorizzata nella riga della conversazione con il riferimento
 
 #### Relations
   * define: [Rifiuto dei turni concorrenti nella stessa conversazione](../Requirements/FamilyConversation.md#rifiuto-dei-turni-concorrenti-nella-stessa-conversazione)
+---
+
+### Omissione delle risposte vuote nel contesto
+
+Nel contesto consegnato all'orchestratore e agli agenti specializzati, un turno concluso con risposta il cui testo non contiene caratteri diversi da spazi bianchi compare con il solo messaggio della famiglia, seguito dalle eventuali azioni conservate quando il contesto è quello dello stesso agente; per l'orchestratore non compare neppure l'indicazione `[agent: <id>]`. Lo storico conservato e la sua consultazione HTTP restano invariati.
+
+#### Metadata
+  * type: behavior
+
+#### Relations
+  * define: [Storico senza risposte vuote](../Requirements/FamilyConversation.md#storico-senza-risposte-vuote)
 ---
 
 ### Pagine dell'elenco conversazioni
@@ -761,7 +811,7 @@ Un agente specializzato il cui file non contiene `mcp` è preparato senza aprire
 
 Le istruzioni della generazione della risposta di un agente specializzato con connettore MCP chiedono che ogni richiesta di fare qualcosa con gli strumenti abbia una propria chiamata a uno strumento nella stessa risposta, anche quando ripete o richiama una richiesta precedente, perché le risposte precedenti non mostrano che cosa è stato eseguito; che un messaggio che non chiede nulla, come un ringraziamento o un saluto, non richieda strumenti diversi da `finish`; che l'agente non scriva nulla prima o fra le chiamate agli strumenti e scriva la risposta soltanto dopo l'ultima chiamata, quando ne conosce l'esito; che, dopo un'azione, dica in una frase breve che cosa ha fatto e su cosa, e mai soltanto «Fatto» o «Ok»; e che, quando un'azione non riesce, dica che cosa non è riuscito. Le istruzioni non contengono frasi d'esempio.
 
-Il testo che il modello scrive comunque prima di una chiamata a uno strumento è consegnato come frammento della risposta appena scritto e separato con un a capo dal testo dei passi successivi; quando il modello chiama uno strumento dopo aver scritto testo nello stesso passo, l'a capo è consegnato appena arriva la chiamata, perché la sintesi considera completa una frase soltanto quando dopo la punteggiatura finale arriva uno spazio o un a capo. Una risposta senza testo conclude il turno come riuscito senza frammenti. Il testo della risposta è conservato nell'archivio.
+Il testo che il modello scrive comunque prima di una chiamata a uno strumento è consegnato come frammento della risposta appena scritto e separato con un a capo dal testo dei passi successivi; quando il modello chiama uno strumento dopo aver scritto testo nello stesso passo, l'a capo è consegnato appena arriva la chiamata, perché la sintesi considera completa una frase soltanto quando dopo la punteggiatura finale arriva uno spazio o un a capo. Una risposta senza testo è trattata secondo «Nuova richiesta della risposta vuota». Il testo della risposta è conservato nell'archivio, con le azioni secondo «Azioni conservate del turno».
 
 #### Metadata
   * type: behavior
@@ -772,9 +822,9 @@ Il testo che il modello scrive comunque prima di una chiamata a uno strumento è
 
 ### Scelta dell'agente con risposta strutturata dell'orchestratore
 
-L'orchestratore è un selettore: non formula mai la risposta del turno. Riceve lo storico conservato della conversazione e restituisce, tramite l'output strutturato dell'AI SDK e non tramite chiamate di funzione, un oggetto JSON con il solo campo `agent`, il cui valore appartiene all'elenco chiuso degli identificativi degli agenti specializzati attivi, dichiarato come `enum` nello schema JSON. Alle istruzioni configurate dell'orchestratore l'adapter aggiunge l'elenco degli agenti attivi con identificativo e `description` e la richiesta di scegliere l'agente che deve rispondere all'ultimo messaggio della famiglia. La richiesta di scelta non è trasmessa in streaming alla famiglia e non produce testo della risposta.
+L'orchestratore è un selettore: non formula mai la risposta del turno. Riceve gli ultimi turni dello storico conservato secondo «Finestra dello storico dei modelli», senza azioni conservate, e restituisce, tramite l'output strutturato dell'AI SDK e non tramite chiamate di funzione, un oggetto JSON con il solo campo `agent`, il cui valore appartiene all'elenco chiuso degli identificativi degli agenti specializzati attivi, dichiarato come `enum` nello schema JSON. Alle istruzioni configurate dell'orchestratore l'adapter aggiunge l'elenco degli agenti attivi con identificativo e `description` e la richiesta di scegliere l'agente che deve rispondere all'ultimo messaggio della famiglia. La richiesta di scelta non è trasmessa in streaming alla famiglia e non produce testo della risposta.
 
-L'agente scelto riceve lo stesso storico conservato, il cui ultimo turno contiene il testo originale della famiglia, senza un compito riformulato, e formula l'intera risposta con la relativa indicazione `expectsReply`, trasmessa come risposta del turno senza ulteriori chiamate all'orchestratore. Un'uscita mancante, non conforme allo schema o con un identificativo che non corrisponde esattamente a un agente attivo è un guasto tecnico della produzione della risposta: il turno termina con il messaggio pubblico previsto e nessun agente viene attivato. Le istruzioni e le credenziali degli agenti specializzati restano nei loro adapter.
+L'agente scelto riceve la stessa finestra dello storico, con le proprie azioni conservate secondo «Azioni conservate del turno», il cui ultimo turno contiene il testo originale della famiglia, senza un compito riformulato, e formula l'intera risposta con la relativa indicazione `expectsReply`, trasmessa come risposta del turno senza ulteriori chiamate all'orchestratore. Un'uscita mancante, non conforme allo schema o con un identificativo che non corrisponde esattamente a un agente attivo è un guasto tecnico della produzione della risposta: il turno termina con il messaggio pubblico previsto e nessun agente viene attivato. Le istruzioni e le credenziali degli agenti specializzati restano nei loro adapter.
 
 Motivazione: un orchestratore abilitato a rispondere da solo tende a rispondere a una richiesta di azione dichiarando un'azione mai eseguita invece di delegarla all'agente che dispone dello strumento, mentre un modello meno capace delega all'agente sbagliato richieste generali che seguono un turno precedente. Un orchestratore che non risponde elimina strutturalmente le azioni dichiarate e non eseguite. Il modello consigliato per l'orchestratore è il modello d'esempio della fonte «API dei provider di modelli linguistici»; la scelta del modello resta nel file `orchestrator.json` dell'utente.
 

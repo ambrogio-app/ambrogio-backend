@@ -46,7 +46,7 @@ async function openPreparedConversations(
     const failureMessage = config.language === 'it'
       ? 'Non riesco a completare la risposta.'
       : "I can't complete the response.";
-    return { listConversations, maxListPageSize: config.maxListPageSize,
+    return { listConversations, maxListPageSize: config.maxListPageSize, historyTurns: config.historyTurns,
       failureMessage, language: config.language, archive, recoveredTurns, turns,
       conversations: new SqliteConversationLookup(archive.db),
       /** At shutdown, after the ingresses stop: interrupt the turns still pending. */
@@ -71,6 +71,7 @@ export function assembleExchangeTurn(
     reply,
     failureMessage: prepared.failureMessage,
     deadlines: new SystemDeadlines(),
+    historyTurns: prepared.historyTurns,
   });
 }
 

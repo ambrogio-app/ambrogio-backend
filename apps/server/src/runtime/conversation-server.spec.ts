@@ -65,7 +65,7 @@ async function listen(built: Awaited<ReturnType<typeof buildConversationServer>>
 async function downgradeArchiveToInitial(filename: string) {
   const archive = await openConversationArchive(filename);
   try {
-    for (const name of ['007_turn_agent', '006_per_conversation_occupancy', '005_remove_turn_owner', '004_turn_owner',
+    for (const name of ['008_turn_actions', '007_turn_agent', '006_per_conversation_occupancy', '005_remove_turn_owner', '004_turn_owner',
       '003_list_order', '002_ordered_turns'] as const) {
       await conversationMigrations[name].down!(archive.db);
     }
@@ -121,7 +121,7 @@ async function upgradeResponse(url: string, origin?: string): Promise<Readonly<{
 test('the session ingress uses the orchestrator and GET routes retain security, CORS and correlation headers', async () => {
   const files = await fixture();
   const prepared = await prepareConfiguredConversations({ archivePath: files.archive,
-    listPageSize: 20, maxListPageSize: 100, language: 'en', timeZone: 'UTC' }, new Date());
+    listPageSize: 20, maxListPageSize: 100, historyTurns: 20, language: 'en', timeZone: 'UTC' }, new Date());
   const built = await buildConversationServer({ host: '127.0.0.1', port: 3000,
     allowedOrigins: ['https://client.test'], publicHttps: true, hstsMaxAgeSeconds: 600 },
   prepared, { async *produce() { yield text('Hello'); yield text(' world'); yield expectation(); } }, undefined, undefined, surfaceOptions());
@@ -518,7 +518,7 @@ test.each([
 ] as const)('handles admitted turn with %s', async (_scenario, missing, completionFails) => {
   const files = await fixture();
   const prepared = await prepareConfiguredConversations({ archivePath: files.archive,
-    listPageSize: 20, maxListPageSize: 100, language: 'en', timeZone: 'UTC' }, new Date());
+    listPageSize: 20, maxListPageSize: 100, historyTurns: 20, language: 'en', timeZone: 'UTC' }, new Date());
   let productions = 0;
   const built = await buildConversationServer({ host: '127.0.0.1', port: 3000,
     allowedOrigins: [], publicHttps: false }, prepared,
@@ -569,7 +569,7 @@ test.each([
   }
   if (completionFails) {
     const recovered = await prepareConfiguredConversations({ archivePath: files.archive,
-      listPageSize: 20, maxListPageSize: 100, language: 'en', timeZone: 'UTC' }, new Date());
+      listPageSize: 20, maxListPageSize: 100, historyTurns: 20, language: 'en', timeZone: 'UTC' }, new Date());
     const restarted = await buildConversationServer({ host: '127.0.0.1', port: 3000,
       allowedOrigins: [], publicHttps: false }, recovered,
     { async *produce() { yield text('after restart'); yield expectation(); } }, undefined, undefined, surfaceOptions());
@@ -593,7 +593,7 @@ test.each([
 test('does not confirm success when the answer transaction cannot commit', async () => {
   const files = await fixture();
   const prepared = await prepareConfiguredConversations({ archivePath: files.archive,
-    listPageSize: 20, maxListPageSize: 100, language: 'en', timeZone: 'UTC' }, new Date());
+    listPageSize: 20, maxListPageSize: 100, historyTurns: 20, language: 'en', timeZone: 'UTC' }, new Date());
   const sqlite = new DatabaseSync(files.archive);
   try {
     sqlite.exec("create trigger reject_answer_release before update on conversations when new.active_turn_id is null begin select raise(abort, 'injected'); end");
@@ -675,6 +675,36 @@ test('migrates an existing archive before listening and preserves its history', 
     await closeAllClients();
     await runtime.close();
   }
+});
+
+// Verification: Prova delle azioni nello storico
+test('stores the actions of a reply without sending them to clients', async () => {
+  const files = await fixture();
+  const port = await freePort();
+  const runtime = await startConversationServer(serverEnvironment(files, port, files.directory),
+  async () => ({ orchestrator: { async *produce() {
+    yield { kind: 'agent', agent: 'home' };
+    yield { kind: 'action', action: { tool: 'HassTurnOn', input: { name: 'secret-device' }, output: { ok: true } } };
+    yield text('Ho acceso la luce.'); yield expectation();
+  } }, async close() {} }));
+  try {
+    const client = await ProtocolClient.ready(sessionUrl(port));
+    const result = await client.textTurn('accendi la luce');
+    expect(result.final.type).toBe('turn.completed');
+    expect(JSON.stringify(result)).not.toMatch(/HassTurnOn|secret-device/);
+    const conversationId = (result.accepted as unknown as { conversationId: string }).conversationId;
+    const history = await (await fetch(`http://127.0.0.1:${port}/api/v1/conversations/${conversationId}`)).text();
+    expect(history).toContain('Ho acceso la luce.');
+    expect(history).not.toMatch(/HassTurnOn|secret-device|actions/);
+  } finally {
+    await closeAllClients();
+    await runtime.close();
+  }
+  const sqlite = new DatabaseSync(files.archive);
+  try {
+    expect(sqlite.prepare('select actions from turns').all()).toEqual([{ actions:
+      JSON.stringify([{ tool: 'HassTurnOn', input: { name: 'secret-device' }, output: { ok: true } }]) }]);
+  } finally { sqlite.close(); }
 });
 
 test('a failed archive migration prevents the conversation listener', async () => {

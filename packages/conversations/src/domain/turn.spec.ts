@@ -15,7 +15,8 @@ function saved(turn: Turn): SavedTurn {
   switch (turn.status) {
     case 'pending': return { ...base, status: 'pending' };
     case 'answered': return { ...base, status: 'answered', answer: turn.answerText!, finishedAt: turn.finishedAt!,
-      ...(turn.respondingAgent === undefined ? {} : { agent: turn.respondingAgent }) };
+      ...(turn.respondingAgent === undefined ? {} : { agent: turn.respondingAgent }),
+      ...(turn.actions === undefined ? {} : { actions: turn.actions }) };
     case 'failed': return { ...base, status: 'failed', error: turn.errorMessage!, finishedAt: turn.finishedAt! };
     case 'interrupted': return { ...base, status: 'interrupted', finishedAt: turn.finishedAt! };
   }
@@ -84,6 +85,29 @@ describe('Turn', () => {
     expect(() => Turn.rehydrate({ ...saved(turn), agent: '' } as never)).toThrow();
   });
 
+  // Verification: Prova delle azioni nello storico
+  it('keeps checked private copies of the actions only on answered turns', () => {
+    const input = { name: 'luce' };
+    const actions = [{ tool: 'HassTurnOn', input, output: { ok: true } }, { tool: 'HassTurnOff', input: {}, error: 'No' }];
+    const turn = accepted();
+    expect(turn.answer('Ho acceso la luce.', new Date(1_700_000_000_001), 'home', actions).ok).toBe(true);
+    input.name = 'changed';
+    expect(turn.actions).toEqual([{ tool: 'HassTurnOn', input: { name: 'luce' }, output: { ok: true } },
+      { tool: 'HassTurnOff', input: {}, error: 'No' }]);
+    (turn.actions as unknown as Array<{ tool: string }>)[0]!.tool = 'changed';
+    expect(turn.actions?.[0]?.tool).toBe('HassTurnOn');
+    expect(saved(Turn.rehydrate(saved(turn)))).toEqual(saved(turn));
+    for (const invalid of [[], [{ tool: '', input: {}, output: 1 }], [{ tool: 't', input: [], output: 1 }],
+      [{ tool: 't', input: {}, output: 1, error: 'e' }], [{ tool: 't', input: {} }], [{ tool: 't', input: {}, error: '' }],
+      [{ tool: 't', input: {}, output: Number.NaN }], [{ tool: 't', input: {}, output: 1, extra: true }]]) {
+      expect(() => accepted().answer('x', new Date(1_700_000_000_001), 'home', invalid as never), JSON.stringify(invalid))
+        .toThrow('Invalid turn action');
+    }
+    const failed = accepted();
+    failed.fail('Errore pubblico', new Date(1_700_000_000_001));
+    expect(() => Turn.rehydrate({ ...saved(failed), actions: actions } as never)).toThrow();
+  });
+
   // Verification: Prova della validità e delle copie degli istanti
   // Verification: Prova dell'isolamento dello stato del turno
   it('defensively copies valid dates on creation, rehydration and read', () => {
@@ -113,7 +137,7 @@ describe('Turn', () => {
     const turn = accepted();
     expect(Object.keys(turn)).toEqual([]);
     expect(Object.getOwnPropertyNames(Turn.prototype).sort()).toEqual([
-      'acceptedAt', 'answer', 'answerText', 'constructor', 'conversationId', 'errorMessage', 'fail', 'finishedAt',
+      'acceptedAt', 'actions', 'answer', 'answerText', 'constructor', 'conversationId', 'errorMessage', 'fail', 'finishedAt',
       'id', 'interrupt', 'respondingAgent', 'status', 'text',
     ]);
     expect(Object.getOwnPropertyNames(Turn).filter(name => !['length', 'name', 'prototype'].includes(name)).sort())

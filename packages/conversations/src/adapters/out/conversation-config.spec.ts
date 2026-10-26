@@ -18,7 +18,7 @@ describe('conversation component configuration', () => {
   it('applies its own defaults in every environment and accepts explicit page limits', () => {
     for (const runtime of ['development', 'test', 'production'] as const) {
       expect(read({}, runtime)).toEqual({ archivePath: '/tmp/ambrogio.sqlite', listPageSize: 20,
-        maxListPageSize: 100, language: 'en', timeZone: 'UTC' });
+        maxListPageSize: 100, historyTurns: 20, language: 'en', timeZone: 'UTC' });
     }
     expect(read({ AMBROGIO_LIST_PAGE_SIZE: '2', AMBROGIO_MAX_LIST_PAGE_SIZE: '3' }))
       .toMatchObject({ listPageSize: 2, maxListPageSize: 3 });
@@ -26,6 +26,18 @@ describe('conversation component configuration', () => {
       .toMatchObject({ listPageSize: 110, maxListPageSize: 120 });
     // An empty variable counts as an absent one.
     expect(read({ AMBROGIO_LIST_PAGE_SIZE: '', AMBROGIO_LANGUAGE: '' })).toMatchObject({ listPageSize: 20, language: 'en' });
+  });
+
+  // Verification: Prova della finestra dello storico dei modelli
+  it('reads the history window with its default and rejects invalid values naming the variable', () => {
+    for (const runtime of ['development', 'test', 'production'] as const) {
+      expect(read({}, runtime).historyTurns).toBe(20);
+    }
+    expect(read({ AMBROGIO_HISTORY_TURNS: '1' }).historyTurns).toBe(1);
+    expect(read({ AMBROGIO_HISTORY_TURNS: '500' }).historyTurns).toBe(500);
+    for (const value of ['0', '-1', '1.5', 'twenty', ' 20']) {
+      expect(failure({ AMBROGIO_HISTORY_TURNS: value })).toMatch(/^Invalid environment variable AMBROGIO_HISTORY_TURNS: /);
+    }
   });
 
   // Verification: Prova della configurazione della paginazione

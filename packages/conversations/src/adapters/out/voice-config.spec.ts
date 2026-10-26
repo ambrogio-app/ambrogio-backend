@@ -217,12 +217,37 @@ it('requires exactly one readable Kokoro model, voices, tokens and espeak data',
 });
 
 // Verification: Prova della trascrizione con Whisper
-it('accepts only the whisper transcription engine', async () => {
+it('accepts only the nemo-transducer and whisper transcription engines', async () => {
   const { whisper, voice } = await fixture();
-  for (const sttEngine of ['vosk', 'Whisper', 'parakeet']) {
+  for (const sttEngine of ['vosk', 'Whisper', 'parakeet', 'nemo_transducer']) {
     await expect(loadVoiceConfig(single({ sttEngine, sttModelDir: whisper, voiceEngine: 'piper', voiceModelDir: voice }), 'it'))
-      .rejects.toThrow('Invalid environment variable AMBROGIO_VOICE_IT_STT_ENGINE: expected whisper');
+      .rejects.toThrow('Invalid environment variable AMBROGIO_VOICE_IT_STT_ENGINE: expected nemo-transducer or whisper');
   }
+});
+
+// Verification: Prova della trascrizione con transducer NeMo
+it('requires exactly one readable encoder, decoder, joiner and tokens file for a NeMo transducer', async () => {
+  const { directory, voice } = await fixture();
+  const parakeet = join(directory, 'parakeet');
+  await mkdir(parakeet);
+  for (const name of ['encoder.int8.onnx', 'decoder.int8.onnx', 'joiner.int8.onnx', 'tokens.txt']) {
+    await writeFile(join(parakeet, name), 'fixture');
+  }
+  const profile = { sttEngine: 'nemo-transducer', sttModelDir: parakeet, voiceEngine: 'piper', voiceModelDir: voice };
+  const config = single(profile);
+  const loaded = await loadVoiceConfig(config, 'it');
+  expect(loaded).toEqual({ ...profile, sttLanguage: 'it' });
+  expect(await transcriptionModel(loaded!)).toEqual({ engine: 'nemo-transducer', files: {
+    encoder: join(parakeet, 'encoder.int8.onnx'), decoder: join(parakeet, 'decoder.int8.onnx'),
+    joiner: join(parakeet, 'joiner.int8.onnx'), tokens: join(parakeet, 'tokens.txt') } });
+  for (const name of ['encoder.int8.onnx', 'decoder.int8.onnx', 'joiner.int8.onnx', 'tokens.txt']) {
+    await rm(join(parakeet, name));
+    await expect(loadVoiceConfig(config, 'it')).rejects.toThrow('Voice resources are unavailable');
+    await writeFile(join(parakeet, name), 'fixture');
+  }
+  // Two encoders, such as an int8 and a floating-point one, are ambiguous.
+  await writeFile(join(parakeet, 'encoder.onnx'), 'fixture');
+  await expect(loadVoiceConfig(config, 'it')).rejects.toThrow('Voice resources are unavailable');
 });
 
 // Verification: Prova della trascrizione con Whisper

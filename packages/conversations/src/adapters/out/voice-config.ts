@@ -10,7 +10,11 @@ export type VoiceSelection = Readonly<
   | { voiceEngine: 'kokoro'; voiceModelDir: string; voiceSpeaker: number; voiceLanguage: string }>;
 
 /** The transcription engine and model chosen by the installation; Whisper uses the language of the profile. */
-export type TranscriptionSelection = Readonly<{ sttEngine: 'whisper'; sttModelDir: string; sttLanguage: VoiceLanguage }>;
+/** The transcription engines: a model family of sherpa-onnx each. */
+export type TranscriptionEngine = 'nemo-transducer' | 'whisper';
+const transcriptionEngines: readonly TranscriptionEngine[] = ['nemo-transducer', 'whisper'];
+
+export type TranscriptionSelection = Readonly<{ sttEngine: TranscriptionEngine; sttModelDir: string; sttLanguage: VoiceLanguage }>;
 
 export type VoiceConfig = TranscriptionSelection & VoiceSelection;
 
@@ -18,7 +22,12 @@ export type VoiceConfig = TranscriptionSelection & VoiceSelection;
 export type WhisperModelFiles = Readonly<{ encoder: string; decoder: string; tokens: string }>;
 
 /** A transcription model ready to be loaded by sherpa-onnx. */
-export type TranscriptionModel = Readonly<{ engine: 'whisper'; files: WhisperModelFiles; language: VoiceLanguage }>;
+/** The files of a sherpa-onnx NeMo transducer model directory, such as Parakeet TDT. */
+export type NemoTransducerModelFiles = Readonly<{ encoder: string; decoder: string; joiner: string; tokens: string }>;
+
+export type TranscriptionModel = Readonly<
+  | { engine: 'nemo-transducer'; files: NemoTransducerModelFiles }
+  | { engine: 'whisper'; files: WhisperModelFiles; language: VoiceLanguage }>;
 
 /** The files of a sherpa-onnx Piper (VITS) voice directory. */
 export type VoiceModelFiles = Readonly<{ model: string; tokens: string; dataDir: string }>;
@@ -69,21 +78,31 @@ async function onlyFile(directory: string, matches: (name: string) => boolean): 
   return join(directory, files[0]!.name);
 }
 
-/** Exactly one `*encoder*.onnx`, one `*decoder*.onnx` and one `*tokens.txt`, all readable. */
-export async function whisperModelFiles(directory: string): Promise<WhisperModelFiles> {
+/** Exactly one readable `*<part>*.onnx` for each part and one `*tokens.txt`. */
+async function modelParts<T extends string>(directory: string, parts: readonly T[]): Promise<Record<T | 'tokens', string>> {
   try {
-    const files = {
-      encoder: await onlyFile(directory, name => name.includes('encoder') && name.endsWith('.onnx')),
-      decoder: await onlyFile(directory, name => name.includes('decoder') && name.endsWith('.onnx')),
-      tokens: await onlyFile(directory, name => name.endsWith('tokens.txt')),
-    };
-    for (const path of Object.values(files)) await access(path, constants.R_OK);
+    const files = {} as Record<T | 'tokens', string>;
+    for (const part of parts) files[part] = await onlyFile(directory, name => name.includes(part) && name.endsWith('.onnx'));
+    files.tokens = await onlyFile(directory, name => name.endsWith('tokens.txt'));
+    for (const path of Object.values<string>(files)) await access(path, constants.R_OK);
     return files;
   } catch { throw new ProjectError('Voice resources are unavailable'); }
 }
 
+/** Exactly one `*encoder*.onnx`, one `*decoder*.onnx` and one `*tokens.txt`, all readable. */
+export function whisperModelFiles(directory: string): Promise<WhisperModelFiles> {
+  return modelParts(directory, ['encoder', 'decoder'] as const);
+}
+
+/** Exactly one `*encoder*.onnx`, `*decoder*.onnx` and `*joiner*.onnx` and one `*tokens.txt`, all readable. */
+export function nemoTransducerModelFiles(directory: string): Promise<NemoTransducerModelFiles> {
+  return modelParts(directory, ['encoder', 'decoder', 'joiner'] as const);
+}
+
 export async function transcriptionModel(selection: TranscriptionSelection): Promise<TranscriptionModel> {
-  return { engine: 'whisper', files: await whisperModelFiles(selection.sttModelDir), language: selection.sttLanguage };
+  return selection.sttEngine === 'nemo-transducer'
+    ? { engine: 'nemo-transducer', files: await nemoTransducerModelFiles(selection.sttModelDir) }
+    : { engine: 'whisper', files: await whisperModelFiles(selection.sttModelDir), language: selection.sttLanguage };
 }
 
 export async function voiceModel(voice: VoiceSelection): Promise<VoiceModel> {
@@ -132,8 +151,11 @@ function required(environment: NodeJS.ProcessEnv, name: string): string {
 function parseProfile(environment: NodeJS.ProcessEnv, language: VoiceLanguage): VoiceConfig {
   const names = voiceProfileVariables(language);
   const sttEngine = required(environment, names.sttEngine.name);
-  if (sttEngine !== 'whisper') throw invalidVariable(names.sttEngine.name, 'expected whisper');
-  const transcription = { sttEngine, sttModelDir: required(environment, names.sttModelDir.name), sttLanguage: language } as const;
+  if (!transcriptionEngines.includes(sttEngine as TranscriptionEngine)) {
+    throw invalidVariable(names.sttEngine.name, 'expected nemo-transducer or whisper');
+  }
+  const transcription = { sttEngine: sttEngine as TranscriptionEngine, sttModelDir: required(environment, names.sttModelDir.name),
+    sttLanguage: language };
   const voiceModelDir = required(environment, names.modelDir.name);
   const engine = required(environment, names.engine.name);
   const speaker = value(environment, names.speaker.name);

@@ -977,6 +977,23 @@ La prova passa se la configurazione passata a `createAsync` contiene la sola sez
   * verify: [Scelta del motore di trascrizione](../Requirements/FamilyConversation.md#scelta-del-motore-di-trascrizione)
 ---
 
+### Prova della trascrizione con transducer NeMo
+
+Con un riconoscitore sherpa-onnx simulato costruire il trascrittore con il motore `nemo-transducer` da una directory con encoder, decoder, joiner e file dei token; trascrivere audio di 5 e 60 secondi consegnato in frame di dimensioni diverse; avviare due trascrizioni che si chiudono quasi insieme; interrompere una trascrizione prima della chiusura. Registrare la configurazione passata a `createAsync` e l'audio di ogni decodifica. Leggere configurazioni vocali con `AMBROGIO_VOICE_<LINGUA>_STT_ENGINE` uguale a `nemo-transducer` e con directory di trascrizione priva di joiner, con due encoder o senza file dei token.
+
+#### Details
+La prova passa se la configurazione passata a `createAsync` contiene la sola sezione `transducer` con l'encoder, il decoder e il joiner della directory, `modelType` uguale a `nemo_transducer` e i token della directory, senza la lingua del profilo; se ogni richiesta è decodificata in una sola volta con tutto il suo audio; se le decodifiche contemporanee non si sovrappongono; se una trascrizione interrotta non decodifica nulla; e se ogni directory non conforme è rifiutata prima della costruzione del riconoscitore. Fallisce altrimenti. La trascrizione con il modello reale è provata nell'immagine da «Prova del catalogo vocale bilingue dell'immagine».
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
+  * satisfiedBy: [sherpa-transcriber.spec.ts](../../packages/conversations/src/adapters/in/session/sherpa-transcriber.spec.ts)
+  * satisfiedBy: [voice-config.spec.ts](../../packages/conversations/src/adapters/out/voice-config.spec.ts)
+  * verify: [Scelta del motore di trascrizione](../Requirements/FamilyConversation.md#scelta-del-motore-di-trascrizione)
+---
+
 ### Prova della trascrizione e della risposta parlata
 
 Inviare un turno audio trascrivibile con testo atteso e `reply: "audio"`, ottenendo una risposta controllata; ripetere con un turno testuale e `reply: "audio"`.

@@ -1,4 +1,5 @@
 // Verification: Prova della trascrizione con Whisper
+// Verification: Prova della trascrizione con transducer NeMo
 import { describe, expect, it } from 'vitest';
 import { floatSamples, SherpaTranscriber, WHISPER_WINDOW_SAMPLES, type SherpaAsrConfig, type SherpaAsrEngine,
   type SherpaOfflineStream } from './sherpa-transcriber.js';
@@ -6,6 +7,10 @@ import { floatSamples, SherpaTranscriber, WHISPER_WINDOW_SAMPLES, type SherpaAsr
 const model: Parameters<typeof SherpaTranscriber.load>[0] = { engine: 'whisper', language: 'it',
   files: { encoder: '/models/whisper/base-encoder.int8.onnx', decoder: '/models/whisper/base-decoder.int8.onnx',
     tokens: '/models/whisper/base-tokens.txt' } };
+
+const parakeet: Parameters<typeof SherpaTranscriber.load>[0] = { engine: 'nemo-transducer',
+  files: { encoder: '/models/parakeet/encoder.int8.onnx', decoder: '/models/parakeet/decoder.int8.onnx',
+    joiner: '/models/parakeet/joiner.int8.onnx', tokens: '/models/parakeet/tokens.txt' } };
 
 /** A recognizer that records its configuration and every decoded window, answering with its length. */
 function engine(options: { delayMs?: number; fail?: boolean; texts?: string[] } = {}) {
@@ -62,6 +67,36 @@ describe('Whisper transcription with sherpa-onnx', () => {
       language: 'it', task: 'transcribe' }, tokens: model.files.tokens, provider: 'cpu' });
     expect(configs[0]!.modelConfig.numThreads).toBeGreaterThanOrEqual(1);
     expect(configs[0]!.modelConfig.numThreads).toBeLessThanOrEqual(2);
+  });
+
+  it('loads a NeMo transducer with its files and model type, without the language of the profile', async () => {
+    const { asr, configs } = engine();
+    await SherpaTranscriber.load(parakeet, asr);
+    expect(configs[0]!.modelConfig).toEqual(expect.objectContaining({ transducer: {
+      encoder: parakeet.files.encoder, decoder: parakeet.files.decoder, joiner: parakeet.files.joiner },
+    modelType: 'nemo_transducer', tokens: parakeet.files.tokens, provider: 'cpu' }));
+    expect(configs[0]!.modelConfig).not.toHaveProperty('whisper');
+    expect(JSON.stringify(configs[0])).not.toContain('"language"');
+  });
+
+  it.each([5, 60])('decodes %s seconds with a NeMo transducer at once', async seconds => {
+    const { asr, windows } = engine();
+    const transcriber = await SherpaTranscriber.load(parakeet, asr);
+    expect(await transcriber.transcribe(audio(seconds, [3_200, 1_001, 999]))).toBe(`window ${seconds * 16_000}`);
+    expect(windows).toEqual([seconds * 16_000]);
+  });
+
+  it('runs NeMo transducer decodings one at a time and decodes nothing for an interrupted request', async () => {
+    const recorded = engine({ delayMs: 20 });
+    const transcriber = await SherpaTranscriber.load(parakeet, recorded.asr);
+    async function* interrupted(): AsyncIterable<Uint8Array> {
+      yield new Uint8Array(3_200);
+      throw new Error('Request interrupted');
+    }
+    await expect(transcriber.transcribe(interrupted())).rejects.toThrow('Request interrupted');
+    await Promise.all([transcriber.transcribe(audio(2)), transcriber.transcribe(audio(3))]);
+    expect(recorded.overlapped()).toBe(false);
+    expect(recorded.windows).toEqual([32_000, 48_000]);
   });
 
   it('turns a loading error into a project error', async () => {

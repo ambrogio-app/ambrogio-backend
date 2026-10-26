@@ -33,7 +33,7 @@ flowchart LR
     subgraph Backend[ambrogio-backend]
         API[HTTP API<br/>+ WebSocket session]
         CONV[Conversations module]
-        STT[Speech-to-text<br/>Whisper in sherpa-onnx]
+        STT[Speech-to-text<br/>Parakeet in sherpa-onnx]
         TTS[Text-to-speech<br/>sherpa-onnx + Piper voices]
         ORCH[Orchestrator agent]
         AG[Specialised agents]
@@ -96,7 +96,7 @@ sequenceDiagram
 - Node.js 24 or later; pnpm to build from source
 - Linux, or Docker (the published image is `linux/amd64`)
 - An API key for each LLM provider you use. Agents reach Mistral, OpenAI, Anthropic, Google Gemini or any OpenAI-compatible API through the [Vercel AI SDK](https://ai-sdk.dev/). The models must support tool calling and structured JSON output
-- For voice only when running from source: a [Whisper model for sherpa-onnx](https://k2-fsa.github.io/sherpa/onnx/pretrained_models/whisper/index.html) and a voice for the same language. The Docker image includes a multilingual Whisper model and Italian and English Piper and Kokoro voices; see [`voices/README.md`](voices/README.md)
+- For voice only when running from source: a sherpa-onnx speech recognition model, a NeMo transducer such as Parakeet or a Whisper model, and a voice for the same language. The Docker image includes the multilingual Parakeet TDT 0.6B v3 model and Italian and English Piper and Kokoro voices; see [`voices/README.md`](voices/README.md)
 
 **Main libraries**
 
@@ -106,7 +106,7 @@ sequenceDiagram
 | Storage | SQLite (`better-sqlite3`) with Kysely |
 | Validation | TypeBox, Ajv |
 | Agents | Vercel AI SDK (`ai`, `@ai-sdk/mistral`, `@ai-sdk/openai`, `@ai-sdk/anthropic`, `@ai-sdk/google`, `@ai-sdk/openai-compatible`), MCP client |
-| Speech | `sherpa-onnx-node` (Whisper speech-to-text, Piper and Kokoro text-to-speech) |
+| Speech | `sherpa-onnx-node` (Parakeet or Whisper speech-to-text, Piper and Kokoro text-to-speech) |
 | Logging | Pino, as JSON lines on stdout |
 
 ## Quick start
@@ -147,7 +147,7 @@ apps/server/              runnable server: runtime, composition, entry point
 packages/conversations/   "Conversations" business module (domain, application, adapters)
 protocol/                 JSON schema of the ambrogio.v1 protocol
 examples/                 ready agent files, without credentials
-voices/                   provenance of the bundled Whisper, Piper and Kokoro models
+voices/                   provenance of the bundled Parakeet, Piper and Kokoro models
 system-model/             engineering model (requirements, contracts, verifications)
 ```
 

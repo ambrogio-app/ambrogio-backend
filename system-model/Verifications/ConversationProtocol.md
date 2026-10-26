@@ -27,10 +27,10 @@ Non automatizzabile: giudicare che testo e voce non abbiano regole proprie richi
 
 ### Prova degli errori di protocollo
 
-Con un turno ammesso in corso nella sessione, inviare JSON malformato, un messaggio senza `type`, un tipo sconosciuto, un oggetto con campi aggiuntivi, un `input.chunk` per un `requestId` inesistente, un frame binario con `stream` sconosciuto e un `client.result` con `id` mai emesso dal server.
+Con un turno ammesso in corso nella sessione, inviare JSON malformato, un messaggio senza `type`, un tipo sconosciuto, un oggetto con campi aggiuntivi, un `input.chunk` per un `requestId` inesistente e un frame binario con `stream` sconosciuto.
 
 #### Details
-La prova passa se ciascun messaggio non conforme riceve `session.error` con il `code` previsto e un `message` privo di dettagli tecnici, con il `requestId` quando ricavabile; la sessione resta aperta, il turno in corso arriva al proprio esito e nessun caso d'uso viene invocato per i messaggi non conformi. Il `client.result` con `id` sconosciuto è ignorato senza errore. Fallisce se la sessione si chiude, se il turno in corso viene alterato, se un messaggio non conforme produce effetti persistenti o se l'errore espone dettagli interni.
+La prova passa se ciascun messaggio non conforme riceve `session.error` con il `code` previsto e un `message` privo di dettagli tecnici, con il `requestId` quando ricavabile; la sessione resta aperta, il turno in corso arriva al proprio esito e nessun caso d'uso viene invocato per i messaggi non conformi. Fallisce se la sessione si chiude, se il turno in corso viene alterato, se un messaggio non conforme produce effetti persistenti o se l'errore espone dettagli interni.
 
 #### Metadata
   * type: test-verification

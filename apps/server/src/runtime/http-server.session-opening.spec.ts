@@ -125,8 +125,9 @@ test('answers malformed messages with session.error while the session and its tu
     secret: true });
   client.send({ type: 'input.chunk', requestId: 'ghost', text: 'boo' });
   client.sendFrame(4242, Buffer.from('rumore'));
+  // The protocol defines no answers of the client to the server.
   client.send({ type: 'client.result', id: 'never-issued', ok: true });
-  await client.until(() => client.errors().length >= 6 ? true : undefined);
+  await client.until(() => client.errors().length >= 7 ? true : undefined);
 
   expect(client.errors().map(error => [error.code, error.requestId])).toEqual([
     ['invalid_message', undefined],
@@ -135,6 +136,7 @@ test('answers malformed messages with session.error while the session and its tu
     ['invalid_message', 'extra'],
     ['unknown_stream', 'ghost'],
     ['unknown_stream', undefined],
+    ['unknown_type', undefined],
   ]);
   for (const error of client.errors()) {
     expect(error.message).toEqual(expect.any(String));

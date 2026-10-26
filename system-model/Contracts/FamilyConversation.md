@@ -313,7 +313,6 @@ Quando la produzione della risposta di un turno termina senza guasti, dopo la de
 - `modelSteps`: il numero di chiamate al modello della generazione della risposta dell'agente;
 - `toolCalls` e `toolMs`: il numero di chiamate agli strumenti MCP e il tempo complessivo trascorso in esse, presenti soltanto per gli agenti con connettore MCP;
 - `replyCheckMs`: la durata della richiesta al modello dell'orchestratore che determina `expectsReply`, presente soltanto quando la risposta contiene un punto di domanda;
-- `announcementMs`: il tempo dall'avvio dell'agente al primo frammento di testo consegnato prima della prima chiamata a uno strumento MCP, presente soltanto quando l'agente ha scritto testo prima di quella chiamata.
 
 Le durate sono millisecondi interi non negativi misurati con un orologio monotono. La riga non contiene testi della conversazione, istruzioni, nomi o argomenti degli strumenti; non contiene il `correlationId` della sessione, che il produttore della risposta non riceve, e si collega all'evento dei tempi del turno vocale tramite l'ora.
 
@@ -814,9 +813,9 @@ Un agente specializzato il cui file non contiene `mcp` è preparato senza aprire
 
 ### Risposta dopo le chiamate agli strumenti
 
-Le istruzioni della generazione della risposta di un agente specializzato con connettore MCP chiedono che ogni richiesta di fare qualcosa con gli strumenti abbia una propria chiamata a uno strumento nella stessa risposta, anche quando ripete o richiama una richiesta precedente, perché le risposte precedenti non mostrano che cosa è stato eseguito; che un messaggio che non chiede nulla, come un ringraziamento o un saluto, non richieda strumenti; che l'agente non scriva nulla prima o fra le chiamate agli strumenti e scriva la risposta soltanto dopo l'ultima chiamata, quando ne conosce l'esito; che, dopo un'azione, dica in una frase breve che cosa ha fatto e su cosa, e mai soltanto «Fatto» o «Ok»; e che, quando un'azione non riesce, dica che cosa non è riuscito. Le istruzioni non contengono frasi d'esempio.
+Le istruzioni della generazione della risposta di un agente specializzato con connettore MCP chiedono che l'agente scriva la risposta soltanto dopo l'ultima chiamata agli strumenti, quando ne conosce l'esito; che non dica fatto ciò che nessuno strumento ha fatto nella stessa risposta; che, dopo un'azione, dica brevemente che cosa ha fatto e, quando un'azione non riesce, che cosa non è riuscito. Le istruzioni non contengono frasi d'esempio.
 
-Il testo che il modello scrive comunque prima di una chiamata a uno strumento è consegnato come frammento della risposta appena scritto e separato con un a capo dal testo dei passi successivi; quando il modello chiama uno strumento dopo aver scritto testo nello stesso passo, l'a capo è consegnato appena arriva la chiamata, perché la sintesi considera completa una frase soltanto quando dopo la punteggiatura finale arriva uno spazio o un a capo. Una risposta senza testo è trattata secondo «Nuova richiesta della risposta vuota». Il testo della risposta è conservato nell'archivio, con le azioni secondo «Azioni conservate del turno».
+Il testo che il modello scrive comunque prima di una chiamata a uno strumento è consegnato come frammento della risposta ed è separato con un a capo dal testo dei passi successivi. Una risposta senza testo è trattata secondo «Nuova richiesta della risposta vuota». Il testo della risposta è conservato nell'archivio, con le azioni secondo «Azioni conservate del turno».
 
 #### Metadata
   * type: behavior

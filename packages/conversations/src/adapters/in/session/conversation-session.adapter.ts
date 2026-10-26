@@ -248,7 +248,6 @@ class ConversationSession {
         void this.runTurn(request);
         return;
       }
-      case 'client.result': return;
     }
   }
 

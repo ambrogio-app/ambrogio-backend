@@ -39,12 +39,9 @@ function answer(text: string) {
 
 const replyFormat = 'Your text is spoken to the family exactly as you write it, so write only the words of your '
   + 'reply; never write tool calls or JSON in your text.';
-const actionRules = '\nEvery request to do something with your tools needs its own tool call in this reply, also when it '
-  + 'repeats or refers to an earlier request: earlier replies do not show that anything was done. A message that asks '
-  + 'for nothing, such as thanks or a greeting, needs no tool. Write nothing before or between tool '
-  + 'calls: write your reply only after your last tool call, when you know how it went. After an action, say in one '
-  + 'short sentence what you did and on what; never answer only "Fatto" or "Ok". When an action fails, say what did '
-  + 'not work.';
+const actionRules = '\nWrite your reply only after your last tool call, when you know how it went. Never say that '
+  + 'something was done unless a tool did it in this reply. After an action, say briefly what you did; when an action '
+  + 'fails, say what did not work.';
 
 /** A server without prompts never has them read. */
 const getPrompt = async (): Promise<string> => { throw new Error('Unexpected prompt read'); };
@@ -466,29 +463,15 @@ function timed(clock: { now: number }, stepMs: number, ...steps: Array<{ parts: 
 const lookupTool = { prompts: [], tools: [{ name: 'lookup', inputSchema: { type: 'object' } }] };
 
 // Verification: Prova della risposta dopo le azioni
-test('text written anyway before a tool call is delivered before the tool runs, with its line break', async () => {
-  const order: string[] = [];
+test('text written anyway before a tool call is delivered, and the text of a later step follows a line break', async () => {
   const model = scripted(
     { parts: [...textParts('Cerco una canzone di Neffa.'), callPart('lookup', {})], reason: 'tool-calls' },
-    { parts: answer(''), reason: 'stop' },
+    { parts: answer('Suona Neffa.'), reason: 'stop' },
   );
-  let delivered!: () => void;
-  const sentence = new Promise<void>(resolve => { delivered = resolve; });
-  const reply = new AiSdkToolAgentReply(settings, lookupTool, { getPrompt, async callTool() {
-    await sentence;
-    order.push('tool finished');
-    return { isError: false, content: [{ type: 'text', text: 'playing' }] };
-  } }, 2, model);
-  const parts: ReplyPart[] = [];
-  for await (const part of reply.produce(history, never())) {
-    // The sentence is complete for the speech only with the line break after it: both arrive before the tool ends.
-    if (part.kind === 'text') { order.push(part.text === '\n' ? 'line break' : 'sentence'); }
-    if (part.kind === 'text' && part.text === '\n') delivered();
-    parts.push(part);
-  }
-  expect(withoutActions(parts)).toEqual([text('Cerco una canzone di Neffa.'), text('\n')]);
-  expect(order).toEqual(['sentence', 'line break', 'tool finished']);
-  // One generation: no separate call for the announcement.
+  const reply = new AiSdkToolAgentReply(settings, lookupTool, { getPrompt,
+    async callTool() { return { isError: false, content: [{ type: 'text', text: 'playing' }] }; } }, 2, model);
+  expect(withoutActions(await collect(reply.produce(history, never()))))
+    .toEqual([text('Cerco una canzone di Neffa.'), text('\n'), text('Suona Neffa.')]);
   expect(model.doStreamCalls).toHaveLength(2);
   expect(model.doGenerateCalls).toHaveLength(0);
   // Tools are called only when needed: no call is required at each step.
@@ -613,7 +596,7 @@ test('the orchestrator logs the timing of each completed reply without conversat
   await expect(collect(orchestrator.produce(history, never()))).rejects.toThrow();
   expect(events).toEqual([
     { level: 'info', fields: { event: 'conversation_reply_timing', agent: 'music', routerMs: 300, agentMs: 2_300,
-      modelSteps: 3, toolCalls: 2, toolMs: 2_000, announcementMs: 100 } },
+      modelSteps: 3, toolCalls: 2, toolMs: 2_000 } },
     { level: 'info', fields: { event: 'conversation_reply_timing', agent: 'facts', routerMs: 300, agentMs: 0,
       modelSteps: 1 } },
   ]);

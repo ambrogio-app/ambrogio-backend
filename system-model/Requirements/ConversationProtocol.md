@@ -54,6 +54,9 @@ Origine: baseline Reqvire «Explicit diagnostic context», adottata.
 
 Se il backend riceve dal client un messaggio non conforme al protocollo o di un tipo non previsto, deve comunicare al client un errore di protocollo senza chiudere la sessione e senza alterare i turni già in corso.
 
+#### Details
+Non è adottata una risposta generica del client a messaggi del server fuori dai turni, `client.result` con `ok` e `reason: "unsupported"`, prevista per revisioni future del protocollo: nessuna versione definiva messaggi del server che la richiedessero, e ogni client doveva comunque implementarla. Un messaggio del server di tipo sconosciuto è ignorato dal client; una richiesta del server che attende una risposta sarà introdotta con i requisiti che la motivano.
+
 #### Metadata
   * type: requirement
 

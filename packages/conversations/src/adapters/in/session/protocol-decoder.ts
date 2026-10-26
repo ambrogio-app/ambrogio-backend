@@ -12,14 +12,13 @@ export type InputStart = Readonly<{
 }>;
 export type InputChunk = Readonly<{ type: 'input.chunk'; requestId: string; text: string }>;
 export type InputEnd = Readonly<{ type: 'input.end'; requestId: string }>;
-export type ClientResult = Readonly<{ type: 'client.result'; id: string; ok: boolean; reason?: string }>;
-export type ClientMessage = SessionHello | InputStart | InputChunk | InputEnd | ClientResult;
+export type ClientMessage = SessionHello | InputStart | InputChunk | InputEnd;
 
 export type DecodedMessage =
   | Readonly<{ ok: true; message: ClientMessage }>
   | Readonly<{ ok: false; code: 'invalid_message' | 'unknown_type'; requestId?: string }>;
 
-const clientTypes = new Set(['session.hello', 'input.start', 'input.chunk', 'input.end', 'client.result']);
+const clientTypes = new Set(['session.hello', 'input.start', 'input.chunk', 'input.end']);
 const Ajv2020 = Ajv2020Module.default ?? Ajv2020Module;
 
 /**

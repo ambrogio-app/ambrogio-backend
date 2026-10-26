@@ -40,8 +40,7 @@
         { "$ref": "#/$defs/sessionHello" },
         { "$ref": "#/$defs/inputStart" },
         { "$ref": "#/$defs/inputChunk" },
-        { "$ref": "#/$defs/inputEnd" },
-        { "$ref": "#/$defs/clientResult" }
+        { "$ref": "#/$defs/inputEnd" }
       ]
     },
     "sessionHello": {
@@ -90,31 +89,6 @@
       },
       "required": ["type", "requestId"],
       "additionalProperties": false
-    },
-    "clientResult": {
-      "oneOf": [
-        {
-          "type": "object",
-          "properties": {
-            "type": { "const": "client.result" },
-            "id": { "$ref": "#/$defs/identifier" },
-            "ok": { "const": true }
-          },
-          "required": ["type", "id", "ok"],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "properties": {
-            "type": { "const": "client.result" },
-            "id": { "$ref": "#/$defs/identifier" },
-            "ok": { "const": false },
-            "reason": { "const": "unsupported" }
-          },
-          "required": ["type", "id", "ok", "reason"],
-          "additionalProperties": false
-        }
-      ]
     },
 
     "serverMessage": {

@@ -63,7 +63,7 @@ Ogni sessione conversazionale ha un identificativo di correlazione per la diagno
 
 Un messaggio del client non conforme allo schema JSON, di tipo sconosciuto, riferito a una richiesta o trasmissione inesistente o già chiusa, inviato prima di `session.ready`, oppure un frame binario non attribuibile a una trasmissione aperta, riceve `session.error` con `code` (`invalid_message`, `unknown_type`, `unknown_stream`, `session_not_ready`, `audio_busy`), un `message` sicuro e, quando ricavabile, il `requestId`. La sessione resta aperta e i turni già ammessi proseguono. Una seconda trasmissione audio in ingresso mentre una è aperta riceve `audio_busy` e non apre la richiesta.
 
-Oltre ai messaggi `session.*`, `input.*`, `output.*` e `turn.*`, revisioni compatibili del protocollo ammettono famiglie di messaggi del server non legate a un turno. Un messaggio del server che richiede un'azione al client contiene `id`; il client risponde sempre con `client.result` e lo stesso `id`, con `ok: true` oppure con `ok: false` e `reason: "unsupported"` quando non sa eseguirla, anche se il tipo gli è sconosciuto. Un client che non conosce un messaggio informativo senza `id` è libero di ignorarlo. Il server accetta `client.result` e ignora quelli con un `id` che non corrisponde a un proprio messaggio. La versione v1 non definisce messaggi del server fuori dai turni; la loro introduzione richiede requisiti propri.
+I messaggi del server sono `session.*`, `output.*` e `turn.*`; un client ignora un messaggio del server di tipo sconosciuto senza chiudere la sessione. Il protocollo non definisce messaggi del server fuori dai turni né risposte del client ai messaggi del server; la loro introduzione richiede requisiti propri.
 
 #### Metadata
   * type: behavior

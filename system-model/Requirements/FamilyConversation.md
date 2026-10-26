@@ -1285,6 +1285,24 @@ Quando il backend riceve un nuovo turno con l'identificativo di una conversazion
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
+### Registrazione dei tempi dei turni vocali
+
+Quando un turno con ingresso audio si conclude con una risposta, il backend deve registrare un evento diagnostico informativo con i tempi della trascrizione, del primo testo della risposta, del primo audio della risposta e della conclusione del turno, misurati dalla fine della richiesta, senza testi, audio o identificativi della conversazione e del turno.
+
+#### Details
+L'evento rende misurabile, su ogni installazione, il ritardo fra la fine della richiesta e la risposta parlata e mostra quale fase lo determina: trascrizione, risposta degli agenti o sintesi. Ha livello `info` perché registra un esito riuscito e non un guasto.
+
+#### Concept References
+  * [Turno vocale](../../../ambrogio-model/system-model/Thesaurus/Lessico.md#turno-vocale)
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
+  * specify: [Conversazione a voce](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-a-voce)
+---
+
 ### Registrazione dei turni conversazionali accettati
 
 Quando Ambrogio accetta un turno rappresentato come testo dalla chat o dalla trascrizione vocale, deve conservarne il testo e lo stato in elaborazione prima di avviarne l'elaborazione, affinché il turno sia riconoscibile dopo un riavvio.

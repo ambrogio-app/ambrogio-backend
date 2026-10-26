@@ -72,11 +72,11 @@ function adapt(logger: PinoLogger): Logger {
 
 /**
  * The base logger of a backend process, created once by its entry point: one JSON line per event on `stdout`,
- * events from level `warn`, the controlled `err` view and the redaction of sensitive fields.
+ * events from level `info`, the controlled `err` view and the redaction of sensitive fields.
  */
 export function createBaseLogger(destination: DestinationStream = process.stdout): Logger {
   return adapt(pino({
-    level: 'warn',
+    level: 'info',
     // Pino copies `err.message` into `msg` when an event has no message; a key never used turns that off, so an
     // external message never reaches the line. The `err` serializer below still applies to `err`.
     errorKey: 'unusedErrorKey',

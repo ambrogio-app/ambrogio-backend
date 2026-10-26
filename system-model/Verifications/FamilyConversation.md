@@ -891,6 +891,22 @@ La prova passa se lo storico conserva solo testo e dati non audio e se nessuna r
   * verify: [Conservazione solo testuale della conversazione](../Requirements/FamilyConversation.md#conservazione-solo-testuale-della-conversazione)
 ---
 
+### Prova dell'evento dei tempi del turno vocale
+
+Con trascrittore, agenti e sintetizzatore controllati, un orologio controllato e un logger di prova, eseguire in una sessione un turno audio con risposta in audio, un turno audio con risposta in testo, un turno testuale e un turno audio rifiutato perché la trascrizione è vuota; registrare le righe emesse.
+
+#### Details
+La prova passa se il turno audio con risposta in audio produce una sola riga di livello `info` con `event` uguale a `conversation_voice_turn_timing`, il `correlationId` della sessione e le sole durate `transcriptionMs`, `firstTextMs`, `firstAudioMs` e `completedMs`, uguali agli intervalli dell'orologio controllato dalla ricezione di `input.end`; se il turno audio con risposta in testo produce la stessa riga senza `firstAudioMs`; se il turno testuale e il turno rifiutato non producono la riga. Fallisce se una riga contiene il testo trascritto, il testo della risposta, l'identificativo della conversazione o del turno, o se un turno produce più di una riga.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
+  * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
+  * verify: [Registrazione dei tempi dei turni vocali](../Requirements/FamilyConversation.md#registrazione-dei-tempi-dei-turni-vocali)
+---
+
 ### Prova della selezione vocale per lingua
 
 Preparare profili vocali italiani e inglesi con variabili che indicano percorsi espliciti alle directory incluse e a directory esterne montate, scegliendo tra più voci Piper della stessa lingua. Provare la lingua effettiva italiana e inglese, la lingua effettiva assente da `AMBROGIO_VOICE_LANGUAGES`, una lingua sconosciuta o ripetuta nell'elenco, variabili invalide nell'altro profilo elencato e la voce disabilitata con `AMBROGIO_VOICE_LANGUAGES` assente o vuota. Osservare risorse caricate, modello di trascrizione e voce.

@@ -266,6 +266,24 @@ Una trascrizione è utilizzabile quando il testo restituito, eliminati gli spazi
   * define: [Trascrizione vocale non riuscita](../Requirements/FamilyConversation.md#trascrizione-vocale-non-riuscita)
 ---
 
+### Evento diagnostico dei tempi del turno vocale
+
+Quando un turno con ingresso audio si conclude con l'invio di `turn.completed`, l'adapter del canale emette con il logger derivato della sessione una sola riga Pino di livello `info` con `event: "conversation_voice_turn_timing"`. Oltre ai campi che il logger di base aggiunge a ogni riga, al `correlationId` e a `event`, la riga contiene soltanto le durate seguenti, in millisecondi interi non negativi misurati con un orologio monotono dalla ricezione di `input.end`:
+
+- `transcriptionMs`: fino alla trascrizione completa della richiesta;
+- `firstTextMs`: fino al primo frammento di testo della risposta prodotto dagli agenti;
+- `firstAudioMs`: fino all'invio del primo frame audio della risposta, presente soltanto quando la risposta è trasmessa in audio e almeno un frame è stato inviato;
+- `completedMs`: fino all'invio di `turn.completed`.
+
+La riga non contiene il testo trascritto, il testo della risposta, audio, identificativi del client, della conversazione o del turno. I turni con ingresso testuale e i turni rifiutati, falliti o interrotti non producono la riga.
+
+#### Metadata
+  * type: input-output
+
+#### Relations
+  * define: [Registrazione dei tempi dei turni vocali](../Requirements/FamilyConversation.md#registrazione-dei-tempi-dei-turni-vocali)
+---
+
 ### Formato JSON dei file degli agenti
 
 Ogni file della directory degli agenti è un documento JSON UTF-8 di soli dati, il cui oggetto radice contiene esclusivamente i campi ammessi:

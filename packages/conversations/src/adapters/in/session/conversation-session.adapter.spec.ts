@@ -334,3 +334,66 @@ describe('conversation session diagnostics', () => {
     expect(logs).toEqual([]);
   });
 });
+
+describe('voice turn timing', () => {
+  // Verification: Prova dell'evento dei tempi del turno vocale
+  it('logs the durations of an answered voice turn from input.end, and nothing for other turns', async () => {
+    let clock = 1_000;
+    const { log, events } = recordingLogger();
+    const transcripts = ['what time is it', 'and the date', '   '];
+    const speech: SpeechComponents = {
+      transcriber: { async transcribe(frames) {
+        for await (const frame of frames) void frame;
+        clock += 100;
+        return transcripts.shift()!;
+      } },
+      synthesizer: { sampleRate: 16_000, async *synthesize(text) {
+        for await (const piece of text) {
+          clock = 1_500;
+          yield new Uint8Array(piece.length * 2);
+        }
+        clock = 1_800;
+      } },
+      async close() {},
+    };
+    const exchange: ExchangeTurn = async (_input, observer) => {
+      await observer?.admitted?.('conversation-1', 'turn-1');
+      clock += 200;
+      observer?.delta?.('It is ten.');
+      observer?.produced?.();
+      return { ok: true, value: { conversationId: 'conversation-1', turnId: 'turn-1', outcome: 'answered',
+        expectsReply: false } };
+    };
+    const sessions = createConversationSessions({ exchange, decode, language: 'en', pingIntervalMs: 60_000, log,
+      speech, now: () => clock });
+    const socket = new FakeSocket();
+    sessions.attach(socket as unknown as WebSocket, log.child({ correlationId: 'session-1' }));
+    socket.client({ type: 'session.hello', clientId: 'test', name: 'Test' });
+    const voiceTurn = async (requestId: string, stream: number, reply: 'audio' | 'text') => {
+      socket.client({ type: 'input.start', requestId, stream, content: { type: 'audio', sampleRate: 16000 }, reply });
+      const frame = Buffer.alloc(4 + 320);
+      frame.writeUInt32BE(stream, 0);
+      socket.emit('message', frame, true);
+      clock = 1_000;
+      socket.client({ type: 'input.end', requestId });
+      return socket.final(requestId);
+    };
+
+    expect(await voiceTurn('spoken', 11, 'audio')).toMatchObject({ type: 'turn.completed' });
+    expect(await voiceTurn('written', 12, 'text')).toMatchObject({ type: 'turn.completed' });
+    expect(await socket.final(textTurn(socket, 'typed question'))).toMatchObject({ type: 'turn.completed' });
+    expect(await voiceTurn('empty', 13, 'audio')).toMatchObject({ reason: 'transcription_failed' });
+
+    const timings = events.filter(event => event.fields.event === 'conversation_voice_turn_timing');
+    expect(timings.map(event => [event.level, event.fields, event.bindings])).toEqual([
+      ['info', { event: 'conversation_voice_turn_timing', transcriptionMs: 100, firstTextMs: 300, firstAudioMs: 500,
+        completedMs: 800 }, { correlationId: 'session-1' }],
+      ['info', { event: 'conversation_voice_turn_timing', transcriptionMs: 100, firstTextMs: 300, completedMs: 300 },
+        { correlationId: 'session-1' }],
+    ]);
+    const logged = JSON.stringify(timings);
+    for (const hidden of ['what time', 'It is ten', 'conversation-1', 'turn-1', 'spoken']) {
+      expect(logged).not.toContain(hidden);
+    }
+  });
+});

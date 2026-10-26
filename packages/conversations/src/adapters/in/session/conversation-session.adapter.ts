@@ -52,6 +52,8 @@ export type ConversationSessionsDependencies = Readonly<{
   pingIntervalMs: number;
   /** Base logger of the process, used for a session attached without its own derived logger. */
   log: Logger;
+  /** Monotonic clock in milliseconds for the timing of voice turns; `performance.now` by default. */
+  now?: () => number;
 }>;
 
 export type ConversationSessions = Readonly<{
@@ -120,9 +122,14 @@ type OpenRequest = {
   audioBytes: number;
 };
 
+/** Instants of a voice turn on the monotonic clock, from the reception of `input.end`. */
+type VoiceTiming = { readonly end: number; transcribed?: number; firstText?: number; firstAudio?: number };
+
 type ActiveTurn = {
   readonly requestId: string;
   readonly reply: ContentType;
+  /** Present for a turn whose request was audio. */
+  timing?: VoiceTiming;
   turnId?: string;
   output?: Transmission;
   /** The outcome message was sent, or the turn no longer reports to this session. */
@@ -301,7 +308,8 @@ class ConversationSession {
 
   private async runTurn(request: OpenRequest): Promise<void> {
     const { dependencies } = this.owner;
-    const turn: ActiveTurn = { requestId: request.requestId, reply: request.reply, finished: false };
+    const turn: ActiveTurn = { requestId: request.requestId, reply: request.reply, finished: false,
+      ...(request.content === 'audio' ? { timing: { end: this.owner.now() } } : {}) };
     this.turns.add(turn);
     try {
       const speech = dependencies.speech;
@@ -314,6 +322,7 @@ class ConversationSession {
       else {
         try { text = await request.transcription!.transcript; }
         catch { text = ''; }
+        if (turn.timing) turn.timing.transcribed = this.owner.now();
         if (typeof text !== 'string' || !text.trim()) { await this.reject(turn, 'transcription_failed'); return; }
       }
       if (!text.trim()) { await this.reject(turn, 'invalid'); return; }
@@ -343,6 +352,7 @@ class ConversationSession {
         },
         delta: delta => {
           if (turn.finished) return;
+          if (turn.timing) turn.timing.firstText ??= this.owner.now();
           turn.output ??= new Transmission(this, turn, turn.reply);
           turn.output.write(delta);
         },
@@ -374,6 +384,7 @@ class ConversationSession {
         if (turn.finished) return;
         turn.finished = true;
         this.send({ type: 'turn.completed', turnId: result.value.turnId, expectsReply: result.value.expectsReply });
+        if (turn.timing) this.logVoiceTiming(turn.timing);
         return;
       case 'failed':
         if (result.value.cause !== undefined) {
@@ -386,6 +397,19 @@ class ConversationSession {
         // Shutdown reports the interruption after the archive has stored it.
         return;
     }
+  }
+
+  /** The durations of an answered voice turn from `input.end`: no text, audio or identifier. */
+  private logVoiceTiming(timing: VoiceTiming): void {
+    const since = (instant: number | undefined) =>
+      instant === undefined ? undefined : Math.max(0, Math.round(instant - timing.end));
+    const fields: Record<string, number> = {};
+    for (const [name, instant] of [['transcriptionMs', timing.transcribed], ['firstTextMs', timing.firstText],
+      ['firstAudioMs', timing.firstAudio], ['completedMs', this.owner.now()]] as const) {
+      const value = since(instant);
+      if (value !== undefined) fields[name] = value;
+    }
+    this.log.info({ event: 'conversation_voice_turn_timing', ...fields });
   }
 
   /** Transmit a complete message as one transmission of the requested content type. */
@@ -451,7 +475,8 @@ class Transmission {
   private readonly controller = new AbortController();
   private readonly done: Promise<void>;
 
-  constructor(private readonly session: ConversationSession, turn: ActiveTurn, private readonly content: ContentType) {
+  constructor(private readonly session: ConversationSession, private readonly turn: ActiveTurn,
+    private readonly content: ContentType) {
     const start = { type: 'output.start', requestId: turn.requestId,
       ...(turn.turnId === undefined ? {} : { turnId: turn.turnId }) };
     this.done = content === 'text' ? this.sendText(start) : this.sendAudio(start);
@@ -504,6 +529,7 @@ class Transmission {
         for await (const chunk of synthesizer.synthesize(this.queue, signal)) {
           if (signal.aborted) break;
           this.session.sendAudio(stream, chunk);
+          if (this.turn.timing && this.turn.output === this) this.turn.timing.firstAudio ??= this.session.owner.now();
         }
       } catch (error) {
         if (!signal.aborted) {
@@ -526,7 +552,11 @@ class SessionRegistry implements ConversationSessions {
   readonly sessions = new Set<ConversationSession>();
   readonly admissions = new Set<Promise<void>>();
 
-  constructor(readonly dependencies: ConversationSessionsDependencies) {}
+  readonly now: () => number;
+
+  constructor(readonly dependencies: ConversationSessionsDependencies) {
+    this.now = dependencies.now ?? (() => performance.now());
+  }
 
   message(reason: RejectionReason): string {
     return rejectionMessages[reason][this.dependencies.language];

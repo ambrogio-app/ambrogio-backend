@@ -30,21 +30,6 @@ Alla scadenza il caso d'uso risolve la richiesta di annullamento e smette subito
   * define: [Tempo massimo della produzione della risposta](../Requirements/FamilyConversation.md#tempo-massimo-della-produzione-della-risposta)
 ---
 
-### Annuncio in parallelo degli agenti con connettore MCP
-
-A ogni turno delegato a un agente specializzato con connettore MCP, l'adapter avvia, insieme alla generazione della risposta, una seconda chiamata al modello dello stesso agente, senza strumenti e senza le istruzioni del server MCP, con le istruzioni dell'agente, la data e l'ora correnti, la lingua configurata delle risposte e lo stesso storico, e con l'uscita strutturata `{ announcement: string }`. Le istruzioni di questa chiamata ricordano che le istruzioni dell'agente descrivono ciò che i suoi strumenti permettono di fare e chiedono di scrivere in `announcement` una sola frase breve che dice alla famiglia cosa l'agente sta per fare quando l'ultimo messaggio chiede di fare qualcosa con gli strumenti, per esempio riprodurre, accendere o spegnere, cambiare o aggiungere, e di lasciarlo vuoto quando il messaggio chiede soltanto un'informazione, senza eseguire l'azione né rispondere. La chiamata non riceve l'elenco degli strumenti, per restare breve, né le istruzioni del server MCP, che descrivono l'uso degli strumenti e portano il modello a lasciare vuoto l'annuncio anche per una richiesta d'azione.
-
-Quando la chiamata restituisce un annuncio non vuoto prima che la generazione della risposta consegni la sua prima parte, testo o indicazione `expectsReply`, l'adapter consegna l'annuncio come primo frammento testuale della risposta, seguito da un a capo, così che il canale lo trasmetta e la sintesi lo pronunci subito; altrimenti l'annuncio è scartato e la chiamata annullata. Un annuncio vuoto o più lungo di 200 caratteri, un'uscita non conforme o un guasto della chiamata non producono frammenti, non sono registrati come guasti e non modificano l'esito del turno. L'annullamento della produzione della risposta annulla anche la chiamata dell'annuncio. L'annuncio fa parte del testo della risposta conservato nell'archivio.
-
-Le istruzioni della generazione della risposta degli agenti con connettore MCP aggiungono che, quando ha eseguito con successo l'azione richiesta, l'agente lascia vuoto `answer`; che, quando un'azione non riesce, dice in `answer` cosa non è riuscito; e che, quando la famiglia chiede un'informazione, la scrive in `answer`. Una risposta finale vuota conclude il turno come riuscito senza ulteriori frammenti. Gli agenti senza connettore MCP non effettuano la chiamata dell'annuncio.
-
-#### Metadata
-  * type: behavior
-
-#### Relations
-  * define: [Annuncio dell'azione dell'agente con connettore MCP](../Requirements/FamilyConversation.md#annuncio-dellazione-dellagente-con-connettore-mcp)
----
-
 ### Archivio SQLite con Kysely
 
 Le conversazioni e i loro scambi testuali sono conservati in un database SQLite dell'installazione. Le operazioni applicative di lettura e scrittura dell'archivio usano Kysely. La scelta riguarda l'archivio delle conversazioni; non prescrive lo stack degli altri componenti del monorepo.
@@ -165,7 +150,7 @@ Application richiede la persistenza delle transizioni complete del turno al repo
 
 ### Conteggio delle chiamate agli strumenti MCP per turno
 
-Ogni file di agente specializzato con sezione `mcp` contiene al primo livello `maxToolCalls`, un intero positivo. Il valore è obbligatorio per tali agenti e vale solo per quell'agente; il file di un agente senza `mcp` non contiene `maxToolCalls`, e la sua presenza rende il file invalido. Per ogni turno delegato, Ambrogio conta ogni chiamata a uno strumento MCP effettivamente richiesta dal modello dell'agente, anche quando più chiamate sono richieste nella stessa risposta del modello. Prima di inoltrare una chiamata che eccederebbe `maxToolCalls`, interrompe la produzione del turno con un guasto; il caso d'uso comunica e conserva il messaggio pubblico standard senza dettagli tecnici. Il contatore riparte da zero al turno successivo. Il limite non impedisce al modello di formulare una risposta finale dopo l'ultima chiamata consentita.
+Ogni file di agente specializzato con sezione `mcp` contiene al primo livello `maxToolCalls`, un intero positivo. Il valore è obbligatorio per tali agenti e vale solo per quell'agente; il file di un agente senza `mcp` non contiene `maxToolCalls`, e la sua presenza rende il file invalido. Per ogni turno delegato, Ambrogio conta ogni chiamata a uno strumento MCP effettivamente richiesta dal modello dell'agente, anche quando più chiamate sono richieste nella stessa risposta del modello. Prima di inoltrare una chiamata che eccederebbe `maxToolCalls`, interrompe la produzione del turno con un guasto; il caso d'uso comunica e conserva il messaggio pubblico standard senza dettagli tecnici. Il contatore riparte da zero al turno successivo. Il limite non impedisce al modello di formulare una risposta finale dopo l'ultima chiamata consentita. La chiamata dello strumento finale `finish` non è una chiamata MCP e non è conteggiata.
 
 #### Metadata
   * type: specification
@@ -310,9 +295,9 @@ Quando la produzione della risposta di un turno termina senza guasti, l'adapter 
 - `agent`: l'identificativo dell'agente scelto;
 - `routerMs`: la durata della chiamata dell'orchestratore che sceglie l'agente;
 - `agentMs`: la durata della produzione dell'agente scelto, dal suo avvio all'ultima parte della risposta;
-- `modelSteps`: il numero di chiamate al modello della generazione della risposta dell'agente, esclusa la chiamata dell'annuncio;
+- `modelSteps`: il numero di chiamate al modello della generazione della risposta dell'agente;
 - `toolCalls` e `toolMs`: il numero di chiamate agli strumenti MCP e il tempo complessivo trascorso in esse, presenti soltanto per gli agenti con connettore MCP;
-- `announcementMs`: il tempo dall'avvio dell'agente alla consegna dell'annuncio, presente soltanto quando l'annuncio è consegnato.
+- `announcementMs`: il tempo dall'avvio dell'agente al primo frammento di testo consegnato prima della prima chiamata a uno strumento MCP, presente soltanto quando l'agente ha scritto testo prima di quella chiamata.
 
 Le durate sono millisecondi interi non negativi misurati con un orologio monotono. La riga non contiene testi della conversazione, istruzioni, nomi o argomenti degli strumenti; non contiene il `correlationId` della sessione, che il produttore della risposta non riceve, e si collega all'evento dei tempi del turno vocale tramite l'ora.
 
@@ -353,6 +338,19 @@ Esempio di agente specializzato senza connettore MCP:
 
 #### Relations
   * define: [File JSON di soli dati per gli agenti](../Requirements/ServerFoundation.md#file-json-di-soli-dati-per-gli-agenti)
+---
+
+### Frase d'azione prima degli strumenti
+
+Le istruzioni della generazione della risposta di un agente specializzato con connettore MCP chiedono che, prima di chiamare uno strumento per eseguire un'azione, l'agente scriva una sola frase breve che dice cosa sta per fare, e che non la scriva per una richiesta di informazioni; che, quando un'azione annunciata riesce, non aggiunga altro; che, quando un'azione riesce senza essere stata annunciata, la confermi in poche parole; e che, quando un'azione non riesce, dica cosa non è riuscito.
+
+La frase è testo della stessa generazione della risposta: l'adapter la consegna come frammento testuale appena il modello la scrive, prima che lo strumento sia eseguito, così che il canale la trasmetta e la sintesi la pronunci subito, e la separa con un a capo dal testo dei passi successivi. Non esiste una chiamata al modello separata per l'annuncio. Una risposta che dopo la frase non contiene altro testo conclude il turno come riuscito. La frase fa parte del testo della risposta conservato nell'archivio.
+
+#### Metadata
+  * type: behavior
+
+#### Relations
+  * define: [Annuncio dell'azione dell'agente con connettore MCP](../Requirements/FamilyConversation.md#annuncio-dellazione-dellagente-con-connettore-mcp)
 ---
 
 ### Fuso orario del componente Conversazioni
@@ -407,7 +405,7 @@ Ogni nuova conversazione e ogni nuovo turno ricevono un UUID versione 4. Il caso
 
 ### Indicazione della replica attesa
 
-Durante la generazione della risposta a ogni turno, il caso d'uso condiviso riceve dall'agente il booleano strutturato `expectsReply` insieme al testo, senza una seconda chiamata al modello dedicata alla classificazione. Il backend lo comunica nel campo `expectsReply` di `turn.completed`. Il valore vale soltanto per quella risposta, non si deduce dalla punteggiatura e non dipende dal tipo di contenuto del turno o della risposta. Un valore mancante o non booleano costituisce un guasto della produzione della risposta e non viene presentato come `false`. I turni rifiutati, falliti o interrotti non comunicano `expectsReply` e il client li tratta come conclusivi. L'uso dell'indicazione, per esempio l'apertura di una replica senza wake word, è responsabilità del client.
+Durante la generazione della risposta a ogni turno, l'agente specializzato scrive il testo della risposta come testo libero e la conclude chiamando lo strumento finale `finish`, il cui unico argomento è il booleano `expectsReply`; il caso d'uso condiviso riceve i frammenti di testo e poi il booleano, nella stessa generazione, senza una seconda chiamata al modello dedicata alla classificazione. L'adapter offre `finish` a ogni agente specializzato insieme ai suoi strumenti MCP, senza eseguirlo; chiede al modello di chiamare uno strumento a ogni passo, così che la generazione termini sempre con `finish`, e si ferma alla prima chiamata di `finish`. Il testo scritto in passi diversi è separato da un a capo. Le istruzioni della generazione chiedono di scrivere la risposta come testo libero, di concluderla chiamando `finish` e di porre `expectsReply` a vero soltanto quando la risposta chiede alla famiglia di replicare. Il backend lo comunica nel campo `expectsReply` di `turn.completed`. Il valore vale soltanto per quella risposta, non si deduce dalla punteggiatura e non dipende dal tipo di contenuto del turno o della risposta. Un valore mancante o non booleano costituisce un guasto della produzione della risposta e non viene presentato come `false`. I turni rifiutati, falliti o interrotti non comunicano `expectsReply` e il client li tratta come conclusivi. L'uso dell'indicazione, per esempio l'apertura di una replica senza wake word, è responsabilità del client.
 
 #### Metadata
   * type: specification
@@ -488,7 +486,7 @@ Per un guasto inatteso di un turno già ammesso, il server sceglie il messaggio 
 
 Motivazione: il nome dello strumento aiuta il modello a sceglierlo, per esempio `HassTurnOff` o `GetLiveContext` di Home Assistant.
 
-L'adapter presenta al modello ogni strumento scoperto con il nome dichiarato dal server MCP quando il nome rispetta l'espressione `^[A-Za-z_][A-Za-z0-9_-]{0,63}$` e non ha la forma riservata `mcp_<cifre>`. L'espressione è la regola prudente comune ai provider ammessi: i fornitori compatibili con le API di OpenAI accettano lettere, cifre, trattini bassi e trattini fino a 64 caratteri, e la documentazione di Mistral non dichiara i caratteri ammessi; i nomi MCP ammettono anche il punto, che quei fornitori rifiutano. Uno strumento con un nome diverso è presentato con il nome `mcp_<indice>`, dove l'indice è la posizione nella lista scoperta a partire da 0; la forma riservata impedisce collisioni con i nomi dichiarati. La descrizione e lo schema degli argomenti restano quelli del server. Una chiamata del modello è inoltrata con il nome originale dello strumento corrispondente e conta per `maxToolCalls`.
+L'adapter presenta al modello ogni strumento scoperto con il nome dichiarato dal server MCP quando il nome rispetta l'espressione `^[A-Za-z_][A-Za-z0-9_-]{0,63}$` e non ha la forma riservata `mcp_<cifre>` né il nome `finish`, riservato allo strumento finale della risposta. L'espressione è la regola prudente comune ai provider ammessi: i fornitori compatibili con le API di OpenAI accettano lettere, cifre, trattini bassi e trattini fino a 64 caratteri, e la documentazione di Mistral non dichiara i caratteri ammessi; i nomi MCP ammettono anche il punto, che quei fornitori rifiutano. Uno strumento con un nome diverso è presentato con il nome `mcp_<indice>`, dove l'indice è la posizione nella lista scoperta a partire da 0; la forma riservata impedisce collisioni con i nomi dichiarati. La descrizione e lo schema degli argomenti restano quelli del server. Una chiamata del modello è inoltrata con il nome originale dello strumento corrispondente e conta per `maxToolCalls`.
 
 Il primo carattere è una lettera o un trattino basso perché l'API Gemini richiede che il nome di una funzione inizi così: un nome che inizia con una cifra o un trattino riceve il nome posizionale. Fonte: https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/rest/Shared.Types/FunctionDeclaration .
 
@@ -567,9 +565,9 @@ Ogni file di agente specializzato contiene al primo livello `description`, una s
 
 La produzione delle risposte dell'orchestratore e degli agenti specializzati usa un adapter del componente «Conversazioni» basato su Vercel AI SDK, con il provider indicato nel file di ciascun agente. L'adapter implementa la porta applicativa `ProduceConversationReply`: riceve a ogni turno lo storico dall'archivio comune e la richiesta di annullamento, che converte in un `AbortSignal` dell'SDK, restituisce l'identificativo dell'agente scelto, i frammenti testuali della risposta e l'indicazione strutturata `expectsReply`, con un unico percorso di generazione indipendente dal tipo di contenuto del turno, e mantiene i tipi dell'SDK fuori da Domain e Application. L'adapter del canale conversazionale presenta frammenti ed esito secondo il protocollo `ambrogio.v1`.
 
-`llm.provider` sceglie il pacchetto di provider ufficiale di AI SDK con cui l'adapter costruisce il modello dell'agente. I valori ammessi sono `mistral` (`@ai-sdk/mistral`), `openai` (`@ai-sdk/openai`), `anthropic` (`@ai-sdk/anthropic`), `google` (`@ai-sdk/google`, API Gemini di Google AI Studio) e `openai-compatible` (`@ai-sdk/openai-compatible`). Con i primi quattro l'adapter usa l'endpoint predefinito del provider e la configurazione non contiene un URL. Con `openai-compatible` la configurazione contiene `llm.baseURL`, URL HTTP o HTTPS assoluto di un'API compatibile con OpenAI, per esempio un server locale o un aggregatore di modelli; l'adapter dichiara al pacchetto il supporto dell'output strutturato, così che la richiesta contenga lo schema JSON (`response_format` di tipo `json_schema`). Gli altri provider non ammettono `baseURL`. I provider che richiedono credenziali diverse da una chiave API, come Amazon Bedrock, Google Vertex AI o Azure OpenAI, non sono supportati.
+`llm.provider` sceglie il pacchetto di provider ufficiale di AI SDK con cui l'adapter costruisce il modello dell'agente. I valori ammessi sono `mistral` (`@ai-sdk/mistral`), `openai` (`@ai-sdk/openai`), `anthropic` (`@ai-sdk/anthropic`), `google` (`@ai-sdk/google`, API Gemini di Google AI Studio) e `openai-compatible` (`@ai-sdk/openai-compatible`). Con i primi quattro l'adapter usa l'endpoint predefinito del provider e la configurazione non contiene un URL. Con `openai-compatible` la configurazione contiene `llm.baseURL`, URL HTTP o HTTPS assoluto di un'API compatibile con OpenAI, per esempio un server locale o un aggregatore di modelli; l'adapter dichiara al pacchetto il supporto dell'output strutturato, così che la richiesta dell'orchestratore contenga lo schema JSON (`response_format` di tipo `json_schema`). Gli altri provider non ammettono `baseURL`. I provider che richiedono credenziali diverse da una chiave API, come Amazon Bedrock, Google Vertex AI o Azure OpenAI, non sono supportati.
 
-Il file dell'agente contiene `llm.provider`, `model`, `apiKeyEnv`, `baseURL` soltanto con `openai-compatible`, e le sole `options` facoltative `temperature` e `max_tokens`, uguali per tutti i provider. L'adapter valida le opzioni prima dell'attivazione e le traduce nelle impostazioni comuni dell'AI SDK `temperature` e `maxOutputTokens`; omette quelle assenti. Il provider e il modello scelti devono supportare il tool calling e l'output strutturato con schema JSON e, per gli agenti con connettore MCP, entrambi nella stessa richiesta: per esempio i modelli Gemini li combinano soltanto dalla serie 3. Un errore del provider dovuto a una funzionalità non supportata è un guasto della produzione della risposta: il turno termina con il messaggio pubblico standard. Il client MCP comune esistente conserva connessione, autenticazione e ciclo di vita; i suoi tool sono adattati all'AI SDK senza esporre credenziali al modello. L'orchestratore sceglie un solo agente per turno secondo il contratto della scelta dell'agente; gli agenti con connettore MCP rispettano il limite di chiamate per turno previsto dagli altri contratti.
+Il file dell'agente contiene `llm.provider`, `model`, `apiKeyEnv`, `baseURL` soltanto con `openai-compatible`, e le sole `options` facoltative `temperature` e `max_tokens`, uguali per tutti i provider. L'adapter valida le opzioni prima dell'attivazione e le traduce nelle impostazioni comuni dell'AI SDK `temperature` e `maxOutputTokens`; omette quelle assenti. Il modello dell'orchestratore deve supportare l'output strutturato con schema JSON. Il modello di ogni agente specializzato deve supportare il tool calling con la chiamata a uno strumento richiesta a ogni passo, scrivendo testo nella stessa risposta, perché ogni risposta termina con lo strumento finale `finish`. Un errore del provider dovuto a una funzionalità non supportata è un guasto della produzione della risposta: il turno termina con il messaggio pubblico standard. Il client MCP comune esistente conserva connessione, autenticazione e ciclo di vita; i suoi tool sono adattati all'AI SDK senza esporre credenziali al modello. L'orchestratore sceglie un solo agente per turno secondo il contratto della scelta dell'agente; gli agenti con connettore MCP rispettano il limite di chiamate per turno previsto dagli altri contratti.
 
 #### Metadata
   * type: specification
@@ -763,7 +761,7 @@ L'unico esito negativo previsto del caso d'uso, la conversazione inesistente, pr
 
 ### Risposta dell'agente senza connettore MCP
 
-Un agente specializzato il cui file non contiene `mcp` è preparato senza aprire connessioni MCP e senza scoprire strumenti. Quando l'orchestratore lo sceglie, l'adapter AI SDK gli consegna le sue istruzioni, con la stessa indicazione del formato della risposta degli altri agenti, e lo storico conservato della conversazione, senza offrire strumenti al modello; l'agente produce in streaming il testo della risposta e l'indicazione `expectsReply` con lo stesso output strutturato degli altri agenti. Per questo agente non si applica un limite di chiamate agli strumenti. Lo stesso agente ammette un modello diverso da quello degli altri agenti, indicato nel proprio `llm`; per esempio un agente generico che risponde con la conoscenza del modello.
+Un agente specializzato il cui file non contiene `mcp` è preparato senza aprire connessioni MCP e senza scoprire strumenti. Quando l'orchestratore lo sceglie, l'adapter AI SDK gli consegna le sue istruzioni, con la stessa indicazione del formato della risposta degli altri agenti, e lo storico conservato della conversazione, offrendo al modello il solo strumento finale `finish`; l'agente produce in streaming il testo della risposta e conclude con `finish` e l'indicazione `expectsReply`, come gli altri agenti. Per questo agente non si applica un limite di chiamate agli strumenti. Lo stesso agente ammette un modello diverso da quello degli altri agenti, indicato nel proprio `llm`; per esempio un agente generico che risponde con la conoscenza del modello.
 
 #### Metadata
   * type: behavior

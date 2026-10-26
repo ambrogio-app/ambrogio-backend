@@ -54,7 +54,7 @@ La prova passa se `turn.completed` arriva una sola volta come ultimo messaggio d
 Con un produttore controllato, eseguire turni testuali e vocali in cui la risposta chiede una replica e turni in cui conclude lo scambio. Ripetere con un produttore che non fornisce l'indicazione o la fornisce con tipo invalido. Osservare le chiamate al modello.
 
 #### Details
-La prova passa se l'agente produce il booleano strutturato `expectsReply` durante la stessa generazione della risposta, senza una seconda chiamata dedicata alla classificazione, e `turn.completed` porta il valore corretto per turni testuali e vocali, indipendentemente dal tipo di contenuto della risposta. Un'indicazione mancante o invalida produce l'esito di errore del turno e non `expectsReply: false`. Turni rifiutati, falliti o interrotti non portano `expectsReply`. Fallisce se il valore è dedotto dal testo, se differisce per canale o se un valore mancante viene presentato come `false`. Il comportamento dei client che usano l'indicazione è verificato nei repository dei client. Verifica definita per il protocollo `ambrogio.v1`.
+La prova passa se l'agente produce il booleano `expectsReply` chiamando lo strumento finale `finish` nella stessa generazione della risposta, senza una seconda chiamata dedicata alla classificazione, se la generazione si ferma alla chiamata di `finish` e chiede al modello uno strumento a ogni passo, e `turn.completed` porta il valore corretto per turni testuali e vocali, indipendentemente dal tipo di contenuto della risposta. Un'indicazione mancante o invalida produce l'esito di errore del turno e non `expectsReply: false`. Turni rifiutati, falliti o interrotti non portano `expectsReply`. Fallisce se il valore è dedotto dal testo, se differisce per canale o se un valore mancante viene presentato come `false`. Il comportamento dei client che usano l'indicazione è verificato nei repository dei client. Verifica definita per il protocollo `ambrogio.v1`.
 
 #### Metadata
   * type: test-verification
@@ -62,6 +62,7 @@ La prova passa se l'agente produce il booleano strutturato `expectsReply` durant
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](ConversationProtocol.md#verifica-del-protocollo-conversazionale)
   * satisfiedBy: [http-server.session-turns.spec.ts](../../apps/server/src/runtime/http-server.session-turns.spec.ts)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
   * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
   * verify: [Determinazione della replica attesa](../Requirements/FamilyConversation.md#determinazione-della-replica-attesa)
   * verify: [Segnalazione della replica attesa](../Requirements/FamilyConversation.md#segnalazione-della-replica-attesa)
@@ -134,10 +135,10 @@ Non automatizzabile: richiede un'istanza reale di Home Assistant con entità esp
 
 ### Prova dei nomi degli strumenti MCP
 
-Preparare un agente specializzato con strumenti scoperti di nome `HassTurnOff`, `GetLiveContext`, `light.toggle`, un nome di 65 caratteri, `mcp_7`, `_private`, `1st-tool` e `-dash`, e un modello controllato che registra i nomi offerti e chiama alcuni strumenti con nomi presentati. Osservare i nomi offerti al modello e le chiamate ricevute dal client MCP.
+Preparare un agente specializzato con strumenti scoperti di nome `HassTurnOff`, `GetLiveContext`, `light.toggle`, un nome di 65 caratteri, `mcp_7`, `finish`, `_private`, `1st-tool` e `-dash`, e un modello controllato che registra i nomi offerti e chiama alcuni strumenti con nomi presentati. Osservare i nomi offerti al modello e le chiamate ricevute dal client MCP.
 
 #### Details
-La prova passa se `HassTurnOff`, `GetLiveContext` e `_private` sono offerti con il proprio nome, `light.toggle`, il nome di 65 caratteri, `mcp_7`, `1st-tool` e `-dash` sono offerti come `mcp_<indice>` secondo la posizione nella lista scoperta, descrizioni e schemi restano quelli del server, ogni chiamata del modello raggiunge il client MCP con il nome originale dello strumento corrispondente e il limite `maxToolCalls` continua a valere. Fallisce se un nome ammesso viene sostituito, se un nome non ammesso viene offerto al modello o se una chiamata raggiunge uno strumento diverso.
+La prova passa se `HassTurnOff`, `GetLiveContext` e `_private` sono offerti con il proprio nome, `light.toggle`, il nome di 65 caratteri, `mcp_7`, lo strumento MCP `finish`, `1st-tool` e `-dash` sono offerti come `mcp_<indice>` secondo la posizione nella lista scoperta, descrizioni e schemi restano quelli del server, ogni chiamata del modello raggiunge il client MCP con il nome originale dello strumento corrispondente e il limite `maxToolCalls` continua a valere. Fallisce se un nome ammesso viene sostituito, se un nome non ammesso viene offerto al modello o se una chiamata raggiunge uno strumento diverso.
 
 #### Metadata
   * type: test-verification
@@ -187,7 +188,7 @@ La prova passa se ogni agente riceve soltanto l'endpoint MCP definito nel propri
 Preparare due agenti specializzati con limiti di chiamata differenti nei rispettivi JSON e usare modelli controllati che richiedano più chiamate MCP dei limiti previsti. Osservare le chiamate inoltrate ai due server MCP, l'esito pubblico e lo storico del turno.
 
 #### Details
-La prova passa se ciascun agente usa il proprio limite, nessuna chiamata viene inoltrata oltre tale limite e il turno eccedente termina con il messaggio pubblico di guasto nella propria conversazione. Fallisce se un limite viene condiviso tra agenti, se viene eseguita una chiamata eccedente o se il guasto espone dettagli tecnici.
+La prova passa se ciascun agente usa il proprio limite, se la chiamata finale `finish` non è conteggiata, nessuna chiamata viene inoltrata oltre tale limite e il turno eccedente termina con il messaggio pubblico di guasto nella propria conversazione. Fallisce se un limite viene condiviso tra agenti, se viene eseguita una chiamata eccedente o se il guasto espone dettagli tecnici.
 
 #### Metadata
   * type: test-verification
@@ -200,10 +201,10 @@ La prova passa se ciascun agente usa il proprio limite, nessuna chiamata viene i
 
 ### Prova dell'annuncio dell'azione
 
-Con modelli simulati per la generazione della risposta e per l'annuncio e un client MCP controllato, produrre risposte di un agente con connettore MCP nei casi seguenti: annuncio restituito mentre lo strumento è in esecuzione e risposta finale vuota; annuncio vuoto con risposta finale; annuncio restituito dopo il primo frammento della risposta; annuncio più lungo di 200 caratteri; chiamata dell'annuncio fallita; annullamento della produzione mentre l'annuncio è in corso. Produrre anche una risposta di un agente senza connettore MCP. Registrare l'ordine delle parti consegnate, le chiamate ai modelli con le istruzioni, gli strumenti e lo schema di uscita.
+Con un modello simulato e un client MCP controllato, produrre risposte di un agente con connettore MCP nei casi seguenti: il modello scrive una frase, chiama uno strumento e poi chiama `finish` senza altro testo; il modello chiama subito lo strumento e poi scrive una conferma prima di `finish`; il modello risponde a una domanda senza strumenti. Registrare l'ordine delle parti consegnate rispetto all'esecuzione dello strumento, il numero di chiamate al modello e le istruzioni inviate.
 
 #### Details
-La prova passa se nel primo caso il primo frammento è l'annuncio seguito da un a capo, consegnato prima che la chiamata allo strumento termini, e dopo di esso arriva soltanto l'indicazione `expectsReply`; se la chiamata dell'annuncio non offre strumenti e chiede l'uscita con il solo campo `announcement`; se negli altri casi l'annuncio non compare e le parti della risposta restano quelle della generazione; se l'annullamento interrompe entrambe le chiamate; se le istruzioni della generazione della risposta contengono le regole sulla risposta vuota; se l'agente senza connettore MCP effettua una sola chiamata al modello. Fallisce se l'annuncio compare dopo un frammento della risposta, se un guasto dell'annuncio cambia le parti consegnate o se un agente senza connettore MCP effettua la chiamata dell'annuncio.
+La prova passa se nel primo caso la frase è consegnata come frammento testuale prima che lo strumento termini e dopo di essa arriva soltanto l'indicazione `expectsReply`; se nel secondo caso la conferma segue l'esecuzione dello strumento ed è separata da un a capo dal testo precedente; se nel terzo caso le parti sono il testo e l'indicazione; se ogni risposta richiede soltanto le chiamate al modello della propria generazione, senza una chiamata separata per l'annuncio; se le istruzioni contengono le regole sulla frase d'azione, sul silenzio dopo un'azione annunciata riuscita, sulla conferma breve e sui guasti. Fallisce se la frase arriva dopo l'esecuzione dello strumento o se viene fatta una chiamata al modello in più.
 
 #### Metadata
   * type: test-verification
@@ -1227,7 +1228,7 @@ La prova passa se il caso d'uso chiede alla porta una scadenza di 30 secondi; se
 Preparare la directory degli agenti con l'orchestratore, un agente con `mcp` e un agente `generic` con soli `description`, `instructions` e `llm`. Con un modello controllato, far scegliere all'orchestratore l'agente `generic` ed eseguire il turno; eseguire anche un turno sul canale conversazionale avviato con il solo agente senza MCP.
 
 #### Details
-La prova passa se l'agente senza MCP viene attivato senza aprire connessioni MCP, se la richiesta al suo modello usa le sue istruzioni con l'indicazione del formato della risposta e lo storico della conversazione senza offrire strumenti, e se il testo e `expectsReply` prodotti dall'agente sono la risposta del turno, comunicata e conservata. Fallisce se l'agente senza MCP non viene attivato, se vengono aperte connessioni o offerti strumenti, o se la risposta non proviene dal suo modello.
+La prova passa se l'agente senza MCP viene attivato senza aprire connessioni MCP, se la richiesta al suo modello usa le sue istruzioni con l'indicazione del formato della risposta e lo storico della conversazione offrendo il solo strumento finale `finish`, e se il testo e `expectsReply` prodotti dall'agente sono la risposta del turno, comunicata e conservata. Fallisce se l'agente senza MCP non viene attivato, se vengono aperte connessioni o offerti strumenti diversi da `finish`, o se la risposta non proviene dal suo modello.
 
 #### Metadata
   * type: test-verification

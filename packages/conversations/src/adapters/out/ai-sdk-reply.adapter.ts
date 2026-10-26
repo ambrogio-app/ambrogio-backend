@@ -3,7 +3,7 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createMistral } from '@ai-sdk/mistral';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
-import { generateText, jsonSchema, Output, stepCountIs, streamText, tool, type LanguageModel,
+import { generateText, hasToolCall, jsonSchema, Output, stepCountIs, streamText, tool, type LanguageModel,
   type ModelMessage } from 'ai';
 import { ProjectError } from '../../domain/project-error.js';
 import type { ConversationHistory } from '../../application/conversation-history-read.port.js';
@@ -16,11 +16,11 @@ import type { Logger } from '../in/logger.js';
 export type Clock = () => number;
 const monotonic: Clock = () => performance.now();
 
-/** What an agent measured while producing one reply: model calls, MCP calls and the announcement. */
+/** What an agent measured while producing one reply: model calls, MCP calls and the text before the first of them. */
 export type ReplyMeasures = { modelSteps: number; toolCalls?: number; toolMs?: number; announcementMs?: number };
 
-/** The longest announcement spoken before an action. */
-export const maxAnnouncementLength = 200;
+/** The final tool of every specialist reply: its only argument is the reply expectation. */
+export const finishToolName = 'finish';
 
 /** The providers this adapter can build a model for. */
 export const llmProviders = ['mistral', 'openai', 'anthropic', 'google', 'openai-compatible'] as const;
@@ -56,7 +56,8 @@ export type DiscoveredMcp = Readonly<{ tools: readonly AvailableMcpTool[]; promp
 
 /** The MCP name when every provider accepts it; otherwise the reserved positional name. */
 function presentedToolName(name: string, index: number): string {
-  return /^[A-Za-z_][A-Za-z0-9_-]{0,63}$/.test(name) && !/^mcp_\d+$/.test(name) ? name : `mcp_${index}`;
+  return /^[A-Za-z_][A-Za-z0-9_-]{0,63}$/.test(name) && !/^mcp_\d+$/.test(name) && name !== finishToolName
+    ? name : `mcp_${index}`;
 }
 
 export function aiSdkOptions(value?: AgentSettings['options']): Readonly<{
@@ -122,11 +123,6 @@ function throwStreamError(error: unknown): never {
   throw new ProjectError('AI SDK response failed', { cause: error });
 }
 
-const replyOutput = Output.object({ schema: jsonSchema<{ answer: string; expectsReply: boolean }>({
-  type: 'object', properties: { answer: { type: 'string' }, expectsReply: { type: 'boolean' } },
-  required: ['answer', 'expectsReply'], additionalProperties: false,
-}) });
-
 function withServerPrompts(instructions: string, prompts: readonly string[]): string {
   return prompts.length === 0 ? instructions
     : `${instructions}\n\nInstructions and context from the connected MCP server:\n${prompts.join('\n\n')}`;
@@ -145,87 +141,57 @@ function withCurrentTime(settings: AgentSettings): string {
 function replyInstructions(instructions: string, language?: 'en' | 'it'): string {
   const languageLine = language === undefined ? ''
     : `\nAnswer in ${language === 'it' ? 'Italian' : 'English'}.`;
-  return `${instructions}${languageLine}\nPut the words of your reply in answer. `
-    + 'Set expectsReply to true only when the answer asks the user to reply; otherwise set it to false.';
+  return `${instructions}${languageLine}\nWrite your reply as plain text. End every reply by calling ${finishToolName}: `
+    + 'set expectsReply to true only when your reply asks the family to reply; otherwise set it to false.';
 }
 
-/** The rules added to the reply instructions of an agent with MCP tools («Annuncio in parallelo»). */
-const actionReplyRules = '\nWhen you carried out the requested action successfully, leave answer empty: '
-  + 'a short announcement of the action is spoken separately. When an action fails, say in answer what did not '
-  + 'work. When the family asks for information, write it in answer.';
+/** The rules added to the reply instructions of an agent with MCP tools («Frase d'azione prima degli strumenti»). */
+const actionReplyRules = '\nBefore you call a tool to carry out an action, first say in one short sentence what you '
+  + 'are about to do. Do not say it for a request for information. When an action you announced succeeds, add nothing '
+  + 'more. When an action succeeds without an announcement, confirm it in a few words. When an action fails, say what '
+  + 'did not work.';
 
-function announcementInstructions(instructions: string, language?: 'en' | 'it'): string {
-  const languageLine = language === undefined ? ''
-    : `\nWrite in ${language === 'it' ? 'Italian' : 'English'}.`;
-  return `${instructions}${languageLine}\nYou are not answering now. Your instructions above describe what your tools `
-    + 'let you do. Decide only whether the last message of the family asks you to do something with them, such as '
-    + 'playing, turning on or off, changing or adding something. If it does, write in announcement one short sentence '
-    + 'that tells the family what you are about to do, for example "I am looking for a song by Neffa and playing it." '
-    + 'If the message only asks for information, leave announcement empty. Do not do it yet.';
-}
+/** `finish` has no execution: the reply ends at its call, which carries the reply expectation. */
+const finishTool = tool({
+  description: 'Call once at the end of every reply, after its text. Set expectsReply to true only when your reply '
+    + 'asks the family to reply; otherwise set it to false.',
+  inputSchema: jsonSchema<{ expectsReply: boolean }>({ type: 'object', properties: { expectsReply: { type: 'boolean' } },
+    required: ['expectsReply'], additionalProperties: false }),
+});
 
-const announcementOutput = Output.object({ schema: jsonSchema<{ announcement: string }>({
-  type: 'object', properties: { announcement: { type: 'string' } },
-  required: ['announcement'], additionalProperties: false,
-}) });
-
-/** The announcement to speak, or undefined when empty, too long or not in the expected shape. */
-function spokenAnnouncement(output: unknown): string | undefined {
-  if (output === null || typeof output !== 'object' || Array.isArray(output)) return undefined;
-  const text = (output as { announcement?: unknown }).announcement;
-  if (typeof text !== 'string') return undefined;
-  const trimmed = text.trim();
-  return trimmed && trimmed.length <= maxAnnouncementLength ? trimmed : undefined;
-}
+type ReplyStream = Readonly<{ fullStream: AsyncIterable<{ type: string } & Record<string, unknown>> }>;
 
 /**
- * Deliver the reply parts, preceded by the announcement when it arrives before the first of them.
- * A late, empty or failed announcement is dropped and its call stopped.
+ * The text of every step as it is written, a line break between the text of different steps, then the expectation
+ * given to `finish`. `onText` and `onToolCall` tell the measures when text is written and when an MCP tool is called.
  */
-async function* withAnnouncement(parts: AsyncGenerator<ReplyPart, void, void>, announcement: Promise<string | undefined>,
-  stop: () => void, announced: () => void): AsyncGenerator<ReplyPart, void, void> {
-  const first = parts.next();
-  first.catch(() => { /* reported below, when it is awaited */ });
-  const winner = await Promise.race([first.then(() => 'reply' as const, () => 'reply' as const),
-    announcement.then(() => 'announcement' as const)]);
-  if (winner === 'announcement') {
-    const text = await announcement;
-    if (text !== undefined) { announced(); yield { kind: 'text', text: `${text}\n` }; }
+async function* replyParts(response: ReplyStream, onText: () => void, onToolCall: () => void,
+  limit: () => ProjectError | undefined): AsyncGenerator<ReplyPart, void, void> {
+  let expectsReply: boolean | undefined;
+  let stepWritten = false;
+  let separate = false;
+  for await (const part of response.fullStream) {
+    if (part.type === 'text-delta' && typeof part.text === 'string' && part.text) {
+      if (separate) { yield { kind: 'text', text: '\n' }; separate = false; }
+      onText();
+      stepWritten = true;
+      yield { kind: 'text', text: part.text };
+    } else if (part.type === 'finish-step') {
+      if (stepWritten) separate = true;
+      stepWritten = false;
+    } else if (part.type === 'tool-call') {
+      if (part.toolName === finishToolName) {
+        const input = part.input as { expectsReply?: unknown } | undefined;
+        if (typeof input?.expectsReply === 'boolean') expectsReply = input.expectsReply;
+      } else onToolCall();
+    } else if (part.type === 'tool-error') {
+      // The call limit fails the turn: the model is not given the chance to answer after it.
+      const exceeded = limit();
+      if (exceeded) throw exceeded;
+    } else if (part.type === 'error') throw part.error;
   }
-  stop();
-  const next = await first;
-  if (next.done) return;
-  yield next.value;
-  yield* { [Symbol.asyncIterator]: () => parts };
-}
-
-async function* answerParts(response: Readonly<{
-  partialOutputStream: AsyncIterable<{ answer?: unknown }>;
-}>): AsyncGenerator<ReplyPart, string, void> {
-  let emitted = '';
-  for await (const partial of response.partialOutputStream) {
-    const candidate = (partial as { answer?: unknown }).answer;
-    if (typeof candidate !== 'string') continue;
-    if (!candidate.startsWith(emitted)) throw new ProjectError('Answer changed during streaming');
-    const delta = candidate.slice(emitted.length);
-    emitted = candidate;
-    if (delta) yield { kind: 'text', text: delta };
-  }
-  return emitted;
-}
-
-/** Emit the part of the final answer not yet streamed, then the structured reply expectation. */
-async function* concludeAnswer(response: Readonly<{
-  output: PromiseLike<{ answer: string; expectsReply: boolean } | undefined>;
-}>, emitted: string): AsyncGenerator<ReplyPart, void, void> {
-  const output = await response.output;
-  if (!output || typeof output.answer !== 'string' || typeof output.expectsReply !== 'boolean') {
-    throw new ProjectError('Missing reply expectation');
-  }
-  if (!output.answer.startsWith(emitted)) throw new ProjectError('Answer changed after streaming');
-  const remaining = output.answer.slice(emitted.length);
-  if (remaining) yield { kind: 'text', text: remaining };
-  yield { kind: 'reply_expectation', expectsReply: output.expectsReply };
+  if (expectsReply === undefined) throw new ProjectError('Missing reply expectation');
+  yield { kind: 'reply_expectation', expectsReply };
 }
 
 export class AiSdkToolAgentReply implements ProduceConversationReply {
@@ -247,20 +213,6 @@ export class AiSdkToolAgentReply implements ProduceConversationReply {
     return this.measured(history, cancellation, { modelSteps: 0 });
   }
 
-  /**
-   * The announcement of the action, from a short call of the same model without tools. The server prompts are left
-   * out: they describe how to use the tools, and with them the model kept the announcement empty.
-   */
-  private async announce(history: ConversationHistory, signal: AbortSignal): Promise<string | undefined> {
-    try {
-      const result = await generateText({ model: this.model,
-        system: announcementInstructions(withCurrentTime(this.settings), this.settings.responseLanguage),
-        messages: messagesFor(history), output: announcementOutput, maxRetries: 0, abortSignal: signal,
-        ...this.options });
-      return spokenAnnouncement(result.output);
-    } catch { return undefined; }
-  }
-
   async *measured(history: ConversationHistory, cancellation: ReplyCancellation,
     measures: ReplyMeasures): AsyncIterable<ReplyPart> {
     const started = this.now();
@@ -268,8 +220,8 @@ export class AiSdkToolAgentReply implements ProduceConversationReply {
     measures.toolMs = 0;
     const signal = abortSignalFor(cancellation);
     let used = 0;
-    // Structured output reports a failed step only as a missing object; keep the limit failure.
     let limitExceeded: ProjectError | undefined;
+    let toolCalled = false;
     // Read at every turn, so changes on the server apply without a restart.
     const prompts: string[] = [];
     for (const name of this.discovered.prompts) prompts.push(await this.mcp.getPrompt(name, signal));
@@ -294,34 +246,22 @@ export class AiSdkToolAgentReply implements ProduceConversationReply {
         },
       }),
     ]]));
-    // The announcement runs beside the reply, so the reply is not slowed down.
-    const announcer = new AbortController();
-    const stopAnnouncer = () => announcer.abort();
-    signal.addEventListener('abort', stopAnnouncer, { once: true });
-    const announcement = this.announce(history, announcer.signal);
     const response = streamText({ model: this.model,
       system: replyInstructions(withServerPrompts(withCurrentTime(this.settings), prompts),
         this.settings.responseLanguage) + actionReplyRules,
-      messages: messagesFor(history), tools, output: replyOutput,
-      toolCallConcurrency: 1, stopWhen: stepCountIs(this.maxToolCalls + 1),
+      messages: messagesFor(history), tools: { ...tools, [finishToolName]: finishTool }, toolChoice: 'required',
+      toolCallConcurrency: 1, stopWhen: [stepCountIs(this.maxToolCalls + 1), hasToolCall(finishToolName)],
       maxRetries: 0, abortSignal: signal, ...this.options });
-    const parts = (async function* () {
-      const emitted = yield* answerParts(response);
-      yield* concludeAnswer(response, emitted);
-    })();
     try {
-      yield* withAnnouncement(parts, announcement, stopAnnouncer,
-        () => { measures.announcementMs = this.now() - started; });
+      yield* replyParts(response as unknown as ReplyStream,
+        () => { if (!toolCalled && measures.announcementMs === undefined) measures.announcementMs = this.now() - started; },
+        () => { toolCalled = true; }, () => limitExceeded);
       measures.modelSteps = (await response.steps).length;
     } catch (error) { throwStreamError(limitExceeded ?? error); }
-    finally {
-      stopAnnouncer();
-      signal.removeEventListener('abort', stopAnnouncer);
-    }
   }
 }
 
-/** An agent without MCP: it answers with its own model and instructions, without tools. */
+/** An agent without MCP: it answers with its own model and instructions; `finish` is its only tool. */
 export class AiSdkKnowledgeAgentReply implements ProduceConversationReply {
   private readonly model: LanguageModel;
   private readonly options: ReturnType<typeof aiSdkOptions>;
@@ -338,12 +278,13 @@ export class AiSdkKnowledgeAgentReply implements ProduceConversationReply {
   async *measured(history: ConversationHistory, cancellation: ReplyCancellation,
     measures: ReplyMeasures): AsyncIterable<ReplyPart> {
     const signal = abortSignalFor(cancellation);
+    // `finish` is the only tool: it carries the reply expectation.
     const response = streamText({ model: this.model,
       system: replyInstructions(withCurrentTime(this.settings), this.settings.responseLanguage),
-      messages: messagesFor(history), output: replyOutput, maxRetries: 0, abortSignal: signal, ...this.options });
+      messages: messagesFor(history), tools: { [finishToolName]: finishTool }, toolChoice: 'required',
+      stopWhen: [stepCountIs(2), hasToolCall(finishToolName)], maxRetries: 0, abortSignal: signal, ...this.options });
     try {
-      const emitted = yield* answerParts(response);
-      yield* concludeAnswer(response, emitted);
+      yield* replyParts(response as unknown as ReplyStream, () => undefined, () => undefined, () => undefined);
       measures.modelSteps = (await response.steps).length;
     } catch (error) { throwStreamError(error); }
   }

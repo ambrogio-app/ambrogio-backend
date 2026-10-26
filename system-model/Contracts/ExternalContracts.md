@@ -10,13 +10,13 @@ Fonte: le API dei fornitori raggiunte dai pacchetti di provider ufficiali di AI 
 | `openai` | API OpenAI `v1`, Responses | `https://api.openai.com/v1/responses` | `Authorization: Bearer` |
 | `anthropic` | API Anthropic Messages `v1`, intestazione `anthropic-version: 2023-06-01` | `https://api.anthropic.com/v1/messages` | `x-api-key` |
 | `google` | API Gemini di Google AI Studio `v1beta`, `streamGenerateContent` | `https://generativelanguage.googleapis.com/v1beta/models/<modello>:streamGenerateContent` | `x-goog-api-key` |
-| `openai-compatible` | API Chat Completions compatibile con OpenAI, con `response_format` di tipo `json_schema` | `<baseURL>/chat/completions` | `Authorization: Bearer` |
+| `openai-compatible` | API Chat Completions compatibile con OpenAI, con `response_format` di tipo `json_schema` per l'orchestratore e `tool_choice` `required` per gli agenti specializzati | `<baseURL>/chat/completions` | `Authorization: Bearer` |
 
 Fonti dell'informazione: gli indirizzi e le intestazioni inviati dai pacchetti `@ai-sdk/*` del lockfile, osservati dalla prova dell'adapter; la documentazione dei fornitori: https://docs.mistral.ai/api/ , https://platform.openai.com/docs/api-reference/responses , https://docs.anthropic.com/en/api/versioning , https://ai.google.dev/api . La versione dell'API cambia soltanto con l'aggiornamento del pacchetto di provider che la usa, governato dal lockfile.
 
-Modello d'esempio: gli esempi distribuiti usano `mistral-medium-latest`, un alias mobile che Mistral AI assegna all'ultima versione di Mistral Medium; il modello effettivo cambia quando Mistral AI sposta l'alias, senza una modifica di Ambrogio. È il modello consigliato per l'orchestratore. Il prodotto non fissa un modello: lo sceglie l'installazione nel file di ciascun agente, e il modello scelto deve supportare tool calling e output strutturato con schema JSON.
+Modello d'esempio: gli esempi distribuiti usano `mistral-medium-latest`, un alias mobile che Mistral AI assegna all'ultima versione di Mistral Medium; il modello effettivo cambia quando Mistral AI sposta l'alias, senza una modifica di Ambrogio. È il modello consigliato per l'orchestratore. Il prodotto non fissa un modello: lo sceglie l'installazione nel file di ciascun agente, e il modello scelto deve supportare l'output strutturato con schema JSON per l'orchestratore e il tool calling con chiamata obbligatoria a uno strumento per gli agenti specializzati.
 
-Prova d'integrazione: «Prova della configurazione dell'adapter AI SDK» controlla per ogni provider indirizzo, credenziale e corpo della richiesta con risposte controllate; il supporto reale di tool calling e output strutturato è osservato soltanto con il modello linguistico reale della «Dimostrazione del connettore Home Assistant su un'installazione reale», che non registra provider né modello usati.
+Prova d'integrazione: «Prova della configurazione dell'adapter AI SDK» controlla per ogni provider indirizzo, credenziale e corpo della richiesta con risposte controllate; il supporto reale dell'output strutturato e del tool calling con chiamata obbligatoria è osservato soltanto con il modello linguistico reale della «Dimostrazione del connettore Home Assistant su un'installazione reale», che non registra provider né modello usati.
 
 #### Metadata
   * type: source

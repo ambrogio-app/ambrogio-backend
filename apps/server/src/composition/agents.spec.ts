@@ -194,25 +194,15 @@ test('applies the configured response language to specialists but not the orches
         }
       } finally { await agents.close(); }
     }
-    // Per language: the generic agent, the weather agent with its announcement call, and the orchestrator.
-    expect(systems).toHaveLength(8);
-    const orchestrators: string[] = [];
-    for (const [block, language] of [[systems.slice(0, 4), 'Italian'], [systems.slice(4), 'English']] as const) {
-      const weather = block.filter(system => system.startsWith('Use the forecast.'));
-      const announcement = weather.find(system => system.includes('You are not answering now.'));
-      const reply = weather.find(system => !system.includes('You are not answering now.'));
-      const orchestrator = block.find(system => !system.startsWith('Use the forecast.')
-        && !system.startsWith('Answer briefly.'));
-      expect(block.find(system => system.startsWith('Answer briefly.'))).toContain(`Answer in ${language}.`);
-      expect(reply).toContain(`Weather context.\nAnswer in ${language}.`);
-      expect(announcement).toContain(`Write in ${language}.`);
-      expect(announcement).not.toContain('Weather context.');
-      expect(orchestrator).not.toContain('Answer in Italian.');
-      expect(orchestrator).not.toContain('Answer in English.');
-      orchestrators.push(orchestrator!);
+    expect(systems).toHaveLength(6);
+    for (const [offset, language] of [[0, 'Italian'], [3, 'English']] as const) {
+      expect(systems[offset]).toContain(`Answer in ${language}.`);
+      expect(systems[offset + 1]).toContain(`Weather context.\nAnswer in ${language}.`);
+      expect(systems[offset + 2]).not.toContain('Answer in Italian.');
+      expect(systems[offset + 2]).not.toContain('Answer in English.');
     }
     // The language leaves the orchestrator's role untouched: it receives the same instructions in both languages.
-    expect(orchestrators[1]).toBe(orchestrators[0]);
+    expect(systems[5]).toBe(systems[2]);
   } finally {
     vi.unstubAllGlobals();
     await fixture.close();

@@ -32,13 +32,17 @@ function callPart(name: string, input: object, id = 'call-1') {
   return { type: 'tool-call', toolCallId: id, toolName: name, input: JSON.stringify(input) };
 }
 
+/** A final step: the text of the reply, if any, then the call of `finish` with the reply expectation. */
 function answer(text: string, expectsReply = false) {
-  return textParts(JSON.stringify({ answer: text, expectsReply }));
+  return [...(text ? textParts(text) : []), callPart('finish', { expectsReply }, 'finish-call')];
 }
 
-const actionRules = '\nWhen you carried out the requested action successfully, leave answer empty: '
-  + 'a short announcement of the action is spoken separately. When an action fails, say in answer what did not '
-  + 'work. When the family asks for information, write it in answer.';
+const replyFormat = 'Write your reply as plain text. End every reply by calling finish: '
+  + 'set expectsReply to true only when your reply asks the family to reply; otherwise set it to false.';
+const actionRules = '\nBefore you call a tool to carry out an action, first say in one short sentence what you '
+  + 'are about to do. Do not say it for a request for information. When an action you announced succeeds, add nothing '
+  + 'more. When an action succeeds without an announcement, confirm it in a few words. When an action fails, say what '
+  + 'did not work.';
 
 /** A server without prompts never has them read. */
 const getPrompt = async (): Promise<string> => { throw new Error('Unexpected prompt read'); };
@@ -141,19 +145,21 @@ test('the router sees which agent gave each previous answer; the agents do not',
 });
 
 // Verification: Prova dell'agente specializzato senza connettore MCP
-test('an agent without MCP answers with its own instructions and no tools', async () => {
+test('an agent without MCP answers with its own instructions and only the finish tool', async () => {
   const model = scripted({ parts: answer('Nel 1492.'), reason: 'stop' });
   const reply = new AiSdkKnowledgeAgentReply({ ...settings, instructions: 'Answer from knowledge.' }, model);
   expect(await collect(reply.produce(history, never())))
     .toEqual([text('Nel 1492.'), expectation(false)]);
   expect(model.doStreamCalls).toHaveLength(1);
-  expect(model.doStreamCalls[0]?.tools ?? []).toEqual([]);
+  expect((model.doStreamCalls[0]?.tools ?? []).map(tool => tool.name)).toEqual(['finish']);
+  expect(model.doStreamCalls[0]?.toolChoice).toEqual({ type: 'required' });
   expect(model.doStreamCalls[0]?.prompt).toEqual([
     { role: 'system', content: expect.stringContaining('Answer from knowledge.') },
     { role: 'user', content: [{ type: 'text', text: 'Find it' }] },
   ]);
   expect(model.doStreamCalls[0]?.prompt[0]).toMatchObject({
-    content: expect.stringContaining('Set expectsReply to true') });
+    content: expect.stringContaining('Write your reply as plain text. End every reply by calling finish: '
+      + 'set expectsReply to true only when your reply asks the family to reply') });
 });
 
 // Verification: Prova del tempo massimo della produzione della risposta
@@ -219,7 +225,7 @@ test('specialist refuses the first MCP call beyond its per-turn limit', async ()
 test('specialist offers accepted MCP names and positional names for the others', async () => {
   const long = 'a'.repeat(65);
   const discovered = ['HassTurnOff', 'GetLiveContext', 'light.toggle', long, 'mcp_7', '_private', '1st-tool',
-    '-dash'].map(name => ({
+    '-dash', 'finish'].map(name => ({
     name, description: `Tool ${name}`, inputSchema: { type: 'object', properties: { name: { type: 'string' } } } }));
   const called: unknown[] = [];
   const model = scripted(
@@ -228,20 +234,22 @@ test('specialist offers accepted MCP names and positional names for the others',
     { parts: [callPart('mcp_4', {}, 'call-3')], reason: 'tool-calls' },
     { parts: [callPart('mcp_6', {}, 'call-4')], reason: 'tool-calls' },
     { parts: [callPart('_private', {}, 'call-5')], reason: 'tool-calls' },
+    { parts: [callPart('mcp_8', {}, 'call-6')], reason: 'tool-calls' },
     { parts: answer('Fatto.'), reason: 'stop' },
   );
   const reply = new AiSdkToolAgentReply(settings, { tools: discovered, prompts: [] }, { getPrompt,
-    async callTool(name, args) { called.push({ name, args }); return { isError: false, content: [] }; } }, 5, model);
+    async callTool(name, args) { called.push({ name, args }); return { isError: false, content: [] }; } }, 6, model);
   expect(await collect(reply.produce(history, never()))).toEqual([text('Fatto.'), expectation(false)]);
   const offered = model.doStreamCalls[0]?.tools ?? [];
   // Gemini requires a leading letter or underscore, so digits and dashes there get positional names.
+  // An MCP tool named finish gets a positional name: finish is the reply's own final tool.
   expect(offered.map(tool => tool.name)).toEqual(['HassTurnOff', 'GetLiveContext', 'mcp_2', 'mcp_3', 'mcp_4',
-    '_private', 'mcp_6', 'mcp_7']);
+    '_private', 'mcp_6', 'mcp_7', 'mcp_8', 'finish']);
   expect(offered[2]).toMatchObject({ description: 'Tool light.toggle',
     inputSchema: { type: 'object', properties: { name: { type: 'string' } } } });
   expect(called).toEqual([{ name: 'GetLiveContext', args: { name: 'camera' } },
     { name: 'light.toggle', args: {} }, { name: 'mcp_7', args: {} }, { name: '1st-tool', args: {} },
-    { name: '_private', args: {} }]);
+    { name: '_private', args: {} }, { name: 'finish', args: {} }]);
 });
 
 // Verification: Prova della selezione degli strumenti MCP
@@ -259,7 +267,7 @@ test('specialist offers only the listed MCP tools with the names of the discover
       async callTool(name) { called.push(name); return { isError: false, content: [] }; } }, 5, model);
   expect(await collect(reply.produce(history, never()))).toEqual([text('Fatto.'), expectation(false)]);
   const offered = model.doStreamCalls[0]?.tools ?? [];
-  expect(offered.map(tool => tool.name)).toEqual(['mcp_1', 'gamma']);
+  expect(offered.map(tool => tool.name)).toEqual(['mcp_1', 'gamma', 'finish']);
   expect(offered[0]).toMatchObject({ description: 'Tool light.toggle', inputSchema: { type: 'object' } });
   // The model cannot reach a tool that was not offered: only the listed one reaches the client.
   expect(called).toEqual(['light.toggle']);
@@ -281,8 +289,7 @@ test('specialists receive the current date and time in the configured time zone 
   await collect(withTools.produce(history, never()));
   const [first, second] = toolModel.doStreamCalls.map(call => String(call.prompt[0]?.content));
   expect(first).toBe(`${settings.instructions}\n${line('Monday, 19 October 2026 at 09:41 (Europe/Rome)')}`
-    + '\n\nInstructions and context from the connected MCP server:\nServer context\nPut the words of your reply in answer. '
-    + 'Set expectsReply to true only when the answer asks the user to reply; otherwise set it to false.' + actionRules);
+    + '\n\nInstructions and context from the connected MCP server:\nServer context\n' + replyFormat + actionRules);
   expect(second).toContain(line('Tuesday, 20 October 2026 at 09:41 (Europe/Rome)'));
 
   now = new Date('2026-10-19T07:41:00Z');
@@ -291,8 +298,7 @@ test('specialists receive the current date and time in the configured time zone 
     knowledgeModel);
   await collect(knowledge.produce(history, never()));
   expect(String(knowledgeModel.doStreamCalls[0]?.prompt[0]?.content)).toBe(
-    `${settings.instructions}\n${line('Monday, 19 October 2026 at 07:41 (UTC)')}\nPut the words of your reply in answer. `
-    + 'Set expectsReply to true only when the answer asks the user to reply; otherwise set it to false.');
+    `${settings.instructions}\n${line('Monday, 19 October 2026 at 07:41 (UTC)')}\n${replyFormat}`);
 
   const router = chooser('{"agent":"home"}');
   const orchestrator = new AiSdkOrchestratorReply(rome, [recordingAgent('home', 'Control home', [text('Ok.')])],
@@ -315,8 +321,7 @@ test('specialist reads the server prompts at every turn and puts them before the
   expect(read[0]?.signal).toBeInstanceOf(AbortSignal);
   const systems = model.doStreamCalls.map(call => String(call.prompt[0]?.content));
   expect(systems[0]).toBe(`${settings.instructions}\n\nInstructions and context from the connected MCP server:\n`
-    + `${versions[0]}\nPut the words of your reply in answer. `
-    + 'Set expectsReply to true only when the answer asks the user to reply; otherwise set it to false.' + actionRules);
+    + `${versions[0]}\n${replyFormat}${actionRules}`);
   expect(systems[1]).toContain(versions[1]);
   expect(systems[1]).not.toContain(`${versions[0]}\n`);
 });
@@ -346,10 +351,11 @@ test('AI SDK Mistral provider sends the selected model and key to its default en
     const request = new Request(input, init);
     seen.push({ url: request.url, authorization: request.headers.get('authorization'),
       body: JSON.parse(await request.text()) as unknown });
-    const event = { id: 'controlled-1', object: 'chat.completion.chunk', created: 0,
-      model: 'mistral-small-latest', choices: [{ index: 0, delta: { content: '{"answer":"SDK answer","expectsReply":false}' },
-        finish_reason: 'stop' }] };
-    return new Response(`data: ${JSON.stringify(event)}\n\ndata: [DONE]\n\n`, {
+    const chunk = (delta: object, finish: string | null) => ({ id: 'controlled-1', object: 'chat.completion.chunk',
+      created: 0, model: 'mistral-small-latest', choices: [{ index: 0, delta, finish_reason: finish }] });
+    const events = [chunk({ content: 'SDK answer' }, null), chunk({ tool_calls: [{ id: 'finish0001', type: 'function',
+      function: { name: 'finish', arguments: '{"expectsReply":false}' } }] }, 'tool_calls')];
+    return new Response(events.map(event => `data: ${JSON.stringify(event)}\n\n`).join('') + 'data: [DONE]\n\n', {
       status: 200, headers: { 'content-type': 'text/event-stream' },
     });
   });
@@ -362,7 +368,8 @@ test('AI SDK Mistral provider sends the selected model and key to its default en
     expect(seen[0]?.url).toBe('https://api.mistral.ai/v1/chat/completions');
     expect(seen[0]?.authorization).toBe('Bearer fake-key');
     expect(seen[0]?.body).toMatchObject({ model: 'mistral-small-latest', stream: true,
-      temperature: 0.2, max_tokens: 128, response_format: { type: 'json_schema' } });
+      temperature: 0.2, max_tokens: 128, tool_choice: 'any', tools: [{ function: { name: 'finish' } }] });
+    expect(seen[0]?.body).not.toHaveProperty('response_format');
   } finally { vi.unstubAllGlobals(); }
 });
 
@@ -407,13 +414,13 @@ test.each([
     expect(seen.url).toMatch(/^https:\/\/generativelanguage\.googleapis\.com\/v1beta\/models\/gemini-model:streamGenerateContent/);
     expect(seen.headers.get('x-goog-api-key')).toBe('fake-key');
     expect(seen.headers.get('authorization')).toBeNull();
-    expect(seen.body.generationConfig).toMatchObject({ responseMimeType: 'application/json' });
+    expect(seen.body.toolConfig).toMatchObject({ functionCallingConfig: { mode: 'ANY' } });
   } },
   { provider: 'openai-compatible' as const, model: 'local-model', baseURL: 'https://models.example/v1',
     check: (seen: Seen) => {
       expect(seen.url).toBe('https://models.example/v1/chat/completions');
       expect(seen.headers.get('authorization')).toBe('Bearer fake-key');
-      expect(seen.body.response_format).toMatchObject({ type: 'json_schema' });
+      expect(seen.body.tool_choice).toBe('required');
     } },
 ])('the $provider provider sends the model, key and reply schema to its endpoint', async ({ check, ...llm }) => {
   const seen: Seen[] = [];
@@ -430,7 +437,7 @@ test.each([
     check(seen[0]!);
     // Gemini carries the model in the path, the others in the body.
     expect(seen[0]!.url + JSON.stringify(seen[0]!.body)).toContain(llm.model);
-    // The reply schema reaches the provider, whatever field each API uses for it.
+    // The schema of finish reaches the provider, whatever field each API uses for tools.
     expect(JSON.stringify(seen[0]!.body)).toContain('expectsReply');
   } finally { vi.unstubAllGlobals(); }
 });
@@ -443,168 +450,113 @@ test('an OpenAI-compatible agent without an endpoint is rejected before any requ
     .toThrow('Invalid agent configuration');
 });
 
-/** A model whose reply steps and announcement are scripted; the announcement resolves when `release` is called. */
-function announcing(steps: Array<{ parts: object[]; reason: 'stop' | 'tool-calls' }>,
-  announcement: Readonly<{ text?: string; fail?: boolean }>) {
-  let release!: () => void;
-  const released = new Promise<void>(resolve => { release = resolve; });
+/** Like `scripted`, with a clock advanced by `stepMs` at every model call. */
+function timed(clock: { now: number }, stepMs: number, ...steps: Array<{ parts: object[]; reason: 'stop' | 'tool-calls' }>) {
   let next = 0;
-  const model = new MockLanguageModelV4({
-    doStream: async () => {
-      const step = steps[next++];
-      if (!step) throw new Error('Unexpected model step');
-      return { stream: simulateReadableStream({ chunks: [...step.parts, { type: 'finish',
-        finishReason: { unified: step.reason, raw: undefined }, usage }] as any[] }) };
-    },
-    doGenerate: async ({ abortSignal }) => {
-      await Promise.race([released, new Promise((_, reject) =>
-        abortSignal?.addEventListener('abort', () => reject(new Error('aborted')), { once: true }))]);
-      if (announcement.fail) throw new Error('Announcement failed');
-      return { content: [{ type: 'text', text: JSON.stringify({ announcement: announcement.text ?? '' }) }],
-        warnings: [], finishReason: { unified: 'stop', raw: undefined }, usage } as any;
-    },
-  });
-  return { model, release };
+  return new MockLanguageModelV4({ doStream: async () => {
+    clock.now += stepMs;
+    const step = steps[next++];
+    if (!step) throw new Error('Unexpected model step');
+    return { stream: simulateReadableStream({ chunks: [...step.parts, { type: 'finish',
+      finishReason: { unified: step.reason, raw: undefined }, usage }] as any[] }) };
+  } });
 }
 
 const lookupTool = { prompts: [], tools: [{ name: 'lookup', inputSchema: { type: 'object' } }] };
 
 // Verification: Prova dell'annuncio dell'azione
-test('the announcement is spoken while the tool runs, and a successful action ends without other words', async () => {
+test('the sentence written before a tool call is delivered before the tool runs, and nothing follows a success', async () => {
   const order: string[] = [];
-  const { model, release } = announcing([
-    { parts: [callPart('lookup', {})], reason: 'tool-calls' },
+  const model = scripted(
+    { parts: [...textParts('Cerco una canzone di Neffa.'), callPart('lookup', {})], reason: 'tool-calls' },
     { parts: answer(''), reason: 'stop' },
-  ], { text: '  I am looking for a song by Neffa and playing it. ' });
-  let finishTool!: () => void;
-  const toolDone = new Promise<void>(resolve => { finishTool = resolve; });
-  const reply = new AiSdkToolAgentReply({ ...settings, responseLanguage: 'it' }, lookupTool, { getPrompt,
-    async callTool() {
-      order.push('tool started');
-      release();
-      await toolDone;
-      order.push('tool finished');
-      return { isError: false, content: [{ type: 'text', text: 'playing' }] };
-    } }, 2, model);
+  );
+  let delivered!: () => void;
+  const sentence = new Promise<void>(resolve => { delivered = resolve; });
+  const reply = new AiSdkToolAgentReply(settings, lookupTool, { getPrompt, async callTool() {
+    await sentence;
+    order.push('tool finished');
+    return { isError: false, content: [{ type: 'text', text: 'playing' }] };
+  } }, 2, model);
   const parts: ReplyPart[] = [];
   for await (const part of reply.produce(history, never())) {
-    if (part.kind === 'text') { order.push('announcement'); finishTool(); }
+    if (part.kind === 'text') { order.push('sentence'); delivered(); }
     parts.push(part);
   }
-  expect(parts).toEqual([text('I am looking for a song by Neffa and playing it.\n'), expectation(false)]);
-  expect(order).toEqual(['tool started', 'announcement', 'tool finished']);
-  const call = model.doGenerateCalls[0]!;
-  expect(call.tools ?? []).toEqual([]);
-  expect(call.responseFormat).toMatchObject({ type: 'json', schema: { properties: { announcement: { type: 'string' } },
-    required: ['announcement'] } });
-  expect(String(call.prompt[0]?.content)).toBe(`${settings.instructions}\nWrite in Italian.\nYou are not answering now. `
-    + 'Your instructions above describe what your tools let you do. Decide only whether the last message of the family '
-    + 'asks you to do something with them, such as playing, turning on or off, changing or adding something. If it '
-    + 'does, write in announcement one short sentence that tells the family what you are about to do, for example '
-    + '"I am looking for a song by Neffa and playing it." If the message only asks for information, leave announcement '
-    + 'empty. Do not do it yet.');
+  expect(parts).toEqual([text('Cerco una canzone di Neffa.'), expectation(false)]);
+  expect(order).toEqual(['sentence', 'tool finished']);
+  // One generation: no separate call for the announcement.
+  expect(model.doStreamCalls).toHaveLength(2);
+  expect(model.doGenerateCalls).toHaveLength(0);
+  expect(model.doStreamCalls[0]?.toolChoice).toEqual({ type: 'required' });
   expect(String(model.doStreamCalls[0]?.prompt[0]?.content)).toContain(actionRules);
 });
 
 // Verification: Prova dell'annuncio dell'azione
-test.each([
-  ['empty', { text: '' }, true],
-  ['too long', { text: 'x'.repeat(201) }, true],
-  ['failed', { fail: true }, true],
-  ['late', { text: 'I am checking the weather.' }, false],
-] as const)('a %s announcement leaves the reply parts unchanged', async (_case, announcement, releaseEarly) => {
-  const { model, release } = announcing([{ parts: answer('It is sunny.'), reason: 'stop' }], announcement);
-  if (releaseEarly) release();
+test('a confirmation after the tool is separated from the earlier text by a line break', async () => {
+  const model = scripted(
+    { parts: [...textParts('Accendo la luce.'), callPart('lookup', {})], reason: 'tool-calls' },
+    { parts: answer('La lampadina non risponde.'), reason: 'stop' },
+  );
   const reply = new AiSdkToolAgentReply(settings, lookupTool, { getPrompt,
-    async callTool() { throw new Error('Unexpected tool call'); } }, 1, model);
-  const parts = await collect(reply.produce(history, never()));
-  release();
-  expect(parts).toEqual([text('It is sunny.'), expectation(false)]);
-  // A late announcement is stopped once the reply has its first part.
-  if (!releaseEarly) expect(model.doGenerateCalls[0]?.abortSignal?.aborted).toBe(true);
+    async callTool() { return { isError: true, content: [{ type: 'text', text: 'unavailable' }] }; } }, 2, model);
+  expect(await collect(reply.produce(history, never()))).toEqual([text('Accendo la luce.'), text('\n'),
+    text('La lampadina non risponde.'), expectation(false)]);
+
+  const silent = scripted({ parts: [callPart('lookup', {})], reason: 'tool-calls' },
+    { parts: answer('Fatto.'), reason: 'stop' });
+  const confirmed = new AiSdkToolAgentReply(settings, lookupTool, { getPrompt,
+    async callTool() { return { isError: false, content: [] }; } }, 2, silent);
+  expect(await collect(confirmed.produce(history, never()))).toEqual([text('Fatto.'), expectation(false)]);
 });
 
-// Verification: Prova dell'annuncio dell'azione
-test('the cancellation stops the announcement too, and an agent without MCP makes no announcement call', async () => {
-  let request!: () => void;
-  const stop = { requested: new Promise<void>(resolve => { request = resolve; }) };
-  const { model } = announcing([{ parts: [callPart('lookup', {})], reason: 'tool-calls' },
-    { parts: answer('Done.'), reason: 'stop' }], { text: 'Never spoken.' });
-  let toolCalled!: () => void;
-  const called = new Promise<void>(resolve => { toolCalled = resolve; });
-  const reply = new AiSdkToolAgentReply(settings, lookupTool, { getPrompt, async callTool(_name, _args, signal) {
-    toolCalled();
-    await new Promise((_, reject) => signal?.addEventListener('abort', () => reject(new Error('stopped')),
-      { once: true }));
-    throw new Error('Unreachable');
-  } }, 1, model);
-  const produced = collect(reply.produce(history, stop)).catch(() => 'stopped');
-  await called;
-  request();
-  await produced;
-  expect(model.doGenerateCalls[0]?.abortSignal?.aborted).toBe(true);
-  expect(model.doStreamCalls[0]?.abortSignal?.aborted).toBe(true);
-
-  const knowledgeModel = announcing([{ parts: answer('Hello.'), reason: 'stop' }], { text: 'Never asked.' });
-  knowledgeModel.release();
-  const knowledge = new AiSdkKnowledgeAgentReply(settings, knowledgeModel.model);
-  expect(await collect(knowledge.produce(history, never()))).toEqual([text('Hello.'), expectation(false)]);
-  expect(knowledgeModel.model.doGenerateCalls).toHaveLength(0);
-  expect(knowledgeModel.model.doStreamCalls).toHaveLength(1);
+// Verification: Prova della segnalazione della replica attesa
+test('a reply that never calls finish fails instead of being taken as not expecting a reply', async () => {
+  const model = scripted({ parts: textParts('Ciao.'), reason: 'stop' });
+  const reply = new AiSdkKnowledgeAgentReply(settings, model);
+  await expect(collect(reply.produce(history, never()))).rejects.toThrow('AI SDK response failed');
+  const asking = scripted({ parts: answer('Quale stanza?', true), reason: 'stop' });
+  expect(await collect(new AiSdkKnowledgeAgentReply(settings, asking).produce(history, never())))
+    .toEqual([text('Quale stanza?'), expectation(true)]);
 });
 
 // Verification: Prova dell'evento dei tempi della risposta
 test('the orchestrator logs the timing of each completed reply without conversation texts', async () => {
-  let clock = 0;
+  const clock = { now: 0 };
   const events: Array<{ level: string; fields: Record<string, unknown> }> = [];
   const record = (level: string) => (fields: Record<string, unknown>) => { events.push({ level, fields }); };
   const log = { debug: record('debug'), info: record('info'), warn: record('warn'), error: record('error'),
     child: () => log };
   const router = new MockLanguageModelV4({ doGenerate: async () => {
-    clock += 300;
+    clock.now += 300;
     const agent = ['music', 'facts', 'broken'][router.doGenerateCalls.length - 1];
     return { content: [{ type: 'text', text: JSON.stringify({ agent }) }], warnings: [],
       finishReason: { unified: 'stop', raw: undefined }, usage } as any;
   } });
-  const { model, release } = announcing([
-    { parts: [callPart('lookup', { query: 'Neffa' })], reason: 'tool-calls' },
+  const model = timed(clock, 100,
+    { parts: [...textParts('Metto Neffa.'), callPart('lookup', { query: 'Neffa' })], reason: 'tool-calls' },
     { parts: [callPart('lookup', { query: 'play' }, 'call-2')], reason: 'tool-calls' },
     { parts: answer(''), reason: 'stop' },
-  ], { text: 'I am playing Neffa.' });
+  );
   const music = new AiSdkToolAgentReply(settings, lookupTool, { getPrompt, async callTool() {
-    if (clock === 300) { clock += 100; release(); await new Promise(resolve => setTimeout(resolve, 5)); }
-    clock += 1_000;
+    clock.now += 1_000;
     return { isError: false, content: [{ type: 'text', text: 'ok' }] };
-  } }, 2, model, () => clock);
+  } }, 2, model, () => clock.now);
   const facts = new AiSdkKnowledgeAgentReply(settings, scripted({ parts: answer('Cats purr.'), reason: 'stop' }));
   const broken = recordingAgent('broken', 'Fails', []);
   broken.reply.produce = async function* () { throw new Error('Agent failed'); };
   const orchestrator = new AiSdkOrchestratorReply(settings, [
     { id: 'music', description: 'Plays music', reply: music }, { id: 'facts', description: 'Facts', reply: facts },
     broken,
-  ], router, { log, now: () => clock });
+  ], router, { log, now: () => clock.now });
   await collect(orchestrator.produce(history, never()));
   await collect(orchestrator.produce(history, never()));
   await expect(collect(orchestrator.produce(history, never()))).rejects.toThrow();
   expect(events).toEqual([
-    { level: 'info', fields: { event: 'conversation_reply_timing', agent: 'music', routerMs: 300, agentMs: 2_100,
-      modelSteps: 3, toolCalls: 2, toolMs: 2_100, announcementMs: 100 } },
+    { level: 'info', fields: { event: 'conversation_reply_timing', agent: 'music', routerMs: 300, agentMs: 2_300,
+      modelSteps: 3, toolCalls: 2, toolMs: 2_000, announcementMs: 100 } },
     { level: 'info', fields: { event: 'conversation_reply_timing', agent: 'facts', routerMs: 300, agentMs: 0,
       modelSteps: 1 } },
   ]);
   expect(JSON.stringify(events)).not.toMatch(/Neffa|Cats|Find it|lookup|query/);
-});
-
-// Verification: Prova dell'annuncio dell'azione
-test('the announcement call receives the agent instructions without the server prompts', async () => {
-  const { model, release } = announcing([{ parts: answer('Done.'), reason: 'stop' }], { text: '' });
-  release();
-  const reply = new AiSdkToolAgentReply(settings, { tools: [], prompts: ['assist'] },
-    { getPrompt: async () => 'Server workflow', async callTool() { throw new Error('Unexpected tool call'); } },
-    1, model);
-  await collect(reply.produce(history, never()));
-  expect(String(model.doStreamCalls[0]?.prompt[0]?.content)).toContain('Server workflow');
-  const announcement = String(model.doGenerateCalls[0]?.prompt[0]?.content);
-  expect(announcement.startsWith(settings.instructions)).toBe(true);
-  expect(announcement).not.toContain('Server workflow');
 });

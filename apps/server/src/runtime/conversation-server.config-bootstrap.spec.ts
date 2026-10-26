@@ -133,10 +133,14 @@ test('uses the validated agent, HTTP and conversation configuration throughout t
           message: { role: 'assistant', content: '{"agent":"generic"}' }, finish_reason: 'stop' }],
         usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } });
     }
-    const event = { id: 'controlled-1', object: 'chat.completion.chunk', created: 0,
-      model: 'mistral-small-latest', choices: [{ index: 0, delta: { content: '{"answer":"Risposta","expectsReply":false}' },
-        finish_reason: null }] };
-    return new Response(`data: ${JSON.stringify(event)}\n\ndata: [DONE]\n\n`, {
+    const reply = (text: string) => [
+      { id: 'controlled-1', object: 'chat.completion.chunk', created: 0, model: 'mistral-small-latest',
+        choices: [{ index: 0, delta: { content: text }, finish_reason: null }] },
+      { id: 'controlled-1', object: 'chat.completion.chunk', created: 0, model: 'mistral-small-latest',
+        choices: [{ index: 0, delta: { tool_calls: [{ id: 'finish0001', type: 'function',
+          function: { name: 'finish', arguments: '{"expectsReply":false}' } }] }, finish_reason: 'tool_calls' }] },
+    ].map(event => `data: ${JSON.stringify(event)}\n\n`).join('') + 'data: [DONE]\n\n';
+    return new Response(reply('Risposta'), {
       status: 200, headers: { 'content-type': 'text/event-stream' },
     });
   });
@@ -174,8 +178,10 @@ test('uses the validated agent, HTTP and conversation configuration throughout t
       expect(seen.map(request => system(request).split('\n')[0])).toEqual([
         'Scegli l\'agente.', 'Rispondi brevemente.', 'Scegli l\'agente.', 'Rispondi brevemente.',
       ]);
-      // The agent without MCP is offered no tools.
-      expect(seen.every(request => (request.body as { tools?: unknown }).tools === undefined)).toBe(true);
+      // The router is offered no tools; the agent without MCP only the final tool finish.
+      const toolNames = (request: typeof seen[number]) => ((request.body as { tools?: Array<{ function: { name: string } }> })
+        .tools ?? []).map(tool => tool.function.name);
+      expect(seen.map(toolNames)).toEqual([[], ['finish'], [], ['finish']]);
     } finally { await runtime.close(); }
   } finally { vi.unstubAllGlobals(); }
 });

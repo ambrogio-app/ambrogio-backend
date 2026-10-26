@@ -268,7 +268,11 @@ Una trascrizione è utilizzabile quando il testo restituito, eliminati gli spazi
 
 ### Evento diagnostico dei tempi del turno vocale
 
-Quando un turno con ingresso audio si conclude con l'invio di `turn.completed`, l'adapter del canale emette con il logger derivato della sessione una sola riga Pino di livello `info` con `event: "conversation_voice_turn_timing"`. Oltre ai campi che il logger di base aggiunge a ogni riga, al `correlationId` e a `event`, la riga contiene soltanto le durate seguenti, in millisecondi interi non negativi misurati con un orologio monotono dalla ricezione di `input.end`:
+Quando un turno con ingresso audio si conclude con l'invio di `turn.completed`, l'adapter del canale emette con il logger derivato della sessione una sola riga Pino di livello `info` con `event: "conversation_voice_turn_timing"`. Oltre ai campi che il logger di base aggiunge a ogni riga, al `correlationId` e a `event`, la riga contiene soltanto le durate seguenti, in millisecondi interi non negativi:
+
+- `audioMs`: la durata dell'audio ricevuto per la richiesta, calcolata dal numero di byte PCM16 a 16 kHz;
+
+e, misurate con un orologio monotono dalla ricezione di `input.end`:
 
 - `transcriptionMs`: fino alla trascrizione completa della richiesta;
 - `firstTextMs`: fino al primo frammento di testo della risposta prodotto dagli agenti;

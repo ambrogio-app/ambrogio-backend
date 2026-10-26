@@ -123,7 +123,8 @@ type OpenRequest = {
 };
 
 /** Instants of a voice turn on the monotonic clock, from the reception of `input.end`. */
-type VoiceTiming = { readonly end: number; transcribed?: number; firstText?: number; firstAudio?: number };
+type VoiceTiming = { readonly end: number; readonly audioBytes: number; transcribed?: number; firstText?: number;
+  firstAudio?: number };
 
 type ActiveTurn = {
   readonly requestId: string;
@@ -309,7 +310,7 @@ class ConversationSession {
   private async runTurn(request: OpenRequest): Promise<void> {
     const { dependencies } = this.owner;
     const turn: ActiveTurn = { requestId: request.requestId, reply: request.reply, finished: false,
-      ...(request.content === 'audio' ? { timing: { end: this.owner.now() } } : {}) };
+      ...(request.content === 'audio' ? { timing: { end: this.owner.now(), audioBytes: request.audioBytes } } : {}) };
     this.turns.add(turn);
     try {
       const speech = dependencies.speech;
@@ -399,11 +400,12 @@ class ConversationSession {
     }
   }
 
-  /** The durations of an answered voice turn from `input.end`: no text, audio or identifier. */
+  /** The received audio and the durations of an answered voice turn from `input.end`: no text, audio or identifier. */
   private logVoiceTiming(timing: VoiceTiming): void {
     const since = (instant: number | undefined) =>
       instant === undefined ? undefined : Math.max(0, Math.round(instant - timing.end));
-    const fields: Record<string, number> = {};
+    // The protocol fixes the request audio at PCM16 16 kHz: 32 bytes per millisecond.
+    const fields: Record<string, number> = { audioMs: Math.round(timing.audioBytes / 32) };
     for (const [name, instant] of [['transcriptionMs', timing.transcribed], ['firstTextMs', timing.firstText],
       ['firstAudioMs', timing.firstAudio], ['completedMs', this.owner.now()]] as const) {
       const value = since(instant);

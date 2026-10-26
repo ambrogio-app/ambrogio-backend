@@ -371,9 +371,12 @@ describe('voice turn timing', () => {
     socket.client({ type: 'session.hello', clientId: 'test', name: 'Test' });
     const voiceTurn = async (requestId: string, stream: number, reply: 'audio' | 'text') => {
       socket.client({ type: 'input.start', requestId, stream, content: { type: 'audio', sampleRate: 16000 }, reply });
-      const frame = Buffer.alloc(4 + 320);
-      frame.writeUInt32BE(stream, 0);
-      socket.emit('message', frame, true);
+      // 1.5 seconds of PCM16 at 16 kHz, in two frames.
+      for (const bytes of [32_000, 16_000]) {
+        const frame = Buffer.alloc(4 + bytes);
+        frame.writeUInt32BE(stream, 0);
+        socket.emit('message', frame, true);
+      }
       clock = 1_000;
       socket.client({ type: 'input.end', requestId });
       return socket.final(requestId);
@@ -386,9 +389,10 @@ describe('voice turn timing', () => {
 
     const timings = events.filter(event => event.fields.event === 'conversation_voice_turn_timing');
     expect(timings.map(event => [event.level, event.fields, event.bindings])).toEqual([
-      ['info', { event: 'conversation_voice_turn_timing', transcriptionMs: 100, firstTextMs: 300, firstAudioMs: 500,
+      ['info', { event: 'conversation_voice_turn_timing', audioMs: 1_500, transcriptionMs: 100, firstTextMs: 300, firstAudioMs: 500,
         completedMs: 800 }, { correlationId: 'session-1' }],
-      ['info', { event: 'conversation_voice_turn_timing', transcriptionMs: 100, firstTextMs: 300, completedMs: 300 },
+      ['info', { event: 'conversation_voice_turn_timing', audioMs: 1_500, transcriptionMs: 100, firstTextMs: 300,
+        completedMs: 300 },
         { correlationId: 'session-1' }],
     ]);
     const logged = JSON.stringify(timings);

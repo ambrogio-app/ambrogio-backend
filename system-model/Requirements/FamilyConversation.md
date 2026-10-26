@@ -1287,7 +1287,7 @@ Quando il backend riceve un nuovo turno con l'identificativo di una conversazion
 
 ### Registrazione dei tempi dei turni vocali
 
-Quando un turno con ingresso audio si conclude con una risposta, il backend deve registrare un evento diagnostico informativo con i tempi della trascrizione, del primo testo della risposta, del primo audio della risposta e della conclusione del turno, misurati dalla fine della richiesta, senza testi, audio o identificativi della conversazione e del turno.
+Quando un turno con ingresso audio si conclude con una risposta, il backend deve registrare un evento diagnostico informativo con la durata dell'audio ricevuto e con i tempi della trascrizione, del primo testo della risposta, del primo audio della risposta e della conclusione del turno, misurati dalla fine della richiesta, senza testi, audio o identificativi della conversazione e del turno.
 
 #### Details
 L'evento rende misurabile, su ogni installazione, il ritardo fra la fine della richiesta e la risposta parlata e mostra quale fase lo determina: trascrizione, risposta degli agenti o sintesi. Ha livello `info` perché registra un esito riuscito e non un guasto.

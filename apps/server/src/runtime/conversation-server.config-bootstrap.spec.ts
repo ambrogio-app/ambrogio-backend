@@ -137,8 +137,7 @@ test('uses the validated agent, HTTP and conversation configuration throughout t
       { id: 'controlled-1', object: 'chat.completion.chunk', created: 0, model: 'mistral-small-latest',
         choices: [{ index: 0, delta: { content: text }, finish_reason: null }] },
       { id: 'controlled-1', object: 'chat.completion.chunk', created: 0, model: 'mistral-small-latest',
-        choices: [{ index: 0, delta: { tool_calls: [{ id: 'finish0001', type: 'function',
-          function: { name: 'finish', arguments: '{"expectsReply":false}' } }] }, finish_reason: 'tool_calls' }] },
+        choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] },
     ].map(event => `data: ${JSON.stringify(event)}\n\n`).join('') + 'data: [DONE]\n\n';
     return new Response(reply('Risposta'), {
       status: 200, headers: { 'content-type': 'text/event-stream' },
@@ -178,10 +177,10 @@ test('uses the validated agent, HTTP and conversation configuration throughout t
       expect(seen.map(request => system(request).split('\n')[0])).toEqual([
         'Scegli l\'agente.', 'Rispondi brevemente.', 'Scegli l\'agente.', 'Rispondi brevemente.',
       ]);
-      // The router is offered no tools; the agent without MCP only the final tool finish.
+      // Neither the router nor the agent without MCP is offered tools.
       const toolNames = (request: typeof seen[number]) => ((request.body as { tools?: Array<{ function: { name: string } }> })
         .tools ?? []).map(tool => tool.function.name);
-      expect(seen.map(toolNames)).toEqual([[], ['finish'], [], ['finish']]);
+      expect(seen.map(toolNames)).toEqual([[], [], [], []]);
     } finally { await runtime.close(); }
   } finally { vi.unstubAllGlobals(); }
 });

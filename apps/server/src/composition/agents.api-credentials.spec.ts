@@ -28,8 +28,7 @@ test('passes each credential named by an agent file to its own controlled Mistra
       { id: 'controlled-1', object: 'chat.completion.chunk', created: 0, model: 'mistral-small-latest',
         choices: [{ index: 0, delta: { content: text }, finish_reason: null }] },
       { id: 'controlled-1', object: 'chat.completion.chunk', created: 0, model: 'mistral-small-latest',
-        choices: [{ index: 0, delta: { tool_calls: [{ id: 'finish0001', type: 'function',
-          function: { name: 'finish', arguments: '{"expectsReply":false}' } }] }, finish_reason: 'tool_calls' }] },
+        choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] },
     ].map(event => `data: ${JSON.stringify(event)}\n\n`).join('') + 'data: [DONE]\n\n';
     return new Response(reply('answer'), {
       status: 200, headers: { 'content-type': 'text/event-stream' },

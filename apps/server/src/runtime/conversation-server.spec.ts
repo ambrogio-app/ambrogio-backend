@@ -782,8 +782,7 @@ test('a session turn delegates to a configured MCP tool and persists the answer'
       const finish = (reason: 'stop' | 'tool-calls') => ({ type: 'finish',
         finishReason: { unified: reason, raw: undefined }, usage });
       const answer = (value: string) => [{ type: 'text-start', id: 'text-1' },
-        { type: 'text-delta', id: 'text-1', delta: value }, { type: 'text-end', id: 'text-1' },
-        { type: 'tool-call', toolCallId: 'finish-1', toolName: 'finish', input: '{"expectsReply":false}' }];
+        { type: 'text-delta', id: 'text-1', delta: value }, { type: 'text-end', id: 'text-1' }];
       const specialistModel = new MockLanguageModelV4({ modelId: 'controlled-model',
         doStream: async (request) => {
           modelRequests.push({ model: 'controlled-model',

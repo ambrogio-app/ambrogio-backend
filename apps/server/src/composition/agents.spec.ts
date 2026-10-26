@@ -205,7 +205,8 @@ test('applies the configured response language to specialists but not the orches
         && !system.startsWith('Answer briefly.'));
       expect(block.find(system => system.startsWith('Answer briefly.'))).toContain(`Answer in ${language}.`);
       expect(reply).toContain(`Weather context.\nAnswer in ${language}.`);
-      expect(announcement).toContain(`Weather context.\nWrite in ${language}.`);
+      expect(announcement).toContain(`Write in ${language}.`);
+      expect(announcement).not.toContain('Weather context.');
       expect(orchestrator).not.toContain('Answer in Italian.');
       expect(orchestrator).not.toContain('Answer in English.');
       orchestrators.push(orchestrator!);

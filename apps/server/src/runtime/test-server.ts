@@ -48,7 +48,7 @@ export async function startTestServer(options: TestServerOptions): Promise<TestS
     // Built without listening; the deterministic speech components ignore the model paths of the voice configuration.
     const { server, turnIngress } = await buildConversationServer({ host: '127.0.0.1', port: 0,
       allowedOrigins: options.allowedOrigins ?? [], publicHttps: false }, prepared, options.reply,
-    options.speech ? { sttModelDir: options.directory, voiceEngine: 'piper', voiceModelDir: options.directory } : undefined, options.speech, { log, resources,
+    options.speech ? { sttModelDir: options.directory, voiceModelDir: options.directory } : undefined, options.speech, { log, resources,
       ...(options.sessionPingIntervalMs === undefined ? {} : { sessionPingIntervalMs: options.sessionPingIntervalMs }) });
     // This module is the entry point of the test server: it activates the listener itself.
     const origin = await server.listen({ host: '127.0.0.1', port: 0 });

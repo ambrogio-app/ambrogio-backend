@@ -18,15 +18,13 @@ const archives = [
     sha256: '7541f75778afa164e44e34baaef63befad7698595df26a95ca944b63ef1a16b4', kind: 'piper' },
   { name: 'vits-piper-en_US-kristin-medium', extension: 'tar.bz2',
     sha256: 'c2206f572df2956c50b1ae3367eebce3853c663e890cba8048cd62b1e4dbe6c7', kind: 'piper' },
-  { name: 'kokoro-multi-lang-v1_0', extension: 'tar.bz2',
-    sha256: 'c5f7e2d2caf082bc1d20fb70334a61d99d20b484500aad32e7cf84c128ea3298', kind: 'kokoro' },
 ];
 
-const [voicesRoot, modelsRoot, kokoroRoot] = process.argv.slice(2);
-if (!voicesRoot || !modelsRoot || !kokoroRoot) {
-  throw new Error('Usage: node scripts/fetch-speech-models.mjs <voices-root> <models-root> <kokoro-root>');
+const [voicesRoot, modelsRoot] = process.argv.slice(2);
+if (!voicesRoot || !modelsRoot) {
+  throw new Error('Usage: node scripts/fetch-speech-models.mjs <voices-root> <models-root>');
 }
-const roots = { piper: voicesRoot, transcription: modelsRoot, kokoro: kokoroRoot };
+const roots = { piper: voicesRoot, transcription: modelsRoot };
 /** The Nemotron files kept in the image: the int8 encoder, decoder and joiner and the tokens. */
 const transcriptionFiles = ['decoder.int8.onnx', 'encoder.int8.onnx', 'joiner.int8.onnx', 'tokens.txt'];
 
@@ -43,9 +41,8 @@ async function checkExtracted(name, kind, root) {
   }
   const entries = await readdir(directory);
   if (entries.filter(entry => entry.endsWith('.onnx')).length !== 1
-    || !entries.includes('tokens.txt') || (kind === 'piper' && !entries.includes('MODEL_CARD'))
-    || !(await stat(join(directory, 'espeak-ng-data'))).isDirectory()
-    || (kind === 'kokoro' && (!entries.includes('voices.bin') || !entries.includes('LICENSE')))) {
+    || !entries.includes('tokens.txt') || !entries.includes('MODEL_CARD')
+    || !(await stat(join(directory, 'espeak-ng-data'))).isDirectory()) {
     throw new Error(`Unexpected model content: ${name}`);
   }
 }

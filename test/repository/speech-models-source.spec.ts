@@ -29,7 +29,7 @@ function fetchedArchives(): Map<string, string> {
 
 test('the recorded speech models match the download script and the provenance note', () => {
   const recorded = tableArchives(sourceElement());
-  expect(recorded.size).toBe(5);
+  expect(recorded.size).toBe(4);
   expect(fetchedArchives()).toEqual(recorded);
   expect(tableArchives(read('voices/README.md'))).toEqual(recorded);
 });

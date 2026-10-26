@@ -891,26 +891,9 @@ La prova passa se lo storico conserva solo testo e dati non audio e se nessuna r
   * verify: [Conservazione solo testuale della conversazione](../Requirements/FamilyConversation.md#conservazione-solo-testuale-della-conversazione)
 ---
 
-### Prova della scelta del motore di sintesi
-
-Leggere configurazioni vocali di prova con directory di voce fittizie per entrambi i motori: `AMBROGIO_VOICE_<LINGUA>_ENGINE` uguale a `piper` senza `SPEAKER` né `LANGUAGE`; uguale a `kokoro` con `SPEAKER` 0, 35 e 52 e `LANGUAGE` `it`, `en` e `pt-br`; directory Kokoro con `model.onnx` e con un unico `model.int8.onnx`. Provare poi i casi invalidi: motore assente o sconosciuto; `SPEAKER` o `LANGUAGE` presenti con `piper`; uno dei due assente con `kokoro`; `SPEAKER` negativo, decimale o nome di voce come `if_sara`; directory Kokoro priva di file `.onnx`, con due file `.onnx` o priva di `voices.bin`, `tokens.txt` o `espeak-ng-data/`. Con il motore di sintesi controllato costruire il sintetizzatore per ciascun motore, sintetizzare una frase e registrare la configurazione passata a `createAsync` e il `sid` di ogni generazione; ripetere con un motore controllato che dichiara meno voci dello `SPEAKER` configurato. Quando la variabile d'ambiente che indica una directory Kokoro reale è presente, sintetizzare inoltre una breve frase italiana con le voci 35 e 36 e una breve frase inglese con la voce 0 e lingua `en`.
-
-#### Details
-La prova passa se le configurazioni valide sono accettate con il motore, la voce e la lingua indicati; ogni caso invalido rende invalida la configurazione vocale oppure la directory della voce non disponibile prima della costruzione del sintetizzatore; con `piper` la configurazione contiene la sola sezione `vits` con i file della directory e ogni generazione usa `sid` 0; con `kokoro` la configurazione contiene la sola sezione `kokoro` con l'unico file `.onnx`, `voices.bin`, `tokens.txt`, `espeak-ng-data/` e `lang` uguale alla lingua configurata, e ogni generazione usa `sid` uguale allo `SPEAKER` configurato; uno `SPEAKER` non inferiore a `numSpeakers` impedisce la costruzione del sintetizzatore; caricamento unico, `numThreads` e formato dell'audio restano quelli della prova della sintesi nel processo backend. Con il modello Kokoro reale la prova passa se l'audio di ogni voce provata è non vuoto alla frequenza del modello. Fallisce se una configurazione invalida è accettata, se il motore, la voce o la lingua usati differiscono da quelli configurati, se la lingua o la voce sono imposte dal backend o se una voce fuori intervallo raggiunge la sintesi.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
-  * satisfiedBy: [sherpa-synthesizer.spec.ts](../../packages/conversations/src/adapters/in/session/sherpa-synthesizer.spec.ts)
-  * satisfiedBy: [voice-config.spec.ts](../../packages/conversations/src/adapters/out/voice-config.spec.ts)
-  * verify: [Scelta del motore di sintesi vocale](../Requirements/FamilyConversation.md#scelta-del-motore-di-sintesi-vocale)
----
-
 ### Prova della selezione vocale per lingua
 
-Preparare profili vocali italiani e inglesi con variabili che indicano percorsi espliciti alle directory incluse e a directory esterne montate, scegliendo tra più voci della stessa lingua, Piper e Kokoro. Provare la lingua effettiva italiana e inglese, la lingua effettiva assente da `AMBROGIO_VOICE_LANGUAGES`, una lingua sconosciuta o ripetuta nell'elenco, variabili invalide nell'altro profilo elencato e la voce disabilitata con `AMBROGIO_VOICE_LANGUAGES` assente o vuota. Osservare risorse caricate, modello di trascrizione, voce e lingua di fonetizzazione Kokoro.
+Preparare profili vocali italiani e inglesi con variabili che indicano percorsi espliciti alle directory incluse e a directory esterne montate, scegliendo tra più voci Piper della stessa lingua. Provare la lingua effettiva italiana e inglese, la lingua effettiva assente da `AMBROGIO_VOICE_LANGUAGES`, una lingua sconosciuta o ripetuta nell'elenco, variabili invalide nell'altro profilo elencato e la voce disabilitata con `AMBROGIO_VOICE_LANGUAGES` assente o vuota. Osservare risorse caricate, modello di trascrizione e voce.
 
 #### Details
 La prova passa se ciascuna lingua seleziona esattamente i percorsi indicati, anche quando provengono da un mount o quando esistono più voci della stessa lingua; un elenco invalido o un profilo elencato con variabili invalide rende invalida la configurazione, l'altro profilo non carica i modelli e la voce disabilitata non legge altre variabili né carica modelli. Fallisce se una lingua carica percorsi diversi da quelli indicati, se un elenco o un profilo invalido è accettato o se vengono caricati modelli di un profilo non attivo o della voce disabilitata.
@@ -1011,6 +994,23 @@ La prova passa se entrambi i tentativi ricevono la trasmissione del messaggio pu
   * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
   * satisfiedBy: [http-server.session-rejections.spec.ts](../../apps/server/src/runtime/http-server.session-rejections.spec.ts)
   * verify: [Trascrizione vocale non riuscita](../Requirements/FamilyConversation.md#trascrizione-vocale-non-riuscita)
+---
+
+### Prova della voce Piper configurata
+
+Leggere configurazioni vocali di prova con una directory di voce Piper fittizia valida, con un file `model.onnx` e con un unico file `model.int8.onnx`, e con directory invalide: priva di file `.onnx`, con due file `.onnx`, priva di `tokens.txt` o di `espeak-ng-data/`. Con il motore di sintesi controllato costruire il sintetizzatore, sintetizzare una frase e registrare la configurazione passata a `createAsync` e il `sid` di ogni generazione.
+
+#### Details
+La prova passa se le directory valide sono accettate con la voce indicata; ogni directory invalida rende la voce non disponibile prima della costruzione del sintetizzatore; la configurazione passata a `createAsync` contiene la sola sezione `vits` con l'unico file `.onnx`, `tokens.txt` ed `espeak-ng-data/` della directory configurata e ogni generazione usa `sid` 0; caricamento unico, `numThreads` e formato dell'audio restano quelli della prova della sintesi nel processo backend. Fallisce se una directory invalida è accettata, se la voce usata differisce da quella configurata o se la lingua o la voce sono imposte dal backend.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
+  * satisfiedBy: [sherpa-synthesizer.spec.ts](../../packages/conversations/src/adapters/in/session/sherpa-synthesizer.spec.ts)
+  * satisfiedBy: [voice-config.spec.ts](../../packages/conversations/src/adapters/out/voice-config.spec.ts)
+  * verify: [Sintesi con la voce Piper configurata](../Requirements/FamilyConversation.md#sintesi-con-la-voce-piper-configurata)
 ---
 
 ### Verifica della conversazione testuale

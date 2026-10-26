@@ -96,7 +96,7 @@ sequenceDiagram
 - Node.js 24 or later; pnpm to build from source
 - Linux, or Docker (the published image is `linux/amd64`)
 - An API key for each LLM provider you use. Agents reach Mistral, OpenAI, Anthropic, Google Gemini or any OpenAI-compatible API through the [Vercel AI SDK](https://ai-sdk.dev/). The models must support tool calling and structured JSON output
-- For voice only when running from source: a sherpa-onnx streaming transducer model, such as Nemotron 3.5 ASR streaming, and a voice for the same language; real-time streaming needs an x86_64 CPU with AVX2. The Docker image includes the multilingual Nemotron 3.5 ASR streaming model and Italian and English Piper and Kokoro voices; see [`voices/README.md`](voices/README.md)
+- For voice only when running from source: a sherpa-onnx streaming transducer model, such as Nemotron 3.5 ASR streaming, and a voice for the same language; real-time streaming needs an x86_64 CPU with AVX2. The Docker image includes the multilingual Nemotron 3.5 ASR streaming model and Italian and English Piper voices; see [`voices/README.md`](voices/README.md)
 
 **Main libraries**
 
@@ -106,7 +106,7 @@ sequenceDiagram
 | Storage | SQLite (`better-sqlite3`) with Kysely |
 | Validation | TypeBox, Ajv |
 | Agents | Vercel AI SDK (`ai`, `@ai-sdk/mistral`, `@ai-sdk/openai`, `@ai-sdk/anthropic`, `@ai-sdk/google`, `@ai-sdk/openai-compatible`), MCP client |
-| Speech | `sherpa-onnx-node` (streaming speech-to-text in a worker thread, Piper and Kokoro text-to-speech) |
+| Speech | `sherpa-onnx-node` (streaming speech-to-text in a worker thread, Piper text-to-speech) |
 | Logging | Pino, as JSON lines on stdout |
 
 ## Quick start
@@ -147,7 +147,7 @@ apps/server/              runnable server: runtime, composition, entry point
 packages/conversations/   "Conversations" business module (domain, application, adapters)
 protocol/                 JSON schema of the ambrogio.v1 protocol
 examples/                 ready agent files, without credentials
-voices/                   provenance of the bundled Nemotron, Piper and Kokoro models
+voices/                   provenance of the bundled Nemotron model and Piper voices
 system-model/             engineering model (requirements, contracts, verifications)
 ```
 

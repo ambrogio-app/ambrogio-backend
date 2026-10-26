@@ -27,7 +27,7 @@ Prova d'integrazione: «Prova della configurazione dell'adapter AI SDK» control
 
 ### Modelli vocali scaricati nell'immagine del backend
 
-Fonte: la release `tts-models` di k2-fsa/sherpa-onnx, https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models , per le voci Piper e il modello Kokoro, e la release `asr-models` della stessa organizzazione, https://github.com/k2-fsa/sherpa-onnx/releases/tag/asr-models , per il modello Nemotron. Le due release non hanno versioni: ogni archivio è identificato dal nome e dall'impronta SHA-256 fissata. La build scarica gli archivi seguenti e ne verifica l'impronta prima dell'estrazione; la directory estratta di ciascuno ha il nome dell'archivio senza estensione.
+Fonte: la release `tts-models` di k2-fsa/sherpa-onnx, https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models , per le voci Piper, e la release `asr-models` della stessa organizzazione, https://github.com/k2-fsa/sherpa-onnx/releases/tag/asr-models , per il modello Nemotron. Le due release non hanno versioni: ogni archivio è identificato dal nome e dall'impronta SHA-256 fissata. La build scarica gli archivi seguenti e ne verifica l'impronta prima dell'estrazione; la directory estratta di ciascuno ha il nome dell'archivio senza estensione.
 
 | Archivio | Uso | Origine | SHA-256 | Licenza |
 |---|---|---|---|---|
@@ -35,11 +35,10 @@ Fonte: la release `tts-models` di k2-fsa/sherpa-onnx, https://github.com/k2-fsa/
 | `vits-piper-it_IT-riccardo-x_low.tar.bz2` | Sintesi Piper italiana | Release `tts-models` | `8ad0791558ae2b3e96054fc5756ae3ae2f6457fb1765bc01f43bbab85e0a7021` | MIT, voce di rhasspy/piper-voices |
 | `vits-piper-it_IT-paola-medium.tar.bz2` | Sintesi Piper italiana | Release `tts-models` | `7541f75778afa164e44e34baaef63befad7698595df26a95ca944b63ef1a16b4` | MIT, voce di rhasspy/piper-voices |
 | `vits-piper-en_US-kristin-medium.tar.bz2` | Sintesi Piper inglese | Release `tts-models` | `c2206f572df2956c50b1ae3367eebce3853c663e890cba8048cd62b1e4dbe6c7` | MIT, voce di rhasspy/piper-voices |
-| `kokoro-multi-lang-v1_0.tar.bz2` | Sintesi Kokoro multilingue, voci italiane e inglesi | Release `tts-models` | `c5f7e2d2caf082bc1d20fb70334a61d99d20b484500aad32e7cf84c128ea3298` | Apache-2.0, file `LICENSE` nell'archivio |
 
 L'archivio Nemotron contiene il modello Nemotron 3.5 ASR streaming 0.6B di NVIDIA, con blocchi da 560 ms, convertito per sherpa-onnx, con encoder, decoder e joiner int8, il file `tokens.txt`, un `README.md` e registrazioni di prova; l'immagine conserva soltanto `encoder.int8.onnx`, `decoder.int8.onnx`, `joiner.int8.onnx` e `tokens.txt`. La licenza OpenMDW 1.1 richiede che una distribuzione conservi una copia della licenza e le note d'origine: l'immagine aggiunge alla directory del modello il testo della licenza come `LICENSE`, da `voices/OpenMDW-1.1.txt`, e `voices/README.md` riporta l'origine.
 
-Fonti dell'informazione: `scripts/fetch-speech-models.mjs` e `voices/README.md` del backend; la licenza e le lingue di Nemotron dalla scheda del modello https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b e il testo della licenza da https://openmdw.ai/license/1-1/ , le licenze delle voci dal catalogo https://huggingface.co/rhasspy/piper-voices e dal file `LICENSE` dell'archivio Kokoro.
+Fonti dell'informazione: `scripts/fetch-speech-models.mjs` e `voices/README.md` del backend; la licenza e le lingue di Nemotron dalla scheda del modello https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b e il testo della licenza da https://openmdw.ai/license/1-1/ , le licenze delle voci dal catalogo https://huggingface.co/rhasspy/piper-voices .
 
 Prova d'integrazione: la build dell'immagine verifica le impronte con `scripts/fetch-speech-models.mjs`; «Prova del catalogo vocale bilingue dell'immagine» e «Prova delle voci incluse e sostituibili» caricano i modelli nell'immagine e producono trascrizioni e sintesi; «Prova della coerenza dei modelli vocali registrati» confronta questa tabella con lo script di download e con `voices/README.md`.
 

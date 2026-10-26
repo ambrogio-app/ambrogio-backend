@@ -14,7 +14,7 @@ COPY apps/server/src/ apps/server/src/
 COPY packages/conversations/src/ packages/conversations/src/
 RUN pnpm build
 COPY scripts/fetch-speech-models.mjs /tmp/fetch-speech-models.mjs
-RUN node /tmp/fetch-speech-models.mjs /opt/ambrogio/voices /opt/ambrogio/models /opt/ambrogio/kokoro
+RUN node /tmp/fetch-speech-models.mjs /opt/ambrogio/voices /opt/ambrogio/models
 
 FROM node:24-bookworm-slim
 
@@ -24,7 +24,6 @@ LABEL org.opencontainers.image.source="https://github.com/ambrogio-app/ambrogio-
 RUN mkdir -p /etc/ambrogio/agents /data
 COPY --from=build /opt/ambrogio/voices/ /opt/ambrogio/voices/
 COPY --from=build /opt/ambrogio/models/ /opt/ambrogio/models/
-COPY --from=build /opt/ambrogio/kokoro/ /opt/ambrogio/kokoro/
 COPY voices/README.md /opt/ambrogio/voices/README.md
 # OpenMDW 1.1 requires its text next to the distributed model.
 COPY voices/OpenMDW-1.1.txt /opt/ambrogio/models/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11/LICENSE

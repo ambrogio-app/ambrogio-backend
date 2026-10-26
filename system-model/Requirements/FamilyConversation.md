@@ -1474,9 +1474,14 @@ Quando Ambrogio pronuncia una risposta o un messaggio pubblico che contiene marc
   * specify: [Conversazione a voce](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-a-voce)
 ---
 
-### Scelta del motore di sintesi vocale
+### Sintesi con la voce Piper configurata
 
-Quando la voce è abilitata nell'installazione, Ambrogio deve pronunciare le risposte con il motore di sintesi, il modello, la voce e la lingua indicati nella configurazione vocale dell'installazione, scegliendo fra le voci Piper VITS e i modelli Kokoro, senza limitare la lingua o la voce a un elenco fissato dal prodotto.
+Quando la voce è abilitata nell'installazione, Ambrogio deve pronunciare le risposte con la voce Piper VITS indicata nella configurazione vocale dell'installazione, senza limitare la lingua o la voce a un elenco fissato dal prodotto.
+
+#### Details
+Il prodotto usa un solo motore di sintesi, le voci Piper VITS eseguite da `sherpa-onnx-node`: una voce Piper inclusa nell'immagine o montata dall'installazione si sceglie con la sola directory del modello, senza variabili di motore, di voce o di lingua.
+
+È stato considerato il modello Kokoro multilingue, eseguito dalla stessa libreria come motore alternativo scelto per lingua, con la voce indicata dall'identificativo numerico nel modello e la lingua di fonetizzazione indicata da un codice espeak-ng. Non è adottato: il backend sintetizza una frase alla volta e una frase si ascolta solo quando è completa, e Kokoro impiega alcuni secondi per ogni frase anche su una CPU desktop a 4 core, dove una voce Piper ne impiega meno di mezzo, mentre su CPU di classe bassa senza AVX è più lento del parlato. Il ritardo prima della risposta parlata annullerebbe il vantaggio della trascrizione in streaming, e un solo motore mantiene più semplici configurazione, codice e immagine.
 
 #### Metadata
   * type: requirement
@@ -1582,7 +1587,7 @@ Dove il file di un agente specializzato elenca gli strumenti MCP ammessi, Ambrog
 
 ### Selezione dei modelli vocali inclusi per lingua
 
-Quando la voce è abilitata con profili vocali per lingua, Ambrogio deve selezionare il modello di trascrizione e la voce Piper o Kokoro indicati dalle variabili del profilo della lingua effettiva della conversazione, accettando sia modelli inclusi nell'immagine sia modelli montati dall'installazione, e non deve caricare modelli vocali quando la voce è disabilitata.
+Quando la voce è abilitata con profili vocali per lingua, Ambrogio deve selezionare il modello di trascrizione e la voce Piper indicati dalle variabili del profilo della lingua effettiva della conversazione, accettando sia modelli inclusi nell'immagine sia modelli montati dall'installazione, e non deve caricare modelli vocali quando la voce è disabilitata.
 
 #### Metadata
   * type: requirement

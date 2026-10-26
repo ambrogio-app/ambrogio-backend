@@ -2,12 +2,10 @@ import { access, readdir, stat } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { join } from 'node:path';
 import { ProjectError } from '../../domain/project-error.js';
-import { integerVariable, invalidVariable, missingVariable, type EnvironmentVariable } from './environment-variables.js';
+import { invalidVariable, missingVariable, type EnvironmentVariable } from './environment-variables.js';
 
-/** The synthesis engine and voice chosen by the installation. */
-export type VoiceSelection = Readonly<
-  | { voiceEngine: 'piper'; voiceModelDir: string }
-  | { voiceEngine: 'kokoro'; voiceModelDir: string; voiceSpeaker: number; voiceLanguage: string }>;
+/** The Piper (VITS) voice chosen by the installation. */
+export type VoiceSelection = Readonly<{ voiceModelDir: string }>;
 
 /** The streaming transducer model chosen by the installation; it recognizes the spoken language by itself. */
 export type TranscriptionSelection = Readonly<{ sttModelDir: string }>;
@@ -20,16 +18,8 @@ export type TranscriptionModelFiles = Readonly<{ encoder: string; decoder: strin
 /** The files of a sherpa-onnx Piper (VITS) voice directory. */
 export type VoiceModelFiles = Readonly<{ model: string; tokens: string; dataDir: string }>;
 
-/** The files of a sherpa-onnx Kokoro model directory. */
-export type KokoroModelFiles = Readonly<{ model: string; voices: string; tokens: string; dataDir: string }>;
-
-/** A voice ready to be loaded by sherpa-onnx. */
-export type VoiceModel = Readonly<
-  | { engine: 'piper'; files: VoiceModelFiles }
-  | { engine: 'kokoro'; files: KokoroModelFiles; speaker: number; language: string }>;
-
 /** Every file readable and `dataDir` a directory. */
-async function readable<T extends Readonly<{ dataDir: string }>>(files: T): Promise<T> {
+async function readable(files: VoiceModelFiles): Promise<VoiceModelFiles> {
   if (!(await stat(files.dataDir)).isDirectory()) throw new Error('not a directory');
   for (const path of Object.values(files)) await access(path, constants.R_OK);
   return files;
@@ -48,14 +38,6 @@ export async function voiceModelFiles(directory: string): Promise<VoiceModelFile
   try {
     return await readable({ model: await onlyModel(directory), tokens: join(directory, 'tokens.txt'),
       dataDir: join(directory, 'espeak-ng-data') });
-  } catch { throw new ProjectError('Voice resources are unavailable'); }
-}
-
-/** Exactly one `.onnx` model, `voices.bin`, `tokens.txt` and `espeak-ng-data/`, all readable. */
-export async function kokoroModelFiles(directory: string): Promise<KokoroModelFiles> {
-  try {
-    return await readable({ model: await onlyModel(directory), voices: join(directory, 'voices.bin'),
-      tokens: join(directory, 'tokens.txt'), dataDir: join(directory, 'espeak-ng-data') });
   } catch { throw new ProjectError('Voice resources are unavailable'); }
 }
 
@@ -78,11 +60,8 @@ export async function transcriptionModel(selection: TranscriptionSelection): Pro
   } catch { throw new ProjectError('Voice resources are unavailable'); }
 }
 
-export async function voiceModel(voice: VoiceSelection): Promise<VoiceModel> {
-  return voice.voiceEngine === 'kokoro'
-    ? { engine: 'kokoro', files: await kokoroModelFiles(voice.voiceModelDir), speaker: voice.voiceSpeaker,
-      language: voice.voiceLanguage }
-    : { engine: 'piper', files: await voiceModelFiles(voice.voiceModelDir) };
+export function voiceModel(voice: VoiceSelection): Promise<VoiceModelFiles> {
+  return voiceModelFiles(voice.voiceModelDir);
 }
 
 export type VoiceLanguage = 'it' | 'en';
@@ -97,10 +76,7 @@ export function voiceProfileVariables(language: VoiceLanguage) {
   const prefix = `AMBROGIO_VOICE_${language.toUpperCase()}_`;
   return {
     sttModelDir: { name: `${prefix}STT_MODEL_DIR` },
-    engine: { name: `${prefix}ENGINE` },
     modelDir: { name: `${prefix}MODEL_DIR` },
-    speaker: { name: `${prefix}SPEAKER` },
-    language: { name: `${prefix}LANGUAGE` },
   } as const satisfies Record<string, EnvironmentVariable>;
 }
 
@@ -122,22 +98,8 @@ function required(environment: NodeJS.ProcessEnv, name: string): string {
 /** Validate the variables of one language profile, without touching its files. */
 function parseProfile(environment: NodeJS.ProcessEnv, language: VoiceLanguage): VoiceConfig {
   const names = voiceProfileVariables(language);
-  const transcription = { sttModelDir: required(environment, names.sttModelDir.name) };
-  const voiceModelDir = required(environment, names.modelDir.name);
-  const engine = required(environment, names.engine.name);
-  const speaker = value(environment, names.speaker.name);
-  const espeakLanguage = value(environment, names.language.name);
-  if (engine === 'piper') {
-    if (speaker !== undefined) throw invalidVariable(names.speaker.name, 'not allowed with the piper engine');
-    if (espeakLanguage !== undefined) throw invalidVariable(names.language.name, 'not allowed with the piper engine');
-    return { ...transcription, voiceEngine: 'piper', voiceModelDir };
-  }
-  if (engine !== 'kokoro') throw invalidVariable(names.engine.name, 'expected piper or kokoro');
-  // Any Kokoro model and language: the speaker is the model's numeric ID, the language an espeak-ng code.
-  if (speaker === undefined) throw missingVariable(names.speaker.name);
-  if (espeakLanguage === undefined) throw missingVariable(names.language.name);
-  return { ...transcription, voiceEngine: 'kokoro', voiceModelDir,
-    voiceSpeaker: integerVariable(names.speaker.name, speaker, 0), voiceLanguage: espeakLanguage };
+  return { sttModelDir: required(environment, names.sttModelDir.name),
+    voiceModelDir: required(environment, names.modelDir.name) };
 }
 
 /**

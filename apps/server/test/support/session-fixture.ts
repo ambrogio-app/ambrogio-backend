@@ -129,7 +129,7 @@ export async function startSessionServer(options: Readonly<{
   const built = await buildConversationServer({ host: '127.0.0.1', port: 0,
     allowedOrigins: [...(options.allowedOrigins ?? [])], publicHttps: false }, prepared,
   options.reply ?? echoReply().reply,
-  options.voice ? { sttModelDir: '/fake/transcription', voiceEngine: 'piper', voiceModelDir: '/fake/voice' }
+  options.voice ? { sttModelDir: '/fake/transcription', voiceModelDir: '/fake/voice' }
     : undefined,
   options.voice ? speech.factory : undefined,
   { ...surfaceOptions(), sessionPingIntervalMs: options.pingIntervalMs ?? 30_000 });

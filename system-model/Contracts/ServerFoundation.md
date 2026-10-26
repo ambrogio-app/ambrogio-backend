@@ -16,10 +16,9 @@ Alla richiesta di arresto ordinato, il server impedisce subito nuove ammissioni 
 L'immagine runtime include i modelli elencati, con archivio, origine, impronta SHA-256 e licenza, dalla fonte «Modelli vocali scaricati nell'immagine del backend», ciascuno nella directory che ha il nome dell'archivio senza estensione:
 
 - in `/opt/ambrogio/models` il modello in streaming Nemotron 3.5 ASR 0.6B multilingue per italiano e inglese, con i soli file int8 dell'encoder, del decoder e del joiner, il file dei token e il testo della licenza `LICENSE`;
-- in `/opt/ambrogio/voices` le voci Piper VITS convertite per sherpa-onnx, ciascuna con un solo modello `.onnx`, `tokens.txt`, `espeak-ng-data/` e la scheda `MODEL_CARD`, insieme a una nota di provenienza e licenza (`README.md`);
-- in `/opt/ambrogio/kokoro` il modello Kokoro multilingue, con voci italiane e inglesi, `voices.bin` e il file `LICENSE`.
+- in `/opt/ambrogio/voices` le voci Piper VITS convertite per sherpa-onnx, ciascuna con un solo modello `.onnx`, `tokens.txt`, `espeak-ng-data/` e la scheda `MODEL_CARD`, insieme a una nota di provenienza e licenza (`README.md`).
 
-La build scarica gli archivi della fonte, ne verifica l'impronta SHA-256 fissata in `scripts/fetch-speech-models.mjs` prima dell'estrazione e si interrompe se un'impronta differisce o se il contenuto estratto non ha la struttura attesa; dall'archivio Nemotron rimuove le registrazioni di prova e il `README.md`. Gli esempi selezionano Piper per le macchine modeste; Kokoro è disponibile senza download aggiuntivo e viene caricato solo se indicato dal profilo attivo. I profili vocali indicano i modelli con percorsi espliciti e ammettono anche modelli esterni montati. Non è prevista la scelta della voce durante una conversazione.
+La build scarica gli archivi della fonte, ne verifica l'impronta SHA-256 fissata in `scripts/fetch-speech-models.mjs` prima dell'estrazione e si interrompe se un'impronta differisce o se il contenuto estratto non ha la struttura attesa; dall'archivio Nemotron rimuove le registrazioni di prova e il `README.md`. I profili vocali indicano i modelli con percorsi espliciti e ammettono anche modelli esterni montati. Non è prevista la scelta della voce durante una conversazione.
 
 #### Metadata
   * type: specification

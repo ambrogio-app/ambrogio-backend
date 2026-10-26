@@ -9,18 +9,9 @@ const writeAgent = (filename, value) => writeFileSync(filename, `${JSON.stringif
 const piperVoices = {
   AMBROGIO_VOICE_LANGUAGES: 'it,en',
   AMBROGIO_VOICE_IT_STT_MODEL_DIR: '/opt/ambrogio/models/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11',
-  AMBROGIO_VOICE_IT_ENGINE: 'piper',
   AMBROGIO_VOICE_IT_MODEL_DIR: '/opt/ambrogio/voices/vits-piper-it_IT-paola-medium',
   AMBROGIO_VOICE_EN_STT_MODEL_DIR: '/opt/ambrogio/models/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11',
-  AMBROGIO_VOICE_EN_ENGINE: 'piper',
   AMBROGIO_VOICE_EN_MODEL_DIR: '/opt/ambrogio/voices/vits-piper-en_US-kristin-medium',
-};
-const kokoroVoices = {
-  ...piperVoices,
-  AMBROGIO_VOICE_IT_ENGINE: 'kokoro', AMBROGIO_VOICE_IT_MODEL_DIR: '/opt/ambrogio/kokoro/kokoro-multi-lang-v1_0',
-  AMBROGIO_VOICE_IT_SPEAKER: '35', AMBROGIO_VOICE_IT_LANGUAGE: 'it',
-  AMBROGIO_VOICE_EN_ENGINE: 'kokoro', AMBROGIO_VOICE_EN_MODEL_DIR: '/opt/ambrogio/kokoro/kokoro-multi-lang-v1_0',
-  AMBROGIO_VOICE_EN_SPEAKER: '3', AMBROGIO_VOICE_EN_LANGUAGE: 'en',
 };
 const envArguments = (variables) => Object.entries(variables).flatMap(([name, value]) => ['--env', `${name}=${value}`]);
 
@@ -61,22 +52,13 @@ try {
     "import { SherpaSynthesizer } from '/workspace/packages/conversations/dist/adapters/in/session/sherpa-synthesizer.js';",
     "import { voiceModel } from '/workspace/packages/conversations/dist/adapters/out/voice-config.js';",
     "for (const [voice, rate, words] of [['vits-piper-it_IT-riccardo-x_low', 16000, 'Ciao, sono Ambrogio.'], ['vits-piper-it_IT-paola-medium', 22050, 'Ciao, sono Ambrogio.'], ['vits-piper-en_US-kristin-medium', 22050, 'Hello, I am Ambrogio.']]) {",
-    "  const synthesizer = await SherpaSynthesizer.load(await voiceModel({ voiceEngine: 'piper', voiceModelDir: '/opt/ambrogio/voices/' + voice }));",
+    "  const synthesizer = await SherpaSynthesizer.load(await voiceModel({ voiceModelDir: '/opt/ambrogio/voices/' + voice }));",
     "  async function* text() { yield words; }",
     "  let bytes = 0;",
     "  for await (const chunk of synthesizer.synthesize(text(), new AbortController().signal)) bytes += chunk.length;",
     "  synthesizer.close();",
     "  if (synthesizer.sampleRate !== rate || bytes < rate) throw new Error('Unexpected synthesis for ' + voice + ': ' + synthesizer.sampleRate + ' Hz, ' + bytes + ' bytes');",
     "  console.log(voice + ': ' + synthesizer.sampleRate + ' Hz, ' + bytes + ' bytes');",
-    "}",
-    "for (const [language, speaker, words] of [['en', 3, 'Hello, I am Ambrogio.'], ['it', 35, 'Ciao, sono Ambrogio.']]) {",
-    "  const synthesizer = await SherpaSynthesizer.load(await voiceModel({ voiceEngine: 'kokoro', voiceModelDir: '/opt/ambrogio/kokoro/kokoro-multi-lang-v1_0', voiceSpeaker: speaker, voiceLanguage: language }));",
-    "  async function* text() { yield words; }",
-    "  let bytes = 0;",
-    "  for await (const chunk of synthesizer.synthesize(text(), new AbortController().signal)) bytes += chunk.length;",
-    "  synthesizer.close();",
-    "  if (synthesizer.sampleRate !== 24000 || bytes < 24000) throw new Error('Unexpected Kokoro synthesis for ' + language);",
-    "  console.log('kokoro ' + language + ': ' + bytes + ' bytes');",
     "}",
   ].join('\n');
   docker('run', '--rm', '--entrypoint', '/bin/sh', image, '-c',
@@ -88,9 +70,7 @@ try {
     // Only the int8 Nemotron model is kept in the image, with the text of its license.
     'dir=/opt/ambrogio/models/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11; test "$(ls "$dir" | tr "\\n" " ")" = "LICENSE decoder.int8.onnx encoder.int8.onnx joiner.int8.onnx tokens.txt "; ' +
     'grep -q "OpenMDW License Agreement, version 1.1" "$dir/LICENSE"; ' +
-    'test -s "$dir/encoder.int8.onnx"; test -s "$dir/decoder.int8.onnx"; test -s "$dir/joiner.int8.onnx"; test -s "$dir/tokens.txt"; ' +
-    'dir=/opt/ambrogio/kokoro/kokoro-multi-lang-v1_0; ' +
-    'test -s "$dir/model.onnx"; test -s "$dir/voices.bin"; test -s "$dir/LICENSE"');
+    'test -s "$dir/encoder.int8.onnx"; test -s "$dir/decoder.int8.onnx"; test -s "$dir/joiner.int8.onnx"; test -s "$dir/tokens.txt"');
   console.log(docker('run', '--rm', '--entrypoint', 'node', image, '--input-type=module', '-e', synthesis));
   const recognition = [
     "import { StreamingTranscriber } from '/workspace/packages/conversations/dist/adapters/in/session/streaming-transcriber.js';",
@@ -98,7 +78,7 @@ try {
     "import { transcriptionModel, voiceModel } from '/workspace/packages/conversations/dist/adapters/out/voice-config.js';",
     "for (const [name, voice, words] of [['it', 'vits-piper-it_IT-riccardo-x_low', 'Ciao, come stai oggi?'], ['en', 'vits-piper-en_US-kristin-medium', 'Hello, how are you today?']]) {",
     "  const transcriber = await StreamingTranscriber.load(await transcriptionModel({ sttModelDir: '/opt/ambrogio/models/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11' }));",
-    "  const synthesizer = await SherpaSynthesizer.load(await voiceModel({ voiceEngine: 'piper', voiceModelDir: '/opt/ambrogio/voices/' + voice }));",
+    "  const synthesizer = await SherpaSynthesizer.load(await voiceModel({ voiceModelDir: '/opt/ambrogio/voices/' + voice }));",
     "  try {",
     "    async function* text() { yield words; }",
     "    const chunks = [];",
@@ -127,13 +107,10 @@ try {
     "  const config = await loadVoiceConfig(JSON.parse(process.env.PIPER_VOICES), language);",
     "  if (config.sttModelDir !== '/opt/ambrogio/models/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11' || !config.voiceModelDir.endsWith(voice)) throw new Error('Wrong voice profile: ' + language);",
     "  console.log('Selected ' + language + ': ' + voice);",
-    "  const kokoro = await loadVoiceConfig(JSON.parse(process.env.KOKORO_VOICES), language);",
-    "  if (kokoro.voiceEngine !== 'kokoro' || kokoro.voiceLanguage !== language || kokoro.voiceSpeaker !== (language === 'it' ? 35 : 3)) throw new Error('Wrong Kokoro profile: ' + language);",
-    "  console.log('Selected Kokoro ' + language + ': speaker ' + kokoro.voiceSpeaker);",
     "}",
   ].join('\n');
   console.log(docker('run', '--rm', '--entrypoint', 'node',
-    '--env', `PIPER_VOICES=${JSON.stringify(piperVoices)}`, '--env', `KOKORO_VOICES=${JSON.stringify(kokoroVoices)}`,
+    '--env', `PIPER_VOICES=${JSON.stringify(piperVoices)}`,
     image, '--input-type=module', '-e', profiles));
   // A mounted directory can supply another voice for the same language without a catalogue ID.
   const alternateVoice = join(customVoices, 'alternate-italian');
@@ -194,7 +171,7 @@ try {
   if (!existsSync(join(data, 'conversations.sqlite'))) {
     throw new Error('SQLite archive was not created in the external mount');
   }
-  console.log('Docker image verification passed: configuration from environment variables, mounted JSON agents and external SQLite, language profiles, bundled Nemotron streaming, Piper and Kokoro models in Italian and English, replaceable Piper voices, voice-enabled HTTP 200, no Compose.');
+  console.log('Docker image verification passed: configuration from environment variables, mounted JSON agents and external SQLite, language profiles, bundled Nemotron streaming, Piper voices in Italian and English, replaceable Piper voices, voice-enabled HTTP 200, no Compose.');
 } finally {
   if (container) {
     try { docker('rm', '--force', container); } catch { /* preserve the verification failure */ }

@@ -1,13 +1,14 @@
 import { createRequire } from 'node:module';
 import { availableParallelism } from 'node:os';
 import { ProjectError } from '../../../application/project-error.js';
-import { type KokoroModelFiles, type VoiceModel, type VoiceModelFiles } from '../../out/voice-config.js';
+import { type VoiceModelFiles } from '../../out/voice-config.js';
 import { spokenSentence, takeSentences } from './sentences.js';
 import type { Synthesizer } from './speech-components.js';
 
-/** The `sherpa-onnx-node` configuration of a Piper (VITS) voice or of the Kokoro model. */
+/** The `sherpa-onnx-node` configuration of a Piper (VITS) voice. */
 export type SherpaTtsConfig = Readonly<{
-  model: Readonly<({ vits: VoiceModelFiles } | { kokoro: KokoroModelFiles & Readonly<{ lang: string }> }) & {
+  model: Readonly<{
+    vits: VoiceModelFiles;
     numThreads: number;
     debug: boolean;
     provider: 'cpu';
@@ -18,7 +19,6 @@ export type SherpaTtsConfig = Readonly<{
 /** The part of `OfflineTts` used here: only the asynchronous generation, never the blocking one. */
 export type SherpaTts = Readonly<{
   sampleRate: number;
-  numSpeakers: number;
   generateAsync(request: Readonly<{ text: string; sid: number; speed: number }>):
     Promise<Readonly<{ samples: Float32Array; sampleRate: number }>>;
 }>;
@@ -31,19 +31,15 @@ function nativeEngine(): SherpaTtsEngine {
   return sherpa.OfflineTts;
 }
 
-export function sherpaConfig(voice: VoiceModel): SherpaTtsConfig {
-  // Kokoro phonemizes with espeak-ng in the language chosen by the installation.
-  const model = voice.engine === 'kokoro' ? { kokoro: { ...voice.files, lang: voice.language } } : { vits: voice.files };
+export function sherpaConfig(voice: VoiceModelFiles): SherpaTtsConfig {
   return {
-    model: { ...model, numThreads: Math.min(4, availableParallelism()), debug: false, provider: 'cpu' },
+    model: { vits: voice, numThreads: Math.min(4, availableParallelism()), debug: false, provider: 'cpu' },
     maxNumSentences: 1,
   };
 }
 
 /** The sherpa-onnx speaker ID: a Piper voice has a single speaker. */
-function speakerId(voice: VoiceModel): number {
-  return voice.engine === 'kokoro' ? voice.speaker : 0;
-}
+const PIPER_SPEAKER = 0;
 
 /** Float samples in [-1, 1] as PCM16 little-endian. */
 export function pcm16(samples: Float32Array): Uint8Array {
@@ -66,12 +62,12 @@ export class SherpaSynthesizer implements Synthesizer {
   private tts?: SherpaTts;
   private previous: Promise<unknown> = Promise.resolve();
 
-  private constructor(tts: SherpaTts, private readonly sid: number) {
+  private constructor(tts: SherpaTts) {
     this.tts = tts;
     this.sampleRate = tts.sampleRate;
   }
 
-  static async load(voice: VoiceModel, engine?: SherpaTtsEngine): Promise<SherpaSynthesizer> {
+  static async load(voice: VoiceModelFiles, engine?: SherpaTtsEngine): Promise<SherpaSynthesizer> {
     let tts: SherpaTts;
     try { tts = await (engine ?? nativeEngine()).createAsync(sherpaConfig(voice)); }
     catch (error) { throw new ProjectError('Voice model could not be loaded', { cause: error }); }
@@ -79,9 +75,7 @@ export class SherpaSynthesizer implements Synthesizer {
     if (!Number.isSafeInteger(rate) || rate < 8_000 || rate > 48_000) {
       throw new ProjectError('Invalid voice sample rate');
     }
-    const sid = speakerId(voice);
-    if (!(sid < tts.numSpeakers)) throw new ProjectError('Voice speaker is not in the model');
-    return new SherpaSynthesizer(tts, sid);
+    return new SherpaSynthesizer(tts);
   }
 
   /** Release the loaded voice; transmissions in progress end without further sentences. */
@@ -95,7 +89,7 @@ export class SherpaSynthesizer implements Synthesizer {
       const tts = this.tts;
       if (signal.aborted || !tts) return undefined;
       let audio: Awaited<ReturnType<SherpaTts['generateAsync']>>;
-      try { audio = await tts.generateAsync({ text, sid: this.sid, speed: 1 }); }
+      try { audio = await tts.generateAsync({ text, sid: PIPER_SPEAKER, speed: 1 }); }
       catch (error) { throw new ProjectError('Speech synthesis failed', { cause: error }); }
       if (audio.sampleRate !== this.sampleRate) throw new ProjectError('Speech synthesis failed');
       return pcm16(audio.samples);

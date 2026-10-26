@@ -141,8 +141,10 @@ function withCurrentTime(settings: AgentSettings): string {
 function replyInstructions(instructions: string, language?: 'en' | 'it'): string {
   const languageLine = language === undefined ? ''
     : `\nAnswer in ${language === 'it' ? 'Italian' : 'English'}.`;
-  return `${instructions}${languageLine}\nWrite your reply as plain text. End every reply by calling ${finishToolName}: `
-    + 'set expectsReply to true only when your reply asks the family to reply; otherwise set it to false.';
+  // Asked only to end with the tool, models also wrote its call in the text, which would be spoken.
+  return `${instructions}${languageLine}\nYour text is spoken to the family exactly as you write it, so write only `
+    + `the words of your reply. When the reply is complete, call the ${finishToolName} tool; never write tool calls or `
+    + 'JSON in your text.';
 }
 
 /** The rules added to the reply instructions of an agent with MCP tools («Frase d'azione prima degli strumenti»). */
@@ -153,8 +155,7 @@ const actionReplyRules = '\nBefore you call a tool to carry out an action, first
 
 /** `finish` has no execution: the reply ends at its call, which carries the reply expectation. */
 const finishTool = tool({
-  description: 'Call once at the end of every reply, after its text. Set expectsReply to true only when your reply '
-    + 'asks the family to reply; otherwise set it to false.',
+  description: 'Ends the reply. Set expectsReply to true only when your reply asks the family to reply; otherwise false.',
   inputSchema: jsonSchema<{ expectsReply: boolean }>({ type: 'object', properties: { expectsReply: { type: 'boolean' } },
     required: ['expectsReply'], additionalProperties: false }),
 });

@@ -37,8 +37,8 @@ function answer(text: string, expectsReply = false) {
   return [...(text ? textParts(text) : []), callPart('finish', { expectsReply }, 'finish-call')];
 }
 
-const replyFormat = 'Write your reply as plain text. End every reply by calling finish: '
-  + 'set expectsReply to true only when your reply asks the family to reply; otherwise set it to false.';
+const replyFormat = 'Your text is spoken to the family exactly as you write it, so write only the words of your '
+  + 'reply. When the reply is complete, call the finish tool; never write tool calls or JSON in your text.';
 const actionRules = '\nBefore you call a tool to carry out an action, first say in one short sentence what you '
   + 'are about to do. Do not say it for a request for information. When an action you announced succeeds, add nothing '
   + 'more. When an action succeeds without an announcement, confirm it in a few words. When an action fails, say what '
@@ -158,8 +158,9 @@ test('an agent without MCP answers with its own instructions and only the finish
     { role: 'user', content: [{ type: 'text', text: 'Find it' }] },
   ]);
   expect(model.doStreamCalls[0]?.prompt[0]).toMatchObject({
-    content: expect.stringContaining('Write your reply as plain text. End every reply by calling finish: '
-      + 'set expectsReply to true only when your reply asks the family to reply') });
+    content: expect.stringContaining(replyFormat) });
+  expect(model.doStreamCalls[0]?.tools?.[0]).toMatchObject({ name: 'finish',
+    description: 'Ends the reply. Set expectsReply to true only when your reply asks the family to reply; otherwise false.' });
 });
 
 // Verification: Prova del tempo massimo della produzione della risposta

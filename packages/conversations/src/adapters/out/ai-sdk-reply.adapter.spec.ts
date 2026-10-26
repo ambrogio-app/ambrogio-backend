@@ -59,6 +59,9 @@ async function collect(stream: AsyncIterable<ReplyPart>): Promise<ReplyPart[]> {
   return result;
 }
 
+/** The parts other than the actions, for the tests about text and reply expectation. */
+const withoutActions = (parts: ReplyPart[]) => parts.filter(part => part.kind !== 'action');
+
 function chooser(...outputs: string[]) {
   let next = 0;
   return new MockLanguageModelV4({ doGenerate: async () => {
@@ -202,7 +205,7 @@ test('specialist executes discovered MCP tools and allows a final answer at its 
     called.push({ name, args });
     return { isError: false, content: [{ type: 'text', text: 'result' }] };
   } }, 1, model);
-  expect(await collect(reply.produce(history, never()))).toEqual([text('Found it'), expectation(false)]);
+  expect(withoutActions(await collect(reply.produce(history, never())))).toEqual([text('Found it'), expectation(false)]);
   expect(called).toEqual([{ name: 'lookup', args: { key: 'answer' } }]);
   expect(model.doStreamCalls).toHaveLength(2);
   // The specialist answers the family's original text, the last turn of the history.
@@ -242,7 +245,7 @@ test('specialist offers accepted MCP names and positional names for the others',
   );
   const reply = new AiSdkToolAgentReply(settings, { tools: discovered, prompts: [] }, { getPrompt,
     async callTool(name, args) { called.push({ name, args }); return { isError: false, content: [] }; } }, 6, model);
-  expect(await collect(reply.produce(history, never()))).toEqual([text('Fatto.'), expectation(false)]);
+  expect(withoutActions(await collect(reply.produce(history, never())))).toEqual([text('Fatto.'), expectation(false)]);
   const offered = model.doStreamCalls[0]?.tools ?? [];
   // Gemini requires a leading letter or underscore, so digits and dashes there get positional names.
   // An MCP tool named finish gets a positional name: finish is the reply's own final tool.
@@ -268,7 +271,7 @@ test('specialist offers only the listed MCP tools with the names of the discover
   const reply = new AiSdkToolAgentReply(settings,
     { tools: discovered, prompts: [], offered: ['gamma', 'light.toggle'] }, { getPrompt,
       async callTool(name) { called.push(name); return { isError: false, content: [] }; } }, 5, model);
-  expect(await collect(reply.produce(history, never()))).toEqual([text('Fatto.'), expectation(false)]);
+  expect(withoutActions(await collect(reply.produce(history, never())))).toEqual([text('Fatto.'), expectation(false)]);
   const offered = model.doStreamCalls[0]?.tools ?? [];
   expect(offered.map(tool => tool.name)).toEqual(['mcp_1', 'gamma', 'finish']);
   expect(offered[0]).toMatchObject({ description: 'Tool light.toggle', inputSchema: { type: 'object' } });
@@ -488,7 +491,7 @@ test('text written anyway before a tool call is delivered before the tool runs, 
     if (part.kind === 'text' && part.text === '\n') delivered();
     parts.push(part);
   }
-  expect(parts).toEqual([text('Cerco una canzone di Neffa.'), text('\n'), expectation(false)]);
+  expect(withoutActions(parts)).toEqual([text('Cerco una canzone di Neffa.'), text('\n'), expectation(false)]);
   expect(order).toEqual(['sentence', 'line break', 'tool finished']);
   // One generation: no separate call for the announcement.
   expect(model.doStreamCalls).toHaveLength(2);
@@ -505,14 +508,14 @@ test('a confirmation after the tool is separated from the earlier text by a line
   );
   const reply = new AiSdkToolAgentReply(settings, lookupTool, { getPrompt,
     async callTool() { return { isError: true, content: [{ type: 'text', text: 'unavailable' }] }; } }, 2, model);
-  expect(await collect(reply.produce(history, never()))).toEqual([text('Accendo la luce.'), text('\n'),
+  expect(withoutActions(await collect(reply.produce(history, never())))).toEqual([text('Accendo la luce.'), text('\n'),
     text('La lampadina non risponde.'), expectation(false)]);
 
   const silent = scripted({ parts: [callPart('lookup', {})], reason: 'tool-calls' },
     { parts: answer('Fatto.'), reason: 'stop' });
   const confirmed = new AiSdkToolAgentReply(settings, lookupTool, { getPrompt,
     async callTool() { return { isError: false, content: [] }; } }, 2, silent);
-  expect(await collect(confirmed.produce(history, never()))).toEqual([text('Fatto.'), expectation(false)]);
+  expect(withoutActions(await collect(confirmed.produce(history, never())))).toEqual([text('Fatto.'), expectation(false)]);
 });
 
 // Verification: Prova della segnalazione della replica attesa
@@ -564,4 +567,140 @@ test('the orchestrator logs the timing of each completed reply without conversat
       modelSteps: 1 } },
   ]);
   expect(JSON.stringify(events)).not.toMatch(/Neffa|Cats|Find it|lookup|query/);
+});
+
+
+const lookupMcpTool = { name: 'lookup', inputSchema: { type: 'object', properties: { key: { type: 'string' } } } };
+
+// Verification: Prova delle azioni nello storico
+test('a specialist delivers each concluded MCP call as an action, with its result or its error', async () => {
+  const model = scripted(
+    { parts: [callPart('lookup', { key: 'on' }, 'c1')], reason: 'tool-calls' },
+    { parts: [callPart('lookup', { key: 'off' }, 'c2')], reason: 'tool-calls' },
+    { parts: answer('Ho acceso la luce.'), reason: 'stop' },
+  );
+  const reply = new AiSdkToolAgentReply(settings, { prompts: [], tools: [lookupMcpTool] }, { getPrompt,
+    async callTool(_name, args) {
+      if (args.key === 'off') throw new Error('Device unavailable');
+      return { isError: false, content: [{ type: 'text', text: 'on', extra: undefined }] };
+    } }, 3, model);
+  expect(await collect(reply.produce(history, never()))).toEqual([
+    { kind: 'action', action: { tool: 'lookup', input: { key: 'on' },
+      output: { isError: false, content: [{ type: 'text', text: 'on' }] } } },
+    { kind: 'action', action: { tool: 'lookup', input: { key: 'off' }, error: 'Device unavailable' } },
+    text('Ho acceso la luce.'), expectation(false)]);
+});
+
+const withActions = { ...history, turns: [
+  { id: 'first', acceptedAt: new Date(0), status: 'answered' as const, text: 'Accendi la luce',
+    answer: 'Ho acceso la luce.', finishedAt: new Date(1), agent: 'home', actions: [
+      { tool: 'lookup', input: { key: 'on' }, output: { done: true } },
+      { tool: 'lookup', input: { key: 'off' }, error: 'Device unavailable' }] },
+  { id: 'turn', acceptedAt: new Date(4), status: 'pending' as const, text: 'spegnila' },
+] };
+
+// Verification: Prova delle azioni nello storico
+test('only the agent that acted sees its stored actions, as calls and results before its answer', async () => {
+  const router = chooser('{"agent":"home"}', '{"agent":"other"}');
+  const homeModel = scripted({ parts: answer('Ho spento la luce.'), reason: 'stop' });
+  const home = new AiSdkToolAgentReply(settings, { tools: [lookupMcpTool], prompts: [] }, { getPrompt,
+    async callTool() { return { isError: false, content: [] }; } }, 1, homeModel);
+  const received: unknown[] = [];
+  const other = recordingAgent('other', 'Other things', [text('Ok.'), expectation(false)], received);
+  const reply = new AiSdkOrchestratorReply(settings, [{ id: 'home', description: 'Control home', reply: home }, other],
+    router);
+  await collect(reply.produce(withActions, never()));
+  expect(homeModel.doStreamCalls[0]?.prompt.slice(1)).toEqual([
+    { role: 'user', content: [{ type: 'text', text: 'Accendi la luce' }] },
+    { role: 'assistant', content: [
+      { type: 'tool-call', toolCallId: 'call00001', toolName: 'lookup', input: { key: 'on' } },
+      { type: 'tool-call', toolCallId: 'call00002', toolName: 'lookup', input: { key: 'off' } }] },
+    { role: 'tool', content: [
+      { type: 'tool-result', toolCallId: 'call00001', toolName: 'lookup', output: { type: 'json', value: { done: true } } },
+      { type: 'tool-result', toolCallId: 'call00002', toolName: 'lookup',
+        output: { type: 'error-text', value: 'Device unavailable' } }] },
+    { role: 'assistant', content: [{ type: 'text', text: 'Ho acceso la luce.' }] },
+    { role: 'user', content: [{ type: 'text', text: 'spegnila' }] },
+  ]);
+  // The router sees texts only.
+  expect(router.doGenerateCalls[0]?.prompt.slice(1)).toEqual([
+    { role: 'user', content: [{ type: 'text', text: 'Accendi la luce' }] },
+    { role: 'assistant', content: [{ type: 'text', text: '[agent: home] Ho acceso la luce.' }] },
+    { role: 'user', content: [{ type: 'text', text: 'spegnila' }] },
+  ]);
+  // Another agent receives the turn without the actions.
+  await collect(reply.produce(withActions, never()));
+  const otherHistory = (received[0] as [typeof withActions])[0];
+  expect(otherHistory.turns[0]).not.toHaveProperty('actions');
+  expect(otherHistory.turns[0]).toMatchObject({ answer: 'Ho acceso la luce.', agent: 'home' });
+});
+
+// Verification: Prova dello storico senza risposte vuote
+test('an empty stored answer leaves only the message of the family and the actions in the context', async () => {
+  const conversation = { ...history, turns: [
+    { id: 'first', acceptedAt: new Date(0), status: 'answered' as const, text: 'Accendi la luce',
+      answer: '', finishedAt: new Date(1), agent: 'home' },
+    { id: 'second', acceptedAt: new Date(2), status: 'answered' as const, text: 'Accendi la lampada',
+      answer: ' ', finishedAt: new Date(3), agent: 'home', actions: [{ tool: 'lookup', input: {}, output: 1 }] },
+    { id: 'turn', acceptedAt: new Date(4), status: 'pending' as const, text: 'spegnila' },
+  ] };
+  const router = chooser('{"agent":"home"}');
+  const homeModel = scripted({ parts: answer('Ho spento la luce.'), reason: 'stop' });
+  const home = new AiSdkToolAgentReply(settings, { tools: [lookupMcpTool], prompts: [] }, { getPrompt,
+    async callTool() { return { isError: false, content: [] }; } }, 1, homeModel);
+  const reply = new AiSdkOrchestratorReply(settings, [{ id: 'home', description: 'Control home', reply: home }], router);
+  await collect(reply.produce(conversation, never()));
+  expect(router.doGenerateCalls[0]?.prompt.slice(1)).toEqual([
+    { role: 'user', content: [{ type: 'text', text: 'Accendi la luce' }] },
+    { role: 'user', content: [{ type: 'text', text: 'Accendi la lampada' }] },
+    { role: 'user', content: [{ type: 'text', text: 'spegnila' }] },
+  ]);
+  expect(homeModel.doStreamCalls[0]?.prompt.slice(1).map(message => message.role))
+    .toEqual(['user', 'user', 'assistant', 'tool', 'user']);
+});
+
+const emptyReplyRule = '\nYour reply ended without any words for the family. No tool is available now, not even '
+  + 'finish: write now only the words of your reply to the last message of the family, based on the results of the '
+  + 'tools you called.';
+
+// Verification: Prova della nuova richiesta della risposta vuota
+test('a specialist that finishes without text writes its reply in one more generation without tools', async () => {
+  const model = scripted(
+    { parts: [callPart('lookup', { key: 'on' }, 'c1')], reason: 'tool-calls' },
+    { parts: answer('', true), reason: 'tool-calls' },
+    { parts: textParts('Ho acceso la luce. Altro?'), reason: 'stop' },
+  );
+  const reply = new AiSdkToolAgentReply(settings, { prompts: [], tools: [lookupMcpTool] }, { getPrompt,
+    async callTool() { return { isError: false, content: [{ type: 'text', text: 'on' }] }; } }, 2, model);
+  const measures = { modelSteps: 0 };
+  expect(await collect(reply.measured(history, never(), measures))).toEqual([
+    { kind: 'action', action: { tool: 'lookup', input: { key: 'on' },
+      output: { isError: false, content: [{ type: 'text', text: 'on' }] } } },
+    text('Ho acceso la luce. Altro?'), expectation(true)]);
+  expect(model.doStreamCalls).toHaveLength(3);
+  const recovery = model.doStreamCalls[2]!;
+  expect(recovery.tools ?? []).toEqual([]);
+  expect(recovery.prompt[0]).toMatchObject({ role: 'system' });
+  expect((recovery.prompt[0] as { content: string }).content.endsWith(emptyReplyRule)).toBe(true);
+  expect(recovery.prompt.slice(1)).toEqual([
+    { role: 'user', content: [{ type: 'text', text: 'Find it' }] },
+    { role: 'assistant', content: [{ type: 'tool-call', toolCallId: 'call00001', toolName: 'lookup',
+      input: { key: 'on' } }] },
+    { role: 'tool', content: [{ type: 'tool-result', toolCallId: 'call00001', toolName: 'lookup',
+      output: { type: 'json', value: { isError: false, content: [{ type: 'text', text: 'on' }] } } }] },
+  ]);
+  expect(measures.modelSteps).toBe(3);
+});
+
+// Verification: Prova della nuova richiesta della risposta vuota
+test('a reply still empty after the second generation fails, also for an agent without MCP', async () => {
+  const tools = scripted({ parts: answer('  '), reason: 'tool-calls' }, { parts: textParts(' \n'), reason: 'stop' });
+  const withTools = new AiSdkToolAgentReply(settings, { prompts: [], tools: [lookupMcpTool] }, { getPrompt,
+    async callTool() { return { isError: false, content: [] }; } }, 1, tools);
+  await expect(collect(withTools.produce(history, never()))).rejects.toThrow(ProjectError);
+  expect(tools.doStreamCalls).toHaveLength(2);
+  const knowledge = scripted({ parts: answer(''), reason: 'tool-calls' }, { parts: textParts('Nel 1492.'), reason: 'stop' });
+  const generic = new AiSdkKnowledgeAgentReply(settings, knowledge);
+  expect(await collect(generic.produce(history, never()))).toEqual([text('Nel 1492.'), expectation(false)]);
+  expect(knowledge.doStreamCalls[1]?.tools ?? []).toEqual([]);
 });

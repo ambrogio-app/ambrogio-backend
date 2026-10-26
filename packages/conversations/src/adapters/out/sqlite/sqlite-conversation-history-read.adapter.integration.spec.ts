@@ -11,6 +11,8 @@ import { conversationMigrations, migrateConversationArchive } from './migrations
 import { SqliteTurnRepository } from './sqlite-turn-repository.adapter.js';
 import { SqliteConversationHistoryRead } from './sqlite-conversation-history-read.adapter.js';
 import type { ConversationDatabase } from './schema.js';
+import { TurnId } from '../../../domain/identities.js';
+import type { TurnAction } from '../../../domain/turn.js';
 
 const conversationId = 'dc89cb5e-e695-43cc-8a04-917316771ea4';
 const firstTurnId = 'fffffff0-1111-4111-8111-111111111111';
@@ -121,6 +123,56 @@ describe('conversation history and startup recovery', () => {
     await db.updateTable('turns').set({ status: 'failed', answer: null, error: 'errore', agent: 'home' })
       .where('id', '=', firstTurnId).execute();
     await expect(new SqliteConversationHistoryRead(db).find(conversationId)).rejects.toThrow('Invalid persisted turn state');
+  });
+
+  // Verification: Prova delle azioni nello storico
+  it('stores the actions of the answer internally and keeps them out of the consultation view', async () => {
+    const db = open(':memory:');
+    await migrateConversationArchive(db);
+    const writer = new SqliteTurnRepository(db);
+    const actions: TurnAction[] = [{ tool: 'HassTurnOn', input: { name: 'luce' }, output: { content: [{ type: 'text', text: 'ok' }] } },
+      { tool: 'HassTurnOff', input: {}, error: 'Unavailable' }];
+    await admitTurn(writer, { conversationId, createConversation: true, turn: accepted(firstTurnId) });
+    await completeTurn(writer, { turnId: firstTurnId, outcome: { kind: 'answer', text: 'Ho acceso la luce.',
+      agent: 'home', actions }, finishedAt: new Date(2000) });
+    await admitTurn(writer, { conversationId, createConversation: false, turn: accepted(secondTurnId) });
+    await completeTurn(writer, { turnId: secondTurnId, outcome: { kind: 'answer', text: 'Ciao.' },
+      finishedAt: new Date(3000) });
+    const rows = await db.selectFrom('turns').select(['id', 'actions']).orderBy('ordinal').execute();
+    expect(rows.map(row => [row.id, row.actions === null ? null : JSON.parse(row.actions)]))
+      .toEqual([[firstTurnId, actions], [secondTurnId, null]]);
+    const turns = (await new SqliteConversationHistoryRead(db).find(conversationId))?.turns;
+    expect(turns?.map(turn => turn.status === 'answered' ? turn.actions : 'none')).toEqual([actions, undefined]);
+    expect((await writer.find(TurnId.create(firstTurnId)))?.actions).toEqual(actions);
+    const view = await createGetConversation(new SqliteConversationHistoryRead(db))({ conversationId });
+    expect(view.ok && view.value.turns.every(turn => !('actions' in turn))).toBe(true);
+    expect(JSON.stringify(view)).not.toContain('HassTurnOn');
+  });
+
+  // Verification: Prova delle azioni nello storico
+  it('adds the actions column to an existing archive and rejects invalid stored actions', async () => {
+    const db = open(':memory:');
+    const migrator = new Migrator({ db, provider: { async getMigrations() { return conversationMigrations; } } });
+    expect((await migrator.migrateTo('007_turn_agent')).error).toBeUndefined();
+    await db.insertInto('conversations').values({ id: conversationId, created_at: 100, last_activity_at: 100,
+      active_turn_id: null }).execute();
+    await sql.raw(`insert into turns (id, conversation_id, ordinal, text, accepted_at, status, answer, finished_at, agent)
+      values ('${firstTurnId}', '${conversationId}', 1, 'legacy', 100, 'answered', 'vecchia risposta', 200, 'home')`)
+      .execute(db);
+    await migrateConversationArchive(db);
+    const read = new SqliteConversationHistoryRead(db);
+    const turns = (await read.find(conversationId))?.turns;
+    expect(turns).toEqual([{ id: firstTurnId, text: 'legacy', acceptedAt: new Date(100), status: 'answered',
+      answer: 'vecchia risposta', finishedAt: new Date(200), agent: 'home' }]);
+    for (const invalid of ['not json', '[]', '{}', '[{"tool":"","input":{},"output":1}]',
+      '[{"tool":"t","input":[],"output":1}]', '[{"tool":"t","input":{},"output":1,"error":"e"}]',
+      '[{"tool":"t","input":{}}]']) {
+      await db.updateTable('turns').set({ actions: invalid }).where('id', '=', firstTurnId).execute();
+      await expect(read.find(conversationId), invalid).rejects.toThrow('Invalid persisted turn state');
+    }
+    await db.updateTable('turns').set({ status: 'failed', answer: null, error: 'errore', agent: null,
+      actions: '[{"tool":"t","input":{},"output":1}]' }).where('id', '=', firstTurnId).execute();
+    await expect(read.find(conversationId)).rejects.toThrow('Invalid persisted turn state');
   });
 
   it('stores and restores exact Unix milliseconds before and after the epoch', async () => {

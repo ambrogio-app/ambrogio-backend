@@ -3,8 +3,8 @@ import type { ConversationHistoryRead, HistoryTurn } from './conversation-histor
 
 export type GetConversationInput = Readonly<{ conversationId: string }>;
 export type GetConversationRejection = Readonly<{ kind: 'conversation_not_found' }>;
-/** A stored turn as consulted by clients: the responding agent stays internal. */
-export type ConversationTurnView = DistributiveOmit<HistoryTurn, 'agent'>;
+/** A stored turn as consulted by clients: the responding agent and its actions stay internal. */
+export type ConversationTurnView = DistributiveOmit<HistoryTurn, 'agent' | 'actions'>;
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 export type ConversationView = Readonly<{
   id: string;
@@ -24,6 +24,6 @@ export function createGetConversation(history: ConversationHistoryRead): GetConv
 
 function withoutAgent(turn: HistoryTurn): ConversationTurnView {
   if (turn.status !== 'answered') return turn;
-  const { agent: _agent, ...view } = turn;
+  const { agent: _agent, actions: _actions, ...view } = turn;
   return view;
 }

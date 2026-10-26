@@ -4,6 +4,8 @@ import { integerVariable, invalidVariable, requireVariable,
 export type ConversationConfig = Readonly<{
   listPageSize: number;
   maxListPageSize: number;
+  /** How many of the latest turns of a conversation the models receive. */
+  historyTurns: number;
   language: 'en' | 'it';
   /** IANA name of the family's time zone. */
   timeZone: string;
@@ -17,6 +19,7 @@ export const conversationVariables = {
   timeZone: { name: 'AMBROGIO_TIME_ZONE', default: { environments: 'all', value: 'UTC' } },
   listPageSize: { name: 'AMBROGIO_LIST_PAGE_SIZE', default: { environments: 'all', value: '20' } },
   maxListPageSize: { name: 'AMBROGIO_MAX_LIST_PAGE_SIZE', default: { environments: 'all', value: '100' } },
+  historyTurns: { name: 'AMBROGIO_HISTORY_TURNS', default: { environments: 'all', value: '20' } },
 } as const satisfies Record<string, EnvironmentVariable>;
 
 function validTimeZone(name: string): boolean {
@@ -40,6 +43,8 @@ export function readConversationConfig(environment: NodeJS.ProcessEnv, runtime: 
   if (listPageSize > maxListPageSize) {
     throw invalidVariable(variables.listPageSize.name, `expected at most ${variables.maxListPageSize.name}`);
   }
-  return { archivePath, language, timeZone, listPageSize, maxListPageSize };
+  const historyTurns = integerVariable(variables.historyTurns.name,
+    requireVariable(environment, runtime, variables.historyTurns), 1);
+  return { archivePath, language, timeZone, listPageSize, maxListPageSize, historyTurns };
 }
 

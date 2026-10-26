@@ -97,7 +97,7 @@ function harness(exchange: ExchangeTurn, speech?: SpeechComponents) {
 function recordingExchange(parts: readonly ReplyPart[]) {
   const outcomes: unknown[] = [];
   let pending: HistoryTurn | undefined;
-  const exchange = createExchangeTurn({ deadlines,
+  const exchange = createExchangeTurn({ deadlines, historyTurns: 20,
     begin: async ({ text }) => {
       pending = pendingTurn(text);
       return { ok: true, value: { conversationId: 'conversation-1', turnId: 'turn-1', acceptedAt: new Date(0) } };
@@ -246,7 +246,7 @@ describe('conversation session diagnostics', () => {
       : (async function* () { yield* parts; })();
     const outcomes: unknown[] = [];
     let pending: HistoryTurn | undefined;
-    const exchange = createExchangeTurn({ deadlines,
+    const exchange = createExchangeTurn({ deadlines, historyTurns: 20,
       begin: async ({ text }) => {
         pending = pendingTurn(text);
         return { ok: true, value: { conversationId: 'conversation-1', turnId: 'turn-1', acceptedAt: new Date(0) } };
@@ -280,7 +280,7 @@ describe('conversation session diagnostics', () => {
 
   it('logs a history read failure of an admitted turn as conversation_reply_failed', async () => {
     const marker = new Error('TECH_HISTORY_MARKER');
-    const exchange = createExchangeTurn({ deadlines,
+    const exchange = createExchangeTurn({ deadlines, historyTurns: 20,
       begin: async () => ({ ok: true, value: { conversationId: 'conversation-1', turnId: 'turn-1', acceptedAt: new Date(0) } }),
       history: { async find() { throw marker; } },
       complete: async ({ turnId }) => ({ ok: true, value: { turnId, status: 'failed' } }),

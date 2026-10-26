@@ -124,7 +124,7 @@ export async function startSessionServer(options: Readonly<{
   const directory = await mkdtemp(join(tmpdir(), 'ambrogio-session-'));
   const language = options.language ?? 'it';
   const prepared = await prepareConfiguredConversations({ archivePath: join(directory, 'archive.sqlite'),
-    listPageSize: 20, maxListPageSize: 100, language, timeZone: 'UTC' }, new Date());
+    listPageSize: 20, maxListPageSize: 100, historyTurns: 20, language, timeZone: 'UTC' }, new Date());
   const speech = fakeSpeech();
   const built = await buildConversationServer({ host: '127.0.0.1', port: 0,
     allowedOrigins: [...(options.allowedOrigins ?? [])], publicHttps: false }, prepared,

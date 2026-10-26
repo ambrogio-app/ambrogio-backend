@@ -109,6 +109,35 @@ Quando il server avvia la conversazione con agenti configurati, deve rendere dis
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
+### Azioni dell'agente nello storico
+
+Quando un agente specializzato con connettore MCP conclude un turno con risposta dopo aver chiamato strumenti, Ambrogio deve conservare con il turno le chiamate eseguite e i loro risultati e, nei turni successivi della stessa conversazione, deve presentarle soltanto allo stesso agente, senza mostrarle all'orchestratore, agli altri agenti o ai client.
+
+#### Details
+Tutti i framework esaminati conservano nello storico le chiamate agli strumenti e i loro risultati: la persistenza dei messaggi di AI SDK, il registro conversazionale di Home Assistant, il contesto di LiveKit Agents, Pipecat e le sessioni di OpenAI Agents SDK. Con le proprie azioni nello storico l'agente sa su quale dispositivo ha agito, per esempio quando la famiglia dice «spegnila» dopo aver acceso una luce, e un turno con azioni resta un messaggio valido per il provider anche quando il testo della risposta è breve.
+
+Sono state considerate e non adottate: mostrare le azioni a tutti gli agenti, che vedrebbero chiamate a strumenti di cui non dispongono; mostrarle anche all'orchestratore, che sceglie l'agente dai testi e dalle descrizioni; esporle nell'API HTTP dello storico, che cambierebbe un'interfaccia pubblica per un dato che serve soltanto ai modelli.
+
+Fonti: persistenza dei messaggi di AI SDK, https://ai-sdk.dev/docs/ai-sdk-ui/chatbot-message-persistence ; contesto di LiveKit Agents, https://docs.livekit.io/agents/logic/chat-context/ ; memoria delle sessioni di OpenAI Agents SDK, https://developers.openai.com/cookbook/examples/agents_sdk/session_memory .
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [API dei provider di modelli linguistici](../Contracts/ExternalContracts.md#api-dei-provider-di-modelli-linguistici)
+  * [Archivio SQLite con Kysely](../Contracts/FamilyConversation.md#archivio-sqlite-con-kysely)
+
+#### Relations
+  * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
+  * satisfiedBy: [migrations.ts](../../packages/conversations/src/adapters/out/sqlite/migrations.ts)
+  * satisfiedBy: [sqlite-turn-mapper.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-mapper.ts)
+  * satisfiedBy: [complete-turn.use-case.ts](../../packages/conversations/src/application/complete-turn.use-case.ts)
+  * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
+  * satisfiedBy: [get-conversation.use-case.ts](../../packages/conversations/src/application/get-conversation.use-case.ts)
+  * satisfiedBy: [turn.ts](../../packages/conversations/src/domain/turn.ts)
+  * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
+---
+
 ### Caricamento completo del turno
 
 Quando il repository del turno carica un turno dall'archivio, deve distinguere prima della ricostruzione il turno assente, che è assenza normale, il turno con record completi e coerenti, e il turno il cui record di conversazione o di occupazione manca, è duplicato o non è associabile; questi ultimi, come i dati incompatibili con il modello corrente, devono interrompere il caricamento come guasto inatteso, mai come assenza o turno valido.
@@ -1060,6 +1089,29 @@ Quando un agente specializzato usa gli strumenti del proprio connettore MCP per 
   * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
 ---
 
+### Limite dello storico inviato ai modelli
+
+Quando Ambrogio prepara il contesto di un turno per l'orchestratore e per l'agente scelto, deve includere soltanto gli ultimi turni della conversazione, fino al numero configurato nel componente «Conversazioni» e compreso il turno in elaborazione, e deve impedire l'attivazione se il numero configurato è invalido.
+
+#### Details
+Tutti i framework esaminati limitano il contesto inviato al modello: per numero di elementi o di turni il contesto di LiveKit Agents, l'integrazione Ollama di Home Assistant e le sessioni di OpenAI Agents SDK; per tempo le sessioni conversazionali di Home Assistant, che scadono dopo cinque minuti d'inattività; con un riassunto Pipecat. Un limite per numero di turni conserva il contesto recente di una chat ripresa dopo ore. Sono stati considerati e non adottati il limite per tempo, che farebbe ripartire senza contesto una chat ripresa più tardi mentre i client mostrano ancora i turni precedenti, e il doppio limite per numero e per tempo, che richiede due valori da configurare. L'archivio e la consultazione HTTP dello storico restano completi.
+
+Fonti: contesto di LiveKit Agents, https://docs.livekit.io/agents/logic/chat-context/ ; gestione del contesto di Pipecat, https://docs.pipecat.ai/guides/learn/context-management ; memoria delle sessioni di OpenAI Agents SDK, https://developers.openai.com/cookbook/examples/agents_sdk/session_memory ; sessioni di Home Assistant, https://github.com/home-assistant/core/blob/dev/homeassistant/helpers/chat_session.py .
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Profilo di bootstrap della configurazione del backend](../Contracts/ServerFoundation.md#profilo-di-bootstrap-della-configurazione-del-backend)
+  * [Profilo dell'ambiente di esecuzione e del file d'ambiente locale](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#profilo-dellambiente-di-esecuzione-e-del-file-dambiente-locale)
+
+#### Relations
+  * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
+  * satisfiedBy: [conversation-config.ts](../../packages/conversations/src/adapters/out/conversation-config.ts)
+  * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
+---
+
 ### Lingua configurata nelle risposte degli agenti
 
 Quando un agente specializzato produce una risposta per la famiglia, il backend deve aggiungere alle sue istruzioni la lingua effettiva configurata per la conversazione, italiana o inglese. La regola deve applicarsi agli agenti con e senza MCP e non deve cambiare il ruolo dell'orchestratore, che seleziona soltanto l'agente.
@@ -1485,7 +1537,7 @@ Quando un agente specializzato con connettore MCP elabora un messaggio della fam
 #### Details
 La risposta arriva quando l'agente sa com'è andata. È stata provata e tolta una frase breve che l'agente scriveva prima di chiamare gli strumenti, sul modello della preamble dei modelli vocali raccomandata dalla guida OpenAI per i modelli realtime: il modello la scriveva prima di conoscere l'esito, e quanto è già stato pronunciato non si ritira. Su un'installazione reale ha annunciato «Non riesco a trovare un lettore chiamato Ambrogio» prima di cercare il lettore, che poi ha trovato, e ha detto «sto per spegnere la luce» quando Home Assistant l'aveva già spenta, perché un'azione di Home Assistant dura pochi millisecondi. Con un server veloce la risposta dopo le azioni arriva in circa due secondi per un comando di Home Assistant e in tre o quattro per la ricerca e l'avvio di un brano.
 
-Una risposta fatta soltanto di «Fatto.» induceva il modello, nei turni successivi della stessa conversazione, a confermare le nuove richieste senza chiamare gli strumenti: lo storico mostra all'agente i testi delle risposte, non le azioni eseguite. In prove con Mistral e con l'agente Home Assistant di un'installazione reale, la richiesta «spegnila» dopo una risposta «Fatto.» non ha prodotto chiamate agli strumenti in nessuna prova, mentre dopo una risposta che nomina l'azione e il suo oggetto ha sempre chiamato lo strumento. Per questo la risposta nomina sempre l'azione e il suo oggetto, non è mai soltanto «Fatto» o «Ok», e ogni richiesta d'azione richiede una propria chiamata. Le istruzioni non contengono frasi d'esempio: con un esempio il modello ne copiava il verbo anche per azioni diverse, fino a chiamare lo strumento opposto. Un messaggio che non chiede nulla, come un ringraziamento, è escluso esplicitamente: senza l'eccezione, con la chiamata a uno strumento richiesta a ogni passo, il modello eseguiva un'azione anche per un ringraziamento. Con queste regole, nelle stesse prove, gli agenti di Home Assistant e della musica non hanno scritto testo prima delle chiamate agli strumenti.
+Una risposta fatta soltanto di «Fatto.» induceva il modello, nei turni successivi della stessa conversazione, a confermare le nuove richieste senza chiamare gli strumenti quando lo storico mostrava all'agente soltanto i testi delle risposte. L'agente vede le proprie azioni conservate, ma non quelle dei turni risposti da altri agenti o conservati senza azioni, per i quali la regola resta necessaria. In prove con Mistral e con l'agente Home Assistant di un'installazione reale, la richiesta «spegnila» dopo una risposta «Fatto.» non ha prodotto chiamate agli strumenti in nessuna prova, mentre dopo una risposta che nomina l'azione e il suo oggetto ha sempre chiamato lo strumento. Per questo la risposta nomina sempre l'azione e il suo oggetto, non è mai soltanto «Fatto» o «Ok», e ogni richiesta d'azione richiede una propria chiamata. Le istruzioni non contengono frasi d'esempio: con un esempio il modello ne copiava il verbo anche per azioni diverse, fino a chiamare lo strumento opposto. Un messaggio che non chiede nulla, come un ringraziamento, è escluso esplicitamente: senza l'eccezione, con la chiamata a uno strumento richiesta a ogni passo, il modello eseguiva un'azione anche per un ringraziamento. Con queste regole, nelle stesse prove, gli agenti di Home Assistant e della musica non hanno scritto testo prima delle chiamate agli strumenti.
 
 Sono state considerate e non adottate per riempire l'attesa: una parola fissa come «Ok» trasmessa dal backend appena l'orchestratore sceglie l'agente, che suonerebbe superflua prima delle risposte rapide; un suono d'attesa riprodotto dal satellite fra la fine della richiesta e la risposta. Sono state scartate per annunciare l'azione: una seconda chiamata breve al modello dell'agente in parallelo alla risposta, perché con le istruzioni del server MCP il modello lasciava l'annuncio vuoto; l'annuncio dell'orchestratore, che conosce soltanto le descrizioni degli agenti; uno strumento locale di annuncio, che costringe il modello a fingere un'azione per parlare; un campo di annuncio nell'uscita strutturata, che il modello scrive soltanto dopo l'ultima chiamata agli strumenti.
 
@@ -1497,6 +1549,29 @@ Fonti: guida OpenAI ai modelli realtime, https://developers.openai.com/api/docs/
 #### Relations
   * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
   * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
+---
+
+### Risposta non vuota dell'agente specializzato
+
+Quando un agente specializzato conclude la risposta con `finish` senza aver scritto testo, Ambrogio deve chiedere una sola volta allo stesso agente di scrivere la risposta del turno e, se anche questa resta senza testo, deve concludere il turno con errore senza conservare una risposta vuota.
+
+#### Details
+Un modello può chiamare `finish` subito dopo l'ultima azione senza scrivere nulla: il turno risulterebbe riuscito con una risposta vuota, la famiglia non sentirebbe alcuna conferma e lo storico conterrebbe un messaggio dell'assistente vuoto, che l'API di Mistral rifiuta con l'errore «Assistant message must have either content or tool_calls, but not none», facendo fallire i turni successivi della conversazione. La documentazione AI SDK tratta il testo finale vuoto dopo le chiamate agli strumenti come comportamento del modello, da correggere istruendolo o costringendolo a scrivere.
+
+Sono state considerate e non adottate: concludere subito il turno con errore, che farebbe sentire un errore anche quando l'azione è riuscita; accettare la risposta vuota come silenzio, come fa il registro conversazionale di Home Assistant, che lascia la famiglia senza conferma; scrivere la risposta come argomento dello strumento finale, schema indicato dalla documentazione AI SDK per lo strumento conclusivo, che impedirebbe di trasmettere alla voce il testo mentre viene scritto.
+
+Fonti: documentazione AI SDK sul controllo del ciclo, https://ai-sdk.dev/docs/agents/loop-control ; registro conversazionale di Home Assistant, https://github.com/home-assistant/core/blob/dev/homeassistant/components/conversation/chat_log.py .
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [API dei provider di modelli linguistici](../Contracts/ExternalContracts.md#api-dei-provider-di-modelli-linguistici)
+
+#### Relations
+  * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
+  * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Risposta parlata su richiesta del client
@@ -1730,6 +1805,21 @@ Origine: baseline Reqvire «Domain state without shared mutable references», ad
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
+### Storico senza risposte vuote
+
+Quando Ambrogio prepara il contesto di un turno per l'orchestratore o per un agente specializzato, deve omettere il testo delle risposte conservate che non contengono caratteri diversi da spazi bianchi, mantenendo il messaggio della famiglia di quei turni.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [API dei provider di modelli linguistici](../Contracts/ExternalContracts.md#api-dei-provider-di-modelli-linguistici)
+
+#### Relations
+  * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
+  * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
+---
+
 ### Streaming soltanto quando l'intenzione lo richiede
 
 Quando una porta Application del modulo «Conversazioni» consegna dati, deve esporre una consegna in streaming soltanto se l'intenzione richiede elaborazione incrementale, volumi non materializzabili o una fonte potenzialmente illimitata; le porte di lettura, la porta di lookup e il repository del turno devono restituire valori materializzati, e una porta in streaming deve produrre valori Application tramite `AsyncIterable` senza esporre stream del runtime, cursori del database o tipi di libreria.
@@ -1901,3 +1991,4 @@ Origine: baseline Reqvire «Value Object for meaningful values», adottata; «Im
   * satisfiedBy: [identities.ts](../../packages/conversations/src/domain/identities.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
+

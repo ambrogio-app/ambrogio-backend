@@ -36,7 +36,7 @@ function setup() {
   };
   // A deadline that never elapses unless a test controls it.
   const deadlines = { start: () => ({ elapsed: new Promise<void>(() => { /* never */ }), cancel() {} }) };
-  return { calls, begin, history, complete, outcomes, failureMessage: englishFailure, deadlines };
+  return { calls, begin, history, complete, outcomes, failureMessage: englishFailure, deadlines, historyTurns: 20 };
 }
 
 /** A deadline the test makes elapse, recording the requested durations and cancellations. */
@@ -409,6 +409,60 @@ describe('conversation exchange use case', () => {
     timer.state.expire();
     expect(await result).toEqual({ ok: true, value: { conversationId, turnId, outcome: 'interrupted' } });
     expect(deps.outcomes).toEqual([]);
+  });
+
+  // Verification: Prova delle azioni nello storico
+  it('records the actions of the agent with the stored outcome', async () => {
+    const deps = setup();
+    const on: ReplyPart = { kind: 'action', action: { tool: 'HassTurnOn', input: { name: 'luce' }, output: { ok: true } } };
+    const failed: ReplyPart = { kind: 'action', action: { tool: 'HassTurnOff', input: {}, error: 'Unavailable' } };
+    const exchange = createExchangeTurn({ ...deps, reply: { async *produce() {
+      yield responder('home'); yield on; yield failed; yield text('Ho acceso la luce.'); yield expectation(false);
+    } } });
+    expect(await exchange({ text: '  domanda  ' })).toMatchObject({ ok: true, value: { outcome: 'answered' } });
+    expect(deps.outcomes).toEqual([{ kind: 'answer', text: 'Ho acceso la luce.', agent: 'home', actions: [
+      { tool: 'HassTurnOn', input: { name: 'luce' }, output: { ok: true } },
+      { tool: 'HassTurnOff', input: {}, error: 'Unavailable' }] }]);
+  });
+
+  // Verification: Prova delle azioni nello storico
+  it.each<[string, ReplyPart[]]>([
+    ['without an agent', [{ kind: 'action', action: { tool: 't', input: {}, output: 1 } }, text('Ok.'), expectation(false)]],
+    ['after the reply expectation', [responder('home'), text('Ok.'), expectation(false),
+      { kind: 'action', action: { tool: 't', input: {}, output: 1 } }]],
+    ['invalid', [responder('home'), { kind: 'action', action: { tool: '', input: {}, output: 1 } }, text('Ok.'),
+      expectation(false)]],
+  ])('fails the turn when an action is delivered %s', async (_label, parts) => {
+    const deps = setup();
+    const exchange = createExchangeTurn({ ...deps, reply: { async *produce() { yield* parts; } } });
+    expect(await exchange({ text: '  domanda  ' })).toMatchObject({ ok: true, value: { outcome: 'failed' } });
+    expect(deps.outcomes).toEqual([{ kind: 'error', message: englishFailure }]);
+  });
+
+  // Verification: Prova della nuova richiesta della risposta vuota
+  it.each([[''], ['  \n ']])('fails the turn instead of storing the empty answer %j', async answer => {
+    const deps = setup();
+    const exchange = createExchangeTurn({ ...deps, reply: { async *produce() {
+      yield responder('home'); if (answer) yield text(answer); yield expectation(false);
+    } } });
+    expect(await exchange({ text: '  domanda  ' })).toMatchObject({ ok: true, value: { outcome: 'failed' } });
+    expect(deps.outcomes).toEqual([{ kind: 'error', message: englishFailure }]);
+  });
+
+  // Verification: Prova della finestra dello storico dei modelli
+  it('gives the reply only the latest turns, the current one last', async () => {
+    const deps = setup();
+    const earlier = Array.from({ length: 5 }, (_, index): HistoryTurn => ({ id: `t${index}`, text: `q${index}`,
+      acceptedAt: new Date(index), status: 'answered', answer: `a${index}`, finishedAt: new Date(index) }));
+    let received: readonly HistoryTurn[] = [];
+    const exchange = createExchangeTurn({ ...deps, historyTurns: 3,
+      history: { async find(id) { return { id, createdAt: new Date(0), lastActivityAt: new Date(0),
+        turns: [...earlier, pending] }; } },
+      reply: { async *produce(history) { received = history.turns; yield text('Ok.'); yield expectation(false); } } });
+    await exchange({ text: '  domanda  ' });
+    expect(received.map(turn => turn.id)).toEqual(['t3', 't4', turnId]);
+    expect(() => createExchangeTurn({ ...deps, reply: { async *produce() { /* unused */ } }, historyTurns: 0 }))
+      .toThrow('Invalid history window');
   });
 });
 

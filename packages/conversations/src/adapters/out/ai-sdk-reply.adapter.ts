@@ -6,6 +6,7 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { generateText, hasToolCall, jsonSchema, Output, stepCountIs, streamText, tool, type LanguageModel,
   type ModelMessage } from 'ai';
 import { ProjectError } from '../../domain/project-error.js';
+import type { JsonValue, TurnAction } from '../../domain/turn.js';
 import type { ConversationHistory } from '../../application/conversation-history-read.port.js';
 import type { ProduceConversationReply, ReplyCancellation, ReplyPart }
   from '../../application/produce-conversation-reply.port.js';
@@ -99,16 +100,63 @@ function modelFor(settings: AgentSettings, model?: LanguageModel): LanguageModel
   }
 }
 
-/** The stored conversation; only the router sees which agent gave each answer. */
-function messagesFor(history: ConversationHistory, showAgents = false): ModelMessage[] {
+/**
+ * The calls of `actions` and their results, as an assistant message and a tool message. Call identifiers are
+ * made here, nine alphanumeric characters as Mistral requires, distinct thanks to the shared counter.
+ */
+function actionMessages(actions: readonly TurnAction[], counter: { next: number }): ModelMessage[] {
+  const calls = actions.map(action => ({ id: `call${String(counter.next++).padStart(5, '0')}`, action }));
+  return [
+    { role: 'assistant', content: calls.map(({ id, action }) => ({ type: 'tool-call' as const, toolCallId: id,
+      toolName: action.tool, input: action.input })) },
+    { role: 'tool', content: calls.map(({ id, action }) => ({ type: 'tool-result' as const, toolCallId: id,
+      toolName: action.tool, output: action.error === undefined
+        ? { type: 'json' as const, value: action.output as JsonValue }
+        : { type: 'error-text' as const, value: action.error } })) },
+  ];
+}
+
+/**
+ * The stored conversation («Omissione delle risposte vuote nel contesto», «Azioni conservate del turno»): only
+ * the router sees which agent gave each answer; an agent sees the actions left in the history it receives.
+ */
+function messagesFor(history: ConversationHistory, showAgents = false, counter = { next: 1 }): ModelMessage[] {
   const messages: ModelMessage[] = [];
   for (const turn of history.turns) {
     messages.push({ role: 'user', content: turn.text });
     if (turn.status !== 'answered') continue;
+    if (!showAgents && turn.actions !== undefined) messages.push(...actionMessages(turn.actions, counter));
+    // Providers refuse an assistant message with neither text nor tool calls.
+    if (!turn.answer.trim()) continue;
     const marker = showAgents && turn.agent !== undefined ? `[agent: ${turn.agent}] ` : '';
     messages.push({ role: 'assistant', content: `${marker}${turn.answer}` });
   }
   return messages;
+}
+
+/** The history an agent receives: the actions of the turns another agent answered are not its own. */
+function historyFor(history: ConversationHistory, agent: string): ConversationHistory {
+  const foreign = (turn: ConversationHistory['turns'][number]) => turn.status === 'answered' && turn.actions !== undefined
+    && turn.agent !== agent;
+  if (!history.turns.some(foreign)) return history;
+  return { ...history, turns: history.turns.map(turn => {
+    if (turn.status !== 'answered' || turn.actions === undefined || turn.agent === agent) return turn;
+    const { actions: _actions, ...rest } = turn;
+    return rest;
+  }) };
+}
+
+/** The arguments of a tool call as a JSON object; anything else becomes an empty object. */
+function toolInput(value: unknown): Readonly<Record<string, JsonValue>> {
+  const copy = jsonCopy(value);
+  return copy !== null && typeof copy === 'object' && !Array.isArray(copy)
+    ? copy as Readonly<Record<string, JsonValue>> : {};
+}
+
+/** A JSON copy of what a tool received or returned: undefined members disappear, as on the wire. */
+function jsonCopy(value: unknown): JsonValue {
+  const text = JSON.stringify(value);
+  return text === undefined ? null : JSON.parse(text) as JsonValue;
 }
 
 /** The SDK signal of a reply: aborted once Application requests the stop. */
@@ -198,14 +246,61 @@ async function* replyParts(response: ReplyStream, onText: () => void, onToolCall
         if (stepWritten && !stepBroken) { stepBroken = true; yield { kind: 'text', text: '\n' }; }
         onToolCall();
       }
+    } else if (part.type === 'tool-result' && part.toolName !== finishToolName) {
+      yield { kind: 'action', action: { tool: String(part.toolName), input: toolInput(part.input),
+        output: jsonCopy(part.output) } };
     } else if (part.type === 'tool-error') {
       // The call limit fails the turn: the model is not given the chance to answer after it.
       const exceeded = limit();
       if (exceeded) throw exceeded;
+      if (part.toolName !== finishToolName) {
+        const error = part.error instanceof Error && part.error.message ? part.error.message : 'Tool call failed';
+        yield { kind: 'action', action: { tool: String(part.toolName), input: toolInput(part.input), error } };
+      }
     } else if (part.type === 'error') throw part.error;
   }
   if (expectsReply === undefined) throw new ProjectError('Missing reply expectation');
   yield { kind: 'reply_expectation', expectsReply };
+}
+
+/** Added to the instructions of the second generation after an empty reply («Nuova richiesta della risposta vuota»). */
+const emptyReplyRule = '\nYour reply ended without any words for the family. No tool is available now, not even '
+  + `${finishToolName}: write now only the words of your reply to the last message of the family, based on the `
+  + 'results of the tools you called.';
+
+/** The text of the second generation, without tools, from the history and the actions of the turn. */
+async function* recoveryText(model: LanguageModel, options: ReturnType<typeof aiSdkOptions>, system: string,
+  history: ConversationHistory, actions: readonly TurnAction[], signal: AbortSignal): AsyncGenerator<string, void, void> {
+  const counter = { next: 1 };
+  const messages = messagesFor(history, false, counter);
+  if (actions.length > 0) messages.push(...actionMessages(actions, counter));
+  const response = streamText({ model, system: system + emptyReplyRule, messages, maxRetries: 0, abortSignal: signal,
+    ...options });
+  for await (const part of response.fullStream as AsyncIterable<{ type: string } & Record<string, unknown>>) {
+    if (part.type === 'text-delta' && typeof part.text === 'string' && part.text) yield part.text;
+    else if (part.type === 'error') throw part.error;
+  }
+}
+
+/**
+ * The parts of a reply that has words: when `finish` arrives with no text but spaces, the text of `recover` comes
+ * before the reply expectation; a reply still without text fails.
+ */
+async function* withReplyText(parts: AsyncIterable<ReplyPart>,
+  recover: (actions: readonly TurnAction[]) => AsyncIterable<string>): AsyncGenerator<ReplyPart, void, void> {
+  let written = false;
+  const actions: TurnAction[] = [];
+  for await (const part of parts) {
+    if (part.kind === 'text' && part.text.trim()) written = true;
+    if (part.kind === 'action') actions.push(part.action);
+    if (part.kind !== 'reply_expectation' || written) { yield part; continue; }
+    for await (const text of recover(actions)) {
+      if (text.trim()) written = true;
+      yield { kind: 'text', text };
+    }
+    if (!written) throw new ProjectError('Empty reply');
+    yield part;
+  }
 }
 
 export class AiSdkToolAgentReply implements ProduceConversationReply {
@@ -260,17 +355,19 @@ export class AiSdkToolAgentReply implements ProduceConversationReply {
         },
       }),
     ]]));
-    const response = streamText({ model: this.model,
-      system: replyInstructions(withServerPrompts(withCurrentTime(this.settings), prompts),
-        this.settings.responseLanguage) + actionReplyRules,
+    const system = replyInstructions(withServerPrompts(withCurrentTime(this.settings), prompts),
+      this.settings.responseLanguage) + actionReplyRules;
+    const response = streamText({ model: this.model, system,
       messages: messagesFor(history), tools: { ...tools, [finishToolName]: finishTool }, toolChoice: 'required',
       toolCallConcurrency: 1, stopWhen: [stepCountIs(this.maxToolCalls + 1), hasToolCall(finishToolName)],
       maxRetries: 0, abortSignal: signal, ...this.options });
+    let recovered = 0;
     try {
-      yield* replyParts(response as unknown as ReplyStream,
+      yield* withReplyText(replyParts(response as unknown as ReplyStream,
         () => { if (!toolCalled && measures.announcementMs === undefined) measures.announcementMs = this.now() - started; },
-        () => { toolCalled = true; }, () => limitExceeded);
-      measures.modelSteps = (await response.steps).length;
+        () => { toolCalled = true; }, () => limitExceeded),
+      actions => { recovered += 1; return recoveryText(this.model, this.options, system, history, actions, signal); });
+      measures.modelSteps = (await response.steps).length + recovered;
     } catch (error) { throwStreamError(limitExceeded ?? error); }
   }
 }
@@ -293,13 +390,15 @@ export class AiSdkKnowledgeAgentReply implements ProduceConversationReply {
     measures: ReplyMeasures): AsyncIterable<ReplyPart> {
     const signal = abortSignalFor(cancellation);
     // `finish` is the only tool: it carries the reply expectation.
-    const response = streamText({ model: this.model,
-      system: replyInstructions(withCurrentTime(this.settings), this.settings.responseLanguage),
+    const system = replyInstructions(withCurrentTime(this.settings), this.settings.responseLanguage);
+    const response = streamText({ model: this.model, system,
       messages: messagesFor(history), tools: { [finishToolName]: finishTool }, toolChoice: 'required',
       stopWhen: [stepCountIs(2), hasToolCall(finishToolName)], maxRetries: 0, abortSignal: signal, ...this.options });
+    let recovered = 0;
     try {
-      yield* replyParts(response as unknown as ReplyStream, () => undefined, () => undefined, () => undefined);
-      measures.modelSteps = (await response.steps).length;
+      yield* withReplyText(replyParts(response as unknown as ReplyStream, () => undefined, () => undefined, () => undefined),
+        actions => { recovered += 1; return recoveryText(this.model, this.options, system, history, actions, signal); });
+      measures.modelSteps = (await response.steps).length + recovered;
     } catch (error) { throwStreamError(error); }
   }
 }
@@ -367,8 +466,9 @@ export class AiSdkOrchestratorReply implements ProduceConversationReply {
     // The chosen agent answers the original turn from the stored history.
     const started = this.now();
     const measures: ReplyMeasures = { modelSteps: 0 };
-    yield* agent.reply.measured ? agent.reply.measured(history, cancellation, measures)
-      : agent.reply.produce(history, cancellation);
+    const own = historyFor(history, agent.id);
+    yield* agent.reply.measured ? agent.reply.measured(own, cancellation, measures)
+      : agent.reply.produce(own, cancellation);
     const ms = (value: number) => Math.max(0, Math.round(value));
     this.timing?.log.info({ event: 'conversation_reply_timing', agent: agent.id, routerMs: ms(routerMs),
       agentMs: ms(this.now() - started), modelSteps: measures.modelSteps,

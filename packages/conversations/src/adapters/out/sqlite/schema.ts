@@ -18,6 +18,7 @@ export interface TurnRows {
   error: string | null;
   finished_at: number | null;
   agent: Generated<string | null>;
+  actions: Generated<string | null>;
 }
 
 export interface InstallationRows {

@@ -44,7 +44,7 @@ describe('conversation HTTP server', () => {
   it('applies global security headers, exact CORS origins and distinct request IDs', async () => {
     const files = await fixture();
     const prepared = await prepareConfiguredConversations({ archivePath: files.archive,
-      listPageSize: 20, maxListPageSize: 100, language: 'en', timeZone: 'UTC' }, new Date());
+      listPageSize: 20, maxListPageSize: 100, historyTurns: 20, language: 'en', timeZone: 'UTC' }, new Date());
     const server = await buildServer({ ...base, allowedOrigins: ['https://client.test'],
       publicHttps: true, hstsMaxAgeSeconds: 600 }, prepared);
     server.get('/test-fallback', async () => { throw new Error('private diagnostic marker'); });
@@ -93,7 +93,7 @@ describe('conversation HTTP server', () => {
     }
 
     const other = await prepareConfiguredConversations({ archivePath: files.archive,
-      listPageSize: 20, maxListPageSize: 100, language: 'en', timeZone: 'UTC' }, new Date());
+      listPageSize: 20, maxListPageSize: 100, historyTurns: 20, language: 'en', timeZone: 'UTC' }, new Date());
     const defaultServer = await buildServer(base, other);
     try {
       const response = await defaultServer.inject({ method: 'GET', url: '/api/v1/conversations',
@@ -117,7 +117,7 @@ describe('conversation HTTP server', () => {
   it('correlates diagnostic events and error responses for both conversation GET routes', async () => {
     const files = await fixture();
     const prepared = await prepareConfiguredConversations({ archivePath: files.archive,
-      listPageSize: 20, maxListPageSize: 100, language: 'en', timeZone: 'UTC' }, new Date());
+      listPageSize: 20, maxListPageSize: 100, historyTurns: 20, language: 'en', timeZone: 'UTC' }, new Date());
     const output: string[] = [];
     const write = vi.spyOn(process.stdout, 'write').mockImplementation(chunk => {
       output.push(String(chunk));
@@ -209,7 +209,7 @@ describe('conversation HTTP server', () => {
   it('normalizes errors at the generic HTTP fallback', async () => {
     const files = await fixture();
     const prepared = await prepareConfiguredConversations({ archivePath: files.archive,
-      listPageSize: 20, maxListPageSize: 100, language: 'en', timeZone: 'UTC' }, new Date());
+      listPageSize: 20, maxListPageSize: 100, historyTurns: 20, language: 'en', timeZone: 'UTC' }, new Date());
     const cause = new Error('private cause');
     const original = new TypeError('private bug', { cause });
     original.name = 'ExternalDriverError';
@@ -281,7 +281,7 @@ describe('conversation HTTP server', () => {
   it('does not collect conversation, request, use-case or credential data into diagnostics', async () => {
     const files = await fixture();
     const prepared = await prepareConfiguredConversations({ archivePath: files.archive,
-      listPageSize: 20, maxListPageSize: 100, language: 'en', timeZone: 'UTC' }, new Date());
+      listPageSize: 20, maxListPageSize: 100, historyTurns: 20, language: 'en', timeZone: 'UTC' }, new Date());
     const output: string[] = [];
     const write = vi.spyOn(process.stdout, 'write').mockImplementation(chunk => {
       output.push(String(chunk));
@@ -354,7 +354,7 @@ describe('conversation HTTP server', () => {
   it('correlates every diagnostic event of a session with one UUID v4 distinct per session', async () => {
     const files = await fixture();
     const prepared = await prepareConfiguredConversations({ archivePath: files.archive,
-      listPageSize: 20, maxListPageSize: 100, language: 'en', timeZone: 'UTC' }, new Date());
+      listPageSize: 20, maxListPageSize: 100, historyTurns: 20, language: 'en', timeZone: 'UTC' }, new Date());
     const output: string[] = [];
     const write = vi.spyOn(process.stdout, 'write').mockImplementation(chunk => {
       output.push(String(chunk));

@@ -157,11 +157,11 @@ const actionReplyRules = '\nWhen you carried out the requested action successful
 function announcementInstructions(instructions: string, language?: 'en' | 'it'): string {
   const languageLine = language === undefined ? ''
     : `\nWrite in ${language === 'it' ? 'Italian' : 'English'}.`;
-  return `${instructions}${languageLine}\nYou are not answering now. Decide only whether the last message of the `
-    + 'family asks you to carry out an action with your tools. If it does, write in announcement one short sentence '
+  return `${instructions}${languageLine}\nYou are not answering now. Your instructions above describe what your tools `
+    + 'let you do. Decide only whether the last message of the family asks you to do something with them, such as '
+    + 'playing, turning on or off, changing or adding something. If it does, write in announcement one short sentence '
     + 'that tells the family what you are about to do, for example "I am looking for a song by Neffa and playing it." '
-    + 'If the message asks for information, or you are not sure, leave announcement empty. '
-    + 'Do not carry out the action.';
+    + 'If the message only asks for information, leave announcement empty. Do not do it yet.';
 }
 
 const announcementOutput = Output.object({ schema: jsonSchema<{ announcement: string }>({

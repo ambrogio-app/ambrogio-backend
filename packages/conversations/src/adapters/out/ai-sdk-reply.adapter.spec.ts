@@ -498,10 +498,11 @@ test('the announcement is spoken while the tool runs, and a successful action en
   expect(call.responseFormat).toMatchObject({ type: 'json', schema: { properties: { announcement: { type: 'string' } },
     required: ['announcement'] } });
   expect(String(call.prompt[0]?.content)).toBe(`${settings.instructions}\nWrite in Italian.\nYou are not answering now. `
-    + 'Decide only whether the last message of the family asks you to carry out an action with your tools. If it does, '
-    + 'write in announcement one short sentence that tells the family what you are about to do, for example '
-    + '"I am looking for a song by Neffa and playing it." If the message asks for information, or you are not sure, '
-    + 'leave announcement empty. Do not carry out the action.');
+    + 'Your instructions above describe what your tools let you do. Decide only whether the last message of the family '
+    + 'asks you to do something with them, such as playing, turning on or off, changing or adding something. If it '
+    + 'does, write in announcement one short sentence that tells the family what you are about to do, for example '
+    + '"I am looking for a song by Neffa and playing it." If the message only asks for information, leave announcement '
+    + 'empty. Do not do it yet.');
   expect(String(model.doStreamCalls[0]?.prompt[0]?.content)).toContain(actionRules);
 });
 

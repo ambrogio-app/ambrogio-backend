@@ -17,8 +17,6 @@ describe('ambrogio.v1 schema', () => {
     { type: 'input.chunk', requestId: 'r1', text: '' },
     { type: 'input.chunk', requestId: 'r1', text: 'ciao 🌍\n' },
     { type: 'input.end', requestId: 'r1' },
-    { type: 'client.result', id: 'cmd-1', ok: true },
-    { type: 'client.result', id: 'cmd-2', ok: false, reason: 'unsupported' },
   ])('accepts client message %#', message => {
     expect(isClientMessage(message)).toBe(true);
     expect(isServerMessage(message)).toBe(false);
@@ -38,8 +36,8 @@ describe('ambrogio.v1 schema', () => {
     { type: 'input.start', requestId: 'r1', stream: 1, content: { type: 'text' }, reply: 'text', extra: true },
     { type: 'input.chunk', requestId: 'r1', text: 42 },
     { type: 'input.end' },
-    { type: 'client.result', id: 'cmd', ok: false },
-    { type: 'client.result', id: 'cmd', ok: true, reason: 'unsupported' },
+    { type: 'client.result', id: 'cmd', ok: true },
+    { type: 'client.result', id: 'cmd', ok: false, reason: 'unsupported' },
     { type: 'turn.completed', turnId: 't1', expectsReply: true },
   ])('rejects invalid client message %#', message => {
     expect(isClientMessage(message)).toBe(false);

@@ -18,7 +18,7 @@ export type Clock = () => number;
 const monotonic: Clock = () => performance.now();
 
 /** What an agent measured while producing one reply: model calls, MCP calls and the text before the first of them. */
-export type ReplyMeasures = { modelSteps: number; toolCalls?: number; toolMs?: number; announcementMs?: number };
+export type ReplyMeasures = { modelSteps: number; toolCalls?: number; toolMs?: number };
 
 /** The providers this adapter can build a model for. */
 export const llmProviders = ['mistral', 'openai', 'anthropic', 'google', 'openai-compatible'] as const;
@@ -191,42 +191,26 @@ function replyInstructions(instructions: string, language?: 'en' | 'it'): string
 
 /**
  * The rules added to the reply instructions of an agent with MCP tools («Risposta dopo le chiamate agli strumenti»):
- * the reply comes after the tools, when its outcome is known. No example sentence: models copied its verb. After a
- * bare "Fatto" in the history, models confirmed new requests without tools.
+ * the reply comes after the tools, when its outcome is known. No example sentence: models copied its verb.
  */
-const actionReplyRules = '\nEvery request to do something with your tools needs its own tool call in this reply, also when it '
-  + 'repeats or refers to an earlier request: earlier replies do not show that anything was done. A message that asks '
-  + 'for nothing, such as thanks or a greeting, needs no tool. Write nothing before or between tool '
-  + 'calls: write your reply only after your last tool call, when you know how it went. After an action, say in one '
-  + 'short sentence what you did and on what; never answer only "Fatto" or "Ok". When an action fails, say what did '
-  + 'not work.';
+const actionReplyRules = '\nWrite your reply only after your last tool call, when you know how it went. Never say that '
+  + 'something was done unless a tool did it in this reply. After an action, say briefly what you did; when an action '
+  + 'fails, say what did not work.';
 
 type ReplyStream = Readonly<{ fullStream: AsyncIterable<{ type: string } & Record<string, unknown>> }>;
 
-/**
- * The text of every step as it is written, a line break between the text of different steps, and the concluded MCP
- * calls. `onText` and `onToolCall` tell the measures when text is written and when an MCP tool is called.
- */
-async function* replyParts(response: ReplyStream, onText: () => void, onToolCall: () => void,
-  limit: () => ProjectError | undefined): AsyncGenerator<ReplyPart, void, void> {
+/** The text of every step as it is written, a line break between the text of different steps, and the MCP calls. */
+async function* replyParts(response: ReplyStream, limit: () => ProjectError | undefined): AsyncGenerator<ReplyPart, void, void> {
   let stepWritten = false;
-  let stepBroken = false;
   let separate = false;
   for await (const part of response.fullStream) {
     if (part.type === 'text-delta' && typeof part.text === 'string' && part.text) {
       if (separate) { yield { kind: 'text', text: '\n' }; separate = false; }
-      onText();
       stepWritten = true;
       yield { kind: 'text', text: part.text };
     } else if (part.type === 'finish-step') {
-      if (stepWritten && !stepBroken) separate = true;
+      if (stepWritten) separate = true;
       stepWritten = false;
-      stepBroken = false;
-    } else if (part.type === 'tool-call') {
-      // The speech splits sentences only at punctuation followed by a space or a line break, and the step ends only
-      // after its tools have run: the text before a tool call gets its line break now, so it is spoken meanwhile.
-      if (stepWritten && !stepBroken) { stepBroken = true; yield { kind: 'text', text: '\n' }; }
-      onToolCall();
     } else if (part.type === 'tool-result') {
       yield { kind: 'action', action: { tool: String(part.toolName), input: toolInput(part.input),
         output: jsonCopy(part.output) } };
@@ -300,13 +284,11 @@ export class AiSdkToolAgentReply implements ProduceConversationReply {
 
   async *measured(history: ConversationHistory, cancellation: ReplyCancellation,
     measures: ReplyMeasures): AsyncIterable<ReplyPart> {
-    const started = this.now();
     measures.toolCalls = 0;
     measures.toolMs = 0;
     const signal = abortSignalFor(cancellation);
     let used = 0;
     let limitExceeded: ProjectError | undefined;
-    let toolCalled = false;
     // Read at every turn, so changes on the server apply without a restart.
     const prompts: string[] = [];
     for (const name of this.discovered.prompts) prompts.push(await this.mcp.getPrompt(name, signal));
@@ -339,9 +321,7 @@ export class AiSdkToolAgentReply implements ProduceConversationReply {
       maxRetries: 0, abortSignal: signal, ...this.options });
     let recovered = 0;
     try {
-      yield* withReplyText(replyParts(response as unknown as ReplyStream,
-        () => { if (!toolCalled && measures.announcementMs === undefined) measures.announcementMs = this.now() - started; },
-        () => { toolCalled = true; }, () => limitExceeded),
+      yield* withReplyText(replyParts(response as unknown as ReplyStream, () => limitExceeded),
       actions => { recovered += 1; return recoveryText(this.model, this.options, system, history, actions, signal); });
       measures.modelSteps = (await response.steps).length + recovered;
     } catch (error) { throwStreamError(limitExceeded ?? error); }
@@ -370,7 +350,7 @@ export class AiSdkKnowledgeAgentReply implements ProduceConversationReply {
       messages: messagesFor(history), maxRetries: 0, abortSignal: signal, ...this.options });
     let recovered = 0;
     try {
-      yield* withReplyText(replyParts(response as unknown as ReplyStream, () => undefined, () => undefined, () => undefined),
+      yield* withReplyText(replyParts(response as unknown as ReplyStream, () => undefined),
         actions => { recovered += 1; return recoveryText(this.model, this.options, system, history, actions, signal); });
       measures.modelSteps = (await response.steps).length + recovered;
     } catch (error) { throwStreamError(error); }
@@ -475,8 +455,7 @@ export class AiSdkOrchestratorReply implements ProduceConversationReply {
     this.timing?.log.info({ event: 'conversation_reply_timing', agent: agent.id, routerMs: ms(routerMs),
       agentMs: ms(agentMs), modelSteps: measures.modelSteps,
       ...(measures.toolCalls === undefined ? {} : { toolCalls: measures.toolCalls, toolMs: ms(measures.toolMs ?? 0) }),
-      ...(replyCheckMs === undefined ? {} : { replyCheckMs: ms(replyCheckMs) }),
-      ...(measures.announcementMs === undefined ? {} : { announcementMs: ms(measures.announcementMs) }) });
+      ...(replyCheckMs === undefined ? {} : { replyCheckMs: ms(replyCheckMs) }) });
   }
 
   /**

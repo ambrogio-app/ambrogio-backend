@@ -201,10 +201,10 @@ La prova passa se ciascun agente usa il proprio limite, nessuna chiamata viene i
 
 ### Prova dell'evento dei tempi della risposta
 
-Con un orologio controllato, un logger di prova, modelli simulati e un client MCP controllato, produrre una risposta delegata a un agente con connettore MCP che chiama due strumenti e consegna un annuncio, una risposta delegata a un agente senza connettore MCP e una risposta il cui agente fallisce; registrare le righe emesse.
+Con un orologio controllato, un logger di prova, modelli simulati e un client MCP controllato, produrre una risposta delegata a un agente con connettore MCP che chiama due strumenti, una risposta delegata a un agente senza connettore MCP e una risposta il cui agente fallisce; registrare le righe emesse.
 
 #### Details
-La prova passa se le due risposte riuscite producono ciascuna una sola riga di livello `info` con `event` uguale a `conversation_reply_timing`, l'identificativo dell'agente scelto e le durate e i conteggi uguali a quelli dell'orologio e delle chiamate simulate; se la riga dell'agente senza connettore MCP non contiene `toolCalls`, `toolMs` e `announcementMs`; se `replyCheckMs` compare soltanto per una risposta con un punto di domanda, con la durata della valutazione; se la risposta fallita non produce la riga. Fallisce se una riga contiene testi della conversazione, istruzioni, nomi o argomenti degli strumenti.
+La prova passa se le due risposte riuscite producono ciascuna una sola riga di livello `info` con `event` uguale a `conversation_reply_timing`, l'identificativo dell'agente scelto e le durate e i conteggi uguali a quelli dell'orologio e delle chiamate simulate; se la riga dell'agente senza connettore MCP non contiene `toolCalls` e `toolMs`; se `replyCheckMs` compare soltanto per una risposta con un punto di domanda, con la durata della valutazione; se la risposta fallita non produce la riga. Fallisce se una riga contiene testi della conversazione, istruzioni, nomi o argomenti degli strumenti.
 
 #### Metadata
   * type: test-verification
@@ -252,7 +252,7 @@ La prova passa se al primo avvio l'orchestratore può scegliere il primo agente,
 Con un modello simulato e un client MCP controllato, produrre risposte di un agente con connettore MCP nei casi seguenti: il modello chiama uno strumento e poi scrive la risposta; il modello scrive comunque una frase, chiama uno strumento e poi conclude senza altro testo; il modello risponde a una domanda senza strumenti. Registrare l'ordine delle parti consegnate rispetto all'esecuzione dello strumento, il numero di chiamate al modello e le istruzioni inviate.
 
 #### Details
-La prova passa se nel primo caso il testo della risposta segue l'esecuzione dello strumento; se nel secondo caso la frase e l'a capo che la segue sono consegnati prima che lo strumento termini e dopo di essi arriva soltanto l'indicazione `expectsReply`; se nel terzo caso le parti sono il testo e l'indicazione; se ogni risposta richiede soltanto le chiamate al modello della propria generazione; se le istruzioni contengono le regole sulla chiamata propria di ogni richiesta d'azione, sui messaggi che non chiedono nulla, sul silenzio prima e fra le chiamate, sulla risposta che dice l'azione e il suo oggetto, sul divieto di rispondere soltanto «Fatto» o «Ok» e sui guasti, senza frasi d'esempio. Fallisce se le istruzioni chiedono una frase prima delle chiamate agli strumenti o se un testo scritto prima di una chiamata resta in attesa fino al termine dello strumento.
+La prova passa se nel primo caso il testo della risposta segue l'esecuzione dello strumento; se nel secondo caso la frase è consegnata e un testo successivo ne è separato da un a capo; se nel terzo caso la parte è il solo testo; se ogni risposta richiede soltanto le chiamate al modello della propria generazione; se le istruzioni contengono le regole sulla risposta dopo l'ultima chiamata, sulle azioni dichiarate soltanto se eseguite, sull'esito breve e sui guasti, senza frasi d'esempio. Fallisce se le istruzioni chiedono una frase prima delle chiamate agli strumenti.
 
 #### Metadata
   * type: test-verification

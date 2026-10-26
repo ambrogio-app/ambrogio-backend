@@ -471,7 +471,7 @@ Per un guasto inatteso di un turno già ammesso, il server sceglie il messaggio 
 
 ### Nome degli strumenti presentati al modello
 
-Motivazione: il nome dello strumento aiuta il modello a sceglierlo, per esempio `HassTurnOff` o `GetLiveContext` di Home Assistant.
+Motivazione: il nome dello strumento aiuta il modello a sceglierlo, per esempio `intent__HassTurnOff` o `homeassistant__GetLiveContext` di Home Assistant.
 
 L'adapter presenta al modello ogni strumento scoperto con il nome dichiarato dal server MCP quando il nome rispetta l'espressione `^[A-Za-z_][A-Za-z0-9_-]{0,63}$` e non ha la forma riservata `mcp_<cifre>` né il nome `finish`, riservato allo strumento finale della risposta. L'espressione è la regola prudente comune ai provider ammessi: i fornitori compatibili con le API di OpenAI accettano lettere, cifre, trattini bassi e trattini fino a 64 caratteri, e la documentazione di Mistral non dichiara i caratteri ammessi; i nomi MCP ammettono anche il punto, che quei fornitori rifiutano. Uno strumento con un nome diverso è presentato con il nome `mcp_<indice>`, dove l'indice è la posizione nella lista scoperta a partire da 0; la forma riservata impedisce collisioni con i nomi dichiarati. La descrizione e lo schema degli argomenti restano quelli del server. Una chiamata del modello è inoltrata con il nome originale dello strumento corrispondente e conta per `maxToolCalls`.
 
@@ -619,7 +619,7 @@ Nel file di un agente specializzato la sezione `mcp` è facoltativa. Quando è p
 
 ### Prompt del server MCP letti a ogni turno
 
-Motivazione: il server MCP di Home Assistant offre un prompt con le indicazioni d'uso degli strumenti, compreso l'uso di `GetLiveContext` per le domande sullo stato, e con l'elenco delle aree e dei dispositivi esposti ad Assist; senza questo prompt l'agente non riceve le indicazioni d'uso degli strumenti né l'elenco delle aree e dei dispositivi esposti. Fonti: https://www.home-assistant.io/integrations/mcp_server/ e il sorgente di Home Assistant `homeassistant/components/mcp_server/server.py` e `homeassistant/components/homeassistant/llm.py`.
+Motivazione: il server MCP di Home Assistant offre un prompt con le indicazioni d'uso degli strumenti, compreso l'uso di `homeassistant__GetLiveContext` per le domande sullo stato, e con l'elenco delle aree e dei dispositivi esposti ad Assist; senza questo prompt l'agente non riceve le indicazioni d'uso degli strumenti né l'elenco delle aree e dei dispositivi esposti. Fonti: https://www.home-assistant.io/integrations/mcp_server/ e il sorgente di Home Assistant `homeassistant/components/mcp_server/server.py` e `homeassistant/components/homeassistant/llm.py`.
 
 All'avvio, dopo la scoperta degli strumenti, il backend chiede la lista dei prompt (`prompts/list`) soltanto se il server dichiara la capacità `prompts` nell'inizializzazione; un server che non la dichiara non ha prompt. Conserva, nell'ordine della lista, i nomi dei prompt che non hanno argomenti obbligatori; i prompt con argomenti obbligatori sono ignorati perché il backend non saprebbe valorizzarli. Un errore della lista all'avvio è un guasto della connessione dell'agente, segnalato come `Agent MCP connection failed: <id>`.
 

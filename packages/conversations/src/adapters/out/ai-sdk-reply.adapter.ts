@@ -148,10 +148,10 @@ function replyInstructions(instructions: string, language?: 'en' | 'it'): string
 }
 
 /** The rules added to the reply instructions of an agent with MCP tools («Frase d'azione prima degli strumenti»). */
-const actionReplyRules = '\nBefore you call a tool to carry out an action, first say in one short sentence what you '
-  + 'are about to do. Do not say it for a request for information. When an action you announced succeeds, add nothing '
-  + 'more. When an action succeeds without an announcement, confirm it in a few words. When an action fails, say what '
-  + 'did not work.';
+const actionReplyRules = '\nBefore your first tool call for an action, say in one short sentence what you are about '
+  + 'to do. Do not say it for a request for information. Write nothing between tool calls. When an action you '
+  + 'announced succeeds, write nothing more. When an action succeeds without an announcement, confirm it in a few '
+  + 'words. When an action fails, say what did not work.';
 
 /** `finish` has no execution: the reply ends at its call, which carries the reply expectation. */
 const finishTool = tool({
@@ -170,6 +170,7 @@ async function* replyParts(response: ReplyStream, onText: () => void, onToolCall
   limit: () => ProjectError | undefined): AsyncGenerator<ReplyPart, void, void> {
   let expectsReply: boolean | undefined;
   let stepWritten = false;
+  let stepBroken = false;
   let separate = false;
   for await (const part of response.fullStream) {
     if (part.type === 'text-delta' && typeof part.text === 'string' && part.text) {
@@ -178,13 +179,19 @@ async function* replyParts(response: ReplyStream, onText: () => void, onToolCall
       stepWritten = true;
       yield { kind: 'text', text: part.text };
     } else if (part.type === 'finish-step') {
-      if (stepWritten) separate = true;
+      if (stepWritten && !stepBroken) separate = true;
       stepWritten = false;
+      stepBroken = false;
     } else if (part.type === 'tool-call') {
       if (part.toolName === finishToolName) {
         const input = part.input as { expectsReply?: unknown } | undefined;
         if (typeof input?.expectsReply === 'boolean') expectsReply = input.expectsReply;
-      } else onToolCall();
+      } else {
+        // The speech splits sentences only at punctuation followed by a space or a line break, and the step ends only
+        // after its tools have run: the text before a tool call gets its line break now, so it is spoken meanwhile.
+        if (stepWritten && !stepBroken) { stepBroken = true; yield { kind: 'text', text: '\n' }; }
+        onToolCall();
+      }
     } else if (part.type === 'tool-error') {
       // The call limit fails the turn: the model is not given the chance to answer after it.
       const exceeded = limit();

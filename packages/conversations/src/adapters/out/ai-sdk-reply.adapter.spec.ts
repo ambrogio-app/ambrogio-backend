@@ -39,10 +39,10 @@ function answer(text: string, expectsReply = false) {
 
 const replyFormat = 'Your text is spoken to the family exactly as you write it, so write only the words of your '
   + 'reply. When the reply is complete, call the finish tool; never write tool calls or JSON in your text.';
-const actionRules = '\nBefore you call a tool to carry out an action, first say in one short sentence what you '
-  + 'are about to do. Do not say it for a request for information. When an action you announced succeeds, add nothing '
-  + 'more. When an action succeeds without an announcement, confirm it in a few words. When an action fails, say what '
-  + 'did not work.';
+const actionRules = '\nBefore your first tool call for an action, say in one short sentence what you are about '
+  + 'to do. Do not say it for a request for information. Write nothing between tool calls. When an action you '
+  + 'announced succeeds, write nothing more. When an action succeeds without an announcement, confirm it in a few '
+  + 'words. When an action fails, say what did not work.';
 
 /** A server without prompts never has them read. */
 const getPrompt = async (): Promise<string> => { throw new Error('Unexpected prompt read'); };
@@ -481,11 +481,13 @@ test('the sentence written before a tool call is delivered before the tool runs,
   } }, 2, model);
   const parts: ReplyPart[] = [];
   for await (const part of reply.produce(history, never())) {
-    if (part.kind === 'text') { order.push('sentence'); delivered(); }
+    // The sentence is complete for the speech only with the line break after it: both arrive before the tool ends.
+    if (part.kind === 'text') { order.push(part.text === '\n' ? 'line break' : 'sentence'); }
+    if (part.kind === 'text' && part.text === '\n') delivered();
     parts.push(part);
   }
-  expect(parts).toEqual([text('Cerco una canzone di Neffa.'), expectation(false)]);
-  expect(order).toEqual(['sentence', 'tool finished']);
+  expect(parts).toEqual([text('Cerco una canzone di Neffa.'), text('\n'), expectation(false)]);
+  expect(order).toEqual(['sentence', 'line break', 'tool finished']);
   // One generation: no separate call for the announcement.
   expect(model.doStreamCalls).toHaveLength(2);
   expect(model.doGenerateCalls).toHaveLength(0);

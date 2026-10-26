@@ -247,13 +247,14 @@ export class AiSdkToolAgentReply implements ProduceConversationReply {
     return this.measured(history, cancellation, { modelSteps: 0 });
   }
 
-  /** The announcement of the action, from a short call of the same model without tools. */
-  private async announce(history: ConversationHistory, prompts: readonly string[],
-    signal: AbortSignal): Promise<string | undefined> {
+  /**
+   * The announcement of the action, from a short call of the same model without tools. The server prompts are left
+   * out: they describe how to use the tools, and with them the model kept the announcement empty.
+   */
+  private async announce(history: ConversationHistory, signal: AbortSignal): Promise<string | undefined> {
     try {
       const result = await generateText({ model: this.model,
-        system: announcementInstructions(withServerPrompts(withCurrentTime(this.settings), prompts),
-          this.settings.responseLanguage),
+        system: announcementInstructions(withCurrentTime(this.settings), this.settings.responseLanguage),
         messages: messagesFor(history), output: announcementOutput, maxRetries: 0, abortSignal: signal,
         ...this.options });
       return spokenAnnouncement(result.output);
@@ -297,7 +298,7 @@ export class AiSdkToolAgentReply implements ProduceConversationReply {
     const announcer = new AbortController();
     const stopAnnouncer = () => announcer.abort();
     signal.addEventListener('abort', stopAnnouncer, { once: true });
-    const announcement = this.announce(history, prompts, announcer.signal);
+    const announcement = this.announce(history, announcer.signal);
     const response = streamText({ model: this.model,
       system: replyInstructions(withServerPrompts(withCurrentTime(this.settings), prompts),
         this.settings.responseLanguage) + actionReplyRules,

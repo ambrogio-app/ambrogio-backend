@@ -594,3 +594,17 @@ test('the orchestrator logs the timing of each completed reply without conversat
   ]);
   expect(JSON.stringify(events)).not.toMatch(/Neffa|Cats|Find it|lookup|query/);
 });
+
+// Verification: Prova dell'annuncio dell'azione
+test('the announcement call receives the agent instructions without the server prompts', async () => {
+  const { model, release } = announcing([{ parts: answer('Done.'), reason: 'stop' }], { text: '' });
+  release();
+  const reply = new AiSdkToolAgentReply(settings, { tools: [], prompts: ['assist'] },
+    { getPrompt: async () => 'Server workflow', async callTool() { throw new Error('Unexpected tool call'); } },
+    1, model);
+  await collect(reply.produce(history, never()));
+  expect(String(model.doStreamCalls[0]?.prompt[0]?.content)).toContain('Server workflow');
+  const announcement = String(model.doGenerateCalls[0]?.prompt[0]?.content);
+  expect(announcement.startsWith(settings.instructions)).toBe(true);
+  expect(announcement).not.toContain('Server workflow');
+});

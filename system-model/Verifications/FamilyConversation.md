@@ -199,22 +199,6 @@ La prova passa se ciascun agente usa il proprio limite, se la chiamata finale `f
   * verify: [Limite delle chiamate agli strumenti per agente](../Requirements/FamilyConversation.md#limite-delle-chiamate-agli-strumenti-per-agente)
 ---
 
-### Prova dell'annuncio dell'azione
-
-Con un modello simulato e un client MCP controllato, produrre risposte di un agente con connettore MCP nei casi seguenti: il modello scrive una frase, chiama uno strumento e poi chiama `finish` senza altro testo; il modello chiama subito lo strumento e poi scrive una conferma prima di `finish`; il modello risponde a una domanda senza strumenti. Registrare l'ordine delle parti consegnate rispetto all'esecuzione dello strumento, il numero di chiamate al modello e le istruzioni inviate.
-
-#### Details
-La prova passa se nel primo caso la frase e l'a capo che la segue sono consegnati come frammenti testuali prima che lo strumento termini e dopo di essi arriva soltanto l'indicazione `expectsReply`; se nel secondo caso la conferma segue l'esecuzione dello strumento ed è separata da un a capo dal testo precedente; se nel terzo caso le parti sono il testo e l'indicazione; se ogni risposta richiede soltanto le chiamate al modello della propria generazione, senza una chiamata separata per l'annuncio; se le istruzioni contengono le regole sulla chiamata propria di ogni richiesta d'azione, sui messaggi che non chiedono nulla, sulla frase d'azione prima della prima chiamata, sul divieto di rispondere soltanto «Fatto» o «Ok», sul silenzio tra le chiamate e dopo un'azione annunciata riuscita e sui guasti, senza frasi d'esempio. Fallisce se la frase o il suo a capo arrivano dopo l'esecuzione dello strumento o se viene fatta una chiamata al modello in più.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
-  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
-  * verify: [Annuncio dell'azione dell'agente con connettore MCP](../Requirements/FamilyConversation.md#annuncio-dellazione-dellagente-con-connettore-mcp)
----
-
 ### Prova dell'evento dei tempi della risposta
 
 Con un orologio controllato, un logger di prova, modelli simulati e un client MCP controllato, produrre una risposta delegata a un agente con connettore MCP che chiama due strumenti e consegna un annuncio, una risposta delegata a un agente senza connettore MCP e una risposta il cui agente fallisce; registrare le righe emesse.
@@ -261,6 +245,22 @@ La prova passa se al primo avvio l'orchestratore può scegliere il primo agente,
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
   * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
   * verify: [Disponibilità degli agenti dai file della directory](../Requirements/FamilyConversation.md#disponibilità-degli-agenti-dai-file-della-directory)
+---
+
+### Prova della risposta dopo le azioni
+
+Con un modello simulato e un client MCP controllato, produrre risposte di un agente con connettore MCP nei casi seguenti: il modello chiama uno strumento e poi scrive la risposta prima di `finish`; il modello scrive comunque una frase, chiama uno strumento e poi chiama `finish` senza altro testo; il modello risponde a una domanda senza strumenti. Registrare l'ordine delle parti consegnate rispetto all'esecuzione dello strumento, il numero di chiamate al modello e le istruzioni inviate.
+
+#### Details
+La prova passa se nel primo caso il testo della risposta segue l'esecuzione dello strumento; se nel secondo caso la frase e l'a capo che la segue sono consegnati prima che lo strumento termini e dopo di essi arriva soltanto l'indicazione `expectsReply`; se nel terzo caso le parti sono il testo e l'indicazione; se ogni risposta richiede soltanto le chiamate al modello della propria generazione; se le istruzioni contengono le regole sulla chiamata propria di ogni richiesta d'azione, sui messaggi che non chiedono nulla, sul silenzio prima e fra le chiamate, sulla risposta che dice l'azione e il suo oggetto, sul divieto di rispondere soltanto «Fatto» o «Ok» e sui guasti, senza frasi d'esempio. Fallisce se le istruzioni chiedono una frase prima delle chiamate agli strumenti o se un testo scritto prima di una chiamata resta in attesa fino al termine dello strumento.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
+  * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
+  * verify: [Risposta dopo le azioni degli agenti con connettore MCP](../Requirements/FamilyConversation.md#risposta-dopo-le-azioni-degli-agenti-con-connettore-mcp)
 ---
 
 ### Prova della selezione degli strumenti MCP

@@ -32,16 +32,16 @@ function callPart(name: string, input: object, id = 'call-1') {
   return { type: 'tool-call', toolCallId: id, toolName: name, input: JSON.stringify(input) };
 }
 
-/** A final step: the text of the reply, if any, then the call of `finish` with the reply expectation. */
-function answer(text: string, expectsReply = false) {
-  return [...(text ? textParts(text) : []), callPart('finish', { expectsReply }, 'finish-call')];
+/** A final step: the text of the reply, if any, and no tool call. */
+function answer(text: string) {
+  return text ? textParts(text) : [];
 }
 
 const replyFormat = 'Your text is spoken to the family exactly as you write it, so write only the words of your '
-  + 'reply. When the reply is complete, call the finish tool; never write tool calls or JSON in your text.';
+  + 'reply; never write tool calls or JSON in your text.';
 const actionRules = '\nEvery request to do something with your tools needs its own tool call in this reply, also when it '
   + 'repeats or refers to an earlier request: earlier replies do not show that anything was done. A message that asks '
-  + 'for nothing, such as thanks or a greeting, needs no tool except finish. Write nothing before or between tool '
+  + 'for nothing, such as thanks or a greeting, needs no tool. Write nothing before or between tool '
   + 'calls: write your reply only after your last tool call, when you know how it went. After an action, say in one '
   + 'short sentence what you did and on what; never answer only "Fatto" or "Ok". When an action fails, say what did '
   + 'not work.';
@@ -86,10 +86,10 @@ test('orchestrator only chooses the agent with structured output and the agent a
   const stop = never();
   const reply = new AiSdkOrchestratorReply(settings, [
     recordingAgent('memory', 'Search memory', [text('wrong')]),
-    recordingAgent('home', 'Control home', [text('Which room?'), expectation(true)], received),
+    recordingAgent('home', 'Control home', [text('Done.')], received),
   ], model);
   expect(await collect(reply.produce(history, stop))).toEqual([
-    { kind: 'agent', agent: 'home' }, text('Which room?'), expectation(true)]);
+    { kind: 'agent', agent: 'home' }, text('Done.'), expectation(false)]);
   // The chosen agent gets the stored history with the original text, no task, and the same cancellation.
   expect(received).toHaveLength(1);
   expect((received[0] as unknown[])[0]).toBe(history);
@@ -150,22 +150,19 @@ test('the router sees which agent gave each previous answer; the agents do not',
 });
 
 // Verification: Prova dell'agente specializzato senza connettore MCP
-test('an agent without MCP answers with its own instructions and only the finish tool', async () => {
+test('an agent without MCP answers with its own instructions and without tools', async () => {
   const model = scripted({ parts: answer('Nel 1492.'), reason: 'stop' });
   const reply = new AiSdkKnowledgeAgentReply({ ...settings, instructions: 'Answer from knowledge.' }, model);
-  expect(await collect(reply.produce(history, never())))
-    .toEqual([text('Nel 1492.'), expectation(false)]);
+  expect(await collect(reply.produce(history, never()))).toEqual([text('Nel 1492.')]);
   expect(model.doStreamCalls).toHaveLength(1);
-  expect((model.doStreamCalls[0]?.tools ?? []).map(tool => tool.name)).toEqual(['finish']);
-  expect(model.doStreamCalls[0]?.toolChoice).toEqual({ type: 'required' });
+  expect(model.doStreamCalls[0]?.tools ?? []).toEqual([]);
+  expect(model.doStreamCalls[0]?.toolChoice).not.toEqual({ type: 'required' });
   expect(model.doStreamCalls[0]?.prompt).toEqual([
     { role: 'system', content: expect.stringContaining('Answer from knowledge.') },
     { role: 'user', content: [{ type: 'text', text: 'Find it' }] },
   ]);
   expect(model.doStreamCalls[0]?.prompt[0]).toMatchObject({
     content: expect.stringContaining(replyFormat) });
-  expect(model.doStreamCalls[0]?.tools?.[0]).toMatchObject({ name: 'finish',
-    description: 'Ends the reply. Set expectsReply to true only when your reply asks the family to reply; otherwise false.' });
 });
 
 // Verification: Prova del tempo massimo della produzione della risposta
@@ -205,7 +202,7 @@ test('specialist executes discovered MCP tools and allows a final answer at its 
     called.push({ name, args });
     return { isError: false, content: [{ type: 'text', text: 'result' }] };
   } }, 1, model);
-  expect(withoutActions(await collect(reply.produce(history, never())))).toEqual([text('Found it'), expectation(false)]);
+  expect(withoutActions(await collect(reply.produce(history, never())))).toEqual([text('Found it')]);
   expect(called).toEqual([{ name: 'lookup', args: { key: 'answer' } }]);
   expect(model.doStreamCalls).toHaveLength(2);
   // The specialist answers the family's original text, the last turn of the history.
@@ -231,7 +228,7 @@ test('specialist refuses the first MCP call beyond its per-turn limit', async ()
 test('specialist offers accepted MCP names and positional names for the others', async () => {
   const long = 'a'.repeat(65);
   const discovered = ['HassTurnOff', 'GetLiveContext', 'light.toggle', long, 'mcp_7', '_private', '1st-tool',
-    '-dash', 'finish'].map(name => ({
+    '-dash'].map(name => ({
     name, description: `Tool ${name}`, inputSchema: { type: 'object', properties: { name: { type: 'string' } } } }));
   const called: unknown[] = [];
   const model = scripted(
@@ -240,22 +237,20 @@ test('specialist offers accepted MCP names and positional names for the others',
     { parts: [callPart('mcp_4', {}, 'call-3')], reason: 'tool-calls' },
     { parts: [callPart('mcp_6', {}, 'call-4')], reason: 'tool-calls' },
     { parts: [callPart('_private', {}, 'call-5')], reason: 'tool-calls' },
-    { parts: [callPart('mcp_8', {}, 'call-6')], reason: 'tool-calls' },
     { parts: answer('Fatto.'), reason: 'stop' },
   );
   const reply = new AiSdkToolAgentReply(settings, { tools: discovered, prompts: [] }, { getPrompt,
     async callTool(name, args) { called.push({ name, args }); return { isError: false, content: [] }; } }, 6, model);
-  expect(withoutActions(await collect(reply.produce(history, never())))).toEqual([text('Fatto.'), expectation(false)]);
+  expect(withoutActions(await collect(reply.produce(history, never())))).toEqual([text('Fatto.')]);
   const offered = model.doStreamCalls[0]?.tools ?? [];
   // Gemini requires a leading letter or underscore, so digits and dashes there get positional names.
-  // An MCP tool named finish gets a positional name: finish is the reply's own final tool.
   expect(offered.map(tool => tool.name)).toEqual(['HassTurnOff', 'GetLiveContext', 'mcp_2', 'mcp_3', 'mcp_4',
-    '_private', 'mcp_6', 'mcp_7', 'mcp_8', 'finish']);
+    '_private', 'mcp_6', 'mcp_7']);
   expect(offered[2]).toMatchObject({ description: 'Tool light.toggle',
     inputSchema: { type: 'object', properties: { name: { type: 'string' } } } });
   expect(called).toEqual([{ name: 'GetLiveContext', args: { name: 'camera' } },
     { name: 'light.toggle', args: {} }, { name: 'mcp_7', args: {} }, { name: '1st-tool', args: {} },
-    { name: '_private', args: {} }, { name: 'finish', args: {} }]);
+    { name: '_private', args: {} }]);
 });
 
 // Verification: Prova della selezione degli strumenti MCP
@@ -271,9 +266,9 @@ test('specialist offers only the listed MCP tools with the names of the discover
   const reply = new AiSdkToolAgentReply(settings,
     { tools: discovered, prompts: [], offered: ['gamma', 'light.toggle'] }, { getPrompt,
       async callTool(name) { called.push(name); return { isError: false, content: [] }; } }, 5, model);
-  expect(withoutActions(await collect(reply.produce(history, never())))).toEqual([text('Fatto.'), expectation(false)]);
+  expect(withoutActions(await collect(reply.produce(history, never())))).toEqual([text('Fatto.')]);
   const offered = model.doStreamCalls[0]?.tools ?? [];
-  expect(offered.map(tool => tool.name)).toEqual(['mcp_1', 'gamma', 'finish']);
+  expect(offered.map(tool => tool.name)).toEqual(['mcp_1', 'gamma']);
   expect(offered[0]).toMatchObject({ description: 'Tool light.toggle', inputSchema: { type: 'object' } });
   // The model cannot reach a tool that was not offered: only the listed one reaches the client.
   expect(called).toEqual(['light.toggle']);
@@ -359,8 +354,7 @@ test('AI SDK Mistral provider sends the selected model and key to its default en
       body: JSON.parse(await request.text()) as unknown });
     const chunk = (delta: object, finish: string | null) => ({ id: 'controlled-1', object: 'chat.completion.chunk',
       created: 0, model: 'mistral-small-latest', choices: [{ index: 0, delta, finish_reason: finish }] });
-    const events = [chunk({ content: 'SDK answer' }, null), chunk({ tool_calls: [{ id: 'finish0001', type: 'function',
-      function: { name: 'finish', arguments: '{"expectsReply":false}' } }] }, 'tool_calls')];
+    const events = [chunk({ content: 'SDK answer' }, null), chunk({}, 'stop')];
     return new Response(events.map(event => `data: ${JSON.stringify(event)}\n\n`).join('') + 'data: [DONE]\n\n', {
       status: 200, headers: { 'content-type': 'text/event-stream' },
     });
@@ -368,14 +362,15 @@ test('AI SDK Mistral provider sends the selected model and key to its default en
   try {
     const reply = new AiSdkKnowledgeAgentReply({ ...settings,
       options: { temperature: 0.2, max_tokens: 128 } });
-    expect(await collect(reply.produce(history, never())))
-      .toEqual([text('SDK answer'), expectation(false)]);
+    expect(await collect(reply.produce(history, never()))).toEqual([text('SDK answer')]);
     expect(seen).toHaveLength(1);
     expect(seen[0]?.url).toBe('https://api.mistral.ai/v1/chat/completions');
     expect(seen[0]?.authorization).toBe('Bearer fake-key');
     expect(seen[0]?.body).toMatchObject({ model: 'mistral-small-latest', stream: true,
-      temperature: 0.2, max_tokens: 128, tool_choice: 'any', tools: [{ function: { name: 'finish' } }] });
+      temperature: 0.2, max_tokens: 128 });
     expect(seen[0]?.body).not.toHaveProperty('response_format');
+    expect(seen[0]?.body).not.toHaveProperty('tools');
+    expect(seen[0]?.body).not.toHaveProperty('tool_choice');
   } finally { vi.unstubAllGlobals(); }
 });
 
@@ -420,15 +415,15 @@ test.each([
     expect(seen.url).toMatch(/^https:\/\/generativelanguage\.googleapis\.com\/v1beta\/models\/gemini-model:streamGenerateContent/);
     expect(seen.headers.get('x-goog-api-key')).toBe('fake-key');
     expect(seen.headers.get('authorization')).toBeNull();
-    expect(seen.body.toolConfig).toMatchObject({ functionCallingConfig: { mode: 'ANY' } });
+    expect(seen.body).not.toHaveProperty('toolConfig');
   } },
   { provider: 'openai-compatible' as const, model: 'local-model', baseURL: 'https://models.example/v1',
     check: (seen: Seen) => {
       expect(seen.url).toBe('https://models.example/v1/chat/completions');
       expect(seen.headers.get('authorization')).toBe('Bearer fake-key');
-      expect(seen.body.tool_choice).toBe('required');
+      expect(seen.body).not.toHaveProperty('tool_choice');
     } },
-])('the $provider provider sends the model, key and reply schema to its endpoint', async ({ check, ...llm }) => {
+])('the $provider provider sends the model and key to its endpoint', async ({ check, ...llm }) => {
   const seen: Seen[] = [];
   vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
     const request = new Request(input, init);
@@ -443,8 +438,8 @@ test.each([
     check(seen[0]!);
     // Gemini carries the model in the path, the others in the body.
     expect(seen[0]!.url + JSON.stringify(seen[0]!.body)).toContain(llm.model);
-    // The schema of finish reaches the provider, whatever field each API uses for tools.
-    expect(JSON.stringify(seen[0]!.body)).toContain('expectsReply');
+    // No tool is offered to an agent without MCP.
+    expect(JSON.stringify(seen[0]!.body)).not.toContain('expectsReply');
   } finally { vi.unstubAllGlobals(); }
 });
 
@@ -491,12 +486,13 @@ test('text written anyway before a tool call is delivered before the tool runs, 
     if (part.kind === 'text' && part.text === '\n') delivered();
     parts.push(part);
   }
-  expect(withoutActions(parts)).toEqual([text('Cerco una canzone di Neffa.'), text('\n'), expectation(false)]);
+  expect(withoutActions(parts)).toEqual([text('Cerco una canzone di Neffa.'), text('\n')]);
   expect(order).toEqual(['sentence', 'line break', 'tool finished']);
   // One generation: no separate call for the announcement.
   expect(model.doStreamCalls).toHaveLength(2);
   expect(model.doGenerateCalls).toHaveLength(0);
-  expect(model.doStreamCalls[0]?.toolChoice).toEqual({ type: 'required' });
+  // Tools are called only when needed: no call is required at each step.
+  expect(model.doStreamCalls[0]?.toolChoice).not.toEqual({ type: 'required' });
   expect(String(model.doStreamCalls[0]?.prompt[0]?.content)).toContain(actionRules);
 });
 
@@ -509,23 +505,78 @@ test('a confirmation after the tool is separated from the earlier text by a line
   const reply = new AiSdkToolAgentReply(settings, lookupTool, { getPrompt,
     async callTool() { return { isError: true, content: [{ type: 'text', text: 'unavailable' }] }; } }, 2, model);
   expect(withoutActions(await collect(reply.produce(history, never())))).toEqual([text('Accendo la luce.'), text('\n'),
-    text('La lampadina non risponde.'), expectation(false)]);
+    text('La lampadina non risponde.')]);
 
   const silent = scripted({ parts: [callPart('lookup', {})], reason: 'tool-calls' },
     { parts: answer('Fatto.'), reason: 'stop' });
   const confirmed = new AiSdkToolAgentReply(settings, lookupTool, { getPrompt,
     async callTool() { return { isError: false, content: [] }; } }, 2, silent);
-  expect(withoutActions(await collect(confirmed.produce(history, never())))).toEqual([text('Fatto.'), expectation(false)]);
+  expect(withoutActions(await collect(confirmed.produce(history, never())))).toEqual([text('Fatto.')]);
+});
+
+function recordingLog() {
+  const events: Array<{ level: string; fields: Record<string, unknown> }> = [];
+  const record = (level: string) => (fields: Record<string, unknown>) => { events.push({ level, fields }); };
+  const log = { debug: record('debug'), info: record('info'), warn: record('warn'), error: record('error'),
+    child: () => log };
+  return { events, log };
+}
+
+// Verification: Prova della segnalazione della replica attesa
+test('an answer without a question does not wait for a reply and needs no further model call', async () => {
+  const router = chooser('{"agent":"home"}');
+  const reply = new AiSdkOrchestratorReply(settings, [recordingAgent('home', 'Control home',
+    [text('Ho acceso la luce.'), expectation(true)])], router);
+  expect(await collect(reply.produce(history, never()))).toEqual([
+    { kind: 'agent', agent: 'home' }, text('Ho acceso la luce.'), expectation(false)]);
+  expect(router.doGenerateCalls).toHaveLength(1);
 });
 
 // Verification: Prova della segnalazione della replica attesa
-test('a reply that never calls finish fails instead of being taken as not expecting a reply', async () => {
-  const model = scripted({ parts: textParts('Ciao.'), reason: 'stop' });
-  const reply = new AiSdkKnowledgeAgentReply(settings, model);
-  await expect(collect(reply.produce(history, never()))).rejects.toThrow('AI SDK response failed');
-  const asking = scripted({ parts: answer('Quale stanza?', true), reason: 'stop' });
-  expect(await collect(new AiSdkKnowledgeAgentReply(settings, asking).produce(history, never())))
-    .toEqual([text('Quale stanza?'), expectation(true)]);
+test.each<[string, string, boolean]>([
+  ['a question that needs an answer', '{"expectsReply":true}', true],
+  ['a polite offer', '{"expectsReply":false}', false],
+])('an answer with %s is checked once by the model of the orchestrator', async (_label, output, expected) => {
+  const router = new MockLanguageModelV4({ doGenerate: async () => ({ content: [{ type: 'text',
+    text: router.doGenerateCalls.length === 1 ? '{"agent":"home"}' : output }], warnings: [],
+    finishReason: { unified: 'stop', raw: undefined }, usage }) as any });
+  const { events, log } = recordingLog();
+  let clock = 0;
+  const reply = new AiSdkOrchestratorReply(settings, [recordingAgent('home', 'Control home',
+    [text('Quale luce? '), text('Quella del salone?')])], router, { log, now: () => clock += 10 });
+  expect(await collect(reply.produce(history, never()))).toEqual([
+    { kind: 'agent', agent: 'home' }, text('Quale luce? '), text('Quella del salone?'), expectation(expected)]);
+  expect(router.doGenerateCalls).toHaveLength(2);
+  const check = router.doGenerateCalls[1]!;
+  expect(check.tools ?? []).toEqual([]);
+  expect(check.responseFormat).toMatchObject({ type: 'json', schema: { type: 'object',
+    properties: { expectsReply: { type: 'boolean' } }, required: ['expectsReply'], additionalProperties: false } });
+  expect(String(check.prompt[0]?.content)).toContain('polite offer');
+  expect(check.prompt.slice(1)).toEqual([{ role: 'user', content: [{ type: 'text',
+    text: 'Message of the family:\nFind it\n\nAnswer of the assistant:\nQuale luce? Quella del salone?' }] }]);
+  expect(events).toEqual([{ level: 'info', fields: expect.objectContaining({ event: 'conversation_reply_timing',
+    replyCheckMs: 10 }) }]);
+});
+
+// Verification: Prova della segnalazione della replica attesa
+test.each<[string, string, boolean]>([
+  ['ends with a question mark', 'Vuoi la luce del salone？', true],
+  ['has a question before the end', 'Ti chiedi perché? È spenta.', false],
+])('when the check fails, an answer that %s follows its final question mark', async (_label, answer, expected) => {
+  for (const failure of ['not json', '{"expectsReply":"yes"}', new Error('Provider down')]) {
+    const router = new MockLanguageModelV4({ doGenerate: async () => {
+      if (router.doGenerateCalls.length === 2 && failure instanceof Error) throw failure;
+      return { content: [{ type: 'text', text: router.doGenerateCalls.length === 1 ? '{"agent":"home"}'
+        : failure as string }], warnings: [], finishReason: { unified: 'stop', raw: undefined }, usage } as any;
+    } });
+    const { events, log } = recordingLog();
+    const reply = new AiSdkOrchestratorReply(settings, [recordingAgent('home', 'Control home', [text(answer)])],
+      router, { log });
+    expect((await collect(reply.produce(history, never()))).at(-1)).toEqual(expectation(expected));
+    expect(events.filter(event => event.level === 'warn').map(event => event.fields.event))
+      .toEqual(['conversation_reply_check_failed']);
+    expect(JSON.stringify(events)).not.toMatch(/salone|perché|Find it/);
+  }
 });
 
 // Verification: Prova dell'evento dei tempi della risposta
@@ -588,7 +639,7 @@ test('a specialist delivers each concluded MCP call as an action, with its resul
     { kind: 'action', action: { tool: 'lookup', input: { key: 'on' },
       output: { isError: false, content: [{ type: 'text', text: 'on' }] } } },
     { kind: 'action', action: { tool: 'lookup', input: { key: 'off' }, error: 'Device unavailable' } },
-    text('Ho acceso la luce.'), expectation(false)]);
+    text('Ho acceso la luce.')]);
 });
 
 const withActions = { ...history, turns: [
@@ -659,15 +710,14 @@ test('an empty stored answer leaves only the message of the family and the actio
     .toEqual(['user', 'user', 'assistant', 'tool', 'user']);
 });
 
-const emptyReplyRule = '\nYour reply ended without any words for the family. No tool is available now, not even '
-  + 'finish: write now only the words of your reply to the last message of the family, based on the results of the '
-  + 'tools you called.';
+const emptyReplyRule = '\nYour reply ended without any words for the family. No tool is available now: write now '
+  + 'only the words of your reply to the last message of the family, based on the results of the tools you called.';
 
 // Verification: Prova della nuova richiesta della risposta vuota
-test('a specialist that finishes without text writes its reply in one more generation without tools', async () => {
+test('a specialist that ends without text writes its reply in one more generation without tools', async () => {
   const model = scripted(
     { parts: [callPart('lookup', { key: 'on' }, 'c1')], reason: 'tool-calls' },
-    { parts: answer('', true), reason: 'tool-calls' },
+    { parts: answer(''), reason: 'stop' },
     { parts: textParts('Ho acceso la luce. Altro?'), reason: 'stop' },
   );
   const reply = new AiSdkToolAgentReply(settings, { prompts: [], tools: [lookupMcpTool] }, { getPrompt,
@@ -676,7 +726,7 @@ test('a specialist that finishes without text writes its reply in one more gener
   expect(await collect(reply.measured(history, never(), measures))).toEqual([
     { kind: 'action', action: { tool: 'lookup', input: { key: 'on' },
       output: { isError: false, content: [{ type: 'text', text: 'on' }] } } },
-    text('Ho acceso la luce. Altro?'), expectation(true)]);
+    text('Ho acceso la luce. Altro?')]);
   expect(model.doStreamCalls).toHaveLength(3);
   const recovery = model.doStreamCalls[2]!;
   expect(recovery.tools ?? []).toEqual([]);
@@ -694,13 +744,13 @@ test('a specialist that finishes without text writes its reply in one more gener
 
 // Verification: Prova della nuova richiesta della risposta vuota
 test('a reply still empty after the second generation fails, also for an agent without MCP', async () => {
-  const tools = scripted({ parts: answer('  '), reason: 'tool-calls' }, { parts: textParts(' \n'), reason: 'stop' });
+  const tools = scripted({ parts: answer('  '), reason: 'stop' }, { parts: textParts(' \n'), reason: 'stop' });
   const withTools = new AiSdkToolAgentReply(settings, { prompts: [], tools: [lookupMcpTool] }, { getPrompt,
     async callTool() { return { isError: false, content: [] }; } }, 1, tools);
   await expect(collect(withTools.produce(history, never()))).rejects.toThrow(ProjectError);
   expect(tools.doStreamCalls).toHaveLength(2);
-  const knowledge = scripted({ parts: answer(''), reason: 'tool-calls' }, { parts: textParts('Nel 1492.'), reason: 'stop' });
+  const knowledge = scripted({ parts: answer(''), reason: 'stop' }, { parts: textParts('Nel 1492.'), reason: 'stop' });
   const generic = new AiSdkKnowledgeAgentReply(settings, knowledge);
-  expect(await collect(generic.produce(history, never()))).toEqual([text('Nel 1492.'), expectation(false)]);
+  expect(await collect(generic.produce(history, never()))).toEqual([text('Nel 1492.')]);
   expect(knowledge.doStreamCalls[1]?.tools ?? []).toEqual([]);
 });

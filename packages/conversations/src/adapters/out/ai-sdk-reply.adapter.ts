@@ -3,7 +3,7 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createMistral } from '@ai-sdk/mistral';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
-import { generateText, hasToolCall, jsonSchema, Output, stepCountIs, streamText, tool, type LanguageModel,
+import { generateText, jsonSchema, Output, stepCountIs, streamText, tool, type LanguageModel,
   type ModelMessage } from 'ai';
 import { ProjectError } from '../../domain/project-error.js';
 import type { JsonValue, TurnAction } from '../../domain/turn.js';
@@ -19,9 +19,6 @@ const monotonic: Clock = () => performance.now();
 
 /** What an agent measured while producing one reply: model calls, MCP calls and the text before the first of them. */
 export type ReplyMeasures = { modelSteps: number; toolCalls?: number; toolMs?: number; announcementMs?: number };
-
-/** The final tool of every specialist reply: its only argument is the reply expectation. */
-export const finishToolName = 'finish';
 
 /** The providers this adapter can build a model for. */
 export const llmProviders = ['mistral', 'openai', 'anthropic', 'google', 'openai-compatible'] as const;
@@ -57,8 +54,7 @@ export type DiscoveredMcp = Readonly<{ tools: readonly AvailableMcpTool[]; promp
 
 /** The MCP name when every provider accepts it; otherwise the reserved positional name. */
 function presentedToolName(name: string, index: number): string {
-  return /^[A-Za-z_][A-Za-z0-9_-]{0,63}$/.test(name) && !/^mcp_\d+$/.test(name) && name !== finishToolName
-    ? name : `mcp_${index}`;
+  return /^[A-Za-z_][A-Za-z0-9_-]{0,63}$/.test(name) && !/^mcp_\d+$/.test(name) ? name : `mcp_${index}`;
 }
 
 export function aiSdkOptions(value?: AgentSettings['options']): Readonly<{
@@ -189,10 +185,8 @@ function withCurrentTime(settings: AgentSettings): string {
 function replyInstructions(instructions: string, language?: 'en' | 'it'): string {
   const languageLine = language === undefined ? ''
     : `\nAnswer in ${language === 'it' ? 'Italian' : 'English'}.`;
-  // Asked only to end with the tool, models also wrote its call in the text, which would be spoken.
   return `${instructions}${languageLine}\nYour text is spoken to the family exactly as you write it, so write only `
-    + `the words of your reply. When the reply is complete, call the ${finishToolName} tool; never write tool calls or `
-    + 'JSON in your text.';
+    + 'the words of your reply; never write tool calls or JSON in your text.';
 }
 
 /**
@@ -202,27 +196,19 @@ function replyInstructions(instructions: string, language?: 'en' | 'it'): string
  */
 const actionReplyRules = '\nEvery request to do something with your tools needs its own tool call in this reply, also when it '
   + 'repeats or refers to an earlier request: earlier replies do not show that anything was done. A message that asks '
-  + 'for nothing, such as thanks or a greeting, needs no tool except finish. Write nothing before or between tool '
+  + 'for nothing, such as thanks or a greeting, needs no tool. Write nothing before or between tool '
   + 'calls: write your reply only after your last tool call, when you know how it went. After an action, say in one '
   + 'short sentence what you did and on what; never answer only "Fatto" or "Ok". When an action fails, say what did '
   + 'not work.';
 
-/** `finish` has no execution: the reply ends at its call, which carries the reply expectation. */
-const finishTool = tool({
-  description: 'Ends the reply. Set expectsReply to true only when your reply asks the family to reply; otherwise false.',
-  inputSchema: jsonSchema<{ expectsReply: boolean }>({ type: 'object', properties: { expectsReply: { type: 'boolean' } },
-    required: ['expectsReply'], additionalProperties: false }),
-});
-
 type ReplyStream = Readonly<{ fullStream: AsyncIterable<{ type: string } & Record<string, unknown>> }>;
 
 /**
- * The text of every step as it is written, a line break between the text of different steps, then the expectation
- * given to `finish`. `onText` and `onToolCall` tell the measures when text is written and when an MCP tool is called.
+ * The text of every step as it is written, a line break between the text of different steps, and the concluded MCP
+ * calls. `onText` and `onToolCall` tell the measures when text is written and when an MCP tool is called.
  */
 async function* replyParts(response: ReplyStream, onText: () => void, onToolCall: () => void,
   limit: () => ProjectError | undefined): AsyncGenerator<ReplyPart, void, void> {
-  let expectsReply: boolean | undefined;
   let stepWritten = false;
   let stepBroken = false;
   let separate = false;
@@ -237,36 +223,26 @@ async function* replyParts(response: ReplyStream, onText: () => void, onToolCall
       stepWritten = false;
       stepBroken = false;
     } else if (part.type === 'tool-call') {
-      if (part.toolName === finishToolName) {
-        const input = part.input as { expectsReply?: unknown } | undefined;
-        if (typeof input?.expectsReply === 'boolean') expectsReply = input.expectsReply;
-      } else {
-        // The speech splits sentences only at punctuation followed by a space or a line break, and the step ends only
-        // after its tools have run: the text before a tool call gets its line break now, so it is spoken meanwhile.
-        if (stepWritten && !stepBroken) { stepBroken = true; yield { kind: 'text', text: '\n' }; }
-        onToolCall();
-      }
-    } else if (part.type === 'tool-result' && part.toolName !== finishToolName) {
+      // The speech splits sentences only at punctuation followed by a space or a line break, and the step ends only
+      // after its tools have run: the text before a tool call gets its line break now, so it is spoken meanwhile.
+      if (stepWritten && !stepBroken) { stepBroken = true; yield { kind: 'text', text: '\n' }; }
+      onToolCall();
+    } else if (part.type === 'tool-result') {
       yield { kind: 'action', action: { tool: String(part.toolName), input: toolInput(part.input),
         output: jsonCopy(part.output) } };
     } else if (part.type === 'tool-error') {
       // The call limit fails the turn: the model is not given the chance to answer after it.
       const exceeded = limit();
       if (exceeded) throw exceeded;
-      if (part.toolName !== finishToolName) {
-        const error = part.error instanceof Error && part.error.message ? part.error.message : 'Tool call failed';
-        yield { kind: 'action', action: { tool: String(part.toolName), input: toolInput(part.input), error } };
-      }
+      const error = part.error instanceof Error && part.error.message ? part.error.message : 'Tool call failed';
+      yield { kind: 'action', action: { tool: String(part.toolName), input: toolInput(part.input), error } };
     } else if (part.type === 'error') throw part.error;
   }
-  if (expectsReply === undefined) throw new ProjectError('Missing reply expectation');
-  yield { kind: 'reply_expectation', expectsReply };
 }
 
 /** Added to the instructions of the second generation after an empty reply («Nuova richiesta della risposta vuota»). */
-const emptyReplyRule = '\nYour reply ended without any words for the family. No tool is available now, not even '
-  + `${finishToolName}: write now only the words of your reply to the last message of the family, based on the `
-  + 'results of the tools you called.';
+const emptyReplyRule = '\nYour reply ended without any words for the family. No tool is available now: write now '
+  + 'only the words of your reply to the last message of the family, based on the results of the tools you called.';
 
 /** The text of the second generation, without tools, from the history and the actions of the turn. */
 async function* recoveryText(model: LanguageModel, options: ReturnType<typeof aiSdkOptions>, system: string,
@@ -283,8 +259,8 @@ async function* recoveryText(model: LanguageModel, options: ReturnType<typeof ai
 }
 
 /**
- * The parts of a reply that has words: when `finish` arrives with no text but spaces, the text of `recover` comes
- * before the reply expectation; a reply still without text fails.
+ * The parts of a reply that has words: when the generation ends with no text but spaces, the text of `recover`
+ * follows; a reply still without text fails.
  */
 async function* withReplyText(parts: AsyncIterable<ReplyPart>,
   recover: (actions: readonly TurnAction[]) => AsyncIterable<string>): AsyncGenerator<ReplyPart, void, void> {
@@ -293,14 +269,14 @@ async function* withReplyText(parts: AsyncIterable<ReplyPart>,
   for await (const part of parts) {
     if (part.kind === 'text' && part.text.trim()) written = true;
     if (part.kind === 'action') actions.push(part.action);
-    if (part.kind !== 'reply_expectation' || written) { yield part; continue; }
-    for await (const text of recover(actions)) {
-      if (text.trim()) written = true;
-      yield { kind: 'text', text };
-    }
-    if (!written) throw new ProjectError('Empty reply');
     yield part;
   }
+  if (written) return;
+  for await (const text of recover(actions)) {
+    if (text.trim()) written = true;
+    yield { kind: 'text', text };
+  }
+  if (!written) throw new ProjectError('Empty reply');
 }
 
 export class AiSdkToolAgentReply implements ProduceConversationReply {
@@ -358,8 +334,8 @@ export class AiSdkToolAgentReply implements ProduceConversationReply {
     const system = replyInstructions(withServerPrompts(withCurrentTime(this.settings), prompts),
       this.settings.responseLanguage) + actionReplyRules;
     const response = streamText({ model: this.model, system,
-      messages: messagesFor(history), tools: { ...tools, [finishToolName]: finishTool }, toolChoice: 'required',
-      toolCallConcurrency: 1, stopWhen: [stepCountIs(this.maxToolCalls + 1), hasToolCall(finishToolName)],
+      messages: messagesFor(history), tools,
+      toolCallConcurrency: 1, stopWhen: stepCountIs(this.maxToolCalls + 1),
       maxRetries: 0, abortSignal: signal, ...this.options });
     let recovered = 0;
     try {
@@ -372,7 +348,7 @@ export class AiSdkToolAgentReply implements ProduceConversationReply {
   }
 }
 
-/** An agent without MCP: it answers with its own model and instructions; `finish` is its only tool. */
+/** An agent without MCP: it answers with its own model and instructions, without tools. */
 export class AiSdkKnowledgeAgentReply implements ProduceConversationReply {
   private readonly model: LanguageModel;
   private readonly options: ReturnType<typeof aiSdkOptions>;
@@ -389,11 +365,9 @@ export class AiSdkKnowledgeAgentReply implements ProduceConversationReply {
   async *measured(history: ConversationHistory, cancellation: ReplyCancellation,
     measures: ReplyMeasures): AsyncIterable<ReplyPart> {
     const signal = abortSignalFor(cancellation);
-    // `finish` is the only tool: it carries the reply expectation.
     const system = replyInstructions(withCurrentTime(this.settings), this.settings.responseLanguage);
     const response = streamText({ model: this.model, system,
-      messages: messagesFor(history), tools: { [finishToolName]: finishTool }, toolChoice: 'required',
-      stopWhen: [stepCountIs(2), hasToolCall(finishToolName)], maxRetries: 0, abortSignal: signal, ...this.options });
+      messages: messagesFor(history), maxRetries: 0, abortSignal: signal, ...this.options });
     let recovered = 0;
     try {
       yield* withReplyText(replyParts(response as unknown as ReplyStream, () => undefined, () => undefined, () => undefined),
@@ -420,12 +394,25 @@ function routerInstructions(instructions: string, agents: readonly DelegatedAgen
     + 'Do not answer the message yourself.';
 }
 
+/** Question marks that make a reply worth checking («Indicazione della replica attesa»): Latin, Greek and full-width. */
+const questionMark = /[?\u037E\uFF1F]/;
+const endsWithQuestion = (text: string) => /[?\u037E\uFF1F]$/.test(text.trimEnd());
+
+const replyCheckInstructions = 'Decide whether the answer of the assistant waits for the family to reply now. Set '
+  + 'expectsReply to true only when the answer asks the family for information, a choice or a confirmation it needs '
+  + 'to go on. Set it to false for a polite offer such as "Can I help you with anything else?", for a rhetorical '
+  + 'question and for an answer that only reports or confirms something.';
+
 /** The orchestrator only chooses the agent; the chosen agent formulates the whole reply. */
 export class AiSdkOrchestratorReply implements ProduceConversationReply {
   private readonly model: LanguageModel;
   private readonly options: ReturnType<typeof aiSdkOptions>;
   private readonly agents: ReadonlyMap<string, DelegatedAgent>;
   private readonly choice: ReturnType<typeof Output.object<{ agent: string }>>;
+  private readonly expectation = Output.object({ schema: jsonSchema<{ expectsReply: boolean }>({
+    type: 'object', properties: { expectsReply: { type: 'boolean' } }, required: ['expectsReply'],
+    additionalProperties: false,
+  }) });
 
   private readonly now: Clock;
 
@@ -467,12 +454,52 @@ export class AiSdkOrchestratorReply implements ProduceConversationReply {
     const started = this.now();
     const measures: ReplyMeasures = { modelSteps: 0 };
     const own = historyFor(history, agent.id);
-    yield* agent.reply.measured ? agent.reply.measured(own, cancellation, measures)
-      : agent.reply.produce(own, cancellation);
+    let answer = '';
+    for await (const part of agent.reply.measured ? agent.reply.measured(own, cancellation, measures)
+      : agent.reply.produce(own, cancellation)) {
+      // The expectation is decided here, from the whole answer.
+      if (part.kind === 'reply_expectation') continue;
+      if (part.kind === 'text') answer += part.text;
+      yield part;
+    }
+    const agentMs = this.now() - started;
+    let replyCheckMs: number | undefined;
+    let expectsReply = false;
+    if (questionMark.test(answer)) {
+      const checking = this.now();
+      expectsReply = await this.expectsReply(history, answer, signal);
+      replyCheckMs = this.now() - checking;
+    }
+    yield { kind: 'reply_expectation', expectsReply };
     const ms = (value: number) => Math.max(0, Math.round(value));
     this.timing?.log.info({ event: 'conversation_reply_timing', agent: agent.id, routerMs: ms(routerMs),
-      agentMs: ms(this.now() - started), modelSteps: measures.modelSteps,
+      agentMs: ms(agentMs), modelSteps: measures.modelSteps,
       ...(measures.toolCalls === undefined ? {} : { toolCalls: measures.toolCalls, toolMs: ms(measures.toolMs ?? 0) }),
+      ...(replyCheckMs === undefined ? {} : { replyCheckMs: ms(replyCheckMs) }),
       ...(measures.announcementMs === undefined ? {} : { announcementMs: ms(measures.announcementMs) }) });
+  }
+
+  /**
+   * Whether an answer with a question waits for a reply, asked to the orchestrator's model with structured output.
+   * The answer has already been delivered: when the check fails, a final question mark decides.
+   */
+  private async expectsReply(history: ConversationHistory, answer: string, signal: AbortSignal): Promise<boolean> {
+    const message = history.turns.at(-1)?.text ?? '';
+    try {
+      const result = await generateText({ model: this.model, system: replyCheckInstructions,
+        messages: [{ role: 'user', content: `Message of the family:\n${message}\n\nAnswer of the assistant:\n${answer}` }],
+        output: this.expectation, maxRetries: 0, abortSignal: signal, ...this.options });
+      const output: unknown = result.output;
+      const fields = output !== null && typeof output === 'object' && !Array.isArray(output)
+        ? output as Record<string, unknown> : undefined;
+      if (fields && Object.keys(fields).length === 1 && typeof fields.expectsReply === 'boolean') return fields.expectsReply;
+      throw new ProjectError('Invalid reply expectation');
+    } catch (error) {
+      if (signal.aborted) throw error;
+      // Only the error name and message: provider errors also carry the request, with the conversation texts.
+      const cause = error instanceof Error ? { type: error.name, message: error.message } : { type: typeof error };
+      this.timing?.log.warn({ event: 'conversation_reply_check_failed', err: cause }, 'Reply expectation check failed');
+      return endsWithQuestion(answer);
+    }
   }
 }

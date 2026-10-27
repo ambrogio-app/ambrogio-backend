@@ -1,0 +1,7 @@
+{
+  "dialect": "postgres",
+  "dateParser": "timestamp",
+  "numericParser": "string",
+  "includePattern": "public.+(conversations|turns)",
+  "outFile": "packages/conversations/src/adapters/out/postgres/database.generated.ts"
+}

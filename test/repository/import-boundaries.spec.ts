@@ -71,7 +71,7 @@ const negativeFixtures: ReadonlyArray<Readonly<{ rule: RuleName; title: string; 
     graph: fixtureGraph({
       'packages/conversations/src/domain/turn.ts': 'export class Turn {}\n',
       'packages/conversations/src/domain/turn.spec.ts': "import { store } from '../../test/support/store.js';\n",
-      'packages/conversations/test/support/store.ts': "export { store } from '../../src/adapters/out/sqlite/store.adapter.js';\n",
+      'packages/conversations/test/support/store.ts': "export { store } from '../../src/adapters/out/postgres/store.adapter.js';\n",
     }, units),
   },
   {

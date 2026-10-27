@@ -109,8 +109,9 @@ La prova passa se due segnali producono un solo arresto; se le chiusure avvengon
 
 #### Relations
   * derivedFrom: [Verifica del ciclo di vita del server](#verifica-del-ciclo-di-vita-del-server)
-  * satisfiedBy: [conversation-server.resource-lifecycle.spec.ts](../../apps/server/src/runtime/conversation-server.resource-lifecycle.spec.ts)
+  * satisfiedBy: [conversation-server.resource-lifecycle.integration.spec.ts](../../apps/server/src/runtime/conversation-server.resource-lifecycle.integration.spec.ts)
   * satisfiedBy: [lifecycle.spec.ts](../../apps/server/src/runtime/lifecycle.spec.ts)
+  * satisfiedBy: [server-process.integration.spec.ts](../../apps/server/src/runtime/server-process.integration.spec.ts)
   * satisfiedBy: [server-process.spec.ts](../../apps/server/src/runtime/server-process.spec.ts)
   * satisfiedBy: [environment-files.spec.ts](../../test/repository/environment-files.spec.ts)
   * verify: [Arresto unico e ordinato del server](../Requirements/ServerFoundation.md#arresto-unico-e-ordinato-del-server)
@@ -129,8 +130,8 @@ La prova passa se il server rifiuta i nuovi turni con `unavailable`, richiede su
 
 #### Relations
   * derivedFrom: [Verifica del ciclo di vita del server](#verifica-del-ciclo-di-vita-del-server)
-  * satisfiedBy: [conversation-server.session-lifecycle.spec.ts](../../apps/server/src/runtime/conversation-server.session-lifecycle.spec.ts)
-  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [conversation-server.integration.spec.ts](../../apps/server/src/runtime/conversation-server.integration.spec.ts)
+  * satisfiedBy: [conversation-server.session-lifecycle.integration.spec.ts](../../apps/server/src/runtime/conversation-server.session-lifecycle.integration.spec.ts)
   * verify: [Arresto controllato dei nuovi turni](../Requirements/ServerFoundation.md#arresto-controllato-dei-nuovi-turni)
   * verify: [Chiusura delle risorse dopo l'interruzione dei turni](../Requirements/ServerFoundation.md#chiusura-delle-risorse-dopo-linterruzione-dei-turni)
   * verify: [Interruzione dei turni durante l'arresto](../Requirements/ServerFoundation.md#interruzione-dei-turni-durante-larresto)
@@ -148,15 +149,16 @@ La prova passa se dopo la costruzione nessun listener è aperto sulla porta conf
 
 #### Relations
   * derivedFrom: [Verifica del ciclo di vita del server](#verifica-del-ciclo-di-vita-del-server)
-  * satisfiedBy: [conversation-server.resource-lifecycle.spec.ts](../../apps/server/src/runtime/conversation-server.resource-lifecycle.spec.ts)
+  * satisfiedBy: [conversation-server.resource-lifecycle.integration.spec.ts](../../apps/server/src/runtime/conversation-server.resource-lifecycle.integration.spec.ts)
+  * satisfiedBy: [server-process.integration.spec.ts](../../apps/server/src/runtime/server-process.integration.spec.ts)
   * satisfiedBy: [server-process.spec.ts](../../apps/server/src/runtime/server-process.spec.ts)
-  * satisfiedBy: [test-server.spec.ts](../../apps/server/src/runtime/test-server.spec.ts)
+  * satisfiedBy: [test-server.integration.spec.ts](../../apps/server/src/runtime/test-server.integration.spec.ts)
   * verify: [Costruzione del server separata dall'ascolto](../Requirements/ServerFoundation.md#costruzione-del-server-separata-dallascolto)
 ---
 
 ### Prova della diagnostica del mancato avvio
 
-Provocare il fallimento dell'avvio del processo server in ciascuna fase: variabile HTTP o conversazionale mancante o invalida, configurazione vocale invalida, directory degli agenti senza agenti specializzati, opzioni del modello non valide in un agente, server MCP di un agente irraggiungibile, archivio non apribile e porta di ascolto occupata; ripetere un caso in cui fallisce anche la chiusura di una risorsa già acquisita. Inserire un segreto marcatore nei valori invalidi e nelle credenziali MCP e un messaggio marcatore nel guasto esterno. Catturare `stdout`, `stderr` e codice di uscita.
+Provocare il fallimento dell'avvio del processo server in ciascuna fase: variabile HTTP o conversazionale mancante o invalida, configurazione vocale invalida, directory degli agenti senza agenti specializzati, opzioni del modello non valide in un agente, server MCP di un agente irraggiungibile, database dell'archivio non raggiungibile e porta di ascolto occupata; ripetere un caso in cui fallisce anche la chiusura di una risorsa già acquisita. Inserire un segreto marcatore nei valori invalidi e nelle credenziali MCP e un messaggio marcatore nel guasto esterno. Catturare `stdout`, `stderr` e codice di uscita.
 
 #### Details
 La prova passa se ogni caso produce su `stdout` una sola riga JSON con livello `error`, `event` `server_startup_failed` ed `err` conforme al profilo del contratto, con il messaggio fisso della fase o il messaggio di validazione già previsto e, per gli agenti, l'identificativo dell'agente; se `stderr` contiene `Unable to start HTTP server.`, il codice di uscita è `1` e il server non è in ascolto; se, quando fallisce anche una chiusura, `err` è un `LifecycleError` con il guasto dell'avvio al primo posto e il guasto di chiusura dopo. Fallisce se manca l'evento o ne compaiono più di uno, se il segreto o il messaggio marcatore del guasto esterno compaiono in un output, se la causa non distingue la fase o l'agente, o se il processo termina con successo.
@@ -168,6 +170,7 @@ La prova passa se ogni caso produce su `stdout` una sola riga JSON con livello `
   * derivedFrom: [Verifica del ciclo di vita del server](#verifica-del-ciclo-di-vita-del-server)
   * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
   * satisfiedBy: [server-process.spec.ts](../../apps/server/src/runtime/server-process.spec.ts)
+  * satisfiedBy: [startup-failure.integration.spec.ts](../../apps/server/src/runtime/startup-failure.integration.spec.ts)
   * satisfiedBy: [startup-failure.spec.ts](../../apps/server/src/runtime/startup-failure.spec.ts)
   * verify: [Diagnostica del mancato avvio del server](../Requirements/ServerFoundation.md#diagnostica-del-mancato-avvio-del-server)
 ---
@@ -403,7 +406,7 @@ La prova passa se tutti i campi della riga appartengono alla selezione esplicita
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
+  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
   * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
   * verify: [Selezione esplicita dei campi diagnostici](../Requirements/ServerFoundation.md#selezione-esplicita-dei-campi-diagnostici)
 ---
@@ -420,7 +423,7 @@ La prova passa se ogni evento Pino occupa una sola riga JSON strutturata, il pro
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
+  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
   * verify: [Formato e flussi dei log tecnici](../Requirements/ServerFoundation.md#formato-e-flussi-dei-log-tecnici)
 ---
 
@@ -436,7 +439,7 @@ La prova passa se ogni riga contiene `event`, il suo valore corrisponde al nome 
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
+  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
   * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
   * verify: [Nome stabile degli eventi diagnostici](../Requirements/ServerFoundation.md#nome-stabile-degli-eventi-diagnostici)
 ---
@@ -453,8 +456,8 @@ La prova passa se ogni rifiuto è restituito come valore distinguibile dal succe
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [sqlite-conversation-history-read.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-history-read.adapter.integration.spec.ts)
-  * satisfiedBy: [sqlite-turn-repository.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.integration.spec.ts)
+  * satisfiedBy: [postgres-conversation-history-read.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/postgres/postgres-conversation-history-read.adapter.integration.spec.ts)
+  * satisfiedBy: [postgres-turn-repository.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/postgres/postgres-turn-repository.adapter.integration.spec.ts)
   * satisfiedBy: [begin-turn.use-case.spec.ts](../../packages/conversations/src/application/begin-turn.use-case.spec.ts)
   * satisfiedBy: [complete-turn.use-case.spec.ts](../../packages/conversations/src/application/complete-turn.use-case.spec.ts)
   * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
@@ -474,7 +477,7 @@ La prova passa se per l'`Error` del progetto il campo strutturato `err` conserva
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
+  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
   * satisfiedBy: [logger.spec.ts](../../apps/server/src/runtime/logger.spec.ts)
   * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
   * verify: [Conservazione dell'errore originale durante la serializzazione](../Requirements/ServerFoundation.md#conservazione-dellerrore-originale-durante-la-serializzazione)
@@ -494,7 +497,7 @@ La prova passa se, per ciascun caso e ciascun ingresso presente, il confine emet
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
+  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
   * verify: [Log error del fallback pubblico](../Requirements/ServerFoundation.md#log-error-del-fallback-pubblico)
 ---
 
@@ -510,7 +513,7 @@ La prova passa se le righe dei logger derivati contengono ciascuna soltanto i pr
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
+  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
   * satisfiedBy: [logger.spec.ts](../../apps/server/src/runtime/logger.spec.ts)
   * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
   * satisfiedBy: [import-boundaries.spec.ts](../../test/repository/import-boundaries.spec.ts)
@@ -529,7 +532,7 @@ La prova passa se la ricezione della richiesta e l'invio della risposta non gene
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
+  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
   * verify: [Assenza dei log HTTP automatici](../Requirements/ServerFoundation.md#assenza-dei-log-http-automatici)
 ---
 
@@ -561,7 +564,7 @@ La prova passa se nessuno dei marcatori viene acquisito automaticamente dagli ev
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
+  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
   * verify: [Esclusione della raccolta automatica di dati nei log](../Requirements/ServerFoundation.md#esclusione-della-raccolta-automatica-di-dati-nei-log)
 ---
 
@@ -577,7 +580,7 @@ La prova passa se per il guasto esiste al massimo un log diagnostico definitivo,
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
+  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
   * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
   * verify: [Assenza di log definitivi nei componenti intermedi](../Requirements/ServerFoundation.md#assenza-di-log-definitivi-nei-componenti-intermedi)
   * verify: [Proprietà e unicità del log diagnostico definitivo](../Requirements/ServerFoundation.md#proprietà-e-unicità-del-log-diagnostico-definitivo)
@@ -595,7 +598,7 @@ La prova passa se ogni richiesta riceve un `correlationId` UUID v4 distinto, tut
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
+  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
   * verify: [Identificativo di correlazione delle richieste HTTP](../Requirements/ServerFoundation.md#identificativo-di-correlazione-delle-richieste-http)
   * verify: [Identificativo di richiesta nelle risposte HTTP](../Requirements/ServerFoundation.md#identificativo-di-richiesta-nelle-risposte-http)
 ---
@@ -631,7 +634,7 @@ La prova passa se la normalizzazione avviene una sola volta nel confine definiti
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
+  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
   * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
   * verify: [Normalizzazione diagnostica nel confine definitivo](../Requirements/ServerFoundation.md#normalizzazione-diagnostica-nel-confine-definitivo)
 ---
@@ -681,7 +684,7 @@ La prova passa se il messaggio pubblico non contiene nessuno dei marcatori tecni
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
+  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
   * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
   * verify: [Esclusione dei dettagli tecnici dal messaggio pubblico](../Requirements/ServerFoundation.md#esclusione-dei-dettagli-tecnici-dal-messaggio-pubblico)
   * verify: [Separazione del messaggio pubblico dalla diagnosi tecnica](../Requirements/ServerFoundation.md#separazione-del-messaggio-pubblico-dalla-diagnosi-tecnica)
@@ -757,7 +760,7 @@ Verificare che una release del backend renda disponibile nel registro l'immagine
 Su una release del backend, osservare l'esecuzione del workflow GitHub Actions e recuperare da GHCR il tag immagine corrispondente al tag Git.
 
 #### Details
-La verifica passa se il tag Git `vMAJOR.MINOR.PATCH` corrisponde alla versione del package server, il workflow verifica l'immagine prima del push e pubblica `ghcr.io/ambrogio-app/ambrogio-backend:<tag Git>` per `linux/amd64`. Con credenziali di lettura, il digest pubblicato deve essere scaricabile e avviare il server con configurazione e archivio SQLite esterni, senza Compose. Un tag diverso non deve pubblicare l'immagine. La prova finale richiede una release effettivamente pubblicata.
+La verifica passa se il tag Git `vMAJOR.MINOR.PATCH` corrisponde alla versione del package server, il workflow verifica l'immagine prima del push e pubblica `ghcr.io/ambrogio-app/ambrogio-backend:<tag Git>` per `linux/amd64`. Con credenziali di lettura, il digest pubblicato deve essere scaricabile e avviare il server con configurazione esterna e un database PostgreSQL, senza Compose. Un tag diverso non deve pubblicare l'immagine. La prova finale richiede una release effettivamente pubblicata.
 
 Non automatizzabile: richiede la creazione di un tag di release, l'esecuzione su GitHub Actions e il download dal registro GHCR.
 
@@ -1053,7 +1056,7 @@ La prova passa se il processo legge una volta all'avvio soltanto la configurazio
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
   * satisfiedBy: [agent-config.spec.ts](../../apps/server/src/runtime/agent-config.spec.ts)
-  * satisfiedBy: [conversation-server.config-bootstrap.spec.ts](../../apps/server/src/runtime/conversation-server.config-bootstrap.spec.ts)
+  * satisfiedBy: [conversation-server.config-bootstrap.integration.spec.ts](../../apps/server/src/runtime/conversation-server.config-bootstrap.integration.spec.ts)
   * satisfiedBy: [config-examples.spec.ts](../../apps/server/test/examples/config-examples.spec.ts)
   * satisfiedBy: [conversation-config.spec.ts](../../packages/conversations/src/adapters/out/conversation-config.spec.ts)
   * verify: [Caricamento iniziale della configurazione del backend](../Requirements/ServerFoundation.md#caricamento-iniziale-della-configurazione-del-backend)
@@ -1125,7 +1128,7 @@ La prova passa se `@fastify/helmet` è registrato globalmente e le tre risposte 
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
+  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
   * verify: [Header di sicurezza sulle risposte HTTP](../Requirements/ServerFoundation.md#header-di-sicurezza-sulle-risposte-http)
 ---
 
@@ -1148,10 +1151,10 @@ La prova passa se gli script eseguono con Vitest rispettivamente i progetti `fas
 
 ### Prova del server compilato come processo
 
-Dopo `pnpm build`, eseguire `pnpm test:e2e`: avviare `apps/server/dist/main.js` con Node.js in un processo figlio con impostazioni di produzione, una porta libera di loopback, un archivio in una cartella temporanea e un agente che risponde, richiedere `GET /api/v1/conversations`, inviare `SIGTERM`; avviarlo poi senza variabili `AMBROGIO_*`.
+Dopo `pnpm build`, eseguire `pnpm test:e2e`: avviare `apps/server/dist/main.js` con Node.js in un processo figlio con impostazioni di produzione, una porta libera di loopback, un database PostgreSQL di prova nuovo e un agente che risponde, richiedere `GET /api/v1/conversations`, inviare `SIGTERM`; avviarlo poi senza variabili `AMBROGIO_*`.
 
 #### Details
-La prova passa se il punto d'ingresso compilato esiste; se il server risponde `200` con un elenco vuoto, crea il file dell'archivio, termina con codice 0 senza scrivere su stderr e non riporta la credenziale segnaposto; e se senza ambiente di esecuzione termina con codice 1, una sola riga JSON `server_startup_failed` con il messaggio `Missing environment variable AMBROGIO_ENV` e la sola riga `Unable to start HTTP server.` su stderr. Fallisce se il compilato manca o non si risolve, se una risposta, un codice di uscita o un output differiscono.
+La prova passa se il punto d'ingresso compilato esiste; se il server risponde `200` con un elenco vuoto, crea le tabelle dell'archivio nel database, termina con codice 0 senza scrivere su stderr e non riporta la credenziale segnaposto; e se senza ambiente di esecuzione termina con codice 1, una sola riga JSON `server_startup_failed` con il messaggio `Missing environment variable AMBROGIO_ENV` e la sola riga `Unable to start HTTP server.` su stderr. Fallisce se il compilato manca o non si risolve, se una risposta, un codice di uscita o un output differiscono.
 
 #### Metadata
   * type: test-verification
@@ -1182,7 +1185,7 @@ La prova passa se un ambiente assente, vuoto o invalido impedisce l'avvio con un
 
 ### Prova dell'immagine Docker indipendente da Compose
 
-Costruire l'immagine Docker del server a partire dagli artefatti del progetto e avviarla con il solo runtime Docker, fornendo dall'esterno i file di configurazione di prova; verificare l'avvio e una richiesta a un ingresso HTTP presente. Esaminare l'eventuale file Compose per accertare che sia un esempio di avvio e non un prerequisito della build o dell'esecuzione.
+Costruire l'immagine Docker del server a partire dagli artefatti del progetto e avviarla con il solo runtime Docker, fornendo dall'esterno i file di configurazione di prova e un database PostgreSQL in un container `pgvector/pgvector:pg18` sulla stessa rete Docker; verificare l'avvio, una richiesta a un ingresso HTTP presente e la creazione delle tabelle dell'archivio in quel database. Esaminare l'eventuale file Compose per accertare che sia un esempio di avvio e non un prerequisito della build o dell'esecuzione.
 
 #### Details
 La prova passa se il progetto produce un'immagine eseguibile, il server si avvia e risponde usando l'immagine senza Docker Compose e nessuna fase indispensabile richiede Compose. Fallisce se l'immagine manca, non è eseguibile oppure l'avvio dipende da Compose.
@@ -1199,17 +1202,17 @@ La prova passa se il progetto produce un'immagine eseguibile, il server si avvia
 
 ### Prova dell'ingresso di prova del server conversazionale
 
-Importare soltanto l'ingresso di prova dal backend compilato e avviare il server con un produttore di risposte, un trascrittore e un sintetizzatore deterministici, un archivio temporaneo e una porta libera; aprire una sessione `ambrogio.v1`, inviare un turno testuale e un turno audio con la risposta chiesta in audio, leggere elenco e storico con le API HTTP pubbliche, anche da un'origine consentita e da una non consentita, e chiudere il server due volte; ripetere l'avvio senza trascrittore e sintetizzatore e inviare un turno audio.
+Importare soltanto l'ingresso di prova dal backend compilato e avviare il server con un produttore di risposte, un trascrittore e un sintetizzatore deterministici, l'URL del server PostgreSQL di prova e una porta libera; aprire una sessione `ambrogio.v1`, inviare un turno testuale e un turno audio con la risposta chiesta in audio, leggere elenco e storico con le API HTTP pubbliche, anche da un'origine consentita e da una non consentita, e chiudere il server due volte; ripetere l'avvio senza trascrittore e sintetizzatore e inviare un turno audio.
 
 #### Details
-La prova passa se l'ingresso restituisce un indirizzo locale raggiungibile e un'operazione di chiusura; se i turni sono ammessi, ricevono le risposte del produttore deterministico e si concludono con `turn.completed`; se la risposta in audio al turno audio, prodotta dal sintetizzatore deterministico, contiene il testo ottenuto dal trascrittore deterministico; se elenco e storico riportano gli scambi conservati e soltanto l'origine consentita riceve l'intestazione CORS; se dopo la chiusura il server non accetta connessioni e l'archivio temporaneo è rilasciato; e se, senza trascrittore e sintetizzatore, il turno audio è rifiutato con `audio_unavailable`. Fallisce se l'avvio legge configurazioni dell'installazione, variabili d'ambiente o modelli vocali, contatta servizi esterni, richiede l'import di altri moduli del backend o se un esito differisce dai contratti del protocollo.
+La prova passa se l'ingresso restituisce un indirizzo locale raggiungibile e un'operazione di chiusura; se i turni sono ammessi, ricevono le risposte del produttore deterministico e si concludono con `turn.completed`; se la risposta in audio al turno audio, prodotta dal sintetizzatore deterministico, contiene il testo ottenuto dal trascrittore deterministico; se elenco e storico riportano gli scambi conservati e soltanto l'origine consentita riceve l'intestazione CORS; se durante l'esecuzione esiste sul server di prova un solo database nuovo con il prefisso `ambrogio_test_` e dopo la chiusura il server non accetta connessioni e quel database non esiste più, anche quando l'avvio fallisce; e se, senza trascrittore e sintetizzatore, il turno audio è rifiutato con `audio_unavailable`. Fallisce se l'avvio legge configurazioni dell'installazione, variabili d'ambiente o modelli vocali, contatta servizi esterni, richiede l'import di altri moduli del backend o se un esito differisce dai contratti del protocollo.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [test-server.spec.ts](../../apps/server/src/runtime/test-server.spec.ts)
+  * satisfiedBy: [test-server.integration.spec.ts](../../apps/server/src/runtime/test-server.integration.spec.ts)
   * verify: [Ingresso di prova pubblico del server conversazionale](../Requirements/ServerFoundation.md#ingresso-di-prova-pubblico-del-server-conversazionale)
 ---
 
@@ -1231,10 +1234,10 @@ La prova passa se ogni workflow dichiara `permissions` con il solo `contents: re
 
 ### Prova dell'isolamento dei database di prova
 
-Leggere come testo i file `*.integration.spec.ts` degli adapter SQLite.
+Leggere come testo i file `*.integration.spec.ts` e `*.e2e.spec.ts` e il modulo `test/support/test-database.ts`.
 
 #### Details
-La prova passa se ogni file importa le migrazioni di produzione o l'archivio che le applica, apre almeno un database con `better-sqlite3`, non legge `process.env` né variabili `AMBROGIO_*`, e se, quando apre un file invece di un database in memoria, crea la propria cartella con `mkdtempSync` nella cartella temporanea del sistema e la cancella con `rmSync`. Fallisce se un file manca di una di queste proprietà.
+La prova passa se ogni file `*.integration.spec.ts` importa il modulo dei database di prova, direttamente o tramite un modulo di supporto della propria unità, e nessun file di prova nomina `AMBROGIO_TEST_DATABASE_URL` né legge `process.env.AMBROGIO_DATABASE_URL`; se il modulo legge soltanto `AMBROGIO_TEST_DATABASE_URL`, lancia un errore che nomina la variabile quando manca, senza altri valori di ripiego, crea database con il prefisso `ambrogio_test_` seguito da caratteri casuali, vi applica le migrazioni di produzione e cancella soltanto i nomi che ha creato. Fallisce se un file manca di una di queste proprietà.
 
 #### Metadata
   * type: test-verification
@@ -1325,7 +1328,7 @@ La prova passa se HSTS è assente quando la configurazione pubblica è HTTP o no
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
+  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
   * verify: [HSTS legato all'HTTPS pubblico](../Requirements/ServerFoundation.md#hsts-legato-allhttps-pubblico)
 ---
 
@@ -1334,7 +1337,7 @@ La prova passa se HSTS è assente quando la configurazione pubblica è HTTP o no
 Leggere come testo `.github/workflows/ci.yml` e i file di prova dei package sotto `packages/`.
 
 #### Details
-La prova passa se il workflow parte a ogni push su `main`, a ogni pull request, su richiesta manuale e con `workflow_call`; se il job `Backend checks` dichiara `BRANCH` pari a `${{ github.head_ref || github.ref_name }}`, esegue il checkout del repository in `workspace/ambrogio-backend` con `fetch-depth: 0`, clona `ambrogio-model` in `workspace/ambrogio-model` sul branch `BRANCH` se esiste sul remoto e altrimenti su `main`, esegue poi `workspace/ambrogio-model/scripts/checkout-workspace workspace "$BRANCH"` e `workspace/ambrogio-model/scripts/model-checks --workspace workspace`, e infine, nella cartella `workspace/ambrogio-backend`, `pnpm install --frozen-lockfile`, `pnpm audit --audit-level high` subito dopo, `pnpm build`, `pnpm typecheck`, `pnpm test`, `pnpm test:integration` e `pnpm test:e2e`, con `corepack enable` prima dell'installazione e l'installazione e l'audit delle dipendenze prima degli altri passi pnpm, con `pnpm build` prima di `pnpm typecheck` e di `pnpm test:e2e` e l'installazione verificata di gitleaks prima di `pnpm test`; se il workflow non nomina un pacchetto o una versione di Reqvire né uno script di integrità locale; se nessun passo o job dichiara `continue-on-error`; e se ogni file di prova dei package che importa un adapter di persistenza di `src/adapters/out/sqlite/` importa anche `better-sqlite3`, così da esercitare un database SQLite reale, e si chiama `*.integration.spec.ts`, e ogni file `*.integration.spec.ts` importa `better-sqlite3`. Fallisce se manca un evento o una fase, se l'ordine richiesto non è rispettato, se un fallimento è tollerato, se una prova di un adapter SQLite non usa il driver reale o non appartiene alla selezione di integrazione. Che un controllo fallito impedisca l'integrazione è verificato da «Ispezione della protezione del merge del backend».
+La prova passa se il workflow parte a ogni push su `main`, a ogni pull request, su richiesta manuale e con `workflow_call`; se il job `Backend checks` dichiara `BRANCH` pari a `${{ github.head_ref || github.ref_name }}`, esegue il checkout del repository in `workspace/ambrogio-backend` con `fetch-depth: 0`, clona `ambrogio-model` in `workspace/ambrogio-model` sul branch `BRANCH` se esiste sul remoto e altrimenti su `main`, esegue poi `workspace/ambrogio-model/scripts/checkout-workspace workspace "$BRANCH"` e `workspace/ambrogio-model/scripts/model-checks --workspace workspace`, e infine, nella cartella `workspace/ambrogio-backend`, `pnpm install --frozen-lockfile`, `pnpm audit --audit-level high` subito dopo, `pnpm build`, `pnpm db:types:check`, `pnpm typecheck`, `pnpm test`, `pnpm test:integration` e `pnpm test:e2e`, con `corepack enable` prima dell'installazione e l'installazione e l'audit delle dipendenze prima degli altri passi pnpm, con `pnpm build` prima di `pnpm typecheck` e di `pnpm test:e2e` e l'installazione verificata di gitleaks prima di `pnpm test`; se il workflow non nomina un pacchetto o una versione di Reqvire né uno script di integrità locale; se il job dichiara il servizio `postgres` con l'immagine `pgvector/pgvector:pg18`, `POSTGRES_HOST_AUTH_METHOD: trust`, la porta `5432:5432` e un controllo di salute con `pg_isready`, e la variabile `AMBROGIO_TEST_DATABASE_URL` pari a `postgres://postgres@127.0.0.1:5432/postgres`; se nessun passo o job dichiara `continue-on-error`; e se ogni file di prova che importa un adapter di `src/adapters/out/postgres/` o il modulo dei database di prova si chiama `*.integration.spec.ts` o `*.e2e.spec.ts`. Fallisce se manca un evento, una fase o il servizio, se l'ordine richiesto non è rispettato, se un fallimento è tollerato o se una prova che usa il database appartiene alla selezione veloce. Che un controllo fallito impedisca l'integrazione è verificato da «Ispezione della protezione del merge del backend».
 
 #### Metadata
   * type: test-verification
@@ -1357,9 +1360,9 @@ La prova passa se il processo ascolta solo all'indirizzo e alla porta validati, 
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [conversation-server.spec.ts](../../apps/server/src/runtime/conversation-server.spec.ts)
+  * satisfiedBy: [conversation-server.integration.spec.ts](../../apps/server/src/runtime/conversation-server.integration.spec.ts)
   * satisfiedBy: [http-config.spec.ts](../../apps/server/src/runtime/http-config.spec.ts)
-  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
+  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
   * verify: [Configurazione esplicita dell'ascolto HTTP](../Requirements/ServerFoundation.md#configurazione-esplicita-dellascolto-http)
 ---
 
@@ -1375,7 +1378,7 @@ La prova passa se, senza elenco, nessuna risposta autorizza CORS; con l'elenco, 
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
+  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
   * verify: [Origini CORS esplicite dell'API HTTP](../Requirements/ServerFoundation.md#origini-cors-esplicite-dellapi-http)
 ---
 
@@ -1394,3 +1397,4 @@ La prova passa se ogni directory contiene un solo modello `.onnx`, `tokens.txt`,
   * satisfiedBy: [verify-docker-image.mjs](../../scripts/verify-docker-image.mjs)
   * verify: [Directory delle voci sostituibile nell'immagine](../Requirements/ServerFoundation.md#directory-delle-voci-sostituibile-nellimmagine)
 ---
+

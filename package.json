@@ -5,15 +5,18 @@
   "packageManager": "pnpm@12.11.2",
   "scripts": {
     "build": "tsc -p packages/conversations/tsconfig.build.json && tsc -p apps/server/tsconfig.build.json",
+    "db:types": "node scripts/database-types.mjs",
+    "db:types:check": "node scripts/database-types.mjs --verify",
     "dev": "node --env-file=.env apps/server/dist/main.js",
     "test": "vitest run --project fast",
     "test:integration": "vitest run --project integration",
     "test:e2e": "vitest run --project e2e",
     "typecheck": "tsc --noEmit",
-    "verify": "../ambrogio-model/scripts/model-checks && pnpm install --frozen-lockfile && pnpm audit --audit-level high && pnpm build && pnpm typecheck && pnpm test && pnpm test:integration && pnpm test:e2e"
+    "verify": "../ambrogio-model/scripts/model-checks && pnpm install --frozen-lockfile && pnpm audit --audit-level high && pnpm build && pnpm db:types:check && pnpm typecheck && pnpm test && pnpm test:integration && pnpm test:e2e"
   },
   "devDependencies": {
     "@types/node": "24.19.2",
+    "kysely-codegen": "0.20.0",
     "typescript": "7.0.2",
     "vitest": "5.0.4"
   }

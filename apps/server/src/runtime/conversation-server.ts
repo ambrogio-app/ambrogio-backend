@@ -50,7 +50,7 @@ export async function prepareConversationServer(environment: NodeJS.ProcessEnv, 
     const agents = await prepare(agentDirectory, conversations.timeZone, conversations.language);
     resources.defer('Agent MCP connections could not be closed', () => agents.close());
     const prepared = await startupPhase('Conversation archive could not be prepared',
-      () => prepareConfiguredConversations(conversations, new Date()));
+      () => prepareConfiguredConversations(conversations, new Date(), archiveConnectionFault(log)));
     resources.defer('Conversation archive could not be closed', () => prepared.archive.close());
     const { server, turnIngress } = await buildConversationServer(http, prepared, agents.orchestrator, voice,
       undefined, { log, resources });
@@ -74,4 +74,16 @@ export async function prepareConversationServer(environment: NodeJS.ProcessEnv, 
     const cleanup = await resources.close().then(() => [], () => resources.faults);
     throw startupWithCleanup('Server startup failed', error, cleanup);
   }
+}
+
+/**
+ * Technical boundary of the faults of idle archive connections («Ciclo di vita della risorsa PostgreSQL
+ * conversazionale»): one event each; the pool has discarded the connection and the process goes on.
+ */
+export function archiveConnectionFault(log: Logger) {
+  return (error: unknown): void => {
+    log.error({ event: 'conversation_archive_connection_failed',
+      err: new ProjectError('Conversation archive connection failed', { cause: error }) },
+    'Conversation archive connection failed');
+  };
 }

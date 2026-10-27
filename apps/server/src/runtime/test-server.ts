@@ -1,16 +1,21 @@
-import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import type { SpeechComponentsFactory } from '@ambrogio/conversations/adapters/in/session/speech-components';
 import { readConversationConfig } from '@ambrogio/conversations/adapters/out/conversation-config';
+import { createTemporaryDatabase } from '@ambrogio/conversations/adapters/out/postgres/temporary-database';
 import type { ProduceConversationReply } from '@ambrogio/conversations/application/produce-conversation-reply';
 import { prepareConfiguredConversations } from '../composition/conversations.js';
 import { buildConversationServer } from '../composition/http-surface.js';
 import { createResourceStack, startupWithCleanup } from './lifecycle.js';
+import { archiveConnectionFault } from './conversation-server.js';
 import { createBaseLogger } from './logger.js';
 
 /** What a client integration test supplies to the test server. */
 export type TestServerOptions = Readonly<{
-  /** Folder where the server keeps its conversation archive; the caller owns and removes it. */
-  directory: string;
+  /**
+   * URL of a PostgreSQL test server whose role may create and drop databases, usually the value of
+   * `AMBROGIO_TEST_DATABASE_URL`: the archive is a new database there, dropped when the server closes.
+   */
+  databaseUrl: string;
   language: 'en' | 'it';
   /** Deterministic replacement of the orchestrator. */
   reply: ProduceConversationReply;
@@ -26,7 +31,7 @@ export type TestServer = Readonly<{
   origin: string;
   /** URL of the `ambrogio.v1` session. */
   sessionUrl: URL;
-  /** Stop accepting turns, interrupt the pending ones and close sessions, listener and archive. */
+  /** Stop accepting turns, interrupt the pending ones, close sessions, listener and archive, drop the database. */
   close(): Promise<void>;
 }>;
 
@@ -40,15 +45,17 @@ export async function startTestServer(options: TestServerOptions): Promise<TestS
   const log = createBaseLogger();
   const resources = createResourceStack('Test server shutdown failed');
   try {
+    const database = await createTemporaryDatabase(options.databaseUrl);
+    resources.defer('Test database could not be dropped', () => database.drop());
     // The configuration module applies its own defaults to an environment built here, never the process one.
     const prepared = await prepareConfiguredConversations(readConversationConfig({
-      AMBROGIO_ARCHIVE_PATH: join(options.directory, 'conversations.sqlite'), AMBROGIO_LANGUAGE: options.language,
-    }, 'test'), new Date());
+      AMBROGIO_DATABASE_URL: database.url, AMBROGIO_LANGUAGE: options.language,
+    }, 'test'), new Date(), archiveConnectionFault(log));
     resources.defer('Conversation archive could not be closed', () => prepared.archive.close());
     // Built without listening; the deterministic speech components ignore the model paths of the voice configuration.
     const { server, turnIngress } = await buildConversationServer({ host: '127.0.0.1', port: 0,
       allowedOrigins: options.allowedOrigins ?? [], publicHttps: false }, prepared, options.reply,
-    options.speech ? { sttModelDir: options.directory, voiceModelDir: options.directory } : undefined, options.speech, { log, resources,
+    options.speech ? { sttModelDir: tmpdir(), voiceModelDir: tmpdir() } : undefined, options.speech, { log, resources,
       ...(options.sessionPingIntervalMs === undefined ? {} : { sessionPingIntervalMs: options.sessionPingIntervalMs }) });
     // This module is the entry point of the test server: it activates the listener itself.
     const origin = await server.listen({ host: '127.0.0.1', port: 0 });

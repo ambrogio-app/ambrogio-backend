@@ -37,8 +37,8 @@ La prova passa se ogni successo usa `200`, `application/json` e gli header dichi
 
 #### Relations
   * derivedFrom: [Verifica dell'API HTTP pubblica](#verifica-dellapi-http-pubblica)
-  * satisfiedBy: [http-surface.spec.ts](../../apps/server/src/composition/http-surface.spec.ts)
-  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
+  * satisfiedBy: [http-surface.integration.spec.ts](../../apps/server/src/composition/http-surface.integration.spec.ts)
+  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
   * verify: [Catalogo comune dei problemi di protocollo HTTP](../Requirements/HttpApi.md#catalogo-comune-dei-problemi-di-protocollo-http)
   * verify: [Errori HTTP nel formato Problem Details](../Requirements/HttpApi.md#errori-http-nel-formato-problem-details)
   * verify: [Risposta opaca per i guasti inattesi dell'API HTTP](../Requirements/HttpApi.md#risposta-opaca-per-i-guasti-inattesi-dellapi-http)
@@ -73,7 +73,7 @@ La prova passa se ogni rotta HTTP diversa dalla sessione `/api/session` sta sott
 
 #### Relations
   * derivedFrom: [Verifica dell'API HTTP pubblica](#verifica-dellapi-http-pubblica)
-  * satisfiedBy: [http-surface.spec.ts](../../apps/server/src/composition/http-surface.spec.ts)
+  * satisfiedBy: [http-surface.integration.spec.ts](../../apps/server/src/composition/http-surface.integration.spec.ts)
   * verify: [Namespace e versione maggiore dell'API HTTP nel percorso](../Requirements/HttpApi.md#namespace-e-versione-maggiore-dellapi-http-nel-percorso)
   * verify: [Slice delle rotte HTTP con aggregatori espliciti](../Requirements/HttpApi.md#slice-delle-rotte-http-con-aggregatori-espliciti)
 ---

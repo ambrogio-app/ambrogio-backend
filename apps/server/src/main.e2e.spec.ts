@@ -6,13 +6,21 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { emptyTestDatabase, publicTables } from '../../../test/support/test-database.js';
 
 // «Server compilato provato come processo»: the compiled entry point of `pnpm build` runs as a child process.
 const entryPoint = fileURLToPath(new URL('../dist/main.js', import.meta.url));
 let directory: string;
+let database: Awaited<ReturnType<typeof emptyTestDatabase>>;
 
-beforeEach(() => { directory = mkdtempSync(join(tmpdir(), 'ambrogio-server-e2e-')); });
-afterEach(() => { rmSync(directory, { recursive: true, force: true }); });
+beforeEach(async () => {
+  directory = mkdtempSync(join(tmpdir(), 'ambrogio-server-e2e-'));
+  database = await emptyTestDatabase();
+});
+afterEach(async () => {
+  rmSync(directory, { recursive: true, force: true });
+  await database.drop();
+});
 
 /** The inherited environment without any AMBROGIO_* variable, plus the given ones. */
 function environment(variables: Readonly<Record<string, string>>): NodeJS.ProcessEnv {
@@ -29,7 +37,7 @@ async function freePort(): Promise<number> {
   return address.port;
 }
 
-/** Production settings for a server on a free loopback port, with one answering agent and a temporary archive. */
+/** Production settings for a server on a free loopback port, with one answering agent and a new test database. */
 function productionSettings(port: number): Record<string, string> {
   const agents = join(directory, 'agents');
   mkdirSync(agents);
@@ -38,7 +46,7 @@ function productionSettings(port: number): Record<string, string> {
   writeFileSync(join(agents, 'generic.json'),
     `${JSON.stringify({ description: 'Answers general questions.', instructions: 'Answer briefly.', llm })}\n`);
   return { AMBROGIO_ENV: 'production', AMBROGIO_HTTP_HOST: '127.0.0.1', AMBROGIO_HTTP_PORT: String(port),
-    AMBROGIO_PUBLIC_HTTPS: 'false', AMBROGIO_ARCHIVE_PATH: join(directory, 'archive.sqlite'),
+    AMBROGIO_PUBLIC_HTTPS: 'false', AMBROGIO_DATABASE_URL: database.url,
     AMBROGIO_AGENTS_DIR: agents, MISTRAL_API_KEY: 'e2e-placeholder-key' };
 }
 
@@ -57,7 +65,7 @@ describe('compiled server process', () => {
     expect(existsSync(entryPoint), 'run pnpm build before pnpm test:e2e').toBe(true);
   });
 
-  test('starts, lists the conversations of a new SQLite archive and stops with 0 on SIGTERM', async () => {
+  test('starts, lists the conversations of a new PostgreSQL archive and stops with 0 on SIGTERM', async () => {
     const port = await freePort();
     const child = spawn(process.execPath, [entryPoint], { env: environment(productionSettings(port)) });
     let stdout = '';
@@ -69,11 +77,12 @@ describe('compiled server process', () => {
       const response = await waitForList(`http://127.0.0.1:${port}/api/v1/conversations`, Date.now() + 20_000);
       expect(response.status).toBe(200);
       expect(await response.json()).toMatchObject({ items: [] });
-      expect(existsSync(join(directory, 'archive.sqlite'))).toBe(true);
+      expect(await publicTables(database.url)).toEqual(expect.arrayContaining(['conversations', 'turns']));
     } finally { child.kill('SIGTERM'); }
     expect(await exited, `${stdout}${stderr}`).toBe(0);
     expect(stderr).toBe('');
     expect(stdout).not.toContain('e2e-placeholder-key');
+    expect(`${stdout}${stderr}`).not.toContain(database.url);
   }, 30_000);
 
   test('exits with 1, one startup failure line and one stderr line without a runtime environment', () => {

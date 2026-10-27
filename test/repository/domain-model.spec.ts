@@ -107,8 +107,8 @@ test('inbound adapters never import identity classes, and use cases carry identi
 
 // Verification: Prova delle responsabilità del repository del turno
 test('the turn repository stores the Domain state without deciding it', () => {
-  const adapter = code('adapters/out/sqlite/sqlite-turn-repository.adapter.ts');
-  const mapper = code('adapters/out/sqlite/sqlite-turn-mapper.ts');
+  const adapter = code('adapters/out/postgres/postgres-turn-repository.adapter.ts');
+  const mapper = code('adapters/out/postgres/postgres-turn-mapper.ts');
   for (const [name, text] of [['adapter', adapter], ['mapper', mapper]] as const) {
     expect(text, name).not.toMatch(/\.(answer|fail|interrupt)\s*\(/);
     expect(text, name).not.toMatch(/Turn\.create\s*\(|randomUUID|\.next\s*\(\s*\)|\bnew Date\s*\(\s*\)|Date\.now\s*\(|\.now\s*\(\s*\)/);

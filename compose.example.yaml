@@ -1,9 +1,28 @@
-# Example deployment of the backend. Set AMBROGIO_VERSION and MISTRAL_API_KEY in the shell or in a
-# .env file next to this file before `docker compose up`. The variables below are the ones production
-# requires; every other variable keeps the default the server applies (see the configuration reference).
+# Example deployment of the backend with its PostgreSQL database. Set AMBROGIO_VERSION,
+# AMBROGIO_DATABASE_PASSWORD and MISTRAL_API_KEY in the shell or in a .env file next to this file before
+# `docker compose up`. Use only letters and digits in the password, for example `openssl rand -hex 24`:
+# it is part of the database URL. The variables below are the ones production requires; every other
+# variable keeps the default the server applies (see the configuration reference).
 services:
+  database:
+    image: pgvector/pgvector:pg18
+    environment:
+      POSTGRES_USER: ambrogio
+      POSTGRES_DB: ambrogio
+      POSTGRES_PASSWORD: ${AMBROGIO_DATABASE_PASSWORD:?Set AMBROGIO_DATABASE_PASSWORD}
+    volumes:
+      - database:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready --username ambrogio --dbname ambrogio"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
   backend:
     image: ghcr.io/ambrogio-app/ambrogio-backend:${AMBROGIO_VERSION:?Set AMBROGIO_VERSION}
+    depends_on:
+      database:
+        condition: service_healthy
     # The backend ends its own shutdown within 10 seconds; give it longer before Docker sends SIGKILL.
     stop_grace_period: 15s
     ports:
@@ -11,13 +30,12 @@ services:
     volumes:
       - ./examples/agents/orchestrator.json:/etc/ambrogio/agents/orchestrator.json:ro
       - ./examples/agents/generic.json:/etc/ambrogio/agents/generic.json:ro
-      - conversations:/data
     environment:
       AMBROGIO_ENV: production
       AMBROGIO_HTTP_HOST: 0.0.0.0
       AMBROGIO_HTTP_PORT: "3000"
       AMBROGIO_PUBLIC_HTTPS: "false"
-      AMBROGIO_ARCHIVE_PATH: /data/conversations.sqlite
+      AMBROGIO_DATABASE_URL: postgres://ambrogio:${AMBROGIO_DATABASE_PASSWORD:?Set AMBROGIO_DATABASE_PASSWORD}@database:5432/ambrogio
       AMBROGIO_VOICE_LANGUAGES: en,it
       AMBROGIO_VOICE_EN_STT_MODEL_DIR: /opt/ambrogio/models/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11
       AMBROGIO_VOICE_EN_MODEL_DIR: /opt/ambrogio/voices/vits-piper-en_US-kristin-medium
@@ -26,4 +44,4 @@ services:
       MISTRAL_API_KEY: ${MISTRAL_API_KEY:?Set MISTRAL_API_KEY}
 
 volumes:
-  conversations:
+  database:

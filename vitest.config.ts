@@ -9,7 +9,9 @@ export default defineConfig({
   test: {
     projects: [
       { extends: true, test: { name: 'fast', include: ['**/*.spec.ts'], exclude: [...configDefaults.exclude, integration, e2e] } },
-      { extends: true, test: { name: 'integration', include: [integration], exclude: [...configDefaults.exclude] } },
+      // Tests on PostgreSQL create, migrate and drop their own databases: they get more time than the fast ones.
+      { extends: true, test: { name: 'integration', include: [integration], exclude: [...configDefaults.exclude],
+        testTimeout: 20_000, hookTimeout: 20_000 } },
       { extends: true, test: { name: 'e2e', include: [e2e], exclude: [...configDefaults.exclude] } },
     ],
   },

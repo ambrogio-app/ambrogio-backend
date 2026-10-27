@@ -4,7 +4,7 @@
 
 La capacità Application di produzione della risposta consegna, oltre ai frammenti testuali e all'indicazione `expectsReply`, l'identificativo dell'agente che formula la risposta, come dato Application distinto, al massimo una volta e prima di qualunque frammento testuale. Il caso d'uso del turno lo include nell'esito con risposta passato al completamento; un identificativo ripetuto, vuoto o consegnato dopo un frammento testuale o dopo `expectsReply` viola il contratto della risposta ed è un guasto della produzione. Una risposta senza identificativo resta valida e viene conservata senza agente.
 
-Nel Domain un turno concluso con risposta porta facoltativamente l'identificativo dell'agente che l'ha formulata, stringa non vuota; i turni `in elaborazione`, conclusi con errore o `interrotti` non hanno agente. L'archivio SQLite lo conserva nella colonna facoltativa `agent` della tabella `turns`, aggiunta dalla migrazione `007_turn_agent`; le righe già presenti restano con valore nullo, cioè agente sconosciuto, e restano leggibili. Un valore non nullo su un turno non concluso con risposta è un dato persistente invalido.
+Nel Domain un turno concluso con risposta porta facoltativamente l'identificativo dell'agente che l'ha formulata, stringa non vuota; i turni `in elaborazione`, conclusi con errore o `interrotti` non hanno agente. L'archivio lo conserva nella colonna facoltativa `agent` della tabella `turns`; il valore nullo indica una risposta senza agente noto. Un valore non nullo su un turno non concluso con risposta è un dato persistente invalido.
 
 Quando l'orchestratore sceglie l'agente, ogni risposta precedente con agente noto è presentata nel suo contesto preceduta dall'indicazione `[agent: <id>]`; le risposte con agente sconosciuto sono presentate senza indicazione. Gli agenti specializzati ricevono lo storico senza queste indicazioni. L'agente che ha risposto è un dato interno: non compare nei messaggi del protocollo `ambrogio.v1`, nello storico né nell'elenco HTTP, che restano invariati.
 
@@ -30,9 +30,9 @@ Alla scadenza il caso d'uso risolve la richiesta di annullamento e smette subito
   * define: [Tempo massimo della produzione della risposta](../Requirements/FamilyConversation.md#tempo-massimo-della-produzione-della-risposta)
 ---
 
-### Archivio SQLite con Kysely
+### Archivio PostgreSQL con Kysely
 
-Le conversazioni e i loro scambi testuali sono conservati in un database SQLite dell'installazione. Le operazioni applicative di lettura e scrittura dell'archivio usano Kysely. La scelta riguarda l'archivio delle conversazioni; non prescrive lo stack degli altri componenti del monorepo.
+Le conversazioni e i loro scambi testuali sono conservati in un database PostgreSQL dell'installazione, alla versione maggiore 18, eseguito come servizio distinto dal backend secondo «Server PostgreSQL dell'archivio». Le operazioni applicative di lettura e scrittura dell'archivio usano Kysely con il dialetto PostgreSQL sul driver `pg`. Lo schema dell'archivio non crea estensioni. La scelta riguarda l'archivio delle conversazioni; non prescrive lo stack degli altri componenti del monorepo.
 
 #### Metadata
   * type: specification
@@ -56,7 +56,7 @@ Poiché l'orchestratore sceglie sempre un agente e non risponde da solo, la dire
 
 ### Avvio con migrazioni dell'archivio conversazioni
 
-Prima di attivare gli ingressi conversazionali, il server confronta lo schema SQLite dell'archivio con le migrazioni versionate richieste dalla versione avviata e applica in ordine quelle pendenti tramite Kysely. Se una migrazione non riesce, il server non accetta turni e rende osservabile il guasto al confine tecnico. Le conversazioni e gli scambi già conservati restano dati da preservare durante l'evoluzione dello schema.
+Prima di attivare gli ingressi conversazionali, il server confronta lo schema del database PostgreSQL dell'archivio con le migrazioni versionate richieste dalla versione avviata e applica in ordine quelle pendenti tramite Kysely. Se una migrazione non riesce, il server non accetta turni e rende osservabile il guasto al confine tecnico. Le conversazioni e gli scambi già conservati restano dati da preservare durante l'evoluzione dello schema.
 
 #### Metadata
   * type: specification
@@ -69,7 +69,7 @@ Prima di attivare gli ingressi conversazionali, il server confronta lo schema SQ
 
 La capacità Application di produzione della risposta consegna, oltre ai frammenti testuali, all'agente e a `expectsReply`, un'azione per ogni chiamata a uno strumento MCP conclusa durante la risposta, nell'ordine in cui si conclude. Un'azione contiene `tool`, il nome dello strumento presentato al modello, `input`, l'oggetto JSON degli argomenti, e esattamente uno fra `output`, il valore JSON restituito dal client MCP, e `error`, il messaggio non vuoto del guasto della chiamata. Il caso d'uso del turno include le azioni nell'esito con risposta passato al completamento; un'azione consegnata dopo `expectsReply` o senza un agente consegnato viola il contratto della risposta ed è un guasto della produzione. Le azioni di un turno concluso con errore o interrotto non sono conservate.
 
-Nel Domain un turno concluso con risposta porta facoltativamente l'elenco non vuoto delle azioni; i turni in elaborazione, conclusi con errore o interrotti non hanno azioni. L'archivio SQLite lo conserva come testo JSON nella colonna facoltativa `actions` della tabella `turns`, aggiunta dalla migrazione `008_turn_actions`; le righe già presenti restano con valore nullo, cioè senza azioni, e restano leggibili. Un valore che non è un array JSON non vuoto di azioni valide, o un valore non nullo su un turno non concluso con risposta, è un dato persistente invalido.
+Nel Domain un turno concluso con risposta porta facoltativamente l'elenco non vuoto delle azioni; i turni in elaborazione, conclusi con errore o interrotti non hanno azioni. L'archivio lo conserva come documento `jsonb` nella colonna facoltativa `actions` della tabella `turns`, scritto con un parametro JSON esplicito perché la radice è un array; il valore nullo SQL indica un turno senza azioni, e il vincolo `turns_actions_array` ammette soltanto documenti la cui radice è un array, così che il valore JSON `null`, che il driver leggerebbe come il nullo SQL, non sia conservabile. Alla lettura il documento è trattato come dato non fidato, convalidato con le regole del Domain e ricostruito in una struttura nuova. Un valore che non è un array JSON non vuoto di azioni valide, o un valore non nullo su un turno non concluso con risposta, è un dato persistente invalido.
 
 Quando un agente specializzato con connettore MCP riceve lo storico, ogni turno concluso con risposta che porta il suo stesso identificativo d'agente e delle azioni è presentato come messaggio della famiglia, seguito da un messaggio dell'assistente con una chiamata a strumento per ogni azione, da un messaggio di risultati con l'esito di ciascuna, `output` come risultato JSON ed `error` come testo d'errore, e infine dal testo della risposta quando non è vuoto. Gli identificativi delle chiamate sono generati alla presentazione, composti da nove caratteri alfanumerici e distinti nel contesto. L'orchestratore, gli agenti senza connettore MCP e gli altri agenti ricevono quei turni senza azioni. Le azioni sono un dato interno: non compaiono nei messaggi del protocollo `ambrogio.v1`, nello storico né nell'elenco HTTP.
 
@@ -91,15 +91,19 @@ Quando il caso d'uso del turno conclude un turno ammesso con l'esito di errore p
   * define: [Diagnostica del guasto nella produzione della risposta](../Requirements/FamilyConversation.md#diagnostica-del-guasto-nella-produzione-della-risposta)
 ---
 
-### Ciclo di vita della risorsa SQLite conversazionale
+### Ciclo di vita della risorsa PostgreSQL conversazionale
 
-La composition root del server costruisce e possiede una risorsa SQLite/Kysely condivisa dagli adapter interessati. Gli adapter ricevono l'accesso necessario per le proprie operazioni e non ne controllano la chiusura; Domain e Application non ricevono handle tecnici SQLite o Kysely. Prima di abilitare il lavoro che dipende dall'archivio, il proprietario ne verifica l'apertura e completa le migrazioni richieste. Se la preparazione fallisce, chiude la risorsa già creata. Al termine del processo, la chiude dopo il completamento o l'interruzione delle operazioni che la usano. Non si prescrive un pool PostgreSQL né un numero di connessioni fisiche SQLite.
+La composition root del server costruisce e possiede una sola istanza Kysely su un solo `pg.Pool` per l'archivio, condivisa dagli adapter interessati. Gli adapter ricevono l'istanza per le proprie operazioni e non ne controllano la chiusura; Domain e Application non ricevono handle tecnici PostgreSQL o Kysely, e nessun componente conserva una transazione oltre la funzione che la riceve. Il pool apre al più 5 connessioni, attende una connessione libera o una nuova connessione al più 5000 ms e chiude le connessioni inattive dopo 10000 ms; sono costanti tecniche dell'archivio, non valori di configurazione. Il modulo dell'archivio traduce l'URL validato nelle opzioni del driver e non legge `process.env`.
+
+Prima di abilitare il lavoro che dipende dall'archivio, il proprietario completa le migrazioni richieste, che stabiliscono anche la prima connessione. Se la preparazione fallisce, chiude la risorsa già creata. Al termine del processo, la chiude dopo il completamento o l'interruzione delle operazioni che la usano. La chiusura invoca soltanto `destroy()` dell'istanza Kysely proprietaria e restituisce la stessa promessa a chiamate ripetute o concorrenti, anche quando fallisce.
+
+L'archivio installa sul pool un ascoltatore sincrono degli errori delle connessioni inattive, che consegna ogni guasto una sola volta al confine tecnico del server; il server lo registra con livello `error` e l'evento `conversation_archive_connection_failed`, senza terminare il processo. Il pool scarta la connessione guasta e le operazioni successive ne aprono di nuove; un'operazione che fallisce perché il database non risponde segue il trattamento dei guasti di persistenza del suo caso d'uso.
 
 #### Metadata
   * type: specification
 
 #### Relations
-  * define: [Proprietà della risorsa SQLite conversazionale](../Requirements/FamilyConversation.md#proprietà-della-risorsa-sqlite-conversazionale)
+  * define: [Proprietà della risorsa PostgreSQL conversazionale](../Requirements/FamilyConversation.md#proprietà-della-risorsa-postgresql-conversazionale)
 ---
 
 ### Classi del Domain conversazionale con TypeScript
@@ -143,7 +147,7 @@ Quando la voce è abilitata, il profilo di ogni lingua elencata usa le variabili
 
 ### Confine di conversione dell'archivio conversazioni
 
-I tipi delle righe SQLite/Kysely restano nell'adapter di persistenza. L'adapter traduce i valori ricevuti dal contratto di scrittura in dati persistenti e ricostruisce dai dati letti i valori Domain richiesti per i comandi oppure le proiezioni Application richieste per storico ed elenco. Le conversioni preservano identità, ordine dei turni, stato ed esito, testo originale e distinzione tra valore assente e presente. L'adapter tratta dati persistenti incompatibili con il contratto corrente come un guasto osservabile, senza correggerli implicitamente. Le conversioni sono esplicite al confine logico pertinente; non è imposto un file mapper per ogni tipo né un mapper bidirezionale universale.
+I tipi delle righe, generati dallo schema secondo «Tipi del database con kysely-codegen», restano nell'adapter di persistenza. L'adapter traduce i valori ricevuti dal contratto di scrittura in dati persistenti e ricostruisce dai dati letti i valori Domain richiesti per i comandi oppure le proiezioni Application richieste per storico ed elenco. Le conversioni preservano identità, ordine dei turni, stato ed esito, testo originale e distinzione tra valore assente e presente. L'adapter tratta dati persistenti incompatibili con il contratto corrente come un guasto osservabile, senza correggerli implicitamente. Le conversioni sono esplicite al confine logico pertinente; non è imposto un file mapper per ogni tipo né un mapper bidirezionale universale.
 
 #### Metadata
   * type: specification
@@ -154,7 +158,7 @@ I tipi delle righe SQLite/Kysely restano nell'adapter di persistenza. L'adapter 
 
 ### Confini atomici dell'archivio conversazioni
 
-Application richiede la persistenza delle transizioni complete del turno al repository del turno: l'ammissione del turno nuovo e il salvataggio del turno concluso o interrotto dal Domain, secondo «Repository del turno». L'adapter SQLite/Kysely controlla la transazione breve. L'ammissione registra insieme il turno accettato e l'occupazione della conversazione interessata. La conclusione o l'interruzione registrano insieme l'esito persistente del turno e la liberazione dell'occupazione, salvo l'arresto che impedisce nuovi ingressi. Un errore in una delle scritture della transizione annulla l'intera transazione; il chiamante osserva il successo solo dopo il commit. Le chiamate ad agenti e connettori, la sintesi vocale e la trasmissione progressiva della risposta avvengono fuori da transazioni SQLite; la conferma `turn.completed` del protocollo conversazionale viene inviata solo dopo il commit dell'esito riuscito. Non è richiesto un coordinatore generico di transazioni esposto ai casi d'uso.
+Application richiede la persistenza delle transizioni complete del turno al repository del turno: l'ammissione del turno nuovo e il salvataggio del turno concluso o interrotto dal Domain, secondo «Repository del turno». L'adapter PostgreSQL/Kysely controlla la transazione breve. L'ammissione registra insieme il turno accettato e l'occupazione della conversazione interessata. La conclusione o l'interruzione registrano insieme l'esito persistente del turno e la liberazione dell'occupazione, salvo l'arresto che impedisce nuovi ingressi. Un errore in una delle scritture della transizione annulla l'intera transazione; il chiamante osserva il successo solo dopo il commit. Le chiamate ad agenti e connettori, la sintesi vocale e la trasmissione progressiva della risposta avvengono fuori dalle transazioni del database; la conferma `turn.completed` del protocollo conversazionale viene inviata solo dopo il commit dell'esito riuscito. Non è richiesto un coordinatore generico di transazioni esposto ai casi d'uso.
 
 #### Metadata
   * type: specification
@@ -381,11 +385,13 @@ Il modulo di configurazione del componente «Conversazioni» legge `AMBROGIO_TIM
 
 ### Garanzie di concorrenza del repository del turno
 
-Ammissione (`admit`). Dati della decisione: occupazione della conversazione e ordinale dell'ultimo turno. Modifiche concorrenti: un'altra ammissione nella stessa conversazione, dallo stesso processo o da un altro processo sullo stesso file. Garanzia: al più un turno `in elaborazione` per conversazione, senza ordinali duplicati. Protezione: transazione `BEGIN IMMEDIATE`, che tiene il blocco di scrittura del database dalla lettura decisionale al commit, e aggiornamento condizionato dell'occupazione libera; vincoli autorevoli: chiavi primarie di conversazioni e turni e unicità di (`conversation_id`, `ordinal`). Esiti: `conversation_occupied` quando la lettura nella transazione trova l'occupazione; `archive_busy` quando il blocco non è disponibile all'apertura della transazione (`busy_timeout = 0`, senza attese) oppure quando il commit non ottiene il blocco esclusivo entro l'attesa del commit; in entrambi i casi la transazione è annullata e non resta nulla dell'ammissione, senza nuovi tentativi; ogni altro errore resta un guasto.
+Le scritture dell'archivio aprono transazioni con `READ COMMITTED` e `READ WRITE` dichiarati esplicitamente e impostano per la sola transazione `lock_timeout` a 1000 ms, così nessuna attesa di un blocco dura più di un secondo. L'adapter non ripete istruzioni, metodi o transazioni dopo un rifiuto, un timeout del blocco, un deadlock o un altro guasto.
 
-Salvataggio della conclusione (`saveConclusion`). Dati della decisione: lo stato `in elaborazione` del turno letto dal caricamento. Modifiche concorrenti: un'altra conclusione o interruzione dello stesso turno, dallo stesso processo o da un altro, comprese le interruzioni all'arresto e all'avvio. Garanzia: un turno si conclude al più una volta e una conclusione tardiva non sostituisce l'esito conservato, senza aggiornamenti persi. Protezione: controllo ottimistico con versione attesa, che è lo stato persistente `in elaborazione`, confrontata e cambiata nella stessa istruzione `UPDATE` condizionata a `status = 'pending'`, dentro una transazione `BEGIN IMMEDIATE` che libera anche l'occupazione; non serve una colonna di versione, perché il turno ha una sola transizione. Esiti: `turn_already_closed` quando l'aggiornamento non modifica righe e la rilettura nella stessa transazione trova il turno concluso o interrotto; zero righe senza questa causa accertata, blocco non disponibile ed errori di commit sono guasti tecnici, senza nuovi tentativi.
+Ammissione (`admit`). Dati della decisione: occupazione della conversazione e ordinale dell'ultimo turno. Modifiche concorrenti: un'altra ammissione nella stessa conversazione, dallo stesso processo o da un altro processo connesso allo stesso database. Garanzia: al più un turno `in elaborazione` per conversazione, senza ordinali duplicati. Protezione: per una conversazione esistente la lettura decisionale blocca la riga della conversazione con `SELECT ... FOR UPDATE` e il blocco resta fino al commit, così un'ammissione concorrente attende il commit e poi legge l'occupazione; per una conversazione nuova la riga è inserita nella stessa transazione e nessun'altra transazione la vede prima del commit; l'occupazione libera è poi aggiornata con una condizione sullo stato letto. Vincoli autorevoli: chiavi primarie di conversazioni e turni, chiavi esterne fra turni e conversazioni e unicità di (`conversation_id`, `ordinal`) con il vincolo `turns_conversation_ordinal`. Esiti: `conversation_occupied` quando la lettura bloccata trova l'occupazione; `archive_busy` quando il blocco della riga non è ottenuto entro `lock_timeout`, codice SQLSTATE `55P03`: la transazione è annullata, non resta nulla dell'ammissione e non segue un nuovo tentativo; ogni altro errore resta un guasto.
 
-Commit. Nel journal di rollback il commit richiede che le altre connessioni rilascino il proprio blocco di lettura, tenuto per la durata di una singola istruzione: il commit attende quei blocchi al più 1000 ms (`busy_timeout` impostato soltanto per il commit e riportato a 0 dopo), un'attesa sincrona che riguarda soltanto più processi sullo stesso file. Oltre l'attesa il commit dell'ammissione dà `archive_busy`, quello della conclusione è un guasto tecnico. Nello stesso processo le scritture sono serializzate sulla connessione condivisa; l'attesa riguarda le transazioni, non l'elaborazione dei turni. La porta non espone conteggi di righe, istruzioni SQL o codici d'errore del database. Le letture di storico ed elenco e la porta di lookup non scrivono. Nessuna regola dell'archivio su conteggi o insiemi di righe resta senza protezione.
+Salvataggio della conclusione (`saveConclusion`). Dati della decisione: lo stato `in elaborazione` del turno letto dal caricamento. Modifiche concorrenti: un'altra conclusione o interruzione dello stesso turno, dallo stesso processo o da un altro, comprese le interruzioni all'arresto e all'avvio. Garanzia: un turno si conclude al più una volta e una conclusione tardiva non sostituisce l'esito conservato, senza aggiornamenti persi. Protezione: controllo ottimistico con versione attesa, che è lo stato persistente `in elaborazione`, confrontata e cambiata nella stessa istruzione `UPDATE` condizionata a `status = 'pending'`, nella stessa transazione che libera anche l'occupazione; con `READ COMMITTED` un `UPDATE` che attende una conclusione concorrente rivaluta la condizione sulla riga confermata e non modifica righe; non serve una colonna di versione, perché il turno ha una sola transizione. Esiti: `turn_already_closed` quando l'aggiornamento non modifica righe e la rilettura nella stessa transazione trova il turno concluso o interrotto; zero righe senza questa causa accertata, timeout del blocco ed errori di commit sono guasti tecnici.
+
+La porta non espone conteggi di righe, istruzioni SQL o codici d'errore del database. Le letture di storico ed elenco e la porta di lookup non scrivono. Nessuna regola dell'archivio su conteggi o insiemi di righe resta senza protezione.
 
 #### Metadata
   * type: specification
@@ -407,7 +413,7 @@ Se la lettura dello storico fallisce oppure non restituisce il turno appena amme
 
 ### Identità di conversazioni e turni
 
-Ogni nuova conversazione e ogni nuovo turno ricevono un UUID versione 4. Il caso d'uso Application ottiene il valore da una porta di generazione fornita dalla composition root e lo consegna al Domain prima di costruire il nuovo stato; l'implementazione tecnica del generatore resta fuori da Domain e Application. L'adapter SQLite conserva gli identificativi senza sostituirli e impone l'unicità persistente. Il `conversationId` comunicato alla chat e riusato nelle richieste rappresenta lo stesso UUID v4 della conversazione conservata. L'ordinamento delle conversazioni non deriva dagli UUID ma dall'ultima attività definita nel relativo contratto. Nel Domain gli identificativi sono rappresentati dalle classi di «Classi di identità di conversazioni e turni».
+Ogni nuova conversazione e ogni nuovo turno ricevono un UUID versione 4. Il caso d'uso Application ottiene il valore da una porta di generazione fornita dalla composition root e lo consegna al Domain prima di costruire il nuovo stato; l'implementazione tecnica del generatore resta fuori da Domain e Application. L'adapter PostgreSQL conserva gli identificativi in colonne `uuid` senza sostituirli, e le chiavi primarie ne impongono l'unicità persistente. Il `conversationId` comunicato alla chat e riusato nelle richieste rappresenta lo stesso UUID v4 della conversazione conservata. L'ordinamento delle conversazioni non deriva dagli UUID ma dall'ultima attività definita nel relativo contratto. Nel Domain gli identificativi sono rappresentati dalle classi di «Classi di identità di conversazioni e turni».
 
 #### Metadata
   * type: specification
@@ -431,11 +437,24 @@ Il backend comunica il valore nel campo `expectsReply` di `turn.completed`. Il v
   * define: [Segnalazione della replica attesa](../Requirements/FamilyConversation.md#segnalazione-della-replica-attesa)
 ---
 
+### Indirizzo del database nella configurazione Conversazioni
+
+Il modulo di configurazione del componente «Conversazioni» richiede in ogni ambiente `AMBROGIO_DATABASE_URL`, l'URL di connessione al database PostgreSQL dell'archivio, senza valore predefinito, nella forma `postgres://<utente>:<password>@<host>:<porta>/<database>`. Il valore è valido se è un URL con protocollo `postgres:` o `postgresql:`, un host e il nome di un database, e senza parametri di query. La connessione non usa TLS: il database è previsto sulla stessa macchina o sulla stessa rete interna del backend, come nell'esempio di deployment.
+
+L'URL è letto insieme agli altri valori del componente una sola volta, prima della connessione all'archivio. La sua assenza impedisce l'avvio con `Missing environment variable AMBROGIO_DATABASE_URL`, un valore invalido con `Invalid environment variable AMBROGIO_DATABASE_URL: expected a PostgreSQL URL without parameters`. Messaggi, log ed errori non riportano mai l'URL, l'utente o la password; un database non raggiungibile o credenziali rifiutate impediscono l'avvio come guasto della preparazione dell'archivio.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Selezione dell'archivio conversazionale all'avvio](../Requirements/FamilyConversation.md#selezione-dellarchivio-conversazionale-allavvio)
+---
+
 ### Invarianti dello stato del turno
 
 Un turno nuovo accettato entra nello stato `in elaborazione` con identità, conversazione di appartenenza e testo originario. Da `in elaborazione` passa al più una volta a un esito concluso con risposta, a un esito concluso con errore oppure a `interrotto`. Gli stati conclusi e `interrotto` sono terminali; un risultato tardivo non li sostituisce. Una transizione rifiutata non cambia lo stato Domain. La ricostruzione dai dati persistenti convalida lo stato corrente senza rieseguire le transizioni storiche. Questi invarianti riguardano il singolo turno e li protegge il Root `Turn`.
 
-L'invariante di un solo turno attivo per conversazione supera il singolo aggregato e il Domain non la protegge: la garantisce l'archivio SQLite con l'ammissione atomica descritta in «Occupazione della conversazione e ammissione dei turni», anche tra ingressi e processi concorrenti; un controllo preliminare dell'Application non la sostituisce. Conversazioni distinte progrediscono in parallelo. Le classi che realizzano il turno seguono «Classi del Domain conversazionale con TypeScript».
+L'invariante di un solo turno attivo per conversazione supera il singolo aggregato e il Domain non la protegge: la garantisce l'archivio PostgreSQL con l'ammissione atomica descritta in «Occupazione della conversazione e ammissione dei turni», anche tra ingressi e processi concorrenti; un controllo preliminare dell'Application non la sostituisce. Conversazioni distinte progrediscono in parallelo. Le classi che realizzano il turno seguono «Classi del Domain conversazionale con TypeScript».
 
 #### Metadata
   * type: state
@@ -444,20 +463,20 @@ L'invariante di un solo turno attivo per conversazione supera il singolo aggrega
   * define: [Integrità dello stato del turno nel Domain](../Requirements/FamilyConversation.md#integrità-dello-stato-del-turno-nel-domain)
 ---
 
-### Istanti SQLite in millisecondi Unix
+### Istanti PostgreSQL in timestamptz
 
-Le colonne temporali della conversazione conservano interi di millisecondi dall'epoca Unix (`1970-01-01T00:00:00Z`). L'adapter di persistenza scrive `date.getTime()` da un `Date` valido e, alla lettura, accetta soltanto un intero che ricostruisce un `Date` valido con lo stesso valore `getTime()`. Un valore assente, non intero, fuori dall'intervallo rappresentabile da `Date` o di tipo incompatibile è un dato persistente invalido e produce un guasto osservabile, senza sostituirlo con l'ora corrente né arrotondarlo. Le conversioni sono locali all'adapter e conservano gli istanti storici.
+Le colonne temporali della conversazione sono `timestamptz(3)`, mai `timestamp` senza fuso orario, e conservano l'istante con precisione al millisecondo. L'adapter di persistenza scrive un `Date` valido e, alla lettura, accetta soltanto un `Date` valido restituito dal driver, di cui restituisce una copia. Il driver `pg` usa il proprio parser predefinito di `timestamptz`, che produce un `Date`; l'archivio non installa parser globali. Un valore assente dove l'istante è obbligatorio, `infinity`, `-infinity` o un valore di tipo diverso è un dato persistente invalido e produce un guasto osservabile, senza sostituirlo con l'ora corrente né arrotondarlo. Le conversioni sono locali all'adapter e conservano gli istanti storici.
 
 #### Metadata
   * type: specification
 
 #### Relations
-  * define: [Persistenza degli istanti conversazionali in millisecondi Unix](../Requirements/FamilyConversation.md#persistenza-degli-istanti-conversazionali-in-millisecondi-unix)
+  * define: [Persistenza degli istanti conversazionali in timestamptz](../Requirements/FamilyConversation.md#persistenza-degli-istanti-conversazionali-in-timestamptz)
 ---
 
 ### Istanti della conversazione e orologio applicativo
 
-La composition root fornisce ai soli casi d'uso che ne hanno bisogno una capacità Application di lettura dell'istante corrente. All'accettazione di un turno, il caso d'uso usa un istante esplicito per il turno e per l'ultima attività della sua conversazione. Domain riceve tale valore come dato e non legge autonomamente l'orologio. La ricostruzione dall'archivio conserva gli istanti storici, senza sostituirli con l'ora del caricamento. L'ordinamento delle conversazioni usa l'ultima attività persistente e non il valore dell'UUID. Gli istanti nello schema SQLite seguono il contratto dedicato ai millisecondi Unix.
+La composition root fornisce ai soli casi d'uso che ne hanno bisogno una capacità Application di lettura dell'istante corrente. All'accettazione di un turno, il caso d'uso usa un istante esplicito per il turno e per l'ultima attività della sua conversazione. Domain riceve tale valore come dato e non legge autonomamente l'orologio. La ricostruzione dall'archivio conserva gli istanti storici, senza sostituirli con l'ora del caricamento. L'ordinamento delle conversazioni usa l'ultima attività persistente e non il valore dell'UUID. Gli istanti nello schema PostgreSQL seguono «Istanti PostgreSQL in timestamptz».
 
 #### Metadata
   * type: specification
@@ -529,12 +548,12 @@ Il caso d'uso del turno non conserva come riuscita una risposta il cui testo non
 
 ### Occupazione della conversazione e ammissione dei turni
 
-L'ammissione è atomica per identificativo di conversazione ed è condivisa da tutti i turni, testuali e vocali, di qualunque client. Ogni conversazione è occupata dall'accettazione di un turno fino alla conservazione del suo esito o dello stato `interrotto`. Richieste simultanee sulla stessa conversazione ammettono al massimo un turno; le altre ricevono un rifiuto previsto, senza persistenza né accodamento. Turni di conversazioni diverse sono ammessi ed elaborati in parallelo; anche due richieste che creano conversazioni nuove non si escludono reciprocamente. Storico, risposta ed esito di un turno restano associati alla propria conversazione. L'arresto impedisce nuove ammissioni in tutte le conversazioni. Al riavvio, dopo le migrazioni e prima degli ingressi, e all'arresto, dopo la chiusura degli ingressi, il caso d'uso di interruzione carica ogni turno rimasto `in elaborazione`, lo interrompe tramite il Root e ne salva lo stato `interrotto` insieme alla liberazione della sua occupazione, in modo atomico per ciascun turno. Una conclusione tardiva non sostituisce lo stato `interrotto`. Le transazioni SQLite restano brevi: non includono produzione remota o streaming. La serializzazione delle scritture SQLite non impone la serializzazione dell'intera elaborazione.
+L'ammissione è atomica per identificativo di conversazione ed è condivisa da tutti i turni, testuali e vocali, di qualunque client. Ogni conversazione è occupata dall'accettazione di un turno fino alla conservazione del suo esito o dello stato `interrotto`. Richieste simultanee sulla stessa conversazione ammettono al massimo un turno; le altre ricevono un rifiuto previsto, senza persistenza né accodamento. Turni di conversazioni diverse sono ammessi ed elaborati in parallelo; anche due richieste che creano conversazioni nuove non si escludono reciprocamente. Storico, risposta ed esito di un turno restano associati alla propria conversazione. L'arresto impedisce nuove ammissioni in tutte le conversazioni. Al riavvio, dopo le migrazioni e prima degli ingressi, e all'arresto, dopo la chiusura degli ingressi, il caso d'uso di interruzione carica ogni turno rimasto `in elaborazione`, lo interrompe tramite il Root e ne salva lo stato `interrotto` insieme alla liberazione della sua occupazione, in modo atomico per ciascun turno. Una conclusione tardiva non sostituisce lo stato `interrotto`. Le transazioni del database restano brevi: non includono produzione remota o streaming.
 
 Non esiste un blocco globale dell'installazione; un limite globale di capacità richiede una decisione separata. Il comportamento di indisponibilità globale già previsto per guasti di persistenza resta distinto dal normale conflitto tra turni.
 
-#### Realizzazione SQLite
-L’occupazione è memorizzata nella riga della conversazione con il riferimento al turno attivo. Una migrazione incrementale trasferisce lo stato precedente senza perdere conversazioni o turni e rimuove la riga di occupazione globale. Le scritture locali brevi sono serializzate sulla connessione condivisa; questa attesa riguarda le transazioni, non una coda di turni in attesa di risposta. L’ammissione verifica atomicamente l’occupazione della conversazione; completamento e recupero liberano solo le occupazioni pertinenti. Generazione remota e streaming avvengono fuori dalla sezione di scrittura.
+#### Realizzazione PostgreSQL
+L’occupazione è memorizzata nella riga della conversazione con il riferimento al turno attivo. L’ammissione in una conversazione esistente blocca la riga della conversazione dalla lettura decisionale al commit; completamento e recupero liberano solo le occupazioni pertinenti. Turni di conversazioni diverse usano righe diverse e connessioni diverse del pool, senza attendersi; due ammissioni nella stessa conversazione attendono soltanto la durata della transazione dell’altra, non la sua risposta. Generazione remota e streaming avvengono fuori dalle transazioni.
 
 #### Metadata
   * type: specification
@@ -565,24 +584,13 @@ L'elenco delle conversazioni conservate è restituito in pagine di dimensione li
   * define: [Elenco paginato delle conversazioni](../Requirements/FamilyConversation.md#elenco-paginato-delle-conversazioni)
 ---
 
-### Percorso dell'archivio nella configurazione Conversazioni
-
-Il modulo di configurazione del componente «Conversazioni» richiede in ogni ambiente `AMBROGIO_ARCHIVE_PATH`, il percorso del file SQLite da aprire, senza valore predefinito. Il percorso è letto insieme agli altri valori del componente una sola volta, prima dell'apertura dell'archivio; la sua assenza impedisce l'avvio con `Missing environment variable AMBROGIO_ARCHIVE_PATH`.
-
-#### Metadata
-  * type: specification
-
-#### Relations
-  * define: [Selezione dell'archivio conversazionale all'avvio](../Requirements/FamilyConversation.md#selezione-dellarchivio-conversazionale-allavvio)
----
-
 ### Porte di lettura e di lookup delle conversazioni
 
-`ConversationHistoryRead.find(conversationId)` restituisce `ConversationHistory`, con i turni come `HistoryTurn` dichiarati nella porta; `ConversationListRead.page(after, limit)` restituisce `ConversationListPage`, con elementi e cursore dichiarati nella porta. Sono tipi di dati Application `readonly`, con identificativi come stringhe e istanti `Date` nuovi a ogni lettura; le porte di lettura non importano il Domain, non espongono righe, SQL o tipi Kysely e non si presentano come repository.
+`ConversationHistoryRead.find(conversationId)` restituisce `ConversationHistory`, con i turni come `HistoryTurn` dichiarati nella porta; `ConversationListRead.page(after, limit)` restituisce `ConversationListPage`, con elementi e cursore dichiarati nella porta. Sono tipi di dati Application `readonly`, con identificativi come stringhe e istanti `Date` nuovi a ogni lettura; le porte di lettura non importano il Domain, non espongono righe, SQL o tipi Kysely e non si presentano come repository. Poiché ogni conversazione conservata ha un'identità UUID v4, `find` restituisce l'assenza per un identificativo che non ne ha la forma, senza interrogare il database, e il cursore confronta gli identificativi nella loro forma testuale, così che un cursore con un identificativo qualsiasi resti una posizione nell'ordine dell'elenco.
 
 `ConversationLookup.exists(conversationId)` dichiara se esiste una conversazione con quell'identità, ricevuta come `ConversationId`. `BeginTurn` la consulta prima dell'ammissione e rifiuta con `conversation_not_found` la continuazione di una conversazione inesistente o con un identificativo che non ha la forma di un'identità. Le conversazioni non vengono rimosse dall'archivio, perciò un esito positivo resta vero fino all'ammissione; l'ammissione verifica comunque la conversazione nella propria transazione e tratta la sua assenza come guasto inatteso.
 
-Il repository del turno serve soltanto ammissione, caricamento e salvataggio dell'aggregato secondo «Repository del turno». Ogni porta ha un proprio adapter SQLite; la risorsa SQLite condivisa non unisce i contratti.
+Il repository del turno serve soltanto ammissione, caricamento e salvataggio dell'aggregato secondo «Repository del turno». Ogni porta ha un proprio adapter PostgreSQL; la risorsa condivisa non unisce i contratti.
 
 #### Metadata
   * type: specification
@@ -688,7 +696,7 @@ A ogni turno delegato a quell'agente, prima di chiamare il modello, il backend l
 
 ### Proprietà dei controlli del turno conversazionale
 
-L'adapter del canale conversazionale possiede la verifica della forma dei messaggi e della decodifica del proprio protocollo: ferma i dati non validi prima del caso d'uso, senza decidere invarianti o precondizioni di business. Application riceve dati già interpretati e coordina le precondizioni che richiedono contesto, per esempio il recupero della conversazione richiesta, tramite porte; un rifiuto previsto ferma il turno prima degli effetti successivi. Domain garantisce gli stati e le transizioni del singolo turno anche se un ingresso ha eseguito controlli preliminari. L'archivio SQLite garantisce atomicamente l'ammissione di al massimo un turno attivo per conversazione; una lettura o un controllo preliminare non sostituisce tale garanzia. I controlli pubblici aggiuntivi sono ammessi solo se servono al rispettivo confine e non ridefiniscono la regola autorevole di un altro livello.
+L'adapter del canale conversazionale possiede la verifica della forma dei messaggi e della decodifica del proprio protocollo: ferma i dati non validi prima del caso d'uso, senza decidere invarianti o precondizioni di business. Application riceve dati già interpretati e coordina le precondizioni che richiedono contesto, per esempio il recupero della conversazione richiesta, tramite porte; un rifiuto previsto ferma il turno prima degli effetti successivi. Domain garantisce gli stati e le transizioni del singolo turno anche se un ingresso ha eseguito controlli preliminari. L'archivio PostgreSQL garantisce atomicamente l'ammissione di al massimo un turno attivo per conversazione; una lettura o un controllo preliminare non sostituisce tale garanzia. I controlli pubblici aggiuntivi sono ammessi solo se servono al rispettivo confine e non ridefiniscono la regola autorevole di un altro livello.
 
 #### Metadata
   * type: specification
@@ -717,9 +725,24 @@ Una marcatura che si estende su più frasi è ripulita in ciascuna frase per i s
   * define: [Risposta parlata senza marcatura testuale](../Requirements/FamilyConversation.md#risposta-parlata-senza-marcatura-testuale)
 ---
 
+### Tipi del database con kysely-codegen
+
+I tipi Kysely dello schema dell'archivio sono generati da kysely-codegen introspezionando un database PostgreSQL creato da zero con le migrazioni di produzione, mai il database di un'installazione. Il file generato è `packages/conversations/src/adapters/out/postgres/database.generated.ts`, versionato, non modificato a mano e importato soltanto dagli adapter di `postgres/`; contiene soltanto dichiarazioni di tipo e non importa tipi di Domain o Application. La configurazione versionata è `.kysely-codegenrc.json` nella radice del repository: dialetto `postgres`, `dateParser: timestamp`, `numericParser: string`, `includePattern` limitato a `public.+(conversations|turns)`, così che le tabelle del registro delle migrazioni restino escluse, e il file generato come uscita.
+
+Lo script `scripts/database-types.mjs`, eseguito con `pnpm db:types` dopo `pnpm build`, crea un database di prova secondo «Comando di verifica completo con pnpm», vi applica le migrazioni compilate, esegue kysely-codegen e cancella il database; `pnpm db:types:check` fa lo stesso con `--verify` e fallisce se il file versionato non coincide con lo schema. Ogni modifica dello schema consegna insieme la migrazione e il file rigenerato.
+
+I tipi corrispondono ai valori del driver `pg` con i suoi parser predefiniti: `timestamptz` come `Date`, `jsonb` come valore JSON già interpretato, i conteggi `bigint` come stringhe. Una colonna è `Generated` soltanto se lo schema la genera davvero; gli identificativi UUID assegnati dall'Application sono obbligatori negli inserimenti. Le migrazioni non importano i tipi generati. Gli adapter derivano dai tipi generati le forme operative (`Selectable`, `Insertable`, `Updateable`) soltanto dove tipizzano una riga o un ingresso completi, senza un modello parallelo delle tabelle scritto a mano.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Tipi del database generati dallo schema migrato](../Requirements/FamilyConversation.md#tipi-del-database-generati-dallo-schema-migrato)
+---
+
 ### Registro delle migrazioni dell'archivio conversazioni
 
-Ogni migrazione è un file della cartella `packages/conversations/src/adapters/out/sqlite/migrations/` il cui nome, senza estensione, è il nome che Kysely registra nella tabella delle migrazioni applicate: `NNN_<azione>`, con tre cifre in ordine crescente. `migrations.ts` elenca le migrazioni nell'ordine della sequenza e le applica all'avvio con il `Migrator` di Kysely, che rifiuta una migrazione applicata assente dall'elenco e una migrazione nuova ordinata prima di una già applicata.
+Ogni migrazione è un file della cartella `packages/conversations/src/adapters/out/postgres/migrations/` il cui nome, senza estensione, è il nome che Kysely registra nella tabella delle migrazioni applicate: `NNN_<azione>`, con tre cifre in ordine crescente. `migrations.ts` elenca le migrazioni nell'ordine della sequenza e le applica all'avvio con il `Migrator` di Kysely, che rifiuta una migrazione applicata assente dall'elenco e una migrazione nuova ordinata prima di una già applicata.
 
 Il file `migrations/fingerprints.json` registra, nello stesso ordine, il nome e l'impronta SHA-256 del contenuto di ogni migrazione. Una migrazione nuova si aggiunge in coda all'elenco e al registro; una migrazione registrata non si modifica, non si rinomina e non si rimuove. Un file di migrazione importa soltanto `kysely` e i suoi sottopercorsi, usa l'API di schema di Kysely o SQL esplicito e non importa i tipi dello schema corrente né codice di Domain, Application o adapter. La cartella contiene soltanto le migrazioni registrate e il registro; i dati di prova sono preparati dai test.
 
@@ -876,9 +899,9 @@ La capacità di produzione della risposta riceve il contesto applicativo dello s
   * define: [Contratti delle porte nei termini di Conversazioni](../Requirements/FamilyConversation.md#contratti-delle-porte-nei-termini-di-conversazioni)
 ---
 
-### Significato degli esiti di scrittura SQLite
+### Significato degli esiti di scrittura PostgreSQL
 
-Per ogni mutazione dell'archivio, la porta di scrittura definisce la postcondizione e gli eventuali rifiuti previsti. L'adapter traduce un risultato SQLite in un rifiuto della porta solo quando l'operazione e le informazioni osservabili nella stessa transazione identificano quella condizione: per esempio, un'ammissione negata dall'occupazione già presente è un rifiuto di turno concorrente. Una scrittura che modifica zero righe non significa universalmente né successo né risorsa assente: l'adapter confronta il risultato con la postcondizione e con lo stato accertabile; una conclusione tardiva di un turno già interrotto non lo riporta a successo: il salvataggio riceve il rifiuto `turn_already_closed` soltanto quando la rilettura nella stessa transazione trova il turno concluso o interrotto. Un vincolo SQLite è tradotto solo se è noto e semanticamente equivalente al rifiuto specifico dell'operazione, senza esporre dettagli del database alla porta. Errori sconosciuti, esiti ambigui ed errori di commit restano guasti tecnici con la causa originale disponibile alla diagnostica. Nessuna scrittura parziale viene confermata o presentata come successo; la classificazione non avvia un nuovo tentativo automatico.
+Per ogni mutazione dell'archivio, la porta di scrittura definisce la postcondizione e gli eventuali rifiuti previsti. L'adapter traduce un risultato del database in un rifiuto della porta solo quando l'operazione e le informazioni osservabili nella stessa transazione identificano quella condizione: per esempio, un'ammissione negata dall'occupazione già presente è un rifiuto di turno concorrente. Una scrittura che modifica zero righe non significa universalmente né successo né risorsa assente: l'adapter confronta il risultato con la postcondizione e con lo stato accertabile; una conclusione tardiva di un turno già interrotto non lo riporta a successo: il salvataggio riceve il rifiuto `turn_already_closed` soltanto quando la rilettura nella stessa transazione trova il turno concluso o interrotto. Una violazione di vincolo è tradotta soltanto se è una violazione di unicità riconosciuta dal codice SQLSTATE `23505`, dal nome esatto del vincolo e dall'operazione, e ha esattamente il significato di un rifiuto dichiarato dalla porta; nessuna operazione dell'archivio ne dichiara uno, quindi ogni violazione di vincolo resta un guasto. Il blocco non ottenuto entro il tempo d'attesa, codice SQLSTATE `55P03`, è tradotto soltanto nell'ammissione, secondo «Garanzie di concorrenza del repository del turno». La porta non riceve conteggi di righe, codici SQLSTATE, istruzioni SQL o dettagli di Kysely. Errori sconosciuti, esiti ambigui ed errori di commit restano guasti tecnici con la causa originale disponibile alla diagnostica. Nessuna scrittura parziale viene confermata o presentata come successo; la classificazione non avvia un nuovo tentativo automatico.
 
 #### Metadata
   * type: specification
@@ -941,7 +964,7 @@ Un errore della decodifica è un errore del servizio di trascrizione secondo «E
 
 ### Valori Date della conversazione
 
-Gli istanti del turno e dell'ultima attività della conversazione sono valori `Date` standard nel codice Application e Domain. Un `Date` è valido soltanto se `getTime()` restituisce un numero finito; creazione e ricostruzione di oggetti Domain rifiutano valori invalidi. Gli oggetti Domain copiano ogni `Date` ricevuto prima di conservarlo e restituiscono nuove copie quando lo espongono, così le mutazioni del chiamante non alterano lo stato interno. Il confronto tra istanti usa il loro valore temporale. I formati dei payload esterni seguono i rispettivi contratti di confine; la rappresentazione SQLite è specificata nel contratto di persistenza degli istanti.
+Gli istanti del turno e dell'ultima attività della conversazione sono valori `Date` standard nel codice Application e Domain. Un `Date` è valido soltanto se `getTime()` restituisce un numero finito; creazione e ricostruzione di oggetti Domain rifiutano valori invalidi. Gli oggetti Domain copiano ogni `Date` ricevuto prima di conservarlo e restituiscono nuove copie quando lo espongono, così le mutazioni del chiamante non alterano lo stato interno. Il confronto tra istanti usa il loro valore temporale. I formati dei payload esterni seguono i rispettivi contratti di confine; la rappresentazione PostgreSQL è specificata nel contratto di persistenza degli istanti.
 
 #### Metadata
   * type: specification
@@ -960,3 +983,4 @@ Il modulo di configurazione del componente «Conversazioni» legge `AMBROGIO_LIS
 #### Relations
   * define: [Configurazione della paginazione conversazionale](../Requirements/FamilyConversation.md#configurazione-della-paginazione-conversazionale)
 ---
+

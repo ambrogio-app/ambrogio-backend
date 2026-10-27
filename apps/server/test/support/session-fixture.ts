@@ -1,6 +1,3 @@
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import type { ConversationHistory } from '@ambrogio/conversations/application/conversation-history-read';
 import type { ProduceConversationReply, ReplyPart } from '@ambrogio/conversations/application/produce-conversation-reply';
@@ -8,6 +5,7 @@ import type { SpeechComponents, SpeechComponentsFactory } from '@ambrogio/conver
 import { prepareConfiguredConversations } from '../../src/composition/conversations.js';
 import { buildConversationServer } from '../../src/composition/http-surface.js';
 import { surfaceOptions } from './logger-fixture.js';
+import { emptyTestDatabase } from '../../../../test/support/test-database.js';
 
 export type Language = 'en' | 'it';
 export type Reason = 'invalid' | 'conversation_not_found' | 'occupied' | 'unavailable' | 'too_large'
@@ -121,10 +119,11 @@ export async function startSessionServer(options: Readonly<{
   language?: Language;
   pingIntervalMs?: number;
 }> = {}) {
-  const directory = await mkdtemp(join(tmpdir(), 'ambrogio-session-'));
+  const database = await emptyTestDatabase();
   const language = options.language ?? 'it';
-  const prepared = await prepareConfiguredConversations({ archivePath: join(directory, 'archive.sqlite'),
-    listPageSize: 20, maxListPageSize: 100, historyTurns: 20, language, timeZone: 'UTC' }, new Date());
+  const prepared = await prepareConfiguredConversations({ databaseUrl: database.url,
+    listPageSize: 20, maxListPageSize: 100, historyTurns: 20, language, timeZone: 'UTC' }, new Date(), () => undefined)
+    .catch(async (error: unknown) => { await database.drop(); throw error; });
   const speech = fakeSpeech();
   const built = await buildConversationServer({ host: '127.0.0.1', port: 0,
     allowedOrigins: [...(options.allowedOrigins ?? [])], publicHttps: false }, prepared,
@@ -139,7 +138,7 @@ export async function startSessionServer(options: Readonly<{
   return {
     url: `ws://127.0.0.1:${port}/api/session`,
     origin: `http://127.0.0.1:${port}`,
-    directory,
+    database: database.url,
     language,
     messages: publicMessages[language],
     prepared,
@@ -162,8 +161,7 @@ export async function startSessionServer(options: Readonly<{
         await built.turnIngress.closeSessions();
         await built.server.close();
       } finally {
-        await prepared.archive.close();
-        await rm(directory, { recursive: true, force: true });
+        try { await prepared.archive.close(); } finally { await database.drop(); }
       }
     },
   };

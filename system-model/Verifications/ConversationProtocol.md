@@ -37,7 +37,7 @@ La prova passa se ciascun messaggio non conforme riceve `session.error` con il `
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](#verifica-del-protocollo-conversazionale)
-  * satisfiedBy: [http-server.session-opening.spec.ts](../../apps/server/src/runtime/http-server.session-opening.spec.ts)
+  * satisfiedBy: [http-server.session-opening.integration.spec.ts](../../apps/server/src/runtime/http-server.session-opening.integration.spec.ts)
   * verify: [Errore di protocollo senza perdita della sessione](../Requirements/ConversationProtocol.md#errore-di-protocollo-senza-perdita-della-sessione)
 ---
 
@@ -53,7 +53,7 @@ La prova passa se la richiesta senza `Origin` è accettata in entrambe le config
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](#verifica-del-protocollo-conversazionale)
-  * satisfiedBy: [http-server.session-opening.spec.ts](../../apps/server/src/runtime/http-server.session-opening.spec.ts)
+  * satisfiedBy: [http-server.session-opening.integration.spec.ts](../../apps/server/src/runtime/http-server.session-opening.integration.spec.ts)
   * verify: [Origini consentite per il canale conversazionale](../Requirements/ConversationProtocol.md#origini-consentite-per-il-canale-conversazionale)
 ---
 
@@ -69,7 +69,7 @@ La prova passa se i primi due turni ricevono una trasmissione testuale con il me
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](#verifica-del-protocollo-conversazionale)
-  * satisfiedBy: [http-server.session-rejections.spec.ts](../../apps/server/src/runtime/http-server.session-rejections.spec.ts)
+  * satisfiedBy: [http-server.session-rejections.integration.spec.ts](../../apps/server/src/runtime/http-server.session-rejections.integration.spec.ts)
   * verify: [Rifiuto del turno audio senza voce abilitata](../Requirements/ConversationProtocol.md#rifiuto-del-turno-audio-senza-voce-abilitata)
 ---
 
@@ -85,7 +85,7 @@ La prova passa se i turni entro il limite proseguono normalmente, mentre quelli 
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](#verifica-del-protocollo-conversazionale)
-  * satisfiedBy: [http-server.session-rejections.spec.ts](../../apps/server/src/runtime/http-server.session-rejections.spec.ts)
+  * satisfiedBy: [http-server.session-rejections.integration.spec.ts](../../apps/server/src/runtime/http-server.session-rejections.integration.spec.ts)
   * verify: [Rifiuto del turno oltre i limiti di trasmissione](../Requirements/ConversationProtocol.md#rifiuto-del-turno-oltre-i-limiti-di-trasmissione)
 ---
 
@@ -101,7 +101,7 @@ La prova passa se l'upgrade è accettato soltanto quando il client offre `ambrog
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](#verifica-del-protocollo-conversazionale)
-  * satisfiedBy: [http-server.session-opening.spec.ts](../../apps/server/src/runtime/http-server.session-opening.spec.ts)
+  * satisfiedBy: [http-server.session-opening.integration.spec.ts](../../apps/server/src/runtime/http-server.session-opening.integration.spec.ts)
   * verify: [Apertura della sessione conversazionale](../Requirements/ConversationProtocol.md#apertura-della-sessione-conversazionale)
 ---
 
@@ -117,7 +117,7 @@ La prova passa se ogni riga diagnostica della sessione contiene `correlationId` 
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](#verifica-del-protocollo-conversazionale)
-  * satisfiedBy: [http-server.spec.ts](../../apps/server/src/runtime/http-server.spec.ts)
+  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
   * verify: [Correlazione diagnostica della sessione conversazionale](../Requirements/ConversationProtocol.md#correlazione-diagnostica-della-sessione-conversazionale)
 ---
 
@@ -133,6 +133,6 @@ La prova passa se il server non avvia l'ammissione prima di `input.end`, il test
 
 #### Relations
   * derivedFrom: [Verifica del protocollo conversazionale](#verifica-del-protocollo-conversazionale)
-  * satisfiedBy: [http-server.session-turns.spec.ts](../../apps/server/src/runtime/http-server.session-turns.spec.ts)
+  * satisfiedBy: [http-server.session-turns.integration.spec.ts](../../apps/server/src/runtime/http-server.session-turns.integration.spec.ts)
   * verify: [Trasmissione della richiesta del turno](../Requirements/ConversationProtocol.md#trasmissione-della-richiesta-del-turno)
 ---

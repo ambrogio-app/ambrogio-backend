@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readConversationConfig } from './conversation-config.js';
 import type { RuntimeEnvironment } from './environment-variables.js';
 
-const archive = { AMBROGIO_ARCHIVE_PATH: '/tmp/ambrogio.sqlite' };
+const archive = { AMBROGIO_DATABASE_URL: 'postgres://ambrogio:placeholder@127.0.0.1:5432/ambrogio' };
 const read = (variables: Record<string, string>, runtime: RuntimeEnvironment = 'test') =>
   readConversationConfig({ ...archive, ...variables }, runtime);
 const marker = 'marker-value-7c1e';
@@ -17,7 +17,7 @@ describe('conversation component configuration', () => {
   // Verification: Prova della configurazione della paginazione
   it('applies its own defaults in every environment and accepts explicit page limits', () => {
     for (const runtime of ['development', 'test', 'production'] as const) {
-      expect(read({}, runtime)).toEqual({ archivePath: '/tmp/ambrogio.sqlite', listPageSize: 20,
+      expect(read({}, runtime)).toEqual({ databaseUrl: 'postgres://ambrogio:placeholder@127.0.0.1:5432/ambrogio', listPageSize: 20,
         maxListPageSize: 100, historyTurns: 20, language: 'en', timeZone: 'UTC' });
     }
     expect(read({ AMBROGIO_LIST_PAGE_SIZE: '2', AMBROGIO_MAX_LIST_PAGE_SIZE: '3' }))
@@ -69,19 +69,26 @@ describe('conversation component configuration', () => {
   });
 
   // Verification: Prova dell'archivio configurato all'avvio
-  it('requires the archive path in every environment', () => {
-    expect(read({ AMBROGIO_ARCHIVE_PATH: '/data/conversations.sqlite' }).archivePath).toBe('/data/conversations.sqlite');
-    for (const runtime of ['development', 'test', 'production'] as const) {
-      expect(() => readConversationConfig({}, runtime)).toThrow('Missing environment variable AMBROGIO_ARCHIVE_PATH');
-      expect(() => readConversationConfig({ AMBROGIO_ARCHIVE_PATH: '' }, runtime))
-        .toThrow('Missing environment variable AMBROGIO_ARCHIVE_PATH');
+  it('requires a PostgreSQL URL without parameters in every environment', () => {
+    for (const url of ['postgres://ambrogio:placeholder@database:5432/ambrogio', 'postgresql://ambrogio@localhost/ambrogio']) {
+      expect(read({ AMBROGIO_DATABASE_URL: url }).databaseUrl).toBe(url);
     }
-    expect(failure({ AMBROGIO_ARCHIVE_PATH: '  ' })).toBe('Invalid environment variable AMBROGIO_ARCHIVE_PATH: expected a file path');
+    for (const runtime of ['development', 'test', 'production'] as const) {
+      expect(() => readConversationConfig({}, runtime)).toThrow('Missing environment variable AMBROGIO_DATABASE_URL');
+      expect(() => readConversationConfig({ AMBROGIO_DATABASE_URL: '' }, runtime))
+        .toThrow('Missing environment variable AMBROGIO_DATABASE_URL');
+    }
+    for (const url of ['  ', '/data/conversations.sqlite', 'mysql://ambrogio:placeholder@database/ambrogio',
+      'postgres://ambrogio:placeholder@database:5432', 'postgres://ambrogio:placeholder@database:5432/',
+      'postgres://ambrogio:placeholder@database/ambrogio?sslmode=require', 'postgres://ambrogio:placeholder@database/a/b']) {
+      const message = failure({ AMBROGIO_DATABASE_URL: url });
+      expect(message, url).toBe('Invalid environment variable AMBROGIO_DATABASE_URL: expected a PostgreSQL URL without parameters');
+    }
   });
 
   // Verification: Prova del bootstrap della configurazione del backend
   it('never shows the rejected value in its errors', () => {
-    for (const name of ['AMBROGIO_LANGUAGE', 'AMBROGIO_TIME_ZONE', 'AMBROGIO_LIST_PAGE_SIZE', 'AMBROGIO_MAX_LIST_PAGE_SIZE']) {
+    for (const name of ['AMBROGIO_DATABASE_URL', 'AMBROGIO_LANGUAGE', 'AMBROGIO_TIME_ZONE', 'AMBROGIO_LIST_PAGE_SIZE', 'AMBROGIO_MAX_LIST_PAGE_SIZE']) {
       const message = failure({ [name]: marker });
       expect(message).toContain(name);
       expect(message).not.toContain(marker);

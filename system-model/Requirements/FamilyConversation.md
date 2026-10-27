@@ -18,6 +18,52 @@ Origine: baseline Reqvire «Technical adapters inside the module package», adot
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
+### Connessione dei connettori MCP dopo l'apertura dell'ascolto
+
+Quando il server ha aperto l'ascolto, deve collegare ogni agente specializzato con connettore MCP al proprio server MCP con un solo tentativo, senza ritardare gli ingressi conversazionali; se il tentativo fallisce, deve registrare un errore che nomina l'agente e lasciare quell'agente non disponibile fino al riavvio, senza impedire il funzionamento del server né degli altri agenti.
+
+#### Details
+Il tentativo comprende connessione, inizializzazione, scoperta degli strumenti, controllo dell'elenco degli strumenti ammessi e scoperta dei prompt, secondo «Connessione asincrona dei connettori MCP».
+
+Alternative considerate e non adottate: la connessione prima dell'ascolto, con l'avvio che fallisce se un server MCP non risponde, perché un solo server irraggiungibile, come Home Assistant in riavvio, fermava l'intero Ambrogio; nuovi tentativi con attesa crescente, non adottati per decisione della persona, che preferisce il comportamento più semplice: un server MCP che non risponde alla connessione lascia il suo agente non disponibile fino al riavvio di Ambrogio; togliere l'agente non disponibile dalle scelte dell'orchestratore, perché la richiesta finirebbe a un altro agente che potrebbe rispondere come se avesse agito.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
+---
+
+### Turno affidato a un agente non disponibile
+
+Quando l'orchestratore sceglie un agente specializzato il cui connettore MCP non è collegato, Ambrogio deve concludere il turno con l'esito di errore e il messaggio pubblico standard, senza chiamare il modello di quell'agente; se la connessione di quell'agente è ancora in corso, deve attenderne l'esito entro il tempo massimo della produzione della risposta.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Connessione asincrona dei connettori MCP](../Contracts/FamilyConversation.md#connessione-asincrona-dei-connettori-mcp)
+
+#### Relations
+  * derivedFrom: [Orchestrazione della risposta conversazionale](#orchestrazione-della-risposta-conversazionale)
+  * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
+---
+
+### Agente non disponibile per uno strumento MCP elencato assente
+
+Se un nome dell'elenco degli strumenti MCP ammessi di un agente specializzato non corrisponde a nessuno strumento scoperto alla connessione sul server MCP di quell'agente, allora quell'agente non deve diventare disponibile e il server deve registrare un errore che nomina l'agente e lo strumento, senza impedire il funzionamento del server né degli altri agenti.
+
+#### Metadata
+  * type: requirement
+
+#### Contract Bindings
+  * [Elenco degli strumenti MCP ammessi per agente](../Contracts/FamilyConversation.md#elenco-degli-strumenti-mcp-ammessi-per-agente)
+
+#### Relations
+  * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
+  * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
+---
+
 ### Agente specializzato senza connettore MCP
 
 Quando il file di un agente specializzato non contiene un connettore MCP, Ambrogio deve attivare l'agente e, quando l'orchestratore lo sceglie, fargli formulare la risposta con il proprio modello e le proprie istruzioni, senza strumenti.
@@ -1525,21 +1571,6 @@ Se Ambrogio non ottiene una trascrizione utilizzabile di un turno vocale, non de
   * derivedFrom: [Rifiuto del turno prima dell'ammissione](#rifiuto-del-turno-prima-dellammissione)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Conversazione a voce](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-a-voce)
----
-
-### Rifiuto dell'avvio con uno strumento MCP elencato non disponibile
-
-Se un nome dell'elenco degli strumenti MCP ammessi di un agente specializzato non corrisponde a nessuno strumento scoperto all'avvio sul server MCP di quell'agente, allora il server non deve avviarsi e deve indicare nel messaggio diagnostico l'agente interessato.
-
-#### Metadata
-  * type: requirement
-
-#### Contract Bindings
-  * [Elenco degli strumenti MCP ammessi per agente](../Contracts/FamilyConversation.md#elenco-degli-strumenti-mcp-ammessi-per-agente)
-
-#### Relations
-  * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
-  * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
 ---
 
 ### Risposta dopo le azioni degli agenti con connettore MCP

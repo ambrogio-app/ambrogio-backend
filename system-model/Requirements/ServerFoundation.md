@@ -376,7 +376,7 @@ Quando l'MVP è installato senza autenticazione applicativa, il deployment deve 
 
 ### Costruzione del server separata dall'ascolto
 
-La costruzione del server conversazionale deve preparare configurazione, agenti, archivio, componenti vocali e server HTTP e restituire il server, l'indirizzo di ascolto validato e la funzione di chiusura senza mettersi in ascolto, e l'entrypoint del processo deve aprire l'ascolto e decidere l'esito del processo; l'ingresso di prova pubblico deve seguire la stessa separazione.
+La costruzione del server conversazionale deve preparare configurazione, agenti, archivio, componenti vocali e server HTTP e restituire il server, l'indirizzo di ascolto validato e la funzione di chiusura senza mettersi in ascolto, e l'entrypoint del processo deve aprire l'ascolto, avviare poi le connessioni dei connettori MCP degli agenti senza attenderle e decidere l'esito del processo; l'ingresso di prova pubblico deve seguire la stessa separazione.
 
 #### Metadata
   * type: requirement

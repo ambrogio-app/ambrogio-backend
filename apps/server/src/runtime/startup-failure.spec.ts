@@ -147,14 +147,14 @@ test('names the agent with invalid model options', async () => {
   expectReported(await startupError(environment), 'Invalid agent options: facts');
 });
 
-test('names the agent whose MCP server cannot be reached without exposing its credentials', async () => {
+// Verification: Prova della connessione asincrona dei connettori MCP
+test('does not contact the MCP server of an agent before listening', async () => {
   const unavailable = await freePort();
   const { environment } = await installation({ specialist: { description: 'Answers.',
     instructions: 'Answer.', llm, maxToolCalls: 2,
     mcp: { url: `http://127.0.0.1:${unavailable}/mcp`, auth: { type: 'bearer', token: secret } } } });
-  const error = await startupError(environment);
-  expect((error as Error).cause).toBeInstanceOf(Error);
-  expectReported(error, 'Agent MCP connection failed: facts');
+  // The unreachable MCP server is no startup phase: the startup fails later, on the unreachable archive.
+  expectReported(await startupError(environment), 'Conversation archive could not be prepared');
 });
 
 test('names an archive whose database cannot be reached without exposing its URL', async () => {

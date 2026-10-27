@@ -1,6 +1,7 @@
 import type { Kysely } from 'kysely';
 import { Migrator, type Migration } from 'kysely/migration';
 import { migration as initial } from './migrations/001_initial.js';
+import { migration as turnSearch } from './migrations/002_turn_search.js';
 
 /**
  * The single ordered sequence of the archive, one file per migration named as its key. A new migration
@@ -8,6 +9,7 @@ import { migration as initial } from './migrations/001_initial.js';
  */
 export const conversationMigrations: Readonly<Record<string, Migration>> = {
   '001_initial': initial,
+  '002_turn_search': turnSearch,
 };
 
 /**

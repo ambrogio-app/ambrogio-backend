@@ -2,5 +2,9 @@
   {
     "name": "001_initial",
     "sha256": "b0156f9fb5ad743e37a1e42424296b0a9878fa95c66400c2546acc0704f78af9"
+  },
+  {
+    "name": "002_turn_search",
+    "sha256": "51923e400a08497cdab8e963e309f749c2e36e89d2bd0e627e6c3a5347395972"
   }
 ]

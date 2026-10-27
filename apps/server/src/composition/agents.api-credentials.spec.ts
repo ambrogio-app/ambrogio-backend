@@ -60,6 +60,8 @@ test('passes each credential named by an agent file to its own controlled Mistra
         close: async () => {} };
     });
     try {
+      // The MCP connectors connect after the listener opens, as the entry point does.
+      await agents.connect();
       await writeAgentFile(join(directory, 'orchestrator.json'), '{');
       await writeAgentFile(join(directory, 'bearer.json'), '{');
       await writeAgentFile(join(directory, 'oauth.json'), '{');

@@ -121,7 +121,7 @@ Raggruppa le prove di connessione, scoperta e invocazione dei tool tramite il cl
 Su un'installazione Home Assistant reale abilitare l'integrazione «Model Context Protocol Server», esporre ad Assist almeno due luci in aree diverse e un sensore, creare un token di accesso di lunga durata e installare `examples/agents/home-assistant.json` completato con l'indirizzo, impostando le variabili d'ambiente del token e della chiave API. Avviare il backend e chiedere in conversazione lo stato del sensore, se una luce di un'area è accesa, poi di accendere e spegnere quella luce e di spegnere tutte le luci; chiedere infine di comandare un'entità non esposta. Ripetere l'avvio con un token errato.
 
 #### Details
-La dimostrazione passa se il backend si avvia scoprendo gli strumenti di Home Assistant, la risposta riporta lo stato effettivo del sensore, la domanda sullo stato della luce riceve lo stato effettivo senza che alcun dispositivo cambi stato, la luce cambia stato in Home Assistant e la risposta lo dichiara solo dopo la conferma dello strumento, la richiesta di spegnere tutte le luci spegne tutte le luci esposte, l'entità non esposta non viene comandata e, con il token errato, l'avvio fallisce con l'evento `server_startup_failed` che indica `Agent MCP connection failed: home-assistant` senza mostrare il token. Fallisce se uno di questi esiti non si verifica.
+La dimostrazione passa se il backend si avvia scoprendo gli strumenti di Home Assistant, la risposta riporta lo stato effettivo del sensore, la domanda sullo stato della luce riceve lo stato effettivo senza che alcun dispositivo cambi stato, la luce cambia stato in Home Assistant e la risposta lo dichiara solo dopo la conferma dello strumento, la richiesta di spegnere tutte le luci spegne tutte le luci esposte, l'entità non esposta non viene comandata e, con il token errato, il server si avvia, registra `agent_mcp_unavailable` per `home-assistant` con `reason` `connection_failed` senza mostrare il token, e un turno affidato a quell'agente si conclude con l'esito di errore. Fallisce se uno di questi esiti non si verifica.
 
 Non automatizzabile: richiede un'istanza reale di Home Assistant con entità esposte ad Assist, un token di accesso di lunga durata e un modello linguistico reale.
 
@@ -231,6 +231,25 @@ La prova passa se il file è accettato senza modifiche come agente specializzato
   * verify: [Configurazione pronta del connettore Home Assistant](../Requirements/FamilyConversation.md#configurazione-pronta-del-connettore-home-assistant)
 ---
 
+### Prova della connessione asincrona dei connettori MCP
+
+Avviare il processo server con quattro agenti specializzati con connettore MCP: uno verso un server MCP di prova che risponde, uno verso un indirizzo che rifiuta la connessione, uno verso un server che risponde dopo un ritardo controllato e uno che elenca in `mcp.tools` uno strumento che il server non dichiara. Inserire un segreto marcatore nelle credenziali MCP. Con un orchestratore controllato, affidare turni a ciascun agente subito dopo l'apertura dell'ascolto e dopo l'esito delle connessioni; arrestare il server mentre la connessione ritardata è ancora in corso.
+
+#### Details
+La prova passa se il listener si apre e l'elenco delle conversazioni risponde prima che le connessioni terminino; se ogni server MCP riceve un solo tentativo; se il registro contiene una sola riga `agent_mcp_unavailable` per l'agente irraggiungibile, con `reason` `connection_failed`, e una per l'agente con lo strumento assente, con `reason` `tool_unavailable` e il nome dello strumento, entrambe senza URL né segreto marcatore; se i turni affidati all'agente collegato ricevono la risposta; se i turni affidati ai due agenti non disponibili si concludono con l'esito di errore e il messaggio pubblico standard senza chiamare il loro modello; se il turno affidato all'agente in connessione attende l'esito e riceve la risposta; e se l'arresto durante la connessione ritardata termina entro la finestra di arresto chiudendo il client. Fallisce se l'avvio attende un server MCP, se un fallimento ferma il server o un altro agente, se un tentativo viene ripetuto o se un turno affidato a un agente non disponibile chiama il suo modello.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
+  * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
+  * satisfiedBy: [conversation-server.integration.spec.ts](../../apps/server/src/runtime/conversation-server.integration.spec.ts)
+  * satisfiedBy: [startup-failure.spec.ts](../../apps/server/src/runtime/startup-failure.spec.ts)
+  * verify: [Connessione dei connettori MCP dopo l'apertura dell'ascolto](../Requirements/FamilyConversation.md#connessione-dei-connettori-mcp-dopo-lapertura-dellascolto)
+  * verify: [Turno affidato a un agente non disponibile](../Requirements/FamilyConversation.md#turno-affidato-a-un-agente-non-disponibile)
+---
+
 ### Prova della disponibilità degli agenti dai file della directory
 
 Avviare il server con `orchestrator.json` e un file specializzato valido nella directory degli agenti, usando agenti di prova osservabili dall'orchestratore. Aggiungere un secondo file `<id>.json` valido e riavviare; rimuovere il primo file e riavviare ancora, senza modificare altri elenchi di abilitazione.
@@ -268,7 +287,7 @@ La prova passa se nel primo caso il testo della risposta segue l'esecuzione dell
 Preparare agenti specializzati con un server MCP controllato che scopre gli strumenti `alpha`, `light.toggle`, `beta` e `gamma`. Un agente non ha `mcp.tools`; uno ha `mcp.tools: ["gamma", "light.toggle"]`; uno elenca anche `delta`, che il server non offre. Verificare inoltre la validazione di `mcp.tools` non array, vuoto, con un elemento vuoto o non stringa e con un nome ripetuto. Con un modello controllato registrare gli strumenti offerti e far chiamare sia uno strumento offerto sia `alpha`.
 
 #### Details
-La prova passa se l'agente senza `mcp.tools` riceve tutti e quattro gli strumenti; l'agente con l'elenco riceve soltanto `light.toggle`, presentato come `mcp_1`, e `gamma`, in quest'ordine e con descrizioni e schemi del server; la chiamata a uno strumento offerto raggiunge il client MCP con il nome originale mentre quella ad `alpha` non lo raggiunge; le configurazioni invalide sono rifiutate prima dell'attivazione; l'agente che elenca `delta` impedisce l'avvio con il messaggio `Agent MCP tool unavailable: <id>` privo di URL e credenziali. Fallisce se uno strumento non elencato è offerto o invocato, se l'ordine o i nomi presentati cambiano rispetto alla lista scoperta o se l'avvio prosegue con un nome assente.
+La prova passa se l'agente senza `mcp.tools` riceve tutti e quattro gli strumenti; l'agente con l'elenco riceve soltanto `light.toggle`, presentato come `mcp_1`, e `gamma`, in quest'ordine e con descrizioni e schemi del server; la chiamata a uno strumento offerto raggiunge il client MCP con il nome originale mentre quella ad `alpha` non lo raggiunge; le configurazioni invalide sono rifiutate prima dell'attivazione; l'agente che elenca `delta` resta non disponibile con il log `agent_mcp_unavailable` e `reason` `tool_unavailable`, privo di URL e credenziali, mentre gli altri agenti restano utilizzabili. Fallisce se uno strumento non elencato è offerto o invocato, se l'ordine o i nomi presentati cambiano rispetto alla lista scoperta o se l'agente con un nome assente diventa disponibile.
 
 #### Metadata
   * type: test-verification
@@ -278,7 +297,7 @@ La prova passa se l'agente senza `mcp.tools` riceve tutti e quattro gli strument
   * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
   * satisfiedBy: [agent-config.spec.ts](../../apps/server/src/runtime/agent-config.spec.ts)
   * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
-  * verify: [Rifiuto dell'avvio con uno strumento MCP elencato non disponibile](../Requirements/FamilyConversation.md#rifiuto-dellavvio-con-uno-strumento-mcp-elencato-non-disponibile)
+  * verify: [Agente non disponibile per uno strumento MCP elencato assente](../Requirements/FamilyConversation.md#agente-non-disponibile-per-uno-strumento-mcp-elencato-assente)
   * verify: [Selezione degli strumenti MCP offerti all'agente](../Requirements/FamilyConversation.md#selezione-degli-strumenti-mcp-offerti-allagente)
 ---
 
@@ -303,10 +322,10 @@ La prova passa se la prima directory viene caricata con entrambi gli agenti disp
 
 ### Prova delle istruzioni del server MCP
 
-Con un server MCP Streamable HTTP di prova che dichiara la capacità `prompts` ed espone un prompt senza argomenti, un prompt con un argomento obbligatorio e uno strumento, preparare un agente specializzato con connettore MCP e un modello controllato che registra le istruzioni ricevute. Elaborare due turni cambiando il testo del prompt fra il primo e il secondo. Ripetere con un server che non dichiara la capacità `prompts`, con un server la cui lista dei prompt fallisce all'avvio e con un server la cui lettura del prompt fallisce durante il turno.
+Con un server MCP Streamable HTTP di prova che dichiara la capacità `prompts` ed espone un prompt senza argomenti, un prompt con un argomento obbligatorio e uno strumento, preparare un agente specializzato con connettore MCP e un modello controllato che registra le istruzioni ricevute. Elaborare due turni cambiando il testo del prompt fra il primo e il secondo. Ripetere con un server che non dichiara la capacità `prompts`, con un server la cui lista dei prompt fallisce alla connessione e con un server la cui lettura del prompt fallisce durante il turno.
 
 #### Details
-La prova passa se all'avvio il backend conserva soltanto il prompt senza argomenti obbligatori; a ogni turno il modello riceve le istruzioni del file dell'agente, l'intestazione `Instructions and context from the connected MCP server:` e il testo corrente del prompt, prima delle indicazioni sul formato della risposta, e il secondo turno vede il testo aggiornato senza riavvio; il server senza capacità `prompts` non riceve `prompts/list` e il modello riceve soltanto le istruzioni del file dell'agente con le indicazioni sul formato; l'errore della lista all'avvio impedisce l'attivazione con `Agent MCP connection failed: <id>`; l'errore di lettura durante il turno termina il turno con il guasto `MCP prompt retrieval failed` senza chiamare il modello. Le letture dei prompt non contano per `maxToolCalls`. Fallisce se uno di questi esiti non si verifica.
+La prova passa se alla connessione il backend conserva soltanto il prompt senza argomenti obbligatori; a ogni turno il modello riceve le istruzioni del file dell'agente, l'intestazione `Instructions and context from the connected MCP server:` e il testo corrente del prompt, prima delle indicazioni sul formato della risposta, e il secondo turno vede il testo aggiornato senza riavvio; il server senza capacità `prompts` non riceve `prompts/list` e il modello riceve soltanto le istruzioni del file dell'agente con le indicazioni sul formato; l'errore della lista lascia l'agente non disponibile con il log `agent_mcp_unavailable` e `reason` `connection_failed`; l'errore di lettura durante il turno termina il turno con il guasto `MCP prompt retrieval failed` senza chiamare il modello. Le letture dei prompt non contano per `maxToolCalls`. Fallisce se uno di questi esiti non si verifica.
 
 #### Metadata
   * type: test-verification

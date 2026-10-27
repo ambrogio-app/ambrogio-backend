@@ -66,7 +66,7 @@ La prova passa se ogni registrazione mappa gli esiti negativi previsti con uno `
 Avviare il server conversazionale composto come in produzione e raccogliere le rotte registrate con metodo e percorso; richiedere `GET /api/conversations` e `GET /api/conversations/<id>`; leggere le cartelle delle slice di `packages/conversations/src/adapters/in/http/` e gli aggregatori che le registrano.
 
 #### Details
-La prova passa se ogni rotta HTTP diversa dalla sessione `/api/session` sta sotto `/api/v1/`; se i percorsi senza versione ricevono il Problem Details `404` della rotta inesistente; se ogni slice ha i propri file `.schemas.ts`, `.handler.ts` e `.route.adapter.ts` e le registrazioni ricevono i casi d'uso già costruiti; e se le rotte sono registrate soltanto dagli aggregatori consegnati alla factory tecnica. Fallisce se una rotta manca del prefisso di versione, se un percorso senza versione risponde con una rotta, se una slice unisce le responsabilità o se una rotta è registrata fuori da un aggregatore.
+La prova passa se ogni rotta HTTP diversa dalla sessione `/api/session` e dal server MCP della memoria `/mcp/memory` sta sotto `/api/v1/`; se i percorsi senza versione ricevono il Problem Details `404` della rotta inesistente; se ogni slice ha i propri file `.schemas.ts`, `.handler.ts` e `.route.adapter.ts` e le registrazioni ricevono i casi d'uso già costruiti; e se le rotte sono registrate soltanto dagli aggregatori consegnati alla factory tecnica. Fallisce se una rotta manca del prefisso di versione, se un percorso senza versione risponde con una rotta, se una slice unisce le responsabilità o se una rotta è registrata fuori da un aggregatore.
 
 #### Metadata
   * type: test-verification

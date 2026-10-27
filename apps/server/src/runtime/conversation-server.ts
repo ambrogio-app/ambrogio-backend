@@ -15,7 +15,10 @@ import type { Logger } from './logger.js';
 import { startupPhase } from './startup-failure.js';
 
 export type PrepareAgents = (directory: string, timeZone: string, language: 'en' | 'it') => Promise<Readonly<{
-  orchestrator: ProduceConversationReply; close(): Promise<void> }>>;
+  orchestrator: ProduceConversationReply;
+  /** Starts the connection attempts of the MCP connectors; absent when no agent has one. */
+  connect?(): Promise<void>;
+  close(): Promise<void> }>>;
 
 /** The conversation server built and not yet listening («Costruzione del server separata dall'ascolto»). */
 export type PreparedConversationServer = Readonly<{
@@ -29,6 +32,12 @@ export type PreparedConversationServer = Readonly<{
   close(): Promise<void>;
   /** Faults observed by the closing so far, also while it is still in progress. */
   readonly faults: readonly unknown[];
+  /**
+   * Start, after the listener opens, the single connection attempt of every agent with an MCP connector
+   * («Connessione asincrona dei connettori MCP»); the promise settles when every attempt has its outcome and never
+   * rejects for a failed attempt.
+   */
+  connectAgents(): Promise<void>;
 }>;
 
 /**
@@ -56,7 +65,7 @@ export async function prepareConversationServer(environment: NodeJS.ProcessEnv, 
       undefined, { log, resources });
     const stopFaults: unknown[] = [];
     let closing: Promise<void> | undefined;
-    return { server, address: { host: http.host, port: http.port }, close() {
+    return { server, address: { host: http.host, port: http.port }, connectAgents: () => agents.connect?.() ?? Promise.resolve(), close() {
       closing ??= (async () => {
         // New work stops and the turns in progress are interrupted before any resource is closed.
         try {

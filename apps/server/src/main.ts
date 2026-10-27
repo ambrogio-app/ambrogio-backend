@@ -11,7 +11,8 @@ const [{ createBaseLogger }, { prepareConversationServer }, { listen, runServerP
 const log = createBaseLogger();
 const outcome = await runServerProcess({
   build: () => prepareConversationServer(process.env, log),
-  activate: listen,
+  // The MCP connectors connect after the listener opens, without delaying the ingresses.
+  activate: async built => { await listen(built); void built.connectAgents(); },
   log,
 });
 if (outcome.force) process.exit(outcome.exitCode);

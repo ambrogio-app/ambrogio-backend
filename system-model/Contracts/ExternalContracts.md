@@ -66,6 +66,23 @@ Prova d'integrazione: «Prova del client MCP comune», «Prova del Bearer token 
   * define: [Trasporto HTTP dei connettori MCP](../Requirements/FamilyConversation.md#trasporto-http-dei-connettori-mcp)
 ---
 
+### Server PostgreSQL dell'archivio
+
+Fonte: PostgreSQL, https://www.postgresql.org/docs/18/ , distribuito per gli esempi di deployment e per le prove con l'immagine Docker `pgvector/pgvector:pg18` del progetto pgvector, https://github.com/pgvector/pgvector , che aggiunge l'estensione vettoriale `vector` all'immagine ufficiale `postgres:18`.
+
+Versione da cui Ambrogio dipende: PostgreSQL 18. L'immagine `pgvector/pgvector:pg18` segue l'ultima release minore di PostgreSQL 18 e di pgvector; con PostgreSQL 18 conserva i dati in `/var/lib/postgresql/18/docker`, sotto il volume `/var/lib/postgresql` che l'immagine dichiara. L'archivio non crea estensioni: l'immagine è scelta perché l'estensione resti disponibile senza cambiare immagine.
+
+Interfaccia usata: il protocollo client di PostgreSQL attraverso il driver `pg` del lockfile, con autenticazione a password o `trust` e senza TLS; tipi `uuid`, `text`, `integer`, `timestamptz(3)` e `jsonb`; transazioni `READ COMMITTED` con `SELECT ... FOR UPDATE` e `lock_timeout`; codici SQLSTATE `23505` e `55P03`; creazione e cancellazione di database da parte del ruolo delle prove.
+
+Prova d'integrazione: le selezioni `integration` ed `e2e` del backend girano su un server `pgvector/pgvector:pg18`, in CI come servizio del job e in locale con `ambrogio-model/scripts/test-postgres`; le prove di integrazione dei client usano lo stesso server attraverso l'ingresso di prova del backend.
+
+#### Metadata
+  * type: source
+
+#### Relations
+  * define: [Selezione dell'archivio conversazionale all'avvio](../Requirements/FamilyConversation.md#selezione-dellarchivio-conversazionale-allavvio)
+---
+
 ### Server MCP di Home Assistant
 
 Fonte: l'integrazione «Model Context Protocol Server» (`mcp_server`) di Home Assistant, documentata in https://www.home-assistant.io/integrations/mcp_server/ , con il sorgente in `homeassistant/components/mcp_server/` di https://github.com/home-assistant/core .

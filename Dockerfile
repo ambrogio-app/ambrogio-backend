@@ -21,7 +21,7 @@ FROM node:24-bookworm-slim
 WORKDIR /workspace
 LABEL org.opencontainers.image.source="https://github.com/ambrogio-app/ambrogio-backend" \
       org.opencontainers.image.licenses="MIT"
-RUN mkdir -p /etc/ambrogio/agents /data
+RUN mkdir -p /etc/ambrogio/agents
 COPY --from=build /opt/ambrogio/voices/ /opt/ambrogio/voices/
 COPY --from=build /opt/ambrogio/models/ /opt/ambrogio/models/
 COPY voices/README.md /opt/ambrogio/voices/README.md

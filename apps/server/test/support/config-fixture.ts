@@ -45,10 +45,13 @@ export function testEnvironment(variables: Readonly<Record<string, string | unde
   return { AMBROGIO_ENV: 'test', ...agentSecrets, ...variables };
 }
 
-/** The variables of the HTTP and Conversazioni components for a server on the loopback interface. */
-export function serverEnvironment(files: Readonly<{ directory: string; archive: string }>, port: number,
+/**
+ * The variables of the HTTP and Conversazioni components for a server on the loopback interface, with the
+ * archive in the PostgreSQL test database `files.database`.
+ */
+export function serverEnvironment(files: Readonly<{ directory: string; database: string }>, port: number,
   agentDirectory: string = files.directory, variables: Readonly<Record<string, string | undefined>> = {}): NodeJS.ProcessEnv {
   return testEnvironment({ AMBROGIO_HTTP_HOST: '127.0.0.1', AMBROGIO_HTTP_PORT: String(port),
-    AMBROGIO_PUBLIC_HTTPS: 'false', AMBROGIO_ARCHIVE_PATH: files.archive, AMBROGIO_AGENTS_DIR: agentDirectory,
+    AMBROGIO_PUBLIC_HTTPS: 'false', AMBROGIO_DATABASE_URL: files.database, AMBROGIO_AGENTS_DIR: agentDirectory,
     ...variables });
 }

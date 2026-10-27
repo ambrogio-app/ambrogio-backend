@@ -40,7 +40,13 @@ async function freePort(): Promise<number> {
 
 const llm = { provider: 'mistral', model: 'mistral-medium-latest', apiKey: secret };
 
-async function installation(options: Readonly<{ port?: number; archive?: string; specialist?: unknown }> = {}) {
+/**
+ * An archive URL that the tests of this file never reach: they fail before the archive is prepared, or, for
+ * the archive itself, on a port where no PostgreSQL server listens.
+ */
+const unreachableDatabase = 'postgres://ambrogio@127.0.0.1:9/ambrogio';
+
+async function installation(options: Readonly<{ port?: number; database?: string; specialist?: unknown }> = {}) {
   const directory = await mkdtemp(join(tmpdir(), 'ambrogio-startup-failure-'));
   directories.push(directory);
   const agents = join(directory, 'agents');
@@ -52,7 +58,7 @@ async function installation(options: Readonly<{ port?: number; archive?: string;
   }
   const port = options.port ?? await freePort();
   return { directory, environment: serverEnvironment({ directory,
-    archive: options.archive ?? join(directory, 'archive.sqlite') }, port, agents) };
+    database: options.database ?? unreachableDatabase }, port, agents) };
 }
 
 async function startupError(environment: NodeJS.ProcessEnv): Promise<unknown> {
@@ -109,6 +115,18 @@ test('names an invalid configuration variable and the unmet condition without it
     'Invalid environment variable AMBROGIO_ENV: expected development, test or production');
   expectReported(await startupError({ ...environment, AMBROGIO_VOICE_LANGUAGES: secret }),
     'Invalid environment variable AMBROGIO_VOICE_LANGUAGES: expected distinct languages among it and en');
+  for (const value of [`mysql://ambrogio:${secret}@127.0.0.1:5432/ambrogio`, `postgres://ambrogio:${secret}@127.0.0.1:5432/`,
+    `postgres://ambrogio:${secret}@127.0.0.1:5432/ambrogio?sslmode=require`, secret]) {
+    expectReported(await startupError({ ...environment, AMBROGIO_DATABASE_URL: value }),
+      'Invalid environment variable AMBROGIO_DATABASE_URL: expected a PostgreSQL URL without parameters');
+  }
+});
+
+// Verification: Prova della diagnostica del mancato avvio
+test('names the missing database URL', async () => {
+  const { environment } = await installation();
+  expectReported(await startupError({ ...environment, AMBROGIO_DATABASE_URL: undefined }),
+    'Missing environment variable AMBROGIO_DATABASE_URL');
 });
 
 // Verification: Prova della diagnostica del mancato avvio
@@ -139,15 +157,8 @@ test('names the agent whose MCP server cannot be reached without exposing its cr
   expectReported(error, 'Agent MCP connection failed: facts');
 });
 
-test('names an archive that cannot be opened', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'ambrogio-startup-archive-'));
-  directories.push(directory);
-  const { environment } = await installation({ archive: join(directory, 'missing', secret, 'a.sqlite') });
+test('names an archive whose database cannot be reached without exposing its URL', async () => {
+  const unreachable = await freePort();
+  const { environment } = await installation({ database: `postgres://ambrogio:${secret}@127.0.0.1:${unreachable}/${secret}` });
   expectReported(await startupError(environment), 'Conversation archive could not be prepared');
-});
-
-test('names a listener that cannot start', async () => {
-  const { port } = await listeningPort();
-  const { environment } = await installation({ port });
-  expectReported(await startupError(environment), 'HTTP listener could not start');
 });

@@ -3,11 +3,11 @@ import type { ConversationConfig } from '@ambrogio/conversations/adapters/out/co
 import { SystemCurrentTime } from '@ambrogio/conversations/adapters/out/system-current-time';
 import { SystemDeadlines } from '@ambrogio/conversations/adapters/out/system-deadlines';
 import { UuidIdentifiers } from '@ambrogio/conversations/adapters/out/uuid-identifiers';
-import { openConversationArchive } from '@ambrogio/conversations/adapters/out/sqlite/archive';
-import { SqliteConversationHistoryRead } from '@ambrogio/conversations/adapters/out/sqlite/history-read';
-import { SqliteConversationListRead } from '@ambrogio/conversations/adapters/out/sqlite/list-read';
-import { SqliteTurnRepository } from '@ambrogio/conversations/adapters/out/sqlite/turn-repository';
-import { SqliteConversationLookup } from '@ambrogio/conversations/adapters/out/sqlite/conversation-lookup';
+import { openConversationArchive, type IdleConnectionFault } from '@ambrogio/conversations/adapters/out/postgres/archive';
+import { PostgresConversationHistoryRead } from '@ambrogio/conversations/adapters/out/postgres/history-read';
+import { PostgresConversationListRead } from '@ambrogio/conversations/adapters/out/postgres/list-read';
+import { PostgresTurnRepository } from '@ambrogio/conversations/adapters/out/postgres/turn-repository';
+import { PostgresConversationLookup } from '@ambrogio/conversations/adapters/out/postgres/conversation-lookup';
 import { createConversationSessions } from '@ambrogio/conversations/adapters/in/session/conversation-session';
 import { createProtocolDecoder } from '@ambrogio/conversations/adapters/in/session/protocol-decoder';
 import type { SpeechComponents } from '@ambrogio/conversations/adapters/in/session/speech-components';
@@ -28,27 +28,23 @@ export type PreparedConversations = Awaited<ReturnType<typeof prepareConfiguredC
 
 /**
  * Prepare the configured archive and the conversation services from the validated configuration: the
- * archive is migrated, then the turns left pending are interrupted at `interruptedAt`.
+ * archive is migrated, then the turns left pending are interrupted at `interruptedAt`. Each fault of an
+ * idle connection of the archive reaches `onIdleConnectionFault` once.
  */
-export async function prepareConfiguredConversations(config: ConversationConfig, interruptedAt: Date) {
-  return openPreparedConversations(config.archivePath, interruptedAt, config);
-}
-
-async function openPreparedConversations(
-  archiveFilename: string, interruptedAt: Date, config: ConversationConfig,
-) {
-  const archive = await openConversationArchive(archiveFilename);
+export async function prepareConfiguredConversations(config: ConversationConfig, interruptedAt: Date,
+  onIdleConnectionFault: IdleConnectionFault) {
+  const archive = await openConversationArchive(config.databaseUrl, onIdleConnectionFault);
   try {
-    const turns = new SqliteTurnRepository(archive.db);
+    const turns = new PostgresTurnRepository(archive.db);
     const recoveredTurns = await createInterruptPendingTurns({ turns, clock: { now: () => interruptedAt } })();
-    const read = new SqliteConversationListRead(archive.db, config.maxListPageSize);
+    const read = new PostgresConversationListRead(archive.db, config.maxListPageSize);
     const listConversations = createListConversations(read, config.listPageSize, config.maxListPageSize);
     const failureMessage = config.language === 'it'
       ? 'Non riesco a completare la risposta.'
       : "I can't complete the response.";
     return { listConversations, maxListPageSize: config.maxListPageSize, historyTurns: config.historyTurns,
       failureMessage, language: config.language, archive, recoveredTurns, turns,
-      conversations: new SqliteConversationLookup(archive.db),
+      conversations: new PostgresConversationLookup(archive.db),
       /** At shutdown, after the ingresses stop: interrupt the turns still pending. */
       interruptPendingTurns: createInterruptPendingTurns({ turns, clock: new SystemCurrentTime() }) };
   } catch (error) {
@@ -67,7 +63,7 @@ export function assembleExchangeTurn(
     begin: createBeginTurn({ turns: prepared.turns, conversations: prepared.conversations,
       identifiers: new UuidIdentifiers(), clock }),
     complete: createCompleteTurn({ turns: prepared.turns, clock }),
-    history: new SqliteConversationHistoryRead(prepared.archive.db),
+    history: new PostgresConversationHistoryRead(prepared.archive.db),
     reply,
     failureMessage: prepared.failureMessage,
     deadlines: new SystemDeadlines(),
@@ -118,7 +114,7 @@ export function registerConversationSessionRoute(
 function consultationDependencies(prepared: PreparedConversations) {
   return {
     listConversations: prepared.listConversations,
-    getConversation: createGetConversation(new SqliteConversationHistoryRead(prepared.archive.db)),
+    getConversation: createGetConversation(new PostgresConversationHistoryRead(prepared.archive.db)),
     maxPageSize: prepared.maxListPageSize,
   };
 }

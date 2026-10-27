@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -20,9 +21,15 @@ const image = existingImage || 'ambrogio-server:verification';
 const port = 34123;
 const temp = mkdtempSync(join(tmpdir(), 'ambrogio-docker-'));
 const agents = join(temp, 'agents');
-const data = join(temp, 'data');
 const customVoices = join(temp, 'custom-voices');
+// The archive is a PostgreSQL container on a network of its own, started like the backend with Docker only.
+const suffix = randomBytes(4).toString('hex');
+const network = `ambrogio-verify-${suffix}`;
+const database = `ambrogio-verify-postgres-${suffix}`;
+const databaseUrl = `postgres://postgres@${database}:5432/postgres`;
 let container;
+let networkCreated = false;
+let databaseStarted = false;
 
 function docker(...args) {
   return execFileSync('docker', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] }).trim();
@@ -30,7 +37,6 @@ function docker(...args) {
 
 try {
   mkdirSync(agents);
-  mkdirSync(data);
   mkdirSync(customVoices);
   writeFileSync(join(customVoices, 'custom-voice.marker'), 'mounted voice directory');
   const llm = { provider: 'mistral', model: 'mistral-medium-latest', apiKeyEnv: 'MISTRAL_API_KEY' };
@@ -45,7 +51,7 @@ try {
     // The image holds no configuration: an empty agent directory, no TypeScript module, no environment file.
     'test -d /etc/ambrogio/agents && test -z "$(ls -A /etc/ambrogio/agents)" && ' +
     'test -z "$(find /etc/ambrogio -type f)" && test ! -e /workspace/.env && test ! -e /workspace/.env.example && ' +
-    'test ! -e /workspace/examples && test ! -e /data/conversations.sqlite && ' +
+    'test ! -e /workspace/examples && test ! -e /data && ' +
     'test ! -e /opt/piper && ! command -v python3 >/dev/null && cd /workspace/packages/conversations && node -e "require(\'sherpa-onnx-node\')"');
   // Each bundled voice is loaded and spoken with the image's own synthesizer code.
   const synthesis = [
@@ -134,14 +140,28 @@ try {
   docker('run', '--rm', '--entrypoint', '/bin/sh',
     '--mount', `type=bind,src=${customVoices},dst=/opt/ambrogio/voices,readonly`,
     image, '-c', 'test -f /opt/ambrogio/voices/custom-voice.marker && test ! -e /opt/ambrogio/voices/vits-piper-it_IT-riccardo-x_low');
+  docker('network', 'create', network);
+  networkCreated = true;
+  docker('run', '--detach', '--name', database, '--network', network, '--env', 'POSTGRES_HOST_AUTH_METHOD=trust',
+    'pgvector/pgvector:pg18');
+  databaseStarted = true;
+  // The image restarts the server once after initialization: wait for the final one.
+  for (let attempt = 0; ; attempt++) {
+    const logs = execFileSync('docker', ['logs', database], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    let ready = false;
+    try { docker('exec', database, 'pg_isready', '--host', '127.0.0.1', '--username', 'postgres', '--quiet'); ready = true; }
+    catch { /* not ready yet */ }
+    if (ready && logs.includes('PostgreSQL init process complete')) break;
+    if (attempt === 60) throw new Error('The PostgreSQL container did not become ready');
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
   for (const language of ['it', 'en']) {
     // Production values only: every setting without a production default is explicit.
     container = docker('run', '--detach', '--stop-timeout', '15',
-      '--publish', `127.0.0.1::${port}`,
+      '--publish', `127.0.0.1::${port}`, '--network', network,
       '--mount', `type=bind,src=${agents},dst=/etc/ambrogio/agents,readonly`,
-      '--mount', `type=bind,src=${data},dst=/data`,
       ...envArguments({ AMBROGIO_ENV: 'production', AMBROGIO_HTTP_HOST: '0.0.0.0', AMBROGIO_HTTP_PORT: String(port),
-        AMBROGIO_PUBLIC_HTTPS: 'false', AMBROGIO_ARCHIVE_PATH: '/data/conversations.sqlite',
+        AMBROGIO_PUBLIC_HTTPS: 'false', AMBROGIO_DATABASE_URL: databaseUrl,
         AMBROGIO_LANGUAGE: language, MISTRAL_API_KEY: 'test-only-placeholder', ...piperVoices }),
       image);
     const published = docker('port', container, `${port}/tcp`);
@@ -168,13 +188,21 @@ try {
     if (logs.trim() !== '') throw new Error(`Unexpected output after docker stop for ${language}`);
     console.log(`Voice-enabled HTTP startup and orderly stop passed for ${language}`);
   }
-  if (!existsSync(join(data, 'conversations.sqlite'))) {
-    throw new Error('SQLite archive was not created in the external mount');
+  const tables = docker('exec', database, 'psql', '--username', 'postgres', '--tuples-only', '--no-align', '--command',
+    "select string_agg(table_name, ',' order by table_name) from information_schema.tables where table_schema = 'public'");
+  if (!['conversations', 'turns'].every(table => tables.split(',').includes(table))) {
+    throw new Error(`The archive tables were not created in the PostgreSQL container: ${tables}`);
   }
-  console.log('Docker image verification passed: configuration from environment variables, mounted JSON agents and external SQLite, language profiles, bundled Nemotron streaming, Piper voices in Italian and English, replaceable Piper voices, voice-enabled HTTP 200, no Compose.');
+  console.log('Docker image verification passed: configuration from environment variables, mounted JSON agents and an external PostgreSQL database, language profiles, bundled Nemotron streaming, Piper voices in Italian and English, replaceable Piper voices, voice-enabled HTTP 200, no Compose.');
 } finally {
   if (container) {
     try { docker('rm', '--force', container); } catch { /* preserve the verification failure */ }
+  }
+  if (databaseStarted) {
+    try { docker('rm', '--force', database); } catch { /* preserve the verification failure */ }
+  }
+  if (networkCreated) {
+    try { docker('network', 'rm', network); } catch { /* preserve the verification failure */ }
   }
   rmSync(temp, { recursive: true, force: true });
 }

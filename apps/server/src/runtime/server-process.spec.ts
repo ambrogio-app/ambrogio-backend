@@ -1,20 +1,12 @@
 import { EventEmitter } from 'node:events';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { createServer } from 'node:net';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ProjectError } from '@ambrogio/conversations/application/project-error';
-import { serverEnvironment } from '../../test/support/config-fixture.js';
 import { capturedBaseLogger } from '../../test/support/logger-fixture.js';
-import { prepareConversationServer } from './conversation-server.js';
 import { createResourceStack, LifecycleError } from './lifecycle.js';
 import { listen, runServerProcess, SHUTDOWN_TIMEOUT_MS, unrefShutdownTimer, type ShutdownTimer } from './server-process.js';
 
-const directories: string[] = [];
-afterEach(async () => {
+afterEach(() => {
   vi.restoreAllMocks();
-  await Promise.all(directories.splice(0).map(directory => rm(directory, { recursive: true, force: true })));
 });
 
 /** A timer controlled by the test: it records each arming and fires on demand. */
@@ -174,34 +166,5 @@ describe('runner of the server process', () => {
     vi.spyOn(globalThis, 'setTimeout').mockReturnValue({ unref } as unknown as ReturnType<typeof setTimeout>);
     unrefShutdownTimer(SHUTDOWN_TIMEOUT_MS, () => undefined);
     expect(unref).toHaveBeenCalledOnce();
-  });
-
-  // Verification: Prova della costruzione del server senza ascolto
-  it('opens the listener of the real conversation server only at activation', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'ambrogio-server-process-'));
-    directories.push(directory);
-    const probe = createServer();
-    await new Promise<void>(resolve => probe.listen(0, '127.0.0.1', resolve));
-    const port = (probe.address() as { port: number }).port;
-    await new Promise<void>(resolve => probe.close(() => resolve()));
-    const h = harness();
-    const listening: boolean[] = [];
-    const outcome = runServerProcess({ ...h.options,
-      build: async () => {
-        const built = await prepareConversationServer(serverEnvironment({ directory,
-          archive: join(directory, 'archive.sqlite') }, port), h.output.log,
-        async () => ({ orchestrator: { async *produce() { yield { kind: 'text' as const, text: 'unused' }; } },
-          async close() {} }));
-        listening.push(built.server.server.listening);
-        return built;
-      },
-      activate: async built => { await listen(built); listening.push(built.server.server.listening); } });
-    for (let attempt = 0; attempt < 50 && listening.length < 2; attempt++) await new Promise(r => setTimeout(r, 20));
-    expect(listening).toEqual([false, true]);
-    const response = await fetch(`http://127.0.0.1:${port}/api/v1/conversations`);
-    expect(response.status).toBe(200);
-    h.signals.emit('SIGTERM');
-    expect(await outcome).toEqual({ exitCode: 0, force: false });
-    expect(h.output.lines()).toEqual([]);
   });
 });

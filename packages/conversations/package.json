@@ -62,29 +62,33 @@
       "types": "./dist/application/turn-capabilities.port.d.ts",
       "import": "./dist/application/turn-capabilities.port.js"
     },
-    "./adapters/out/sqlite/migrations": {
-      "types": "./dist/adapters/out/sqlite/migrations.d.ts",
-      "import": "./dist/adapters/out/sqlite/migrations.js"
+    "./adapters/out/postgres/migrations": {
+      "types": "./dist/adapters/out/postgres/migrations.d.ts",
+      "import": "./dist/adapters/out/postgres/migrations.js"
     },
-    "./adapters/out/sqlite/archive": {
-      "types": "./dist/adapters/out/sqlite/conversation-archive.d.ts",
-      "import": "./dist/adapters/out/sqlite/conversation-archive.js"
+    "./adapters/out/postgres/temporary-database": {
+      "types": "./dist/adapters/out/postgres/temporary-database.d.ts",
+      "import": "./dist/adapters/out/postgres/temporary-database.js"
     },
-    "./adapters/out/sqlite/turn-repository": {
-      "types": "./dist/adapters/out/sqlite/sqlite-turn-repository.adapter.d.ts",
-      "import": "./dist/adapters/out/sqlite/sqlite-turn-repository.adapter.js"
+    "./adapters/out/postgres/archive": {
+      "types": "./dist/adapters/out/postgres/conversation-archive.d.ts",
+      "import": "./dist/adapters/out/postgres/conversation-archive.js"
     },
-    "./adapters/out/sqlite/conversation-lookup": {
-      "types": "./dist/adapters/out/sqlite/sqlite-conversation-lookup.adapter.d.ts",
-      "import": "./dist/adapters/out/sqlite/sqlite-conversation-lookup.adapter.js"
+    "./adapters/out/postgres/turn-repository": {
+      "types": "./dist/adapters/out/postgres/postgres-turn-repository.adapter.d.ts",
+      "import": "./dist/adapters/out/postgres/postgres-turn-repository.adapter.js"
     },
-    "./adapters/out/sqlite/history-read": {
-      "types": "./dist/adapters/out/sqlite/sqlite-conversation-history-read.adapter.d.ts",
-      "import": "./dist/adapters/out/sqlite/sqlite-conversation-history-read.adapter.js"
+    "./adapters/out/postgres/conversation-lookup": {
+      "types": "./dist/adapters/out/postgres/postgres-conversation-lookup.adapter.d.ts",
+      "import": "./dist/adapters/out/postgres/postgres-conversation-lookup.adapter.js"
     },
-    "./adapters/out/sqlite/list-read": {
-      "types": "./dist/adapters/out/sqlite/sqlite-conversation-list-read.adapter.d.ts",
-      "import": "./dist/adapters/out/sqlite/sqlite-conversation-list-read.adapter.js"
+    "./adapters/out/postgres/history-read": {
+      "types": "./dist/adapters/out/postgres/postgres-conversation-history-read.adapter.d.ts",
+      "import": "./dist/adapters/out/postgres/postgres-conversation-history-read.adapter.js"
+    },
+    "./adapters/out/postgres/list-read": {
+      "types": "./dist/adapters/out/postgres/postgres-conversation-list-read.adapter.d.ts",
+      "import": "./dist/adapters/out/postgres/postgres-conversation-list-read.adapter.js"
     },
     "./adapters/out/conversation-config": {
       "types": "./dist/adapters/out/conversation-config.d.ts",
@@ -117,10 +121,6 @@
     "./adapters/in/logger": {
       "types": "./dist/adapters/in/logger.d.ts",
       "import": "./dist/adapters/in/logger.js"
-    },
-    "./adapters/out/sqlite/schema": {
-      "types": "./dist/adapters/out/sqlite/schema.d.ts",
-      "import": "./dist/adapters/out/sqlite/schema.js"
     },
     "./adapters/out/uuid-identifiers": {
       "types": "./dist/adapters/out/uuid-identifiers.adapter.d.ts",
@@ -161,15 +161,15 @@
     "@sinclair/typebox": "0.34.52",
     "ai": "7.0.143",
     "ajv": "8.20.0",
-    "better-sqlite3": "13.0.3",
     "fastify": "5.12.7",
     "kysely": "0.29.6",
+    "pg": "8.23.1",
     "sherpa-onnx-node": "1.13.8",
     "ws": "8.22.0"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "9.6.0",
     "@types/node": "24.19.2",
+    "@types/pg": "8.23.1",
     "@types/ws": "8.18.2"
   }
 }

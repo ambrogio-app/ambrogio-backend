@@ -131,7 +131,15 @@ test('the CI checks the whole model from the side-by-side workspace, then the ba
   });
   const job = ci.document.jobs.checks;
   expect(job.name).toBe('Backend checks');
-  expect(job.env).toEqual({ BRANCH: '${{ github.head_ref || github.ref_name }}', COREPACK_ENABLE_DOWNLOAD_PROMPT: '0' });
+  expect(job.env).toEqual({ BRANCH: '${{ github.head_ref || github.ref_name }}', COREPACK_ENABLE_DOWNLOAD_PROMPT: '0',
+    AMBROGIO_TEST_DATABASE_URL: 'postgres://postgres@127.0.0.1:5432/postgres' });
+  // The PostgreSQL test server of the job: the selections that use it fail when it is not available.
+  expect(Object.keys(job.services ?? {})).toEqual(['postgres']);
+  const postgres = job.services.postgres;
+  expect(postgres.image).toBe('pgvector/pgvector:pg18');
+  expect(postgres.env).toEqual({ POSTGRES_HOST_AUTH_METHOD: 'trust' });
+  expect(postgres.ports).toEqual(['5432:5432']);
+  expect(String(postgres.options)).toMatch(/--health-cmd "pg_isready[^"]*"/);
   expect(ci.text).not.toMatch(/continue-on-error/);
   // The Reqvire version is resolved by ambrogio-model, never repeated here.
   expect(ci.text).not.toMatch(/reqvire-org|check-model/);
@@ -151,43 +159,46 @@ test('the CI checks the whole model from the side-by-side workspace, then the ba
   const audit = indexOfRun(job, /^pnpm audit --audit-level high\s*$/);
   const typecheck = indexOfRun(job, /^pnpm typecheck\s*$/);
   const build = indexOfRun(job, /^pnpm build\s*$/);
+  const databaseTypes = indexOfRun(job, /^pnpm db:types:check\s*$/);
   const tests = indexOfRun(job, /^pnpm test\s*$/);
   const integration = indexOfRun(job, /^pnpm test:integration\s*$/);
   const e2e = indexOfRun(job, /^pnpm test:e2e\s*$/);
   const gitleaks = stepsOf(job).indexOf(installStep(job));
-  for (const index of [model, sideBySide, modelChecks, corepack, install, audit, typecheck, build, tests, integration, e2e]) expect(index).toBeGreaterThanOrEqual(0);
+  for (const index of [model, sideBySide, modelChecks, corepack, install, audit, typecheck, build, databaseTypes, tests, integration, e2e]) expect(index).toBeGreaterThanOrEqual(0);
+  expect(databaseTypes).toBe(build + 1);
   expect(install).toBeGreaterThan(corepack);
   expect(audit).toBe(install + 1);
   expect(sideBySide).toBeGreaterThan(model);
   expect(modelChecks).toBeGreaterThan(sideBySide);
   expect(Math.min(typecheck, build, tests, integration)).toBeGreaterThan(audit);
-  expect(typecheck).toBeGreaterThan(build);
+  expect(typecheck).toBeGreaterThan(databaseTypes);
   expect(tests).toBeGreaterThan(Math.max(typecheck, gitleaks));
   expect(integration).toBeGreaterThan(tests);
   expect(e2e).toBeGreaterThan(Math.max(build, integration));
-  for (const index of [install, audit, typecheck, build, tests, integration, e2e]) {
+  for (const index of [install, audit, typecheck, build, databaseTypes, tests, integration, e2e]) {
     expect(stepsOf(job)[index]!['working-directory']).toBe('workspace/ambrogio-backend');
   }
   expectVerifiedInstall(job);
 });
 
 // Verification: Prova della configurazione della CI del server
-test('every SQLite persistence adapter test drives a real SQLite database in the integration selection', () => {
-  const testFiles = readdirSync(join(repositoryRoot, 'packages'), { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .flatMap((entry) => readdirSync(join(repositoryRoot, 'packages', entry.name), { recursive: true, encoding: 'utf8' })
+test('every test that uses PostgreSQL belongs to the integration or compiled process selection', () => {
+  const testFiles = ['packages', 'apps', 'test']
+    .flatMap((top) => readdirSync(join(repositoryRoot, top), { recursive: true, encoding: 'utf8' })
       .filter((name) => name.endsWith('.spec.ts') && !/(^|\/)(node_modules|dist)\//.test(name))
-      .map((name) => join('packages', entry.name, name)));
+      .map((name) => join(top, name)));
   const text = (file: string) => readFileSync(join(repositoryRoot, file), 'utf8');
-  const adapterTests = testFiles.filter((file) => [...text(file).matchAll(/from '(\.[^']*\.adapter\.js)'/g)]
-    .some((match) => join(dirname(file), match[1]!).includes('/adapters/out/sqlite/')));
-  const integrationTests = testFiles.filter((file) => file.endsWith('.integration.spec.ts'));
-  expect(adapterTests.length).toBeGreaterThan(0);
-  for (const file of adapterTests) {
-    expect(text(file), file).toMatch(/from 'better-sqlite3'/);
-    expect(file).toMatch(/\.integration\.spec\.ts$/);
-  }
-  for (const file of integrationTests) expect(text(file), file).toMatch(/from 'better-sqlite3'/);
+  // The pure mapper, the migration list and the generated types of `postgres/` reach no database.
+  const pure = /\/adapters\/out\/postgres\/(?:postgres-turn-mapper|migrations|database\.generated)\.js$/;
+  const usesDatabase = (file: string) => [...text(file).matchAll(/^\s*(?:import|export)\b[^']*?\bfrom '([^']+)'/gm)].some((match) => {
+    const specifier = match[1]!;
+    const target = specifier.startsWith('.') ? join(dirname(file), specifier) : specifier;
+    if (target === join('test', 'support', 'test-database.js')) return true;
+    return target.includes('/adapters/out/postgres/') && !pure.test(target);
+  });
+  const databaseTests = testFiles.filter(usesDatabase);
+  expect(databaseTests.length).toBeGreaterThan(0);
+  for (const file of databaseTests) expect(file).toMatch(/\.(integration|e2e)\.spec\.ts$/);
 });
 
 const pnpmProfileViolations = (text: string) => [/npm install (--global|-g)\b[^\n]*pnpm/, /npx[^\n]*\bpnpm@/]
@@ -237,7 +248,8 @@ test('pnpm verify runs the model checks, the frozen installation, the audit and 
   const install = indexOfRun(job, /^pnpm install --frozen-lockfile\s*$/);
   const checks = runs(job).slice(install + 1).map((run) => run.trim()).filter((run) => /^pnpm /.test(run))
     .filter((run) => run !== 'pnpm audit --audit-level high');
-  expect(checks).toEqual(['pnpm build', 'pnpm typecheck', 'pnpm test', 'pnpm test:integration', 'pnpm test:e2e']);
+  expect(checks).toEqual(['pnpm build', 'pnpm db:types:check', 'pnpm typecheck', 'pnpm test', 'pnpm test:integration',
+    'pnpm test:e2e']);
   expect(manifest.scripts.verify!.split(' && ')).toEqual([
     '../ambrogio-model/scripts/model-checks', 'pnpm install --frozen-lockfile', 'pnpm audit --audit-level high', ...checks,
   ]);

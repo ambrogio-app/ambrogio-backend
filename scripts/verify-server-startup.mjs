@@ -5,9 +5,17 @@ import { join } from 'node:path';
 import { prepareConversationServer } from '../apps/server/dist/runtime/conversation-server.js';
 import { createBaseLogger } from '../apps/server/dist/runtime/logger.js';
 import { listen } from '../apps/server/dist/runtime/server-process.js';
+import { createTemporaryDatabase } from '../packages/conversations/dist/adapters/out/postgres/temporary-database.js';
 
 const writeAgent = (filename, value) => writeFile(filename, `${JSON.stringify(value)}\n`);
 
+// The archive is a new database on the PostgreSQL test server, dropped at the end.
+const serverUrl = process.env.AMBROGIO_TEST_DATABASE_URL;
+if (!serverUrl) {
+  console.error('Missing environment variable AMBROGIO_TEST_DATABASE_URL: start one with ../ambrogio-model/scripts/test-postgres start');
+  process.exit(1);
+}
+const database = await createTemporaryDatabase(serverUrl);
 const directory = await mkdtemp(join(tmpdir(), 'ambrogio-server-startup-'));
 try {
   const probe = createServer();
@@ -32,7 +40,7 @@ try {
   // Built without listening, then activated as the process runner does.
   const runtime = await prepareConversationServer({ AMBROGIO_ENV: 'production', AMBROGIO_HTTP_HOST: '127.0.0.1',
     AMBROGIO_HTTP_PORT: String(address.port), AMBROGIO_PUBLIC_HTTPS: 'false',
-    AMBROGIO_ARCHIVE_PATH: join(directory, 'archive.sqlite'), AMBROGIO_AGENTS_DIR: agents,
+    AMBROGIO_DATABASE_URL: database.url, AMBROGIO_AGENTS_DIR: agents,
     MISTRAL_API_KEY: 'startup-test-key' }, createBaseLogger());
   try {
     await listen(runtime);
@@ -43,4 +51,7 @@ try {
     }
     console.log(`Node ${process.version}: compiled ESM server returned HTTP 200`);
   } finally { await runtime.close(); }
-} finally { await rm(directory, { recursive: true, force: true }); }
+} finally {
+  await rm(directory, { recursive: true, force: true });
+  await database.drop();
+}

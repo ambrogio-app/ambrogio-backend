@@ -240,7 +240,7 @@ Origine: baseline Reqvire «Interrupted state persisted before closing resources
 Il backend deve offrire `pnpm verify` secondo «Comando di verifica completo con pnpm», con i comandi dei controlli successivi all'installazione nell'ordine del job `Backend checks` della CI.
 
 #### Details
-I comandi del punto 5 del contratto sono, in quest'ordine, `pnpm build`, `pnpm typecheck`, `pnpm test`, `pnpm test:integration` e `pnpm test:e2e`; la build precede il controllo TypeScript e i test perché i package del workspace esportano la propria cartella `dist/`, che l'applicazione server e i suoi test importano. La suite di test prova l'hook pre-commit e richiede gitleaks nel `PATH`.
+I comandi del punto 5 del contratto sono, in quest'ordine, `pnpm build`, `pnpm db:types:check`, `pnpm typecheck`, `pnpm test`, `pnpm test:integration` e `pnpm test:e2e`; la build precede il controllo dei tipi del database, il controllo TypeScript e i test perché i package del workspace esportano la propria cartella `dist/`, che lo script dei tipi, l'applicazione server e i suoi test importano. La suite di test prova l'hook pre-commit e richiede gitleaks nel `PATH`; il controllo dei tipi e le selezioni `integration` ed `e2e` richiedono `AMBROGIO_TEST_DATABASE_URL`.
 
 #### Metadata
   * type: requirement
@@ -314,10 +314,10 @@ Quando un `catch` del server aggiunge un contesto operativo concreto a un guasto
 
 ### Controlli CI delle modifiche funzionali del server
 
-Quando la CI del backend viene eseguita, il job `Backend checks` di `.github/workflows/ci.yml` deve eseguire il checkout del repository in `workspace/ambrogio-backend`, scaricare affiancati gli altri repository del modello con `ambrogio-model/scripts/checkout-workspace`, eseguire `ambrogio-model/scripts/model-checks` sulla cartella `workspace` e poi, nella cartella del backend, l'installazione delle dipendenze, l'audit delle dipendenze, la build, il controllo TypeScript e la suite backend con Vitest nella selezione veloce, con la prova dell'hook dei segreti e lo scanner installato e verificato, nella selezione di integrazione, con le prove degli adapter di persistenza su SQLite reale quando tali adapter esistono, e nella selezione dei processi compilati, e deve fallire se uno di questi controlli fallisce.
+Quando la CI del backend viene eseguita, il job `Backend checks` di `.github/workflows/ci.yml` deve eseguire il checkout del repository in `workspace/ambrogio-backend`, scaricare affiancati gli altri repository del modello con `ambrogio-model/scripts/checkout-workspace`, eseguire `ambrogio-model/scripts/model-checks` sulla cartella `workspace` e poi, nella cartella del backend, l'installazione delle dipendenze, l'audit delle dipendenze, la build, il controllo TypeScript e la suite backend con Vitest nella selezione veloce, con la prova dell'hook dei segreti e lo scanner installato e verificato, nella selezione di integrazione, con le prove che usano un database PostgreSQL reale fornito da un servizio del job, e nella selezione dei processi compilati, oltre al controllo dei tipi del database generati dallo schema migrato, e deve fallire se uno di questi controlli fallisce.
 
 #### Details
-Origine: baseline Reqvire «Persistence adapter tests against a real database», adottata.
+Origine: baseline Reqvire «Persistence adapter tests against a real database», adottata; «Isolated and guarded test databases», adottata per il servizio della CI: se il database non è disponibile, le selezioni che lo usano falliscono invece di essere saltate.
 
 #### Metadata
   * type: requirement
@@ -416,16 +416,18 @@ Origine: baseline Reqvire «Configuration module per component reading environme
 
 ### Database di prova isolati del backend
 
-Le prove del backend che usano un database SQLite devono usare soltanto database che creano, in memoria o in una cartella temporanea propria, costruiti con le migrazioni di produzione, devono cancellare soltanto le cartelle che hanno creato e non devono leggere la configurazione dell'installazione né ripiegare su un archivio di sviluppo o di produzione.
+Le prove del backend che usano PostgreSQL devono usare soltanto database che creano sul server indicato da `AMBROGIO_TEST_DATABASE_URL`, con un nome che li riconosce come database di prova, costruiti con le migrazioni di produzione; devono cancellare soltanto i database che hanno creato, non devono leggere la configurazione dell'installazione né ripiegare su un database di sviluppo o di produzione, e devono fallire, senza essere saltate, se la variabile manca o il server non risponde.
 
 #### Details
-Origine: baseline Reqvire «Isolated and guarded test databases», adattata: con SQLite incorporato ogni prova crea il proprio database invece di un database per worker su un server, quindi non servono il controllo del bersaglio, la pulizia dei dati fra i casi né un servizio di database da cui la suite dipenda.
+Origine: baseline Reqvire «Isolated and guarded test databases», adattata: ogni prova crea il proprio database invece di un database per worker, così non serve azzerare i dati fra i casi; il bersaglio è riconosciuto dal prefisso `ambrogio_test_` dei database creati, senza limitare i privilegi del ruolo, perché il server di prova contiene soltanto database delle prove; la variabile è `AMBROGIO_TEST_DATABASE_URL` e l'ambiente di esecuzione non è richiesto.
 
 #### Metadata
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [sqlite-turn-repository.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.integration.spec.ts)
+  * satisfiedBy: [postgres-turn-repository.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/postgres/postgres-turn-repository.adapter.integration.spec.ts)
+  * satisfiedBy: [temporary-database.ts](../../packages/conversations/src/adapters/out/postgres/temporary-database.ts)
+  * satisfiedBy: [test-database.ts](../../test/support/test-database.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -884,10 +886,12 @@ Origine: baseline Reqvire «Fastify as HTTP framework», adottata.
 
 ### Ingresso di prova pubblico del server conversazionale
 
-Il backend deve offrire un ingresso di prova pubblico e documentato che avvia il server conversazionale completo, con il protocollo `ambrogio.v1` e le API HTTP pubbliche, su un indirizzo locale e con un archivio temporaneo, sostituendo il modello linguistico, la trascrizione e la sintesi vocale con implementazioni deterministiche fornite dalla prova, e che restituisce l'indirizzo del server e un'operazione di chiusura; l'ingresso deve bastare alle prove di integrazione dei client senza che importino altri moduli del backend.
+Il backend deve offrire un ingresso di prova pubblico e documentato che avvia il server conversazionale completo, con il protocollo `ambrogio.v1` e le API HTTP pubbliche, su un indirizzo locale e con un archivio temporaneo in un database PostgreSQL di prova, sostituendo il modello linguistico, la trascrizione e la sintesi vocale con implementazioni deterministiche fornite dalla prova, e che restituisce l'indirizzo del server e un'operazione di chiusura; l'ingresso deve bastare alle prove di integrazione dei client senza che importino altri moduli del backend.
 
 #### Details
 Le prove di integrazione dei client conversazionali usano soltanto questo ingresso, dal repository backend affiancato nella cartella di lavoro, compilato nella loro CI dopo il checkout affiancato e senza una revisione fissata. Modulo, funzione e forma dei parametri sono registrati in «Ingresso di prova del server conversazionale».
+
+L'archivio dell'ingresso usa PostgreSQL reale come la produzione, quindi le prove dei client richiedono un server PostgreSQL di prova. Alternativa considerata e non adottata: PGlite, PostgreSQL compilato in WebAssembly ed eseguito nel processo della prova, che eviterebbe il servizio PostgreSQL nelle prove dei client ma eserciterebbe un motore diverso da quello di produzione.
 
 Origine: baseline Reqvire «Public test entry point for client integration tests», adottata.
 
@@ -900,6 +904,7 @@ Origine: baseline Reqvire «Public test entry point for client integration tests
 
 #### Relations
   * satisfiedBy: [test-server.ts](../../apps/server/src/runtime/test-server.ts)
+  * satisfiedBy: [temporary-database.ts](../../packages/conversations/src/adapters/out/postgres/temporary-database.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -1114,7 +1119,7 @@ Quando il logger del server HTTP emette un evento diagnostico, la riga JSON deve
 I file del codice di produzione dell'applicazione server e dei package business del backend devono seguire «Convenzione dei nomi di casi d'uso, porte e adapter».
 
 #### Details
-Esempi nel backend: il caso d'uso che scambia un turno si chiama `exchange-turn.use-case.ts`; la porta di lettura dello storico si chiama `conversation-history-read.port.ts` e la sua implementazione SQLite `sqlite-conversation-history-read.adapter.ts`. Le regole sulla dichiarazione di firme, factory ed esiti restano applicabili nel loro ambito.
+Esempi nel backend: il caso d'uso che scambia un turno si chiama `exchange-turn.use-case.ts`; la porta di lettura dello storico si chiama `conversation-history-read.port.ts` e la sua implementazione PostgreSQL `postgres-conversation-history-read.adapter.ts`. Le regole sulla dichiarazione di firme, factory ed esiti restano applicabili nel loro ambito.
 
 #### Metadata
   * type: requirement
@@ -1341,7 +1346,7 @@ Quando un'operazione Domain, un caso d'uso Application o una porta Application d
 
 #### Relations
   * derivedFrom: [Esiti previsti come valori tipizzati](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#esiti-previsti-come-valori-tipizzati)
-  * satisfiedBy: [sqlite-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.ts)
+  * satisfiedBy: [postgres-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/postgres/postgres-turn-repository.adapter.ts)
   * satisfiedBy: [begin-turn.use-case.ts](../../packages/conversations/src/application/begin-turn.use-case.ts)
   * satisfiedBy: [complete-turn.use-case.ts](../../packages/conversations/src/application/complete-turn.use-case.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
@@ -1402,7 +1407,7 @@ Origine: baseline Reqvire «Public message separated from technical diagnosis»,
 
 ### Server compilato provato come processo
 
-La selezione `e2e` del backend deve avviare il punto d'ingresso compilato del server come processo figlio e verificare che risolva i propri moduli, si avvii in produzione su un archivio SQLite nuovo, risponda all'elenco delle conversazioni di `/api/v1`, termini con codice 0 a `SIGTERM` e, senza ambiente di esecuzione, termini con codice 1, un solo evento `server_startup_failed` e la riga fissa su stderr.
+La selezione `e2e` del backend deve avviare il punto d'ingresso compilato del server come processo figlio e verificare che risolva i propri moduli, si avvii in produzione su un database PostgreSQL di prova nuovo, risponda all'elenco delle conversazioni di `/api/v1`, termini con codice 0 a `SIGTERM` e, senza ambiente di esecuzione, termini con codice 1, un solo evento `server_startup_failed` e la riga fissa su stderr.
 
 #### Details
 Le matrici dei casi di configurazione, delle rotte e del ciclo di vita restano nelle prove dei singoli confini.
@@ -1544,3 +1549,4 @@ Quando la suite automatica del backend esegue le verifiche dei package business,
   * satisfiedBy: [vitest.config.ts](../../vitest.config.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
+

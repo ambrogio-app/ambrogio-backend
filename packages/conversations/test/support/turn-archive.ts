@@ -5,8 +5,8 @@ import { Turn } from '../../src/domain/turn.js';
 import { createCompleteTurn, type CompleteTurnOutcome } from '../../src/application/complete-turn.use-case.js';
 import { createInterruptPendingTurns } from '../../src/application/interrupt-pending-turns.use-case.js';
 import type { TurnRepository } from '../../src/application/turn-repository.port.js';
-import type { ConversationDatabase } from '../../src/adapters/out/sqlite/schema.js';
-import { SqliteTurnRepository } from '../../src/adapters/out/sqlite/sqlite-turn-repository.adapter.js';
+import type { ConversationDatabase } from '../../src/adapters/out/postgres/conversation-archive.js';
+import { PostgresTurnRepository } from '../../src/adapters/out/postgres/postgres-turn-repository.adapter.js';
 
 export type TurnData = Readonly<{ id: string; text: string; acceptedAt: Date }>;
 
@@ -36,5 +36,5 @@ export async function completeTurn(turns: TurnRepository, input: Readonly<{
 
 /** Interrupts the pending turns of an archive at a given instant, as startup and shutdown do. */
 export function interruptPendingTurns(db: Kysely<ConversationDatabase>, at: Date): Promise<number> {
-  return createInterruptPendingTurns({ turns: new SqliteTurnRepository(db), clock: { now: () => at } })();
+  return createInterruptPendingTurns({ turns: new PostgresTurnRepository(db), clock: { now: () => at } })();
 }

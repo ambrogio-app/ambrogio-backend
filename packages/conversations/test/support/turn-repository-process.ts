@@ -1,4 +1,4 @@
-// A separate Node.js process with its own SQLite connection, its own turn repository and its own lookup
+// A separate Node.js process with its own PostgreSQL pool, its own turn repository and its own lookup
 // port, driven by a concurrency suite through IPC messages («Garanzie di concorrenza provate da
 // esecuzioni concorrenti reali»). Node.js runs this file and the product sources with type stripping;
 // the hook below resolves the `.js` specifiers of the sources to their `.ts` files.
@@ -16,16 +16,16 @@ registerHooks({
   },
 });
 
-const { default: Database } = await import('better-sqlite3');
-const { Kysely, SqliteDialect } = await import('kysely');
+const { default: pg } = await import('pg');
+const { Kysely, PostgresDialect } = await import('kysely');
 const { ConversationId, TurnId } = await import('../../src/domain/identities.js');
 const { Turn } = await import('../../src/domain/turn.js');
-const { SqliteTurnRepository } = await import('../../src/adapters/out/sqlite/sqlite-turn-repository.adapter.js');
-const { SqliteConversationLookup } = await import('../../src/adapters/out/sqlite/sqlite-conversation-lookup.adapter.js');
+const { PostgresTurnRepository } = await import('../../src/adapters/out/postgres/postgres-turn-repository.adapter.js');
+const { PostgresConversationLookup } = await import('../../src/adapters/out/postgres/postgres-conversation-lookup.adapter.js');
 type Loaded = ReturnType<typeof Turn.create>;
 
 export type ProcessRequest =
-  | Readonly<{ op: 'open'; file: string }>
+  | Readonly<{ op: 'open'; url: string }>
   | Readonly<{ op: 'exists'; conversationId: string }>
   | Readonly<{ op: 'admit'; conversationId: string; turnId: string; conversation: 'new' | 'existing'; at: number;
     startAt?: number }>
@@ -36,8 +36,8 @@ export type ProcessRequest =
 export type ProcessReply = Readonly<{ ok: true; result: unknown }> | Readonly<{ ok: false; fault: string }>;
 
 let db: Readonly<{ destroy(): Promise<void> }> | undefined;
-let turns: InstanceType<typeof SqliteTurnRepository> | undefined;
-let conversations: InstanceType<typeof SqliteConversationLookup> | undefined;
+let turns: InstanceType<typeof PostgresTurnRepository> | undefined;
+let conversations: InstanceType<typeof PostgresConversationLookup> | undefined;
 const loaded = new Map<string, Loaded>();
 
 /** Waits for the instant agreed with the other processes without yielding, so both start together. */
@@ -49,12 +49,10 @@ function startAt(instant: number | undefined): void {
 async function handle(request: ProcessRequest): Promise<unknown> {
   switch (request.op) {
     case 'open': {
-      const sqlite = new Database(request.file);
-      sqlite.pragma('foreign_keys = ON');
-      const kysely = new Kysely<never>({ dialect: new SqliteDialect({ database: sqlite }) });
+      const kysely = new Kysely<never>({ dialect: new PostgresDialect({ pool: new pg.Pool({ connectionString: request.url }) }) });
       db = kysely;
-      turns = new SqliteTurnRepository(kysely as never);
-      conversations = new SqliteConversationLookup(kysely as never);
+      turns = new PostgresTurnRepository(kysely as never);
+      conversations = new PostgresConversationLookup(kysely as never);
       return process.pid;
     }
     case 'exists':

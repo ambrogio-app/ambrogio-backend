@@ -40,11 +40,21 @@ const packagesOf = (graph: ImportGraph) => graph.units.filter((unit) => unit.dir
 const appsOf = (graph: ImportGraph) => graph.units.filter((unit) => unit.directory.startsWith('apps/'));
 const asSource = (path: string) => path.replace(/\.js$/, '.ts');
 
+/**
+ * The support modules shared by the tests of several units («Suite di test del backend»), such as the PostgreSQL
+ * test databases: the tests and the test support modules of every unit reach them as their own `test/` folder.
+ */
+export const sharedTestSupport = 'test/support';
+const isTestCode = (path: string, unit: WorkspaceUnit) => path.endsWith('.spec.ts') || inside(path, `${unit.directory}/test`);
+const reachesSharedSupport = (file: SourceFile, unit: WorkspaceUnit, specifier: string) => specifier.startsWith('.')
+  && isTestCode(file.path, unit) && inside(resolveSpecifier(file.path, specifier), sharedTestSupport);
+
 const packageIsolation: Rule = {
   name: 'package-isolation',
   check: (graph) => packagesOf(graph).flatMap((unit) => filesIn(graph, unit.directory).flatMap((file) =>
     file.specifiers.filter((specifier) => {
       const named = namedUnit(specifier, graph.units);
+      if (reachesSharedSupport(file, unit, specifier)) return false;
       return (specifier.startsWith('.') && !inside(resolveSpecifier(file.path, specifier), unit.directory))
         || (named !== undefined && named.unit !== unit);
     }).map((specifier) => ({ rule: 'package-isolation' as const, from: file.path, to: specifier })))),
@@ -55,6 +65,7 @@ const applicationPublicExports: Rule = {
   check: (graph) => appsOf(graph).flatMap((app) => filesIn(graph, app.directory).flatMap((file) =>
     file.specifiers.filter((specifier) => {
       const named = namedUnit(specifier, graph.units);
+      if (reachesSharedSupport(file, app, specifier)) return false;
       return specifier.startsWith('#')
         || (specifier.startsWith('.') && !inside(resolveSpecifier(file.path, specifier), app.directory))
         || (named !== undefined && named.unit !== app && !named.unit.exports.includes(named.subpath));
@@ -88,7 +99,10 @@ export function verifiedFile(path: string, known: ReadonlySet<string>): string |
 
 const testLayers = ['src/domain', 'src/application', 'src/adapters/in', 'src/adapters/out'] as const;
 
-/** Production code reached by a test file, directly or through the support modules of the unit's `test/` folder. */
+/**
+ * Production code reached by a test file, directly or through the support modules of the unit's `test/` folder and
+ * of the shared `test/support/` folder.
+ */
 function productionReached(graph: ImportGraph, file: SourceFile, unit: WorkspaceUnit): string[] {
   const reached: string[] = [];
   const seen = new Set<string>();
@@ -99,7 +113,7 @@ function productionReached(graph: ImportGraph, file: SourceFile, unit: Workspace
       if (namedUnit(specifier, graph.units) !== undefined) { reached.push(specifier); continue; }
       if (!specifier.startsWith('.')) continue; // runner, assertion, Node.js modules and npm dependencies
       const target = asSource(resolveSpecifier(current.path, specifier));
-      if (inside(target, `${unit.directory}/test`) || isSpec(target)) {
+      if (inside(target, `${unit.directory}/test`) || inside(target, sharedTestSupport) || isSpec(target)) {
         const local = graph.files.find((candidate) => candidate.path === target);
         if (local !== undefined) visit(local);
         continue;

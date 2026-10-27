@@ -125,12 +125,12 @@ Fonti: persistenza dei messaggi di AI SDK, https://ai-sdk.dev/docs/ai-sdk-ui/cha
 
 #### Contract References
   * [API dei provider di modelli linguistici](../Contracts/ExternalContracts.md#api-dei-provider-di-modelli-linguistici)
-  * [Archivio SQLite con Kysely](../Contracts/FamilyConversation.md#archivio-sqlite-con-kysely)
+  * [Archivio PostgreSQL con Kysely](../Contracts/FamilyConversation.md#archivio-postgresql-con-kysely)
 
 #### Relations
   * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
-  * satisfiedBy: [migrations.ts](../../packages/conversations/src/adapters/out/sqlite/migrations.ts)
-  * satisfiedBy: [sqlite-turn-mapper.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-mapper.ts)
+  * satisfiedBy: [migrations.ts](../../packages/conversations/src/adapters/out/postgres/migrations.ts)
+  * satisfiedBy: [postgres-turn-mapper.ts](../../packages/conversations/src/adapters/out/postgres/postgres-turn-mapper.ts)
   * satisfiedBy: [complete-turn.use-case.ts](../../packages/conversations/src/application/complete-turn.use-case.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
   * satisfiedBy: [get-conversation.use-case.ts](../../packages/conversations/src/application/get-conversation.use-case.ts)
@@ -152,7 +152,7 @@ Origine: baseline Reqvire «Complete aggregate loading», adottata; «Incompatib
   * [Repository del turno](../Contracts/FamilyConversation.md#repository-del-turno)
 
 #### Relations
-  * satisfiedBy: [sqlite-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.ts)
+  * satisfiedBy: [postgres-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/postgres/postgres-turn-repository.adapter.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -174,9 +174,9 @@ Origine: baseline Reqvire «Layer folders of a business module», adottata.
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
-### Chiusura della risorsa SQLite conversazionale
+### Chiusura della risorsa PostgreSQL conversazionale
 
-Quando il server termina normalmente o fallisce durante l'avvio dopo aver creato la risorsa SQLite/Kysely dell'archivio, il proprietario deve chiudere la risorsa dopo le operazioni che ne dipendono.
+Quando il server termina normalmente o fallisce durante l'avvio dopo aver creato la risorsa PostgreSQL/Kysely dell'archivio, il proprietario deve chiudere la risorsa dopo le operazioni che ne dipendono.
 
 #### Details
 Origine: baseline Reqvire «Closing the database resource», adottata.
@@ -185,9 +185,11 @@ Origine: baseline Reqvire «Closing the database resource», adottata.
   * type: requirement
 
 #### Contract References
-  * [Ciclo di vita della risorsa SQLite conversazionale](../Contracts/FamilyConversation.md#ciclo-di-vita-della-risorsa-sqlite-conversazionale)
+  * [Ciclo di vita della risorsa PostgreSQL conversazionale](../Contracts/FamilyConversation.md#ciclo-di-vita-della-risorsa-postgresql-conversazionale)
 
 #### Relations
+  * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
+  * satisfiedBy: [conversation-archive.ts](../../packages/conversations/src/adapters/out/postgres/conversation-archive.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
@@ -221,7 +223,7 @@ Origine: baseline Reqvire «Domain classes in TypeScript», adottata.
 
 ### Classificazione degli esiti delle scritture conversazionali
 
-Quando l'adapter SQLite dell'archivio esegue una mutazione conversazionale, deve comunicare un rifiuto previsto della porta soltanto se l'esito tecnico dimostra la condizione prevista dal contratto dell'operazione; deve propagare come guasto inatteso gli esiti non classificabili e non deve comunicare un successo senza che la postcondizione della mutazione sia soddisfatta.
+Quando l'adapter PostgreSQL dell'archivio esegue una mutazione conversazionale, deve comunicare un rifiuto previsto della porta soltanto se l'esito tecnico dimostra la condizione prevista dal contratto dell'operazione; deve propagare come guasto inatteso gli esiti non classificabili e non deve comunicare un successo senza che la postcondizione della mutazione sia soddisfatta.
 
 #### Details
 Origine: baseline Reqvire «Classified outcomes of database writes», adottata; «Failed update outcomes by ascertained cause», adottata.
@@ -230,7 +232,7 @@ Origine: baseline Reqvire «Classified outcomes of database writes», adottata; 
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [sqlite-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.ts)
+  * satisfiedBy: [postgres-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/postgres/postgres-turn-repository.adapter.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
@@ -541,7 +543,7 @@ Origine: baseline Reqvire «Dedicated write contract without universal CRUD», a
 
 ### Conversione esplicita dei dati conversazionali persistenti
 
-Quando un adapter del modulo «Conversazioni» legge o scrive l'archivio SQLite, deve convertire esplicitamente tra le rappresentazioni tecniche delle righe e i valori Domain o le proiezioni Application previsti dai rispettivi contratti, senza esporre righe o tipi Kysely a Domain e Application.
+Quando un adapter del modulo «Conversazioni» legge o scrive l'archivio PostgreSQL, deve convertire esplicitamente tra le rappresentazioni tecniche delle righe e i valori Domain o le proiezioni Application previsti dai rispettivi contratti, senza esporre righe o tipi Kysely a Domain e Application.
 
 #### Details
 Origine: baseline Reqvire «Explicit conversion at the persistence boundary», adottata.
@@ -564,7 +566,7 @@ Quando un client invia un turno senza identificativo di conversazione, Ambrogio 
   * [Occupazione della conversazione e ammissione dei turni](../Contracts/FamilyConversation.md#occupazione-della-conversazione-e-ammissione-dei-turni)
 
 #### Relations
-  * satisfiedBy: [sqlite-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.ts)
+  * satisfiedBy: [postgres-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/postgres/postgres-turn-repository.adapter.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
@@ -692,9 +694,9 @@ Quando il server avvia la conversazione con la directory degli agenti, deve rend
 Quando Ambrogio viene riavviato, deve rendere nuovamente disponibili alla famiglia le conversazioni e gli scambi testuali conservati prima del riavvio.
 
 #### Details
-L'archivio è un database SQLite letto e scritto con Kysely secondo «Archivio SQLite con Kysely».
+L'archivio è un database PostgreSQL letto e scritto con Kysely secondo «Archivio PostgreSQL con Kysely».
 
-Origine: baseline Reqvire «Kysely for SQLite access», adottata.
+Origine: baseline Reqvire «Kysely for PostgreSQL access», adottata.
 
 #### Concept References
   * [Famiglia](../../../ambrogio-model/system-model/Thesaurus/Lessico.md#famiglia)
@@ -723,7 +725,7 @@ Quando riceve turni validi destinati a conversazioni diverse mentre è operativo
 
 #### Relations
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
-  * satisfiedBy: [sqlite-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.ts)
+  * satisfiedBy: [postgres-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/postgres/postgres-turn-repository.adapter.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
@@ -739,7 +741,7 @@ Origine: baseline Reqvire «List or pagination chosen per query», adottata.
 
 #### Relations
   * satisfiedBy: [list-conversations.handler.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.handler.ts)
-  * satisfiedBy: [sqlite-conversation-list-read.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-list-read.adapter.ts)
+  * satisfiedBy: [postgres-conversation-list-read.adapter.ts](../../packages/conversations/src/adapters/out/postgres/postgres-conversation-list-read.adapter.ts)
   * satisfiedBy: [list-conversations.use-case.ts](../../packages/conversations/src/application/list-conversations.use-case.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
@@ -797,14 +799,15 @@ Origine: baseline Reqvire «Declared concurrency guarantee per operation», adot
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [sqlite-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.ts)
+  * satisfiedBy: [postgres-transaction.ts](../../packages/conversations/src/adapters/out/postgres/postgres-transaction.ts)
+  * satisfiedBy: [postgres-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/postgres/postgres-turn-repository.adapter.ts)
   * satisfiedBy: [turn-repository.port.ts](../../packages/conversations/src/application/turn-repository.port.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Garanzie di concorrenza provate da esecuzioni concorrenti reali
 
-Quando una verifica prova una garanzia di concorrenza dell'archivio delle conversazioni, deve usare l'archivio SQLite reale con le migrazioni di produzione, esecuzioni indipendenti in processi distinti con connessioni proprie e una sincronizzazione esplicita, e deve confrontare esiti e stato finale con l'intera intenzione tramite una sonda indipendente; un avvio in parallelo nello stesso processo, il successo delle chiamate o la presenza di un blocco non devono essere considerati prova.
+Quando una verifica prova una garanzia di concorrenza dell'archivio delle conversazioni, deve usare un database PostgreSQL reale con le migrazioni di produzione, esecuzioni indipendenti in processi distinti con connessioni proprie e una sincronizzazione esplicita, e deve confrontare esiti e stato finale con l'intera intenzione tramite una sonda indipendente; un avvio in parallelo nello stesso processo, il successo delle chiamate o la presenza di un blocco non devono essere considerati prova.
 
 #### Details
 Origine: baseline Reqvire «Concurrency guarantee proven by real concurrent executions», adottata.
@@ -880,7 +883,7 @@ Origine: baseline Reqvire «Distinct identity types by meaning», adottata.
 
 ### Igiene delle migrazioni dell'archivio conversazioni
 
-Quando il backend evolve lo schema dell'archivio SQLite, le migrazioni devono formare un'unica sequenza ordinata con un solo registro nel database; una migrazione distribuita deve restare immutabile e disponibile nella sequenza, una migrazione non deve importare codice business soggetto a modifiche, e i dati di prova o di sviluppo non devono essere inseriti tramite le migrazioni.
+Quando il backend evolve lo schema dell'archivio PostgreSQL, le migrazioni devono formare un'unica sequenza ordinata con un solo registro nel database; una migrazione distribuita deve restare immutabile e disponibile nella sequenza, una migrazione non deve importare codice business soggetto a modifiche, e i dati di prova o di sviluppo non devono essere inseriti tramite le migrazioni.
 
 #### Details
 Origine: baseline Reqvire «Separate migration process», adattata: le migrazioni restano applicate all'avvio del backend secondo «Automatic schema migrations at startup»; del processo separato si adottano soltanto le regole sulla sequenza unica, sull'immutabilità e la disponibilità delle migrazioni distribuite, sugli import e sui dati di prova, senza processo, comandi di stato o annullamento delle migrazioni.
@@ -889,7 +892,7 @@ Origine: baseline Reqvire «Separate migration process», adattata: le migrazion
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [migrations.ts](../../packages/conversations/src/adapters/out/sqlite/migrations.ts)
+  * satisfiedBy: [migrations.ts](../../packages/conversations/src/adapters/out/postgres/migrations.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
@@ -1151,7 +1154,7 @@ Quando un turno ammesso termina con un guasto inatteso, Ambrogio deve comunicare
 
 ### Migrazione automatica dell'archivio delle conversazioni
 
-Quando l'archivio SQLite richiede migrazioni per la versione del server avviata, Ambrogio deve applicarle automaticamente prima di accettare nuovi turni e impedire l'avvio degli ingressi conversazionali se una migrazione fallisce.
+Quando l'archivio PostgreSQL richiede migrazioni per la versione del server avviata, Ambrogio deve applicarle automaticamente prima di accettare nuovi turni e impedire l'avvio degli ingressi conversazionali se una migrazione fallisce.
 
 #### Details
 Origine: baseline Reqvire «Automatic schema migrations at startup», adottata.
@@ -1257,9 +1260,9 @@ Quando l'orchestratore sceglie l'agente per un turno di una conversazione con tu
 #### Relations
   * derivedFrom: [Orchestrazione della risposta conversazionale](#orchestrazione-della-risposta-conversazionale)
   * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
-  * satisfiedBy: [migrations.ts](../../packages/conversations/src/adapters/out/sqlite/migrations.ts)
-  * satisfiedBy: [sqlite-turn-mapper.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-mapper.ts)
-  * satisfiedBy: [sqlite-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.ts)
+  * satisfiedBy: [migrations.ts](../../packages/conversations/src/adapters/out/postgres/migrations.ts)
+  * satisfiedBy: [postgres-turn-mapper.ts](../../packages/conversations/src/adapters/out/postgres/postgres-turn-mapper.ts)
+  * satisfiedBy: [postgres-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/postgres/postgres-turn-repository.adapter.ts)
   * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
   * satisfiedBy: [get-conversation.use-case.ts](../../packages/conversations/src/application/get-conversation.use-case.ts)
   * satisfiedBy: [turn.ts](../../packages/conversations/src/domain/turn.ts)
@@ -1278,28 +1281,29 @@ Quando Ambrogio fornisce una pagina dell'elenco delle conversazioni, deve ordina
   * [Pagine dell'elenco conversazioni](../Contracts/FamilyConversation.md#pagine-dellelenco-conversazioni)
 
 #### Relations
-  * satisfiedBy: [sqlite-conversation-list-read.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-conversation-list-read.adapter.ts)
+  * satisfiedBy: [postgres-conversation-list-read.adapter.ts](../../packages/conversations/src/adapters/out/postgres/postgres-conversation-list-read.adapter.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
-### Persistenza degli istanti conversazionali in millisecondi Unix
+### Persistenza degli istanti conversazionali in timestamptz
 
-Quando l'adapter dell'archivio salva o ricostruisce un istante della conversazione, deve convertirlo esplicitamente tra un `Date` valido nel codice e un intero di millisecondi trascorsi dall'epoca Unix nella riga SQLite, preservando esattamente l'istante.
+Quando l'adapter dell'archivio salva o ricostruisce un istante della conversazione, deve convertirlo esplicitamente tra un `Date` valido nel codice e un valore `timestamptz` con precisione al millisecondo nella riga PostgreSQL, preservando esattamente l'istante.
 
 #### Details
-Origine: baseline Reqvire «Instants stored as Unix milliseconds», adottata.
+Origine: baseline Reqvire «Canonical PostgreSQL value representations», adattata: si applica agli istanti e ai documenti JSON, gli unici concetti dell'archivio con più rappresentazioni possibili; l'archivio non ha date di calendario né quantità decimali.
 
 #### Metadata
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [sqlite-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.ts)
+  * satisfiedBy: [postgres-turn-mapper.ts](../../packages/conversations/src/adapters/out/postgres/postgres-turn-mapper.ts)
+  * satisfiedBy: [postgres-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/postgres/postgres-turn-repository.adapter.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
 ### Precondizioni contestuali nel caso d'uso conversazionale
 
-Quando un turno supera la validazione dell'ingresso, il caso d'uso Application deve coordinare le precondizioni dipendenti dal contesto della conversazione tramite le proprie porte e interrompere il flusso con un rifiuto previsto quando esse non sono soddisfatte, lasciando al Domain gli invarianti del turno e all'archivio SQLite la garanzia atomica dell'unico turno attivo per conversazione.
+Quando un turno supera la validazione dell'ingresso, il caso d'uso Application deve coordinare le precondizioni dipendenti dal contesto della conversazione tramite le proprie porte e interrompere il flusso con un rifiuto previsto quando esse non sono soddisfatte, lasciando al Domain gli invarianti del turno e all'archivio PostgreSQL la garanzia atomica dell'unico turno attivo per conversazione.
 
 #### Details
 Origine: baseline Reqvire «Contextual preconditions in the use case», adottata; «Global guarantees assigned to their enforcer», adottata.
@@ -1315,9 +1319,9 @@ Origine: baseline Reqvire «Contextual preconditions in the use case», adottata
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
-### Proprietà della risorsa SQLite conversazionale
+### Proprietà della risorsa PostgreSQL conversazionale
 
-Quando il server usa l'archivio delle conversazioni, la sua composition root deve creare un solo proprietario della risorsa SQLite/Kysely per quell'archivio e fornire agli adapter le capacità necessarie senza trasferire loro la responsabilità di chiuderla.
+Quando il server usa l'archivio delle conversazioni, la sua composition root deve creare un solo proprietario della risorsa PostgreSQL/Kysely per quell'archivio e fornire agli adapter le capacità necessarie senza trasferire loro la responsabilità di chiuderla.
 
 #### Details
 Origine: baseline Reqvire «Explicit wiring without service locator», adottata; «Single owner of the database resource», adottata.
@@ -1326,6 +1330,7 @@ Origine: baseline Reqvire «Explicit wiring without service locator», adottata;
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [conversation-archive.ts](../../packages/conversations/src/adapters/out/postgres/conversation-archive.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
@@ -1338,7 +1343,7 @@ Quando il backend riceve un nuovo turno con l'identificativo di una conversazion
 
 #### Contract References
   * [Trasmissione in ingresso del protocollo Ambrogio v1](../Contracts/ConversationProtocol.md#trasmissione-in-ingresso-del-protocollo-ambrogio-v1)
-  * [Archivio SQLite con Kysely](../Contracts/FamilyConversation.md#archivio-sqlite-con-kysely)
+  * [Archivio PostgreSQL con Kysely](../Contracts/FamilyConversation.md#archivio-postgresql-con-kysely)
 
 #### Relations
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
@@ -1395,7 +1400,7 @@ Quando Ambrogio accetta un turno rappresentato come testo dalla chat o dalla tra
 
 ### Repository del turno senza decisioni di Domain
 
-Quando l'adapter SQLite del repository del turno ammette, carica o salva un turno, deve limitarsi a convertire e conservare lo stato già valido del Domain: non deve scegliere lo stato iniziale, generare identificativi, leggere l'ora corrente né invocare transizioni del turno, e la conversione in scrittura deve leggere lo stato tramite i getter del Root senza invocarne la creazione o la ricostruzione.
+Quando l'adapter PostgreSQL del repository del turno ammette, carica o salva un turno, deve limitarsi a convertire e conservare lo stato già valido del Domain: non deve scegliere lo stato iniziale, generare identificativi, leggere l'ora corrente né invocare transizioni del turno, e la conversione in scrittura deve leggere lo stato tramite i getter del Root senza invocarne la creazione o la ricostruzione.
 
 #### Details
 Origine: baseline Reqvire «Repository without Domain decisions», adottata.
@@ -1407,8 +1412,8 @@ Origine: baseline Reqvire «Repository without Domain decisions», adottata.
   * [Repository del turno](../Contracts/FamilyConversation.md#repository-del-turno)
 
 #### Relations
-  * satisfiedBy: [sqlite-turn-mapper.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-mapper.ts)
-  * satisfiedBy: [sqlite-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.ts)
+  * satisfiedBy: [postgres-turn-mapper.ts](../../packages/conversations/src/adapters/out/postgres/postgres-turn-mapper.ts)
+  * satisfiedBy: [postgres-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/postgres/postgres-turn-repository.adapter.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -1437,7 +1442,7 @@ Origine: baseline Reqvire «Declared concurrency guarantee per operation», adot
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [sqlite-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.ts)
+  * satisfiedBy: [postgres-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/postgres/postgres-turn-repository.adapter.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
@@ -1662,7 +1667,7 @@ Quando il server prepara gli agenti attivi, deve cercare i rispettivi file nella
 
 ### Scritture atomiche dello stato dei turni
 
-Quando Ambrogio accetta, conclude o interrompe un turno, deve confermare insieme lo stato persistente del turno e l'occupazione della conversazione interessata in una transazione SQLite.
+Quando Ambrogio accetta, conclude o interrompe un turno, deve confermare insieme lo stato persistente del turno e l'occupazione della conversazione interessata in una transazione PostgreSQL.
 
 #### Details
 Origine: baseline Reqvire «Atomic persistent state transitions», adottata.
@@ -1671,8 +1676,8 @@ Origine: baseline Reqvire «Atomic persistent state transitions», adottata.
   * type: requirement
 
 #### Relations
-  * satisfiedBy: [migrations.ts](../../packages/conversations/src/adapters/out/sqlite/migrations.ts)
-  * satisfiedBy: [sqlite-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/sqlite/sqlite-turn-repository.adapter.ts)
+  * satisfiedBy: [migrations.ts](../../packages/conversations/src/adapters/out/postgres/migrations.ts)
+  * satisfiedBy: [postgres-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/postgres/postgres-turn-repository.adapter.ts)
   * satisfiedBy: [interrupt-pending-turns.use-case.ts](../../packages/conversations/src/application/interrupt-pending-turns.use-case.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
@@ -1739,10 +1744,12 @@ Quando la voce è abilitata con profili vocali per lingua, Ambrogio deve selezio
 
 ### Selezione dell'archivio conversazionale all'avvio
 
-Quando il server prepara l'ingresso conversazionale, deve aprire l'archivio SQLite al percorso dichiarato nella configurazione del componente «Conversazioni» e impedire l'avvio se il percorso manca o è invalido.
+Quando il server prepara l'ingresso conversazionale, deve connettersi all'archivio PostgreSQL all'indirizzo dichiarato nella configurazione del componente «Conversazioni» e impedire l'avvio se l'indirizzo manca o è invalido o se il database non accetta la connessione.
 
 #### Details
-Origine: baseline Reqvire «SQLite as embedded database», adottata.
+Origine: baseline Reqvire «PostgreSQL as database», adottata.
+
+Alternativa considerata e non adottata: SQLite incorporato in un file dell'installazione, che richiede un solo container e si salva copiando un file, ma non permette a più processi di usare lo stesso archivio, non offre la ricerca testuale con dizionari per lingua e richiede un'estensione nativa caricata nel processo per la ricerca vettoriale. PostgreSQL è scelto come investimento per i servizi che useranno lo storico, come la ricerca nella memoria delle conversazioni con pgvector, al costo di un secondo container nell'installazione e di un server PostgreSQL nelle prove. Non adottata per decisione della persona: l'importazione degli archivi SQLite esistenti; il backend non legge archivi SQLite.
 
 #### Metadata
   * type: requirement
@@ -1754,6 +1761,7 @@ Origine: baseline Reqvire «SQLite as embedded database», adottata.
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
   * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * satisfiedBy: [conversation-config.ts](../../packages/conversations/src/adapters/out/conversation-config.ts)
+  * satisfiedBy: [conversation-archive.ts](../../packages/conversations/src/adapters/out/postgres/conversation-archive.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
@@ -1861,9 +1869,27 @@ Origine: baseline Reqvire «Time limit with cancellation of remote work», adott
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
+### Tipi del database generati dallo schema migrato
+
+I tipi Kysely usati dagli adapter dell'archivio devono essere generati staticamente dallo schema di un database PostgreSQL costruito da zero con le migrazioni di produzione, devono corrispondere ai valori effettivamente restituiti e accettati dal driver, devono essere versionati con la configurazione che li produce e non devono essere modificati a mano; la CI deve fallire se i tipi versionati non corrispondono allo schema migrato.
+
+#### Details
+Origine: baseline Reqvire «Database types generated from the migrated schema», adottata; «Database types aligned with runtime values», adottata; «Database types sliced per business module», adottata: il backend ha un solo modulo business, i cui tipi restano nel suo adapter.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [.kysely-codegenrc.json](../../.kysely-codegenrc.json)
+  * satisfiedBy: [package.json](../../package.json)
+  * satisfiedBy: [database.generated.ts](../../packages/conversations/src/adapters/out/postgres/database.generated.ts)
+  * satisfiedBy: [database-types.mjs](../../scripts/database-types.mjs)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
+---
+
 ### Transazioni brevi dell'archivio conversazioni
 
-Quando Ambrogio esegue chiamate ad agenti o connettori oppure trasmette la risposta progressiva di un turno, non deve mantenere aperta una transazione SQLite relativa a quel turno.
+Quando Ambrogio esegue chiamate ad agenti o connettori oppure trasmette la risposta progressiva di un turno, non deve mantenere aperta una transazione del database relativa a quel turno.
 
 #### Details
 Origine: baseline Reqvire «No open transaction during remote work», adottata.
@@ -1998,3 +2024,4 @@ Origine: baseline Reqvire «Value Object for meaningful values», adottata; «Im
   * satisfiedBy: [identities.ts](../../packages/conversations/src/domain/identities.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
+

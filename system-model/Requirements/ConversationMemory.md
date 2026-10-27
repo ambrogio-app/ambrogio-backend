@@ -2,7 +2,7 @@
 
 ### Agente Memory d'esempio
 
-Il backend deve fornire un file d'esempio dell'agente specializzato `memory`, collegato al server MCP della memoria del backend, con istruzioni che chiedono di cercare nello storico prima di rispondere a domande su conversazioni passate, di riprovare con sinonimi quando una ricerca non trova risultati e di indicare la data dei turni citati.
+Il backend deve fornire un file d'esempio dell'agente specializzato `memory`, collegato al server MCP della memoria del backend, con una descrizione che porta all'agente anche le richieste di ricordare qualcosa e le domande su piani, appuntamenti e scadenze della famiglia, e con istruzioni che chiedono di confermare brevemente, senza cercare, le richieste di ricordare, di cercare nello storico prima di rispondere a domande su conversazioni passate, di riprovare con sinonimi quando una ricerca non trova risultati e di indicare la data dei turni citati.
 
 #### Metadata
   * type: requirement

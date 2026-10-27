@@ -46,7 +46,7 @@ La prova passa se il server si presenta come `ambrogio-memory`, dichiara soltant
 Leggere `examples/agents/memory.json` con il caricatore dei file degli agenti e confrontarne i campi con il contratto; leggerne le istruzioni.
 
 #### Details
-La prova passa se il file è valido per il caricatore, ha la descrizione, l'URL `http://127.0.0.1:3000/mcp/memory`, `mcp.tools` con il solo `search_conversations` e `maxToolCalls` pari a 4, nomina la variabile della credenziale del modello senza valori segreti e le istruzioni chiedono di cercare prima di rispondere, di riprovare con sinonimi, di dire quando non trova nulla e di indicare le date. Fallisce se manca uno di questi elementi o se il file contiene un valore segreto.
+La prova passa se il file è valido per il caricatore, ha la descrizione, l'URL `http://127.0.0.1:3000/mcp/memory`, `mcp.tools` con il solo `search_conversations` e `maxToolCalls` pari a 4, nomina la variabile della credenziale del modello senza valori segreti e le istruzioni chiedono di confermare le richieste di ricordare senza cercare, di cercare prima di rispondere, di riprovare con sinonimi, di dire quando non trova nulla e di indicare le date. Fallisce se manca uno di questi elementi o se il file contiene un valore segreto.
 
 #### Metadata
   * type: test-verification

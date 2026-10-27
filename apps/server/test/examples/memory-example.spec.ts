@@ -20,11 +20,13 @@ test('the memory example loads unchanged and connects to the memory MCP server o
   expect(specialists).toHaveLength(1);
   const [memory] = specialists;
   expect(memory).toMatchObject({ id: 'memory', maxToolCalls: 4,
-    description: "Searches the family's past conversations to answer questions about what was said before.",
+    description: "Handles requests to remember something the family says, and answers questions about the family's own "
+      + 'plans, appointments, deadlines and things said before.',
     llm: { provider: 'mistral', model: 'mistral-medium-latest', apiKey: '<MISTRAL_API_KEY>' },
     mcp: { url: 'http://127.0.0.1:3000/mcp/memory', tools: ['search_conversations'] } });
   expect(memory!.mcp).not.toHaveProperty('auth');
   const instructions = memory!.instructions;
+  expect(instructions).toContain('confirm briefly without searching');
   expect(instructions).toContain('call search_conversations');
   expect(instructions).toContain('try again with synonyms or more general words');
   expect(instructions).toContain('say so instead of guessing');

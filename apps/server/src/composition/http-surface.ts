@@ -8,7 +8,7 @@ import type { HttpConfig } from '../runtime/http-config.js';
 import type { ResourceStack } from '../runtime/lifecycle.js';
 import type { Logger } from '../runtime/logger.js';
 import { startupPhase } from '../runtime/startup-failure.js';
-import { conversationApiRegistration, loadProtocolSchema, registerConversationSessionRoute,
+import { conversationApiRegistration, loadProtocolSchema, memoryMcpRegistration, registerConversationSessionRoute,
   type PreparedConversations } from './conversations.js';
 
 export type ConversationIngress = Readonly<{ stopAccepting(): Promise<void>; closeSessions(): Promise<void> }>;
@@ -52,6 +52,7 @@ export async function buildConversationServer(config: HttpConfig, prepared: Prep
   } };
   const server = await createHttpServer(config, { log: options.log, routes: [
     { prefix: '/api/v1', register: conversationApiRegistration(prepared) },
+    { prefix: '/mcp', register: await memoryMcpRegistration(prepared, options.log) },
     session,
   ] });
   options.resources.defer('HTTP server could not be closed', () => server.close());

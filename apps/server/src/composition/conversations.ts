@@ -8,6 +8,9 @@ import { PostgresConversationHistoryRead } from '@ambrogio/conversations/adapter
 import { PostgresConversationListRead } from '@ambrogio/conversations/adapters/out/postgres/list-read';
 import { PostgresTurnRepository } from '@ambrogio/conversations/adapters/out/postgres/turn-repository';
 import { PostgresConversationLookup } from '@ambrogio/conversations/adapters/out/postgres/conversation-lookup';
+import { PostgresConversationMemorySearch } from '@ambrogio/conversations/adapters/out/postgres/memory-search';
+import { createSearchConversations } from '@ambrogio/conversations/application/search-conversations';
+import { memoryMcpRoutes } from '@ambrogio/conversations/adapters/in/mcp/memory-mcp-server';
 import { createConversationSessions } from '@ambrogio/conversations/adapters/in/session/conversation-session';
 import { createProtocolDecoder } from '@ambrogio/conversations/adapters/in/session/protocol-decoder';
 import type { SpeechComponents } from '@ambrogio/conversations/adapters/in/session/speech-components';
@@ -43,7 +46,9 @@ export async function prepareConfiguredConversations(config: ConversationConfig,
       ? 'Non riesco a completare la risposta.'
       : "I can't complete the response.";
     return { listConversations, maxListPageSize: config.maxListPageSize, historyTurns: config.historyTurns,
-      failureMessage, language: config.language, archive, recoveredTurns, turns,
+      failureMessage, language: config.language, timeZone: config.timeZone, archive, recoveredTurns, turns,
+      searchConversations: createSearchConversations(
+        new PostgresConversationMemorySearch(archive.db, config.language, config.timeZone)),
       conversations: new PostgresConversationLookup(archive.db),
       /** At shutdown, after the ingresses stop: interrupt the turns still pending. */
       interruptPendingTurns: createInterruptPendingTurns({ turns, clock: new SystemCurrentTime() }) };
@@ -122,4 +127,18 @@ function consultationDependencies(prepared: PreparedConversations) {
 /** The consultation routes of HTTP API `v1`, for the scope `/api/v1`. */
 export function conversationApiRegistration(prepared: PreparedConversations): RouteRegistration {
   return conversationApiRoutes(consultationDependencies(prepared));
+}
+
+/** The version of the server package, as the MCP server of the memory presents itself. */
+async function serverVersion(): Promise<string> {
+  const manifest: unknown = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8'));
+  const version = manifest !== null && typeof manifest === 'object' ? (manifest as { version?: unknown }).version : undefined;
+  if (typeof version !== 'string' || !version) throw new ProjectError('Invalid server package version');
+  return version;
+}
+
+/** The MCP server of the Memory connector, for the scope `/mcp` («Server MCP della memoria»). */
+export async function memoryMcpRegistration(prepared: PreparedConversations, log: Logger): Promise<RouteRegistration> {
+  return memoryMcpRoutes({ search: prepared.searchConversations, timeZone: prepared.timeZone,
+    version: await serverVersion(), log });
 }

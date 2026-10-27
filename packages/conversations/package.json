@@ -149,6 +149,18 @@
     "./adapters/in/session/local-speech-components": {
       "types": "./dist/adapters/in/session/local-speech-components.d.ts",
       "import": "./dist/adapters/in/session/local-speech-components.js"
+    },
+    "./application/search-conversations": {
+      "types": "./dist/application/search-conversations.use-case.d.ts",
+      "import": "./dist/application/search-conversations.use-case.js"
+    },
+    "./adapters/out/postgres/memory-search": {
+      "types": "./dist/adapters/out/postgres/postgres-conversation-memory-search.adapter.d.ts",
+      "import": "./dist/adapters/out/postgres/postgres-conversation-memory-search.adapter.js"
+    },
+    "./adapters/in/mcp/memory-mcp-server": {
+      "types": "./dist/adapters/in/mcp/memory-mcp-server.adapter.d.ts",
+      "import": "./dist/adapters/in/mcp/memory-mcp-server.adapter.js"
     }
   },
   "dependencies": {
@@ -158,6 +170,7 @@
     "@ai-sdk/openai": "4.0.96",
     "@ai-sdk/openai-compatible": "3.0.71",
     "@modelcontextprotocol/client": "2.3.1",
+    "@modelcontextprotocol/server": "2.3.1",
     "@sinclair/typebox": "0.34.52",
     "ai": "7.0.143",
     "ajv": "8.20.0",

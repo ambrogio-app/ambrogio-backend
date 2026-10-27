@@ -8,22 +8,6 @@ Raggruppa le prove della ricerca nello storico, del server MCP della memoria e d
   * type: verification-objective
 ---
 
-### Prova della ricerca nella memoria
-
-Su un database PostgreSQL di prova preparato con le migrazioni di produzione e la lingua `it`, conservare in più conversazioni turni conclusi con risposta, un turno concluso con errore, uno interrotto e uno in elaborazione, con parole in forme diverse, una frase ripetuta in due turni, istanti in giorni diversi a cavallo della mezzanotte del fuso orario della famiglia, risposte con agente e azioni e una risposta più lunga di 1000 caratteri. Invocare la porta di lettura e lo strumento con parole al singolare e al plurale, una frase fra virgolette, una parola esclusa, un intervallo di date, un limite, una ricerca senza corrispondenze, una fatta di sole parole vuote e argomenti invalidi; ripetere una ricerca con la lingua `en`. Ispezionare il piano della ricerca con `EXPLAIN`.
-
-#### Details
-La prova passa se ogni forma della parola trova i turni che ne contengono un'altra forma; se soltanto i turni conclusi con risposta compaiono, nell'ordine del contratto, entro il limite e con 5 risultati quando il limite manca; se l'intervallo di date comprende gli estremi nel fuso orario della famiglia; se ogni risultato porta conversazione, turno, istante con lo scostamento del fuso, testo della famiglia e risposta troncata a 1000 caratteri, senza agente né azioni; se le ricerche senza corrispondenze danno `results` vuoto; se gli argomenti invalidi danno `isError` con l'argomento nominato senza interrogare l'archivio; se la lingua `en` usa la configurazione `english`; e se il piano usa l'indice della lingua. Fallisce se compare un turno non concluso con risposta, se una forma della parola non è trovata, se un risultato esce dall'intervallo o se il piano scorre tutta la tabella dei turni.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della memoria delle conversazioni](#verifica-della-memoria-delle-conversazioni)
-  * verify: [Ricerca testuale nello storico delle conversazioni](../Requirements/ConversationMemory.md#ricerca-testuale-nello-storico-delle-conversazioni)
-  * verify: [Intervallo di date della ricerca nella memoria](../Requirements/ConversationMemory.md#intervallo-di-date-della-ricerca-nella-memoria)
----
-
 ### Prova dei turni ricercabili alla conclusione
 
 Su un database PostgreSQL di prova, ammettere un turno e cercarne una parola; concluderlo con risposta tramite il repository del turno e cercare di nuovo; ripetere con una conclusione la cui transazione fallisce dopo l'aggiornamento del turno.
@@ -36,6 +20,7 @@ La prova passa se il turno in elaborazione non è trovato, il turno concluso è 
 
 #### Relations
   * derivedFrom: [Verifica della memoria delle conversazioni](#verifica-della-memoria-delle-conversazioni)
+  * satisfiedBy: [postgres-conversation-memory-search.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/postgres/postgres-conversation-memory-search.adapter.integration.spec.ts)
   * verify: [Turni ricercabili dalla loro conclusione](../Requirements/ConversationMemory.md#turni-ricercabili-dalla-loro-conclusione)
 ---
 
@@ -51,6 +36,8 @@ La prova passa se il server si presenta come `ambrogio-memory`, dichiara soltant
 
 #### Relations
   * derivedFrom: [Verifica della memoria delle conversazioni](#verifica-della-memoria-delle-conversazioni)
+  * satisfiedBy: [conversation-server.integration.spec.ts](../../apps/server/src/runtime/conversation-server.integration.spec.ts)
+  * satisfiedBy: [memory-mcp-server.adapter.spec.ts](../../packages/conversations/src/adapters/in/mcp/memory-mcp-server.adapter.spec.ts)
   * verify: [Server MCP della memoria nel backend](../Requirements/ConversationMemory.md#server-mcp-della-memoria-nel-backend)
 ---
 
@@ -66,5 +53,25 @@ La prova passa se il file è valido per il caricatore, ha la descrizione, l'URL 
 
 #### Relations
   * derivedFrom: [Verifica della memoria delle conversazioni](#verifica-della-memoria-delle-conversazioni)
+  * satisfiedBy: [memory-example.spec.ts](../../apps/server/test/examples/memory-example.spec.ts)
   * verify: [Agente Memory d'esempio](../Requirements/ConversationMemory.md#agente-memory-desempio)
 ---
+
+### Prova della ricerca nella memoria
+
+Su un database PostgreSQL di prova preparato con le migrazioni di produzione e la lingua `it`, conservare in più conversazioni turni conclusi con risposta, un turno concluso con errore, uno interrotto e uno in elaborazione, con parole in forme diverse, una frase ripetuta in due turni, istanti in giorni diversi a cavallo della mezzanotte del fuso orario della famiglia, risposte con agente e azioni e una risposta più lunga di 1000 caratteri. Invocare la porta di lettura e lo strumento con parole al singolare e al plurale, una frase fra virgolette, una parola esclusa, un intervallo di date, un limite, una ricerca senza corrispondenze, una fatta di sole parole vuote e argomenti invalidi; ripetere una ricerca con la lingua `en`. Ispezionare il piano della ricerca con `EXPLAIN`.
+
+#### Details
+La prova passa se ogni forma della parola trova i turni che ne contengono un'altra forma; se soltanto i turni conclusi con risposta compaiono, nell'ordine del contratto, entro il limite e con 5 risultati quando il limite manca; se l'intervallo di date comprende gli estremi nel fuso orario della famiglia; se ogni risultato porta conversazione, turno, istante con lo scostamento del fuso, testo della famiglia e risposta troncata a 1000 caratteri, senza agente né azioni; se le ricerche senza corrispondenze danno `results` vuoto; se gli argomenti invalidi danno `isError` con l'argomento nominato senza interrogare l'archivio; se la lingua `en` usa la configurazione `english`; e se il piano usa l'indice della lingua. Fallisce se compare un turno non concluso con risposta, se una forma della parola non è trovata, se un risultato esce dall'intervallo o se il piano scorre tutta la tabella dei turni.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della memoria delle conversazioni](#verifica-della-memoria-delle-conversazioni)
+  * satisfiedBy: [memory-mcp-server.adapter.spec.ts](../../packages/conversations/src/adapters/in/mcp/memory-mcp-server.adapter.spec.ts)
+  * satisfiedBy: [postgres-conversation-memory-search.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/postgres/postgres-conversation-memory-search.adapter.integration.spec.ts)
+  * verify: [Intervallo di date della ricerca nella memoria](../Requirements/ConversationMemory.md#intervallo-di-date-della-ricerca-nella-memoria)
+  * verify: [Ricerca testuale nello storico delle conversazioni](../Requirements/ConversationMemory.md#ricerca-testuale-nello-storico-delle-conversazioni)
+---
+

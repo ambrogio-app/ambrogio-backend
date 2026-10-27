@@ -197,6 +197,8 @@ describe('HTTP surface of the conversation server', () => {
       ...['GET', 'HEAD', ...write].map(method => [method, '/api/v1/conversations'] as const),
       ...['GET', 'HEAD', ...write].map(method => [method, '/api/v1/conversations/:conversationId'] as const),
       ['GET', '/api/session'], ['HEAD', '/api/session'],
+      // The MCP server of the memory, outside the HTTP API: POST, and the refused session methods.
+      ...['GET', 'HEAD', 'POST', 'DELETE'].map(method => [method, '/mcp/memory'] as const),
       // The CORS preflight of the technical factory.
       ['OPTIONS', '*'],
     ];
@@ -207,7 +209,7 @@ describe('HTTP surface of the conversation server', () => {
     expect(routes.sort()).toEqual(expected.map(([method, url]) => `${method} ${url}`).sort());
     for (const route of routes) {
       const url = route.split(' ')[1]!;
-      expect(url.startsWith('/api/v1/') || ['/api/session', '*'].includes(url), route).toBe(true);
+      expect(url.startsWith('/api/v1/') || ['/api/session', '/mcp/memory', '*'].includes(url), route).toBe(true);
     }
 
     // No previous API is kept: paths without a version are routes that do not exist.

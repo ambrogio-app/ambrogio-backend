@@ -364,6 +364,38 @@ type SpecialistReply = Pick<ProduceConversationReply, 'produce'> & Readonly<{
 
 export type DelegatedAgent = Readonly<{ id: string; description: string; reply: SpecialistReply }>;
 
+/**
+ * A specialist whose MCP connector connects once after the listener opens («Connessione asincrona dei connettori
+ * MCP»). A turn given to it waits for the outcome of the attempt; when the attempt failed, the reply fails with
+ * `Agent unavailable: <id>` without calling the model of the agent.
+ */
+export class DeferredAgentReply {
+  readonly #ready: Promise<SpecialistReply | undefined>;
+  #settle!: (reply: SpecialistReply | undefined) => void;
+
+  constructor(private readonly id: string) {
+    this.#ready = new Promise(resolve => { this.#settle = resolve; });
+  }
+
+  /** The outcome of the single attempt: the connected reply, or `undefined` when it failed. Later calls are ignored. */
+  settle(reply: SpecialistReply | undefined): void {
+    this.#settle(reply);
+  }
+
+  produce(history: ConversationHistory, cancellation: ReplyCancellation): AsyncIterable<ReplyPart> {
+    return this.measured(history, cancellation, { modelSteps: 0 });
+  }
+
+  async *measured(history: ConversationHistory, cancellation: ReplyCancellation,
+    measures: ReplyMeasures): AsyncIterable<ReplyPart> {
+    const stopped = cancellation.requested.then((): never => { throw new ProjectError('Reply production stopped'); });
+    stopped.catch(() => { /* only observed while the attempt is pending */ });
+    const reply = await Promise.race([this.#ready, stopped]);
+    if (!reply) throw new ProjectError(`Agent unavailable: ${this.id}`);
+    yield* reply.measured ? reply.measured(history, cancellation, measures) : reply.produce(history, cancellation);
+  }
+}
+
 /** Where the orchestrator writes the timing of each reply («Evento diagnostico dei tempi della risposta»). */
 export type ReplyTimingLog = Readonly<{ log: Logger; now?: Clock }>;
 

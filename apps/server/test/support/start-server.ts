@@ -16,5 +16,7 @@ export async function startConversationServer(environment: NodeJS.ProcessEnv, pr
     const cleanup = await built.close().then(() => [], () => built.faults);
     throw startupWithCleanup('Server startup failed', error, cleanup);
   }
+  // As the entry point does: the MCP connectors connect after the listener opens, without waiting.
+  void built.connectAgents();
   return built;
 }

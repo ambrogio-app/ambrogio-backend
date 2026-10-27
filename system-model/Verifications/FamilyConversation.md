@@ -231,6 +231,25 @@ La prova passa se il file è accettato senza modifiche come agente specializzato
   * verify: [Configurazione pronta del connettore Home Assistant](../Requirements/FamilyConversation.md#configurazione-pronta-del-connettore-home-assistant)
 ---
 
+### Prova della connessione asincrona dei connettori MCP
+
+Avviare il processo server con quattro agenti specializzati con connettore MCP: uno verso un server MCP di prova che risponde, uno verso un indirizzo che rifiuta la connessione, uno verso un server che risponde dopo un ritardo controllato e uno che elenca in `mcp.tools` uno strumento che il server non dichiara. Inserire un segreto marcatore nelle credenziali MCP. Con un orchestratore controllato, affidare turni a ciascun agente subito dopo l'apertura dell'ascolto e dopo l'esito delle connessioni; arrestare il server mentre la connessione ritardata è ancora in corso.
+
+#### Details
+La prova passa se il listener si apre e l'elenco delle conversazioni risponde prima che le connessioni terminino; se ogni server MCP riceve un solo tentativo; se il registro contiene una sola riga `agent_mcp_unavailable` per l'agente irraggiungibile, con `reason` `connection_failed`, e una per l'agente con lo strumento assente, con `reason` `tool_unavailable` e il nome dello strumento, entrambe senza URL né segreto marcatore; se i turni affidati all'agente collegato ricevono la risposta; se i turni affidati ai due agenti non disponibili si concludono con l'esito di errore e il messaggio pubblico standard senza chiamare il loro modello; se il turno affidato all'agente in connessione attende l'esito e riceve la risposta; e se l'arresto durante la connessione ritardata termina entro la finestra di arresto chiudendo il client. Fallisce se l'avvio attende un server MCP, se un fallimento ferma il server o un altro agente, se un tentativo viene ripetuto o se un turno affidato a un agente non disponibile chiama il suo modello.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
+  * satisfiedBy: [agents.spec.ts](../../apps/server/src/composition/agents.spec.ts)
+  * satisfiedBy: [conversation-server.integration.spec.ts](../../apps/server/src/runtime/conversation-server.integration.spec.ts)
+  * satisfiedBy: [startup-failure.spec.ts](../../apps/server/src/runtime/startup-failure.spec.ts)
+  * verify: [Connessione dei connettori MCP dopo l'apertura dell'ascolto](../Requirements/FamilyConversation.md#connessione-dei-connettori-mcp-dopo-lapertura-dellascolto)
+  * verify: [Turno affidato a un agente non disponibile](../Requirements/FamilyConversation.md#turno-affidato-a-un-agente-non-disponibile)
+---
+
 ### Prova della disponibilità degli agenti dai file della directory
 
 Avviare il server con `orchestrator.json` e un file specializzato valido nella directory degli agenti, usando agenti di prova osservabili dall'orchestratore. Aggiungere un secondo file `<id>.json` valido e riavviare; rimuovere il primo file e riavviare ancora, senza modificare altri elenchi di abilitazione.
@@ -261,22 +280,6 @@ La prova passa se nel primo caso il testo della risposta segue l'esecuzione dell
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
   * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
   * verify: [Risposta dopo le azioni degli agenti con connettore MCP](../Requirements/FamilyConversation.md#risposta-dopo-le-azioni-degli-agenti-con-connettore-mcp)
----
-
-### Prova della connessione asincrona dei connettori MCP
-
-Avviare il processo server con quattro agenti specializzati con connettore MCP: uno verso un server MCP di prova che risponde, uno verso un indirizzo che rifiuta la connessione, uno verso un server che risponde dopo un ritardo controllato e uno che elenca in `mcp.tools` uno strumento che il server non dichiara. Inserire un segreto marcatore nelle credenziali MCP. Con un orchestratore controllato, affidare turni a ciascun agente subito dopo l'apertura dell'ascolto e dopo l'esito delle connessioni; arrestare il server mentre la connessione ritardata è ancora in corso.
-
-#### Details
-La prova passa se il listener si apre e l'elenco delle conversazioni risponde prima che le connessioni terminino; se ogni server MCP riceve un solo tentativo; se il registro contiene una sola riga `agent_mcp_unavailable` per l'agente irraggiungibile, con `reason` `connection_failed`, e una per l'agente con lo strumento assente, con `reason` `tool_unavailable` e il nome dello strumento, entrambe senza URL né segreto marcatore; se i turni affidati all'agente collegato ricevono la risposta; se i turni affidati ai due agenti non disponibili si concludono con l'esito di errore e il messaggio pubblico standard senza chiamare il loro modello; se il turno affidato all'agente in connessione attende l'esito e riceve la risposta; e se l'arresto durante la connessione ritardata termina entro la finestra di arresto chiudendo il client. Fallisce se l'avvio attende un server MCP, se un fallimento ferma il server o un altro agente, se un tentativo viene ripetuto o se un turno affidato a un agente non disponibile chiama il suo modello.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
-  * verify: [Connessione dei connettori MCP dopo l'apertura dell'ascolto](../Requirements/FamilyConversation.md#connessione-dei-connettori-mcp-dopo-lapertura-dellascolto)
-  * verify: [Turno affidato a un agente non disponibile](../Requirements/FamilyConversation.md#turno-affidato-a-un-agente-non-disponibile)
 ---
 
 ### Prova della selezione degli strumenti MCP

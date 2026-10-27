@@ -132,7 +132,7 @@ pnpm dev
 
 `pnpm dev` runs `node --env-file=.env apps/server/dist/main.js`: variables already set in your shell take precedence over `.env`, and the server never reads `.env` by itself. In development the listener defaults to `127.0.0.1:3000`. To enable voice, set `AMBROGIO_VOICE_LANGUAGES` and the `AMBROGIO_VOICE_<LANGUAGE>_*` variables of each listed language.
 
-If the server cannot start, it writes one JSON line with `"event":"server_startup_failed"` to stdout, whose `err.message` names the cause (for example `Missing environment variable AMBROGIO_HTTP_PORT`, `Invalid agent configuration: general` or `Agent MCP connection failed: home-assistant`), then prints `Unable to start HTTP server.` to stderr and exits with code 1.
+If the server cannot start, it writes one JSON line with `"event":"server_startup_failed"` to stdout, whose `err.message` names the cause (for example `Missing environment variable AMBROGIO_HTTP_PORT`, `Invalid agent configuration: general` or `Conversation archive could not be prepared`), then prints `Unable to start HTTP server.` to stderr and exits with code 1.
 
 On `SIGTERM` or `SIGINT` the server stops accepting turns, saves the pending ones as interrupted and closes its resources in reverse order within 10 seconds; it exits with code 0, or with 1 and a `server_shutdown_failed` or `server_shutdown_timeout` line. Give the container at least 15 seconds to stop: `compose.example.yaml` sets `stop_grace_period: 15s`.
 

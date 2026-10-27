@@ -17,7 +17,7 @@ import { AiSdkOrchestratorReply, AiSdkToolAgentReply } from '@ambrogio/conversat
 import { prepareConfiguredConversations } from '../composition/conversations.js';
 import { loadAgentConfigs } from './agent-config.js';
 import { buildConversationServer } from '../composition/http-surface.js';
-import { surfaceOptions } from '../../test/support/logger-fixture.js';
+import { capturedBaseLogger, surfaceOptions } from '../../test/support/logger-fixture.js';
 import { startConversationServer } from '../../test/support/start-server.js';
 import { closeAllClients, ProtocolClient, takeSchemaViolations } from '../../test/support/protocol-client.js';
 import { emptyTestDatabase, publicTables, querySql, testDatabaseServer } from '../../../../test/support/test-database.js';
@@ -872,7 +872,8 @@ test('a session turn delegates to a configured MCP tool and persists the answer'
   }
 });
 
-test('unavailable configured MCP connector prevents the conversation listener', async () => {
+// Verification: Prova della connessione asincrona dei connettori MCP
+test('an unreachable MCP connector leaves the listener open and its agent unavailable', async () => {
   const files = await fixture();
   const agentDirectory = join(files.directory, 'agents');
   await mkdir(agentDirectory);
@@ -884,16 +885,21 @@ test('unavailable configured MCP connector prevents the conversation listener', 
   }));
   await writeAgentFile(join(agentDirectory, 'facts.json'), JSON.stringify({
     instructions: 'Use lookup.', description: 'Find facts.', maxToolCalls: 1, llm,
-    mcp: { url: `http://127.0.0.1:${unavailablePort}/mcp` },
+    mcp: { url: `http://127.0.0.1:${unavailablePort}/mcp`, auth: { type: 'bearer', token: 'marker-token-5b2e' } },
   }));
-  await expect(startConversationServer(serverEnvironment(files, port, agentDirectory)))
-    .rejects.toThrow('MCP connection failed');
-  const probe = createServer();
-  await new Promise<void>((resolve, reject) => {
-    probe.once('error', reject);
-    probe.listen(port, '127.0.0.1', resolve);
-  });
-  await new Promise<void>((resolve) => probe.close(() => resolve()));
+  const captured = capturedBaseLogger();
+  const server = await startConversationServer(serverEnvironment(files, port, agentDirectory), undefined, captured.log);
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/api/v1/conversations`);
+    expect(response.status).toBe(200);
+    await server.connectAgents();
+    const unavailable = captured.lines().filter(line => line.event === 'agent_mcp_unavailable');
+    expect(unavailable).toEqual([expect.objectContaining({ level: 50, agent: 'facts', reason: 'connection_failed',
+      msg: 'Agent MCP unavailable' })]);
+    expect(captured.output.join('')).not.toMatch(new RegExp(`${unavailablePort}|marker-token-5b2e`));
+    // The listener stays open after the failed attempt.
+    expect((await fetch(`http://127.0.0.1:${port}/api/v1/conversations`)).status).toBe(200);
+  } finally { await server.close(); }
 });
 
 // Verification: Prova delle configurazioni degli agenti con e senza MCP

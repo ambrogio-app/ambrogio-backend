@@ -674,8 +674,10 @@ Quando il repository fornisce esempi di configurazione, come `.env.example`, `co
   * derivedFrom: [Configurazioni effettive escluse dagli artefatti](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#configurazioni-effettive-escluse-dagli-artefatti)
   * satisfiedBy: [.env.example](../../.env.example)
   * satisfiedBy: [compose.example.yaml](../../compose.example.yaml)
+  * satisfiedBy: [files.json](../../examples/agents/files.json)
   * satisfiedBy: [generic.json](../../examples/agents/generic.json)
   * satisfiedBy: [home-assistant.json](../../examples/agents/home-assistant.json)
+  * satisfiedBy: [music.json](../../examples/agents/music.json)
   * satisfiedBy: [orchestrator.json](../../examples/agents/orchestrator.json)
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
 ---

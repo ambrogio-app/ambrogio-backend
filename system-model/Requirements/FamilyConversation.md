@@ -386,7 +386,31 @@ Il repository deve fornire un file JSON pronto dell'agente Home Assistant, accet
 
 #### Relations
   * satisfiedBy: [home-assistant.json](../../examples/agents/home-assistant.json)
-  * specify: [Interazione domestica tramite Home Assistant](../../../ambrogio-model/system-model/Capabilities/Product.md#interazione-domestica-tramite-home-assistant)
+  * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
+---
+
+### Configurazione pronta del connettore Music Assistant
+
+Il repository deve fornire un file JSON pronto di un agente per Music Assistant, accettato dalla validazione dei file degli agenti, che chi installa completa con l'indirizzo di Music Assistant e con le variabili d'ambiente delle proprie credenziali senza modificarne la struttura.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [music.json](../../examples/agents/music.json)
+  * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
+---
+
+### Configurazione pronta del connettore OpenCloud
+
+Il repository deve fornire un file JSON pronto di un agente per i documenti conservati in OpenCloud, accettato dalla validazione dei file degli agenti, che chi installa completa con l'indirizzo del server MCP per OpenCloud e con le variabili d'ambiente delle proprie credenziali senza modificarne la struttura.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [files.json](../../examples/agents/files.json)
+  * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
 ---
 
 ### Confine dell'aggregato del turno secondo gli invarianti
@@ -436,7 +460,7 @@ Dove l'installazione abilita il connettore Home Assistant, il server deve raggiu
 #### Relations
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
   * satisfiedBy: [home-assistant.json](../../examples/agents/home-assistant.json)
-  * specify: [Interazione domestica tramite Home Assistant](../../../ambrogio-model/system-model/Capabilities/Product.md#interazione-domestica-tramite-home-assistant)
+  * specify: [Estensione tramite connettori MCP](../../../ambrogio-model/system-model/Capabilities/Product.md#estensione-tramite-connettori-mcp)
 ---
 
 ### Conservazione del testo originale del turno
@@ -1061,7 +1085,6 @@ Se la lettura dei prompt fallisce, Ambrogio deve concludere il turno con il guas
 
 #### Contract References
   * [Protocollo Model Context Protocol](../Contracts/ExternalContracts.md#protocollo-model-context-protocol)
-  * [Server MCP di Home Assistant](../Contracts/ExternalContracts.md#server-mcp-di-home-assistant)
 
 #### Relations
   * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)

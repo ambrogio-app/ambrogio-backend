@@ -7,7 +7,7 @@
 
 # Ambrogio — backend
 
-**Ambrogio** is an open source home assistant that you host yourself, for example in your homelab. Members of the family talk to it by typing or by voice. Ambrogio keeps the conversation history and can hand each request to a specialised AI agent.
+**Ambrogio**: talk to it like Alexa, chat with it like ChatGPT — one self-hosted AI assistant for your whole homelab. Multi-agent by design: each agent you configure handles one job, such as the house, music, weather or your documents, using the services you already host.
 
 This repository holds the **backend**: the server that receives turns from clients, picks an agent and produces the answer. It also stores conversations and turns speech into text and text into speech. It owns the public protocol that every client uses.
 

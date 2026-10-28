@@ -47,7 +47,7 @@ Origine: baseline Reqvire «Composition written by hand», adottata.
 Quando il server HTTP del backend produce una risposta 4xx o 5xx, deve usare il formato Problem Details di RFC 9457 con `application/problem+json`, con `type`, `title` e `status` sempre presenti, `type` come unico discriminante pubblico e soltanto le estensioni sicure dichiarate nello schema del problema concreto.
 
 #### Details
-Origine: baseline Reqvire «Problem Details for error responses», adattata: i `type` sono riferimenti relativi `/problems/<nome>` non risolti dal backend e documentati in `ambrogio-docs`.
+Origine: baseline Reqvire «Problem Details for error responses», adattata: i `type` sono riferimenti relativi `/problems/<nome>` non risolti dal backend e descritti nei contratti dell'API HTTP.
 
 #### Metadata
   * type: requirement

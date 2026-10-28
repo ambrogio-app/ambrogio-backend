@@ -167,6 +167,23 @@ Application richiede la persistenza delle transizioni complete del turno al repo
   * define: [Scritture atomiche dello stato dei turni](../Requirements/FamilyConversation.md#scritture-atomiche-dello-stato-dei-turni)
 ---
 
+### Connessione asincrona dei connettori MCP
+
+Prima dell'ascolto il server valida i file degli agenti e prepara i modelli secondo i contratti di configurazione; nessun server MCP viene contattato. Dopo che l'ascolto HTTP è aperto, l'entrypoint del processo avvia in parallelo, senza attenderle, le connessioni degli agenti specializzati con connettore MCP. Per ciascun agente il tentativo è unico: connessione e inizializzazione del client MCP comune, scoperta degli strumenti, controllo di `mcp.tools` secondo «Elenco degli strumenti MCP ammessi per agente» e scoperta dei prompt secondo «Prompt del server MCP letti a ogni turno». Un agente è `in connessione` dall'apertura dell'ascolto fino all'esito del tentativo, poi `disponibile` oppure `non disponibile` fino all'arresto del processo; nessun nuovo tentativo segue un fallimento.
+
+Un tentativo fallito chiude il client già creato e produce una sola riga di log con livello `error`, `event: "agent_mcp_unavailable"`, il messaggio fisso `Agent MCP unavailable`, il campo `agent` con l'identificatore dell'agente, il campo `reason` pari a `connection_failed` per connessione, inizializzazione o scoperta fallite oppure `tool_unavailable` per un nome di `mcp.tools` che il server non dichiara, in questo caso con il campo `tool` con quel nome, e il campo `err` secondo il profilo controllato di serializzazione. La riga non contiene URL, credenziali né token. Un tentativo riuscito non produce log.
+
+L'orchestratore continua a ricevere tutti gli agenti configurati. Quando sceglie un agente `in connessione`, la produzione della risposta attende l'esito del tentativo dentro il tempo massimo della produzione della risposta. Quando sceglie un agente `non disponibile`, la produzione della risposta non chiama il modello dell'agente e termina con un guasto la cui causa tecnica è `Agent unavailable: <id>`: il turno si conclude con l'esito di errore, il messaggio pubblico standard e il log `conversation_reply_failed` già previsti. L'esito di un tentativo non cambia durante i turni: un guasto di uno strumento durante un turno segue le regole già definite per le chiamate e non rende l'agente `non disponibile`.
+
+All'arresto, le connessioni ancora in corso sono attese per al più il tempo dell'arresto ordinato e i client creati, riusciti o in corso, sono chiusi secondo l'ordine di chiusura delle risorse; un tentativo che termina dopo l'inizio dell'arresto chiude subito il proprio client. L'ingresso di prova pubblico non ha agenti e non avvia connessioni.
+
+#### Metadata
+  * type: behavior
+
+#### Relations
+  * define: [Connessione dei connettori MCP dopo l'apertura dell'ascolto](../Requirements/FamilyConversation.md#connessione-dei-connettori-mcp-dopo-lapertura-dellascolto)
+---
+
 ### Conteggio delle chiamate agli strumenti MCP per turno
 
 Ogni file di agente specializzato con sezione `mcp` contiene al primo livello `maxToolCalls`, un intero positivo. Il valore è obbligatorio per tali agenti e vale solo per quell'agente; il file di un agente senza `mcp` non contiene `maxToolCalls`, e la sua presenza rende il file invalido. Per ogni turno delegato, Ambrogio conta ogni chiamata a uno strumento MCP effettivamente richiesta dal modello dell'agente, anche quando più chiamate sono richieste nella stessa risposta del modello. Prima di inoltrare una chiamata che eccederebbe `maxToolCalls`, interrompe la produzione del turno con un guasto; il caso d'uso comunica e conserva il messaggio pubblico standard senza dettagli tecnici. Il contatore riparte da zero al turno successivo. Il limite non impedisce al modello di formulare una risposta finale dopo l'ultima chiamata consentita.
@@ -627,7 +644,9 @@ Il file dell'agente contiene `llm.provider`, `model`, `apiKeyEnv`, `baseURL` sol
 
 ### Profilo del connettore Home Assistant
 
-Il connettore Home Assistant non richiede codice dedicato: è un agente specializzato configurato con il client MCP comune, il trasporto Streamable HTTP e il Bearer statico già definiti. La sezione `mcp.url` indica l'endpoint `/api/mcp` dell'integrazione ufficiale «Model Context Protocol Server» di Home Assistant, per esempio `http://homeassistant.local:8123/api/mcp`; `mcp.auth` ha `type: "bearer"` e `tokenEnv` con il nome della variabile d'ambiente che contiene un token di accesso di lunga durata creato nel profilo dell'utente Home Assistant, nella scheda Sicurezza. Home Assistant offre ai client MCP soltanto le entità esposte ad Assist: la scelta dei dispositivi che Ambrogio consulta o comanda appartiene alla configurazione di Home Assistant. L'autorizzazione OAuth con login interattivo e PKCE offerta da Home Assistant non è usata, perché il client MCP di Ambrogio non supporta flussi con login nel browser. Fonte: https://www.home-assistant.io/integrations/mcp_server/ .
+Il connettore Home Assistant non richiede codice dedicato: è un agente specializzato configurato con il client MCP comune, il trasporto Streamable HTTP e il Bearer statico già definiti. La sezione `mcp.url` indica l'endpoint `/api/mcp` dell'integrazione ufficiale «Model Context Protocol Server» di Home Assistant, per esempio `http://homeassistant.local:8123/api/mcp`; `mcp.auth` ha `type: "bearer"` e `tokenEnv` con il nome della variabile d'ambiente che contiene un token di accesso di lunga durata creato nel profilo dell'utente Home Assistant, nella scheda Sicurezza. Home Assistant offre ai client MCP soltanto le entità esposte ad Assist: la scelta dei dispositivi che Ambrogio consulta o comanda appartiene alla configurazione di Home Assistant. L'autorizzazione OAuth con login interattivo e PKCE offerta da Home Assistant non è usata, perché il client MCP di Ambrogio non supporta flussi con login nel browser. Fonte: https://www.home-assistant.io/integrations/mcp_server/ , con il sorgente in `homeassistant/components/mcp_server/` di https://github.com/home-assistant/core .
+
+Interfaccia usata: l'endpoint `/api/mcp` con trasporto Streamable HTTP, offerto dalle release di Home Assistant in cui l'integrazione lo registra, mentre le prime release dell'integrazione offrono soltanto il trasporto SSE, che Ambrogio non usa; autenticazione con un token di accesso di lunga durata come Bearer; strumenti limitati alle entità esposte ad Assist; capacità `prompts` con un prompt senza argomenti che contiene le indicazioni d'uso degli strumenti e l'elenco delle aree e dei dispositivi esposti. I nomi degli strumenti dipendono dalla release di Home Assistant: nelle release recenti hanno come prefisso il dominio che li fornisce, per esempio `intent__HassTurnOn`, `light__HassLightSet` e `homeassistant__GetLiveContext`. I nomi elencati in `mcp.tools` del file di un agente devono essere quelli dichiarati dalla release in uso: un nome che il server non dichiara lascia l'agente non disponibile secondo «Agente non disponibile per uno strumento MCP elencato assente». La «Dimostrazione del connettore Home Assistant su un'installazione reale» esercita l'interfaccia; «Prova della configurazione pronta di Home Assistant» controlla il file d'esempio senza un'istanza di Home Assistant.
 
 Il repository fornisce `examples/agents/home-assistant.json`, da montare nella directory degli agenti come `home-assistant.json`, che definisce l'agente con identificativo `home-assistant`. Il file contiene `description` e `instructions`, seleziona Mistral e `mistral-medium-latest` con `apiKeyEnv: "MISTRAL_API_KEY"`, imposta `maxToolCalls: 5`, indica in `mcp.url` l'indirizzo d'esempio `http://homeassistant.local:8123/api/mcp`, che chi installa sostituisce con quello della propria istanza, e in `mcp.auth` il Bearer con `tokenEnv: "HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN"`. In assenza delle due variabili la validazione impedisce l'avvio dell'agente.
 
@@ -642,21 +661,38 @@ Come gli altri esempi distribuiti e la documentazione utente, le `instructions` 
   * define: [Connettore Home Assistant tramite il server MCP di Home Assistant](../Requirements/FamilyConversation.md#connettore-home-assistant-tramite-il-server-mcp-di-home-assistant)
 ---
 
-### Connessione asincrona dei connettori MCP
+### Profilo del connettore Music Assistant
 
-Prima dell'ascolto il server valida i file degli agenti e prepara i modelli secondo i contratti di configurazione; nessun server MCP viene contattato. Dopo che l'ascolto HTTP è aperto, l'entrypoint del processo avvia in parallelo, senza attenderle, le connessioni degli agenti specializzati con connettore MCP. Per ciascun agente il tentativo è unico: connessione e inizializzazione del client MCP comune, scoperta degli strumenti, controllo di `mcp.tools` secondo «Elenco degli strumenti MCP ammessi per agente» e scoperta dei prompt secondo «Prompt del server MCP letti a ogni turno». Un agente è `in connessione` dall'apertura dell'ascolto fino all'esito del tentativo, poi `disponibile` oppure `non disponibile` fino all'arresto del processo; nessun nuovo tentativo segue un fallimento.
+Il connettore Music Assistant non richiede codice dedicato: è un agente specializzato configurato con il client MCP comune, il trasporto Streamable HTTP e il Bearer statico già definiti. Il server MCP è quello del plugin «FastMCP Server» di Music Assistant, che si aggiunge da **Settings → Plugins** e usa il server web di Music Assistant, sulla porta `8095`, al percorso predefinito `/mcp/v1`. `mcp.auth` ha `type: "bearer"` e `tokenEnv` con il nome della variabile d'ambiente che contiene un token di accesso di lunga durata creato nel profilo dell'utente Music Assistant; con l'opzione **Require authentication** del plugin il server rifiuta i client senza un token valido. Gli strumenti dell'agente cercano nella libreria musicale e comandano i player configurati in Music Assistant: la scelta della musica e dei player disponibili appartiene alla configurazione di Music Assistant. Fonte: https://music-assistant.io/plugins/fastmcp-server/ .
 
-Un tentativo fallito chiude il client già creato e produce una sola riga di log con livello `error`, `event: "agent_mcp_unavailable"`, il messaggio fisso `Agent MCP unavailable`, il campo `agent` con l'identificatore dell'agente, il campo `reason` pari a `connection_failed` per connessione, inizializzazione o scoperta fallite oppure `tool_unavailable` per un nome di `mcp.tools` che il server non dichiara, in questo caso con il campo `tool` con quel nome, e il campo `err` secondo il profilo controllato di serializzazione. La riga non contiene URL, credenziali né token. Un tentativo riuscito non produce log.
+Il repository fornisce `examples/agents/music.json`, da montare nella directory degli agenti come `music.json`, che definisce l'agente con identificativo `music`. Il file contiene `description` e `instructions`, seleziona Mistral e `mistral-medium-latest` con `apiKeyEnv: "MISTRAL_API_KEY"`, imposta `maxToolCalls: 6`, indica in `mcp.url` l'indirizzo d'esempio `http://music-assistant.local:8095/mcp/v1`, che chi installa sostituisce con quello della propria istanza, in `mcp.auth` il Bearer con `tokenEnv: "MUSIC_ASSISTANT_TOKEN"` e in `mcp.tools` gli strumenti `library_search_tracks`, `library_search_albums`, `library_search_artists`, `library_list_library_playlists`, `players_list_players`, `playback_play_media`, `playback_pause`, `playback_resume`, `playback_stop`, `playback_next_track`, `volume_volume_set`, `queue_add_to_queue`, `media_add_to_favorites` e `media_remove_from_favorites`. In assenza delle due variabili la validazione impedisce l'avvio dell'agente.
 
-L'orchestratore continua a ricevere tutti gli agenti configurati. Quando sceglie un agente `in connessione`, la produzione della risposta attende l'esito del tentativo dentro il tempo massimo della produzione della risposta. Quando sceglie un agente `non disponibile`, la produzione della risposta non chiama il modello dell'agente e termina con un guasto la cui causa tecnica è `Agent unavailable: <id>`: il turno si conclude con l'esito di errore, il messaggio pubblico standard e il log `conversation_reply_failed` già previsti. L'esito di un tentativo non cambia durante i turni: un guasto di uno strumento durante un turno segue le regole già definite per le chiamate e non rende l'agente `non disponibile`.
+Le `instructions` chiedono di trovare l'elemento con gli strumenti di ricerca prima di riprodurlo, di trovare con `players_list_players` il player nominato e di avviare la riproduzione con `playback_play_media`; se nessun player è nominato e ne è disponibile uno solo, di usarlo, altrimenti di chiedere quale; di usare pausa, ripresa, arresto, brano successivo e volume soltanto sul player interessato e di modificare i preferiti soltanto su richiesta; di ripetere una ricerca senza risultati fino a tre volte, con il solo titolo, il solo artista o la grafia più probabile, perché i nomi arrivano dal riconoscimento vocale; di dire quando uno strumento fallisce senza dichiarare risultati e di non inventare brani, player o azioni; di rispondere brevemente con frasi semplici senza elenchi né formattazione, perché la risposta arriva anche a voce. Motivazione: senza queste indicazioni l'agente rischia di riprodurre su un player non richiesto e di rinunciare alla prima ricerca con un nome trascritto male.
 
-All'arresto, le connessioni ancora in corso sono attese per al più il tempo dell'arresto ordinato e i client creati, riusciti o in corso, sono chiusi secondo l'ordine di chiusura delle risorse; un tentativo che termina dopo l'inizio dell'arresto chiude subito il proprio client. L'ingresso di prova pubblico non ha agenti e non avvia connessioni.
+Come gli altri esempi distribuiti, le `instructions` sono in inglese e non indicano una lingua di risposta.
 
 #### Metadata
-  * type: behavior
+  * type: specification
 
 #### Relations
-  * define: [Connessione dei connettori MCP dopo l'apertura dell'ascolto](../Requirements/FamilyConversation.md#connessione-dei-connettori-mcp-dopo-lapertura-dellascolto)
+  * define: [Configurazione pronta del connettore Music Assistant](../Requirements/FamilyConversation.md#configurazione-pronta-del-connettore-music-assistant)
+---
+
+### Profilo del connettore OpenCloud
+
+Il connettore OpenCloud non richiede codice dedicato: è un agente specializzato configurato con il client MCP comune, il trasporto Streamable HTTP e il Bearer statico già definiti. OpenCloud non offre un server MCP proprio: l'esempio usa `opencloud-mcp`, un server MCP indipendente da Ambrogio, in sola lettura, con gli strumenti `search_files`, che cerca nei nomi e, attraverso l'indice a testo completo di OpenCloud con Apache Tika, nel testo dei documenti e restituisce per ogni risultato un estratto e un `link` all'interfaccia web di OpenCloud, e `read_file`, che restituisce il testo di un file a parti successive indicate da `nextOffset`. Il server accede come un utente OpenCloud dedicato con una password applicativa e vede soltanto ciò che quell'utente vede: la scelta dei documenti che Ambrogio legge appartiene alla configurazione di OpenCloud. L'endpoint MCP è `POST /mcp` sulla porta `3000`; i client inviano come Bearer il segreto della variabile `MCP_TOKEN` del server. Fonte: https://github.com/adrianofoschi/opencloud-mcp .
+
+Il repository fornisce `examples/agents/files.json`, da montare nella directory degli agenti come `files.json`, che definisce l'agente con identificativo `files`. Il file contiene `description` e `instructions`, seleziona Mistral e `mistral-medium-latest` con `apiKeyEnv: "MISTRAL_API_KEY"`, imposta `maxToolCalls: 6`, indica in `mcp.url` l'indirizzo d'esempio `http://opencloud-mcp:3000/mcp`, il nome del servizio in una rete Docker condivisa con il backend, in `mcp.auth` il Bearer con `tokenEnv: "OPENCLOUD_MCP_TOKEN"` e in `mcp.tools` `search_files` e `read_file`. In assenza delle due variabili la validazione impedisce l'avvio dell'agente.
+
+Le `instructions` chiedono di cercare con le parole più distintive della domanda e di riprovare con sinonimi o meno parole quando la ricerca non trova nulla di utile; di leggere soltanto uno o due file scelti con gli estratti e le date, e le parti successive soltanto quando la risposta non è nella prima; di rispondere soltanto da ciò che dicono i file e di dire quando non trova nulla invece di inventare; di rispondere brevemente con frasi semplici, perché la risposta arriva anche a voce, terminando con un collegamento Markdown a ogni documento usato. Motivazione: il collegamento permette alla famiglia di aprire il documento da cui viene la risposta.
+
+Come gli altri esempi distribuiti, le `instructions` sono in inglese e non indicano una lingua di risposta.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Configurazione pronta del connettore OpenCloud](../Requirements/FamilyConversation.md#configurazione-pronta-del-connettore-opencloud)
 ---
 
 ### Profilo del trasporto MCP iniziale
@@ -740,21 +776,6 @@ Una marcatura che si estende su più frasi è ripulita in ciascuna frase per i s
 
 #### Relations
   * define: [Risposta parlata senza marcatura testuale](../Requirements/FamilyConversation.md#risposta-parlata-senza-marcatura-testuale)
----
-
-### Tipi del database con kysely-codegen
-
-I tipi Kysely dello schema dell'archivio sono generati da kysely-codegen introspezionando un database PostgreSQL creato da zero con le migrazioni di produzione, mai il database di un'installazione. Il file generato è `packages/conversations/src/adapters/out/postgres/database.generated.ts`, versionato, non modificato a mano e importato soltanto dagli adapter di `postgres/`; contiene soltanto dichiarazioni di tipo e non importa tipi di Domain o Application. La configurazione versionata è `.kysely-codegenrc.json` nella radice del repository: dialetto `postgres`, `dateParser: timestamp`, `numericParser: string`, `includePattern` limitato a `public.+(conversations|turns)`, così che le tabelle del registro delle migrazioni restino escluse, e il file generato come uscita.
-
-Lo script `scripts/database-types.mjs`, eseguito con `pnpm db:types` dopo `pnpm build`, crea un database di prova secondo «Comando di verifica completo con pnpm», vi applica le migrazioni compilate, esegue kysely-codegen e cancella il database; `pnpm db:types:check` fa lo stesso con `--verify` e fallisce se il file versionato non coincide con lo schema. Ogni modifica dello schema consegna insieme la migrazione e il file rigenerato.
-
-I tipi corrispondono ai valori del driver `pg` con i suoi parser predefiniti: `timestamptz` come `Date`, `jsonb` come valore JSON già interpretato, i conteggi `bigint` come stringhe. Una colonna è `Generated` soltanto se lo schema la genera davvero; gli identificativi UUID assegnati dall'Application sono obbligatori negli inserimenti. Le migrazioni non importano i tipi generati. Gli adapter derivano dai tipi generati le forme operative (`Selectable`, `Insertable`, `Updateable`) soltanto dove tipizzano una riga o un ingresso completi, senza un modello parallelo delle tabelle scritto a mano.
-
-#### Metadata
-  * type: specification
-
-#### Relations
-  * define: [Tipi del database generati dallo schema migrato](../Requirements/FamilyConversation.md#tipi-del-database-generati-dallo-schema-migrato)
 ---
 
 ### Registro delle migrazioni dell'archivio conversazioni
@@ -962,6 +983,21 @@ Lo storico di una conversazione è una sequenza ordinata di scambi. Ogni scambio
 
 #### Relations
   * define: [Conservazione dello scambio testuale](../Requirements/FamilyConversation.md#conservazione-dello-scambio-testuale)
+---
+
+### Tipi del database con kysely-codegen
+
+I tipi Kysely dello schema dell'archivio sono generati da kysely-codegen introspezionando un database PostgreSQL creato da zero con le migrazioni di produzione, mai il database di un'installazione. Il file generato è `packages/conversations/src/adapters/out/postgres/database.generated.ts`, versionato, non modificato a mano e importato soltanto dagli adapter di `postgres/`; contiene soltanto dichiarazioni di tipo e non importa tipi di Domain o Application. La configurazione versionata è `.kysely-codegenrc.json` nella radice del repository: dialetto `postgres`, `dateParser: timestamp`, `numericParser: string`, `includePattern` limitato a `public.+(conversations|turns)`, così che le tabelle del registro delle migrazioni restino escluse, e il file generato come uscita.
+
+Lo script `scripts/database-types.mjs`, eseguito con `pnpm db:types` dopo `pnpm build`, crea un database di prova secondo «Comando di verifica completo con pnpm», vi applica le migrazioni compilate, esegue kysely-codegen e cancella il database; `pnpm db:types:check` fa lo stesso con `--verify` e fallisce se il file versionato non coincide con lo schema. Ogni modifica dello schema consegna insieme la migrazione e il file rigenerato.
+
+I tipi corrispondono ai valori del driver `pg` con i suoi parser predefiniti: `timestamptz` come `Date`, `jsonb` come valore JSON già interpretato, i conteggi `bigint` come stringhe. Una colonna è `Generated` soltanto se lo schema la genera davvero; gli identificativi UUID assegnati dall'Application sono obbligatori negli inserimenti. Le migrazioni non importano i tipi generati. Gli adapter derivano dai tipi generati le forme operative (`Selectable`, `Insertable`, `Updateable`) soltanto dove tipizzano una riga o un ingresso completi, senza un modello parallelo delle tabelle scritto a mano.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Tipi del database generati dallo schema migrato](../Requirements/FamilyConversation.md#tipi-del-database-generati-dallo-schema-migrato)
 ---
 
 ### Trascrizione vocale in streaming con sherpa-onnx

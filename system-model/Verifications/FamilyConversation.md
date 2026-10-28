@@ -231,6 +231,38 @@ La prova passa se il file è accettato senza modifiche come agente specializzato
   * verify: [Configurazione pronta del connettore Home Assistant](../Requirements/FamilyConversation.md#configurazione-pronta-del-connettore-home-assistant)
 ---
 
+### Prova della configurazione pronta di Music Assistant
+
+Copiare `examples/agents/music.json` in una directory degli agenti di prova insieme a un orchestratore valido e caricarla con la validazione dei file degli agenti usata all'avvio, fornendo valori segnaposto alle variabili d'ambiente nominate. Esaminare i valori del file e cercare credenziali scritte nel file.
+
+#### Details
+La prova passa se il file è accettato senza modifiche come agente specializzato `music` con connettore MCP, `mcp.url` termina con `/mcp/v1`, `mcp.auth` è di tipo `bearer`, `mcp.tools` elenca gli strumenti del contratto, `maxToolCalls` vale 6, `llm` usa il provider `mistral` con il modello `mistral-medium-latest`, `description` e `instructions` corrispondono al contratto e le credenziali sono i valori delle variabili `MISTRAL_API_KEY` e `MUSIC_ASSISTANT_TOKEN` nominate dal file. Fallisce se il file viene rifiutato, se un campo differisce dal contratto o se contiene una credenziale.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
+  * satisfiedBy: [music-example.spec.ts](../../apps/server/test/examples/music-example.spec.ts)
+  * verify: [Configurazione pronta del connettore Music Assistant](../Requirements/FamilyConversation.md#configurazione-pronta-del-connettore-music-assistant)
+---
+
+### Prova della configurazione pronta di OpenCloud
+
+Copiare `examples/agents/files.json` in una directory degli agenti di prova insieme a un orchestratore valido e caricarla con la validazione dei file degli agenti usata all'avvio, fornendo valori segnaposto alle variabili d'ambiente nominate. Esaminare i valori del file e cercare credenziali scritte nel file.
+
+#### Details
+La prova passa se il file è accettato senza modifiche come agente specializzato `files` con connettore MCP, `mcp.url` termina con `/mcp`, `mcp.auth` è di tipo `bearer`, `mcp.tools` elenca `search_files` e `read_file`, `maxToolCalls` vale 6, `llm` usa il provider `mistral` con il modello `mistral-medium-latest`, `description` e `instructions` corrispondono al contratto e le credenziali sono i valori delle variabili `MISTRAL_API_KEY` e `OPENCLOUD_MCP_TOKEN` nominate dal file. Fallisce se il file viene rifiutato, se un campo differisce dal contratto o se contiene una credenziale.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
+  * satisfiedBy: [opencloud-example.spec.ts](../../apps/server/test/examples/opencloud-example.spec.ts)
+  * verify: [Configurazione pronta del connettore OpenCloud](../Requirements/FamilyConversation.md#configurazione-pronta-del-connettore-opencloud)
+---
+
 ### Prova della connessione asincrona dei connettori MCP
 
 Avviare il processo server con quattro agenti specializzati con connettore MCP: uno verso un server MCP di prova che risponde, uno verso un indirizzo che rifiuta la connessione, uno verso un server che risponde dopo un ritardo controllato e uno che elenca in `mcp.tools` uno strumento che il server non dichiara. Inserire un segreto marcatore nelle credenziali MCP. Con un orchestratore controllato, affidare turni a ciascun agente subito dopo l'apertura dell'ascolto e dopo l'esito delle connessioni; arrestare il server mentre la connessione ritardata è ancora in corso.

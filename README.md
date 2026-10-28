@@ -138,6 +138,10 @@ On `SIGTERM` or `SIGINT` the server stops accepting turns, saves the pending one
 
 **Home Assistant.** [`examples/agents/home-assistant.json`](examples/agents/home-assistant.json) provides an agent for Home Assistant's [Model Context Protocol Server](https://www.home-assistant.io/integrations/mcp_server/) integration. Copy it, set `mcp.url` to your Home Assistant address, mount it in the agents directory and set `HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN` in the container environment. Only the entities exposed to Assist are available to Ambrogio.
 
+**Music Assistant.** [`examples/agents/music.json`](examples/agents/music.json) provides an agent that searches the music library and plays it on the players of [Music Assistant](https://music-assistant.io/), through the MCP server of its [FastMCP Server](https://music-assistant.io/plugins/fastmcp-server/) plugin. Copy it, set `mcp.url` to your Music Assistant address followed by `/mcp/v1`, mount it in the agents directory and set `MUSIC_ASSISTANT_TOKEN` to a long-lived access token of Music Assistant.
+
+**OpenCloud.** [`examples/agents/files.json`](examples/agents/files.json) provides an agent that searches and reads the documents of an [OpenCloud](https://opencloud.eu/) user through [opencloud-mcp](https://github.com/adrianofoschi/opencloud-mcp), an independent read-only MCP server. Copy it, set `mcp.url` to the address of opencloud-mcp, mount it in the agents directory and set `OPENCLOUD_MCP_TOKEN` to the `MCP_TOKEN` of the server.
+
 > Ambrogio has no user accounts or authentication. Run it on a trusted network, or behind a reverse proxy that allows only your own clients.
 
 ## Repository layout

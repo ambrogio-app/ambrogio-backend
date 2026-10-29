@@ -2,9 +2,9 @@
   <img src=".github/logo.svg" alt="Ambrogio" width="160">
 </p>
 
-# Ambrogio — backend
+# Ambrogio backend
 
-**Ambrogio**: talk to it like Alexa, chat with it like ChatGPT — one self-hosted AI assistant for your whole homelab. Multi-agent by design: each agent you configure handles one job, such as the house, music, weather or your documents, using the services you already host.
+**Ambrogio**: talk to it like Alexa, chat with it like ChatGPT. One self-hosted AI assistant for your whole homelab. Multi-agent by design: each agent you configure handles one job, such as the house, music, weather or your documents, using the services you already host.
 
 This repository holds the **backend**: the server that receives turns from clients, picks an agent and produces the answer. It also stores conversations and turns speech into text and text into speech. It owns the public protocol that every client uses.
 

@@ -46,10 +46,17 @@ export function listen(built: Readonly<{ server: Readonly<{ listen(address: Read
   return startupPhase('HTTP listener could not start', async () => { await built.server.listen(built.address); });
 }
 
+type Settled<V> = Readonly<{ kind: 'value'; value: V }> | Readonly<{ kind: 'error'; error: unknown }>;
+
+function settle<V>(promise: Promise<V>): Promise<Settled<V>> {
+  return promise.then(value => ({ kind: 'value', value }), (error: unknown) => ({ kind: 'error', error }));
+}
+
 /**
  * The testable runner of the server process: it builds and activates the entry point, waits for the first SIGINT or
- * SIGTERM, runs the single shutdown within the shutdown window and decides the outcome. It owns the definitive logs
- * of startup and shutdown failures and never calls `process.exit`.
+ * SIGTERM, runs the single shutdown within the shutdown window and decides the outcome. The window starts at the
+ * first signal, also while the construction or the activation is still in progress, and bounds them too. It owns
+ * the definitive logs of startup and shutdown failures and never calls `process.exit`.
  */
 export async function runServerProcess<T extends BuiltEntryPoint>(options: ServerProcessOptions<T>):
   Promise<ProcessOutcome> {
@@ -57,49 +64,54 @@ export async function runServerProcess<T extends BuiltEntryPoint>(options: Serve
     stderr = line => { process.stderr.write(line); } } = options;
   let requestStop!: () => void;
   const requested = new Promise<void>(resolve => { requestStop = resolve; });
-  let stopRequested = false;
-  const stop = () => { stopRequested = true; requestStop(); };
+  let expire!: () => void;
+  const expired = new Promise<'expired'>(resolve => { expire = () => resolve('expired'); });
+  let deadline: ReturnType<ShutdownTimer> | undefined;
+  const stop = () => {
+    // The first signal arms the single shutdown window; the following ones share it.
+    deadline ??= timer(SHUTDOWN_TIMEOUT_MS, expire);
+    requestStop();
+  };
   signals.on('SIGINT', stop);
   signals.on('SIGTERM', stop);
   try {
-    let built: T;
-    try { built = await options.build(); }
-    catch (error) {
-      reportStartupFailure(error, log, stderr);
+    const building = await Promise.race([settle(options.build()), expired]);
+    if (building === 'expired') return timedOut(log, []);
+    if (building.kind === 'error') {
+      reportStartupFailure(building.error, log, stderr);
       return { exitCode: 1, force: false };
     }
-    if (!stopRequested) {
-      try { await options.activate(built); }
-      catch (error) {
+    const built = building.value;
+    if (deadline === undefined) {
+      const activation = await Promise.race([settle(options.activate(built)), expired]);
+      if (activation === 'expired') return timedOut(log, built.faults);
+      if (activation.kind === 'error') {
         const cleanup = await built.close().then(() => [], () => built.faults);
-        reportStartupFailure(startupWithCleanup('Server startup failed', error, cleanup), log, stderr);
+        reportStartupFailure(startupWithCleanup('Server startup failed', activation.error, cleanup), log, stderr);
         return { exitCode: 1, force: false };
       }
       await requested;
     }
-    return await shutdown(built, log, timer);
+    return await shutdown(built, log, expired);
   } finally {
+    deadline?.cancel();
     signals.off('SIGINT', stop);
     signals.off('SIGTERM', stop);
   }
 }
 
-async function shutdown(built: BuiltEntryPoint, log: Logger, timer: ShutdownTimer): Promise<ProcessOutcome> {
-  let expire!: () => void;
-  const expired = new Promise<'expired'>(resolve => { expire = () => resolve('expired'); });
-  const deadline = timer(SHUTDOWN_TIMEOUT_MS, expire);
+function timedOut(log: Logger, faults: readonly unknown[]): ProcessOutcome {
+  log.error({ event: 'server_shutdown_timeout', timeoutMs: SHUTDOWN_TIMEOUT_MS,
+    ...(faults.length > 0 ? { err: collectFaults('Server shutdown timed out', faults) } : {}) },
+  'Server shutdown timed out');
+  return { exitCode: 1, force: true };
+}
+
+async function shutdown(built: BuiltEntryPoint, log: Logger, expired: Promise<'expired'>): Promise<ProcessOutcome> {
   const closing = built.close().then(() => 'closed' as const, (error: unknown) => ({ error }));
-  try {
-    const result = await Promise.race([closing, expired]);
-    if (result === 'closed') return { exitCode: 0, force: false };
-    if (result === 'expired') {
-      const faults = built.faults;
-      log.error({ event: 'server_shutdown_timeout', timeoutMs: SHUTDOWN_TIMEOUT_MS,
-        ...(faults.length > 0 ? { err: collectFaults('Server shutdown timed out', faults) } : {}) },
-      'Server shutdown timed out');
-      return { exitCode: 1, force: true };
-    }
-    log.error({ event: 'server_shutdown_failed', err: result.error }, 'Server shutdown failed');
-    return { exitCode: 1, force: false };
-  } finally { deadline.cancel(); }
+  const result = await Promise.race([closing, expired]);
+  if (result === 'closed') return { exitCode: 0, force: false };
+  if (result === 'expired') return timedOut(log, built.faults);
+  log.error({ event: 'server_shutdown_failed', err: result.error }, 'Server shutdown failed');
+  return { exitCode: 1, force: false };
 }

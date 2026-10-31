@@ -3,7 +3,7 @@ import { SystemCurrentTime } from '@ambrogio/conversations/adapters/out/system-c
 import type { AvailableMcpTool, McpConnection } from '@ambrogio/conversations/adapters/out/mcp-tool-client';
 import { aiSdkOptions, AiSdkKnowledgeAgentReply, AiSdkOrchestratorReply, AiSdkToolAgentReply, DeferredAgentReply }
   from '@ambrogio/conversations/adapters/out/ai-sdk-reply';
-import type { Logger } from '@ambrogio/conversations/adapters/in/logger';
+import type { Logger } from '@ambrogio/conversations/adapters/in/diagnostic-log';
 import { loadAgentConfigs } from '../runtime/agent-config.js';
 import type { AgentConfig } from '../runtime/agent-config.js';
 import { ProjectError } from '@ambrogio/conversations/application/project-error';

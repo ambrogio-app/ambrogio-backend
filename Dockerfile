@@ -37,4 +37,6 @@ COPY --from=build /workspace/packages/conversations/package.json packages/conver
 COPY --from=build /workspace/packages/conversations/node_modules/ packages/conversations/node_modules/
 COPY --from=build /workspace/packages/conversations/dist/ packages/conversations/dist/
 
+# Liveness only («Profilo dell'endpoint di liveness»): healthy only when GET /health answers 200.
+HEALTHCHECK CMD ["node", "-e", "fetch('http://127.0.0.1:' + process.env.AMBROGIO_HTTP_PORT + '/health').then(response => process.exit(response.status === 200 ? 0 : 1), () => process.exit(1))"]
 CMD ["node", "apps/server/dist/main.js"]

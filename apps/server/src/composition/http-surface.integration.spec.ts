@@ -3,6 +3,8 @@ import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { AddressInfo } from 'node:net';
+import { request as httpRequest } from 'node:http';
+import { HTTP_BODY_LIMIT_BYTES } from '../runtime/http-server.js';
 import { Ajv } from 'ajv';
 import { WebSocket } from 'ws';
 import type { FastifyInstance } from 'fastify';
@@ -39,6 +41,7 @@ const requestValidation = {
 };
 const ajv = new Ajv({ strict: true });
 const problems = {
+  badRequest: ajv.compile(fixed('about:blank', 'Bad Request', 400)),
   notFound: ajv.compile(fixed('about:blank', 'Not Found', 404)),
   methodNotAllowed: ajv.compile(fixed('about:blank', 'Method Not Allowed', 405)),
   contentTooLarge: ajv.compile(fixed('about:blank', 'Content Too Large', 413)),
@@ -121,8 +124,10 @@ afterEach(async () => {
 
 describe('HTTP surface of the conversation server', () => {
   // Verification: Prova degli esiti pubblici dell'API HTTP
+  // Verification: Prova del limite dei corpi HTTP
   it('declares statuses from the actual outcome and answers every error with a Problem Details', async () => {
-    const { server } = await composed();
+    const { server, events } = await composed();
+    server.post<{ Body: string }>('/test-body', async request => ({ length: request.body.length }));
     const list = await server.inject({ method: 'GET', url: '/api/v1/conversations' });
     expect(list.statusCode).toBe(200);
     expect(list.headers['content-type']).toMatch(/^application\/json/);
@@ -150,19 +155,92 @@ describe('HTTP surface of the conversation server', () => {
     expect(empty.errors).toEqual([{ location: 'path', pointer: '/conversationId', code: 'invalid-value',
       detail: 'The value is not valid.' }]);
 
-    const notAllowed = await server.inject({ method: 'POST', url: '/api/v1/conversations' });
-    expectProblem(notAllowed, 405, problems.methodNotAllowed);
-    expect(notAllowed.headers.allow).toBe('GET, HEAD');
-    expectProblem(await server.inject({ method: 'POST', url: '/api/v1/conversations',
+    // A body never changes the answer of a route that expects none, whatever its size, type or syntax.
+    const bodies = [
+      { headers: { 'content-type': 'application/json' }, payload: '{"text":' },
+      { headers: { 'content-type': 'application/json' }, payload: `"${'x'.repeat(1_100_000)}"` },
+      { headers: { 'content-type': 'application/x-private' }, payload: 'x' },
+    ];
+    for (const url of ['/api/v1/conversations', `/api/v1/conversations/${conversationId}`]) {
+      const plain = await server.inject({ method: 'GET', url });
+      for (const body of bodies) {
+        const withBody = await server.inject({ method: 'GET', url, ...body });
+        expect(withBody.statusCode, url).toBe(200);
+        expect(withBody.body).toBe(plain.body);
+      }
+      for (const method of ['POST', 'PUT', 'PATCH', 'DELETE'] as const) {
+        for (const body of [{}, ...bodies]) {
+          const notAllowed = await server.inject({ method, url, ...body });
+          expectProblem(notAllowed, 405, problems.methodNotAllowed);
+          expect(notAllowed.headers.allow).toBe('GET, HEAD');
+        }
+      }
+    }
+    // The body problems of the technical factory, on a test route that accepts a body.
+    expectProblem(await server.inject({ method: 'POST', url: '/test-body',
       headers: { 'content-type': 'application/json' }, payload: '{"text":' }), 400, problems.malformedJson);
-    expectProblem(await server.inject({ method: 'PUT', url: `/api/v1/conversations/${conversationId}`,
-      headers: { 'content-type': 'application/json' }, payload: `"${'x'.repeat(1_100_000)}"` }), 413,
+    expectProblem(await server.inject({ method: 'POST', url: '/test-body',
+      headers: { 'content-type': 'application/json' }, payload: '' }), 400, problems.malformedJson);
+    expectProblem(await server.inject({ method: 'POST', url: '/test-body',
+      headers: { 'content-type': 'application/json' }, payload: `"${'x'.repeat(1_048_576)}"` }), 413,
     problems.contentTooLarge);
-    expectProblem(await server.inject({ method: 'POST', url: '/api/v1/conversations',
+    expectProblem(await server.inject({ method: 'POST', url: '/test-body',
       headers: { 'content-type': 'application/x-private' }, payload: 'x' }), 415, problems.unsupportedMediaType);
+    const accepted = await server.inject({ method: 'POST', url: '/test-body',
+      headers: { 'content-type': 'application/json' }, payload: `"${'x'.repeat(1_048_574)}"` });
+    expect(accepted.statusCode).toBe(200);
+    expect(accepted.json()).toEqual({ length: 1_048_574 });
     for (const url of ['/api/v1/unknown', '/unknown', '/api/v2/conversations']) {
       expectProblem(await server.inject({ method: 'GET', url }), 404, problems.notFound);
     }
+    // A path parameter longer than the router accepts is a resource that does not exist; 100 characters still reach
+    // the route.
+    expectProblem(await server.inject({ method: 'GET', url: `/api/v1/conversations/${'a'.repeat(100)}` }), 404,
+      problems.conversationNotFound);
+    const tooLong = expectProblem(await server.inject({ method: 'GET', url: `/api/v1/conversations/${'a'.repeat(101)}` }),
+      404, problems.notFound);
+    expect(tooLong).toEqual({ type: 'about:blank', title: 'Not Found', status: 404 });
+    // A request target that is not a valid URL.
+    const badTarget = expectProblem(await server.inject({ method: 'GET', url: '/api/v1/conversations/%zz' }), 400,
+      problems.badRequest);
+    expect(badTarget).toEqual({ type: 'about:blank', title: 'Bad Request', status: 400 });
+    // None of these outcomes is an unexpected failure.
+    expect(events).toEqual([]);
+  });
+
+  // Verification: Prova del limite dei corpi HTTP
+  it('limits the received body to 1 MiB, also when it arrives in parts without Content-Length', async () => {
+    const { server } = await composed();
+    const reached: number[] = [];
+    server.post<{ Body: string }>('/test-body', async request => {
+      reached.push(request.body.length);
+      return { length: request.body.length };
+    });
+    expect(HTTP_BODY_LIMIT_BYTES).toBe(1_048_576);
+    await server.listen({ host: '127.0.0.1', port: 0 });
+    const { port } = server.server.address() as AddressInfo;
+    /** Send `size` bytes of a JSON string in parts of 64 KiB, with chunked transfer encoding. */
+    const chunked = (path: string, size: number) => new Promise<{ status: number; body: string }>((resolve, reject) => {
+      const sent = httpRequest({ host: '127.0.0.1', port, path, method: 'POST',
+        headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' } }, response => {
+        let body = '';
+        response.setEncoding('utf8');
+        response.on('data', chunk => { body += chunk; });
+        response.on('end', () => resolve({ status: response.statusCode ?? 0, body }));
+      });
+      sent.on('error', reject);
+      const payload = Buffer.from(`"${'x'.repeat(size - 2)}"`);
+      for (let at = 0; at < payload.length; at += 65_536) sent.write(payload.subarray(at, at + 65_536));
+      sent.end();
+    });
+    expect(await chunked('/test-body', HTTP_BODY_LIMIT_BYTES)).toMatchObject({ status: 200 });
+    const over = await chunked('/test-body', HTTP_BODY_LIMIT_BYTES + 1);
+    expect(over.status).toBe(413);
+    expect(JSON.parse(over.body)).toEqual({ type: 'about:blank', title: 'Content Too Large', status: 413 });
+    expect(reached).toEqual([HTTP_BODY_LIMIT_BYTES - 2]);
+    const mcp = await chunked('/mcp/memory', HTTP_BODY_LIMIT_BYTES + 1);
+    expect(mcp.status).toBe(413);
+    expect(JSON.parse(mcp.body)).toEqual({ type: 'about:blank', title: 'Content Too Large', status: 413 });
   });
 
   // Verification: Prova degli esiti pubblici dell'API HTTP
@@ -199,7 +277,8 @@ describe('HTTP surface of the conversation server', () => {
       ['GET', '/api/session'], ['HEAD', '/api/session'],
       // The MCP server of the memory, outside the HTTP API: POST, and the refused session methods.
       ...['GET', 'HEAD', 'POST', 'DELETE'].map(method => [method, '/mcp/memory'] as const),
-      // The CORS preflight of the technical factory.
+      // The liveness endpoint and the CORS preflight of the technical factory.
+      ['GET', '/health'], ['HEAD', '/health'],
       ['OPTIONS', '*'],
     ];
     for (const [method, url] of expected.filter(([, url]) => url !== '*')) {
@@ -209,7 +288,8 @@ describe('HTTP surface of the conversation server', () => {
     expect(routes.sort()).toEqual(expected.map(([method, url]) => `${method} ${url}`).sort());
     for (const route of routes) {
       const url = route.split(' ')[1]!;
-      expect(url.startsWith('/api/v1/') || ['/api/session', '/mcp/memory', '*'].includes(url), route).toBe(true);
+      expect(url.startsWith('/api/v1/') || ['/api/session', '/mcp/memory', '/health', '*'].includes(url), route)
+        .toBe(true);
     }
 
     // No previous API is kept: paths without a version are routes that do not exist.
@@ -220,16 +300,14 @@ describe('HTTP surface of the conversation server', () => {
   });
 
   // Verification: Prova della struttura della superficie HTTP
-  it('keeps registration, schemas and handler of every route slice in distinct files', async () => {
+  it('keeps the schemas and the route adapter that invokes the use case in distinct files of every slice', async () => {
     const root = fileURLToPath(new URL('../../../../packages/conversations/src/adapters/in/http/', import.meta.url));
     const slices = (await readdir(root, { withFileTypes: true })).filter(entry => entry.isDirectory())
       .map(entry => entry.name).sort();
     expect(slices).toEqual(['get-conversation', 'list-conversations']);
     for (const slice of slices) {
-      const files = await readdir(join(root, slice));
-      for (const suffix of ['schemas.ts', 'handler.ts', 'route.adapter.ts']) {
-        expect(files, `${slice} ${suffix}`).toContain(`${slice}.${suffix}`);
-      }
+      const files = (await readdir(join(root, slice))).filter(name => !name.endsWith('.spec.ts')).sort();
+      expect(files, slice).toEqual([`${slice}.route.adapter.ts`, `${slice}.schemas.ts`]);
     }
   });
 });

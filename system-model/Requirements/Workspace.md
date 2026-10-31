@@ -5,7 +5,7 @@
 Quando un adapter collega due moduli business del server, l'applicazione che li assembla deve collocarlo in `src/adapters/out/<consumer>-to-<provider>/`, dove `<consumer>` identifica il modulo che usa la capacità e `<provider>` quello che la fornisce.
 
 #### Details
-Origine: baseline Reqvire «Cross-module adapters in the assembling application», adottata.
+Origine: baseline Reqvire «Cross-module adapter placement», adattata: un'unica applicazione assembla i moduli, quindi gli adapter fra moduli risiedono in essa e non in un package dedicato.
 
 #### Metadata
   * type: requirement
@@ -54,6 +54,8 @@ Origine: baseline Reqvire «Execution coordination in entrypoints», adottata.
   * type: requirement
 
 #### Relations
+  * derivedFrom: [Costruzione separata dall'attivazione](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#costruzione-separata-dallattivazione)
+  * satisfiedBy: [main.ts](../../apps/server/src/main.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -196,12 +198,31 @@ Le istruzioni per gli agenti del repository backend devono applicare al lavoro n
 Le applicazioni eseguibili del monorepo devono collocare i meccanismi tecnici specifici del processo in `src/runtime/`.
 
 #### Details
-Origine: baseline Reqvire «Process mechanisms in the runtime directory», adottata.
+Origine: baseline Reqvire «Process mechanisms in the runtime directory», adattata: nessun pacchetto runtime condiviso, perché il backend ha un'unica applicazione.
 
 #### Metadata
   * type: requirement
 
 #### Relations
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
+---
+
+### Nessun ciclo di import nel backend
+
+Il grafo degli import dei sorgenti e dei test delle applicazioni e dei package del backend, compresi gli import di soli tipi, non deve contenere cicli, e la suite Vitest deve rifiutare ogni ciclo con la regola `no-circular-imports` di «Regole di architettura del backend».
+
+#### Details
+Origine: baseline Reqvire «No import cycles», adattata secondo il requisito comune: la regola è un controllo della suite Vitest sul grafo degli import ricavato dal testo dei sorgenti, con la propria fixture negativa.
+
+#### Metadata
+  * type: requirement
+
+#### Contract References
+  * [Regole di architettura del backend](../Contracts/ServerFoundation.md#regole-di-architettura-del-backend)
+
+#### Relations
+  * derivedFrom: [Nessun ciclo di import](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#nessun-ciclo-di-import)
+  * satisfiedBy: [architecture-rules.ts](../../test/repository/architecture-rules.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -226,9 +247,13 @@ Il backend deve controllare le proprie regole di architettura sugli import con l
 #### Metadata
   * type: requirement
 
+#### Contract References
+  * [Suite di test con Vitest](../../../ambrogio-model/system-model/Contracts/CodeArchitecture.md#suite-di-test-con-vitest)
+
 #### Relations
   * derivedFrom: [Regole di architettura centrali e bloccanti](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#regole-di-architettura-centrali-e-bloccanti)
   * satisfiedBy: [architecture-rules.ts](../../test/repository/architecture-rules.ts)
+  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
 ### Superficie pubblica dei package business
@@ -259,3 +284,4 @@ Origine: baseline Reqvire «Module tests inside the module package», adottata.
 #### Relations
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
+

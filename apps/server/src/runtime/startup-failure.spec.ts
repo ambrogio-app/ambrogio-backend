@@ -44,7 +44,7 @@ const llm = { provider: 'mistral', model: 'mistral-medium-latest', apiKey: secre
  * An archive URL that the tests of this file never reach: they fail before the archive is prepared, or, for
  * the archive itself, on a port where no PostgreSQL server listens.
  */
-const unreachableDatabase = 'postgres://ambrogio@127.0.0.1:9/ambrogio';
+const unreachableDatabase = 'postgres://ambrogio:placeholder@127.0.0.1:9/ambrogio';
 
 async function installation(options: Readonly<{ port?: number; database?: string; specialist?: unknown }> = {}) {
   const directory = await mkdtemp(join(tmpdir(), 'ambrogio-startup-failure-'));

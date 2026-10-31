@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from 'vitest';
-import { closeAllClients, ProtocolClient, rejectedUpgradeStatus, takeSchemaViolations } from '../../test/support/protocol-client.js';
+import { closeAllClients, pcm, ProtocolClient, rejectedUpgradeStatus, takeSchemaViolations } from '../../test/support/protocol-client.js';
 import { echoReply, expectation, gate, scriptedReply, startSessionServer, text, waitUntil,
   type SessionServer } from '../../test/support/session-fixture.js';
 
@@ -95,6 +95,9 @@ test('accepts only exact matches of configured origins', async () => {
   const server = await start({ allowedOrigins: ['https://ambrogio.casa.lan'] });
   const allowed = await ProtocolClient.ready(server.url, { origin: 'https://ambrogio.casa.lan' });
   expect(allowed.protocol).toBe('ambrogio.v1');
+  // A client that sends no Origin, such as the satellite or the terminal, is accepted with the list too.
+  const withoutOrigin = await ProtocolClient.ready(server.url);
+  expect((await withoutOrigin.textTurn('senza origine')).final.type).toBe('turn.completed');
   for (const origin of ['https://evil.lan', 'https://ambrogio.casa.lan.evil', 'https://ambrogio.casa',
     'http://ambrogio.casa.lan']) {
     expect(await rejectedUpgradeStatus(server.url, { origin })).toBe(403);
@@ -148,6 +151,41 @@ test('answers malformed messages with session.error while the session and its tu
   expect(result.outputs[0]!.text).toBe('prima parte e seconda');
   expect(client.isClosed).toBe(false);
   expect(await server.conversationIds()).toHaveLength(1);
+});
+
+// Verification: Prova degli errori di protocollo
+test('answers short frames, text chunks of audio requests and reused requests or streams with invalid_message', async () => {
+  const { reply, histories } = echoReply();
+  const server = await start({ reply, voice: true });
+  const client = await ProtocolClient.ready(server.url);
+  client.sendRaw(Buffer.from([0, 0, 1]));
+  const audioId = client.requestId();
+  const audioStream = client.startAudio(audioId);
+  client.chunk(audioId, 'testo in una richiesta audio');
+  const textId = client.requestId();
+  const textStream = client.startText(textId);
+  // The same requestId, then the same stream, of a request still open.
+  client.send({ type: 'input.start', requestId: textId, stream: 77, content: { type: 'text' }, reply: 'text' });
+  client.send({ type: 'input.start', requestId: 'other', stream: textStream, content: { type: 'text' }, reply: 'text' });
+  client.send({ type: 'input.start', requestId: 'another', stream: audioStream, content: { type: 'text' },
+    reply: 'text' });
+  await client.until(() => client.errors().length >= 5 ? true : undefined);
+  expect(client.errors().map(error => [error.code, error.requestId, error.message])).toEqual([
+    ['invalid_message', undefined, 'Invalid message.'],
+    ['invalid_message', audioId, 'Invalid message.'],
+    ['invalid_message', textId, 'Invalid message.'],
+    ['invalid_message', 'other', 'Invalid message.'],
+    ['invalid_message', 'another', 'Invalid message.'],
+  ]);
+  // The refused messages opened or changed no request: both requests go on as they were.
+  client.sendAudio(audioStream, pcm('domanda a voce'));
+  client.end(audioId);
+  client.chunk(textId, 'domanda scritta');
+  client.end(textId);
+  expect((await client.result(audioId)).accepted!.text).toBe('domanda a voce');
+  expect((await client.result(textId)).accepted!.text).toBe('domanda scritta');
+  expect(histories.map(history => history.turns.at(-1)!.text).sort()).toEqual(['domanda a voce', 'domanda scritta']);
+  expect(client.isClosed).toBe(false);
 });
 
 // Verification: Prova dell'arresto per input conversazionale non valido

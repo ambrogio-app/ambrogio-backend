@@ -26,7 +26,9 @@ const customVoices = join(temp, 'custom-voices');
 const suffix = randomBytes(4).toString('hex');
 const network = `ambrogio-verify-${suffix}`;
 const database = `ambrogio-verify-postgres-${suffix}`;
-const databaseUrl = `postgres://postgres@${database}:5432/postgres`;
+// A password made for this run only, as an installation sets one.
+const databasePassword = randomBytes(12).toString('hex');
+const databaseUrl = `postgres://postgres:${databasePassword}@${database}:5432/postgres`;
 let container;
 let networkCreated = false;
 let databaseStarted = false;
@@ -55,7 +57,7 @@ try {
     'test ! -e /opt/piper && ! command -v python3 >/dev/null && cd /workspace/packages/conversations && node -e "require(\'sherpa-onnx-node\')"');
   // Each bundled voice is loaded and spoken with the image's own synthesizer code.
   const synthesis = [
-    "import { SherpaSynthesizer } from '/workspace/packages/conversations/dist/adapters/in/session/sherpa-synthesizer.js';",
+    "import { SherpaSynthesizer } from '/workspace/packages/conversations/dist/adapters/out/speech/sherpa-synthesizer.adapter.js';",
     "import { voiceModel } from '/workspace/packages/conversations/dist/adapters/out/voice-config.js';",
     "for (const [voice, rate, words] of [['vits-piper-it_IT-riccardo-x_low', 16000, 'Ciao, sono Ambrogio.'], ['vits-piper-it_IT-paola-medium', 22050, 'Ciao, sono Ambrogio.'], ['vits-piper-en_US-kristin-medium', 22050, 'Hello, I am Ambrogio.']]) {",
     "  const synthesizer = await SherpaSynthesizer.load(await voiceModel({ voiceModelDir: '/opt/ambrogio/voices/' + voice }));",
@@ -79,8 +81,8 @@ try {
     'test -s "$dir/encoder.int8.onnx"; test -s "$dir/decoder.int8.onnx"; test -s "$dir/joiner.int8.onnx"; test -s "$dir/tokens.txt"');
   console.log(docker('run', '--rm', '--entrypoint', 'node', image, '--input-type=module', '-e', synthesis));
   const recognition = [
-    "import { StreamingTranscriber } from '/workspace/packages/conversations/dist/adapters/in/session/streaming-transcriber.js';",
-    "import { SherpaSynthesizer } from '/workspace/packages/conversations/dist/adapters/in/session/sherpa-synthesizer.js';",
+    "import { StreamingTranscriber } from '/workspace/packages/conversations/dist/adapters/out/speech/streaming-transcriber.adapter.js';",
+    "import { SherpaSynthesizer } from '/workspace/packages/conversations/dist/adapters/out/speech/sherpa-synthesizer.adapter.js';",
     "import { transcriptionModel, voiceModel } from '/workspace/packages/conversations/dist/adapters/out/voice-config.js';",
     "for (const [name, voice, words] of [['it', 'vits-piper-it_IT-riccardo-x_low', 'Ciao, come stai oggi?'], ['en', 'vits-piper-en_US-kristin-medium', 'Hello, how are you today?']]) {",
     "  const transcriber = await StreamingTranscriber.load(await transcriptionModel({ sttModelDir: '/opt/ambrogio/models/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11' }));",
@@ -142,7 +144,7 @@ try {
     image, '-c', 'test -f /opt/ambrogio/voices/custom-voice.marker && test ! -e /opt/ambrogio/voices/vits-piper-it_IT-riccardo-x_low');
   docker('network', 'create', network);
   networkCreated = true;
-  docker('run', '--detach', '--name', database, '--network', network, '--env', 'POSTGRES_HOST_AUTH_METHOD=trust',
+  docker('run', '--detach', '--name', database, '--network', network, '--env', `POSTGRES_PASSWORD=${databasePassword}`,
     'pgvector/pgvector:pg18');
   databaseStarted = true;
   // The image restarts the server once after initialization: wait for the final one.
@@ -157,7 +159,8 @@ try {
   }
   for (const language of ['it', 'en']) {
     // Production values only: every setting without a production default is explicit.
-    container = docker('run', '--detach', '--stop-timeout', '15',
+    // The image's own health check, run every second instead of the default interval.
+    container = docker('run', '--detach', '--stop-timeout', '15', '--health-interval', '1s',
       '--publish', `127.0.0.1::${port}`, '--network', network,
       '--mount', `type=bind,src=${agents},dst=/etc/ambrogio/agents,readonly`,
       ...envArguments({ AMBROGIO_ENV: 'production', AMBROGIO_HTTP_HOST: '0.0.0.0', AMBROGIO_HTTP_PORT: String(port),
@@ -178,6 +181,16 @@ try {
     if (response.status !== 200 || !Array.isArray(body.items)) {
       throw new Error(`Unexpected HTTP response for ${language}: ${response.status}`);
     }
+    const health = await fetch(`http://127.0.0.1:${hostPort}/health`);
+    if (health.status !== 200 || await health.text() !== '' || health.headers.get('cache-control') !== 'no-store') {
+      throw new Error(`Unexpected liveness response for ${language}: ${health.status}`);
+    }
+    for (let attempt = 0; ; attempt++) {
+      const status = docker('inspect', '--format', '{{.State.Health.Status}}', container);
+      if (status === 'healthy') break;
+      if (attempt === 30) throw new Error(`The container did not become healthy for ${language}: ${status}`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
     // An orderly stop ends within the shutdown window with exit code 0 and no log line.
     docker('stop', container);
     const exitCode = docker('inspect', '--format', '{{.State.ExitCode}}', container);
@@ -193,7 +206,7 @@ try {
   if (!['conversations', 'turns'].every(table => tables.split(',').includes(table))) {
     throw new Error(`The archive tables were not created in the PostgreSQL container: ${tables}`);
   }
-  console.log('Docker image verification passed: configuration from environment variables, mounted JSON agents and an external PostgreSQL database, language profiles, bundled Nemotron streaming, Piper voices in Italian and English, replaceable Piper voices, voice-enabled HTTP 200, no Compose.');
+  console.log('Docker image verification passed: configuration from environment variables, mounted JSON agents and an external PostgreSQL database, language profiles, bundled Nemotron streaming, Piper voices in Italian and English, replaceable Piper voices, voice-enabled HTTP 200, healthy liveness check, no Compose.');
 } finally {
   if (container) {
     try { docker('rm', '--force', container); } catch { /* preserve the verification failure */ }

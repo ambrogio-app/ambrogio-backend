@@ -63,7 +63,7 @@ La prova passa se la generazione dell'agente non offre strumenti conclusivi né 
   * derivedFrom: [Verifica del protocollo conversazionale](ConversationProtocol.md#verifica-del-protocollo-conversazionale)
   * satisfiedBy: [http-server.session-turns.integration.spec.ts](../../apps/server/src/runtime/http-server.session-turns.integration.spec.ts)
   * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
-  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
+  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn/exchange-turn.use-case.spec.ts)
   * verify: [Determinazione della replica attesa](../Requirements/FamilyConversation.md#determinazione-della-replica-attesa)
   * verify: [Segnalazione della replica attesa](../Requirements/FamilyConversation.md#segnalazione-della-replica-attesa)
 ---
@@ -104,7 +104,7 @@ La prova passa se ogni turno nasce in elaborazione, raggiunge una sola volta uno
 
 #### Relations
   * derivedFrom: [Verifica degli invarianti dei turni](#verifica-degli-invarianti-dei-turni)
-  * satisfiedBy: [turn.spec.ts](../../packages/conversations/src/domain/turn.spec.ts)
+  * satisfiedBy: [turn.spec.ts](../../packages/conversations/src/domain/turn/turn.spec.ts)
   * verify: [Integrità dello stato del turno nel Domain](../Requirements/FamilyConversation.md#integrità-dello-stato-del-turno-nel-domain)
 ---
 
@@ -151,16 +151,17 @@ La prova passa se `HassTurnOff`, `GetLiveContext` e `_private` sono offerti con 
 
 ### Prova del Bearer token per i connettori MCP
 
-Configurare due agenti con `mcp.url` verso endpoint MCP Streamable HTTP di prova e token Bearer distinti in `mcp.auth: { "type": "bearer", "token": "…" }`. Far inizializzare i client, scoprire i tool e invocare un tool per agente; osservare gli header ricevuti dai due server e i log del processo. Ripetere con un token errato per uno degli agenti. Configurare un terzo endpoint senza `mcp.auth` e ripetere inizializzazione e invocazione. Provare anche un tipo di autenticazione non supportato e un token assente o vuoto.
+Configurare due agenti con `mcp.url` verso endpoint MCP Streamable HTTP di prova e `mcp.auth: { "type": "bearer", "tokenEnv": "…" }`, con token Bearer distinti nelle variabili d'ambiente nominate. Far inizializzare i client, scoprire i tool e invocare un tool per agente; osservare gli header ricevuti dai due server e i log del processo. Ripetere con un token errato per uno degli agenti. Configurare un terzo endpoint senza `mcp.auth` e ripetere inizializzazione e invocazione. Provare anche un tipo di autenticazione non supportato e una variabile del token assente o vuota.
 
 #### Details
-La prova passa se ogni richiesta MCP dell'agente autenticato invia `Authorization: Bearer <token>` soltanto al proprio endpoint, l'agente senza `mcp.auth` non invia `Authorization`, i token non si mescolano tra agenti e non compaiono nei log o nei messaggi rivolti al modello. Con il token errato il server di prova rifiuta l'accesso e il client non presenta i tool come disponibili. Un tipo non supportato o un token mancante o vuoto impedisce l'attivazione dell'agente prima della connessione. Fallisce se una richiesta omette il token configurato, lo invia al server dell'altro agente o ne divulga il valore.
+La prova passa se ogni richiesta MCP dell'agente autenticato invia `Authorization: Bearer <token>` soltanto al proprio endpoint, l'agente senza `mcp.auth` non invia `Authorization`, i token non si mescolano tra agenti e non compaiono nei log o nei messaggi rivolti al modello. Con il token errato il server di prova rifiuta l'accesso e il client non presenta i tool come disponibili. Un tipo non supportato o una variabile del token assente o vuota impedisce l'attivazione dell'agente prima della connessione, con il messaggio che nomina la variabile senza riportarne il valore. Fallisce se una richiesta omette il token configurato, lo invia al server dell'altro agente o ne divulga il valore.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica dei connettori MCP](#verifica-dei-connettori-mcp)
+  * satisfiedBy: [agent-config.spec.ts](../../apps/server/src/runtime/agent-config.spec.ts)
   * satisfiedBy: [mcp-tool-client.spec.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.spec.ts)
   * verify: [Autenticazione Bearer del client MCP](../Requirements/FamilyConversation.md#autenticazione-bearer-del-client-mcp)
 ---
@@ -456,7 +457,7 @@ La prova passa se nessuna modifica dei dati in ingresso o restituiti cambia lo s
 
 #### Relations
   * derivedFrom: [Verifica del modello Domain conversazionale](#verifica-del-modello-domain-conversazionale)
-  * satisfiedBy: [turn.spec.ts](../../packages/conversations/src/domain/turn.spec.ts)
+  * satisfiedBy: [turn.spec.ts](../../packages/conversations/src/domain/turn/turn.spec.ts)
   * verify: [Stato del turno senza riferimenti mutabili condivisi](../Requirements/FamilyConversation.md#stato-del-turno-senza-riferimenti-mutabili-condivisi)
 ---
 
@@ -506,8 +507,8 @@ La prova passa se ogni caso d'uso carica il turno, invoca l'operazione del Root,
 
 #### Relations
   * derivedFrom: [Verifica del modello Domain conversazionale](#verifica-del-modello-domain-conversazionale)
-  * satisfiedBy: [complete-turn.use-case.spec.ts](../../packages/conversations/src/application/complete-turn.use-case.spec.ts)
-  * satisfiedBy: [interrupt-pending-turns.use-case.spec.ts](../../packages/conversations/src/application/interrupt-pending-turns.use-case.spec.ts)
+  * satisfiedBy: [complete-turn.use-case.spec.ts](../../packages/conversations/src/application/complete-turn/complete-turn.use-case.spec.ts)
+  * satisfiedBy: [interrupt-pending-turns.use-case.spec.ts](../../packages/conversations/src/application/interrupt-pending-turns/interrupt-pending-turns.use-case.spec.ts)
   * verify: [Modifiche del turno attraverso il Root](../Requirements/FamilyConversation.md#modifiche-del-turno-attraverso-il-root)
 ---
 
@@ -817,23 +818,6 @@ Non automatizzabile: giudicare se la sincronizzazione impone davvero la sovrappo
   * verify: [Garanzie di concorrenza provate da esecuzioni concorrenti reali](../Requirements/FamilyConversation.md#garanzie-di-concorrenza-provate-da-esecuzioni-concorrenti-reali)
 ---
 
-### Prova degli ingressi disabilitati durante un turno
-
-Avviare un turno nella conversazione A e, mentre è in elaborazione, inviare dallo stesso e da un altro client nuovi turni testuali e vocali sulla conversazione A e su una conversazione B. Ripetere dopo la conclusione di A.
-
-#### Details
-La prova passa se, finché il turno di A non ha un esito conservato, ogni nuovo turno testuale o vocale su A è rifiutato come `occupied` senza essere conservato né accodato, mentre i turni su B e quelli che aprono nuove conversazioni sono ammessi e completati prima della conclusione di A; dopo la conclusione A torna utilizzabile. La prova copre la parte di questa obbligazione che spetta al backend, cioè l'ammissione dei turni condivisa da tutti i client. La disabilitazione dell'ingresso locale durante elaborazione e riproduzione è un obbligo dei client e si verifica nei repository dei client; il recupero dopo un arresto è verificato dalle prove degli stati persistenti dei turni.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
-  * satisfiedBy: [conversation-server.integration.spec.ts](../../apps/server/src/runtime/conversation-server.integration.spec.ts)
-  * satisfiedBy: [http-server.session-rejections.integration.spec.ts](../../apps/server/src/runtime/http-server.session-rejections.integration.spec.ts)
-  * verify: [Disabilitazione degli ingressi durante un turno](../Requirements/FamilyConversation.md#disabilitazione-degli-ingressi-durante-un-turno)
----
-
 ### Prova del rifiuto dei turni concorrenti
 
 Preparare una conversazione esistente A e inviare contemporaneamente due turni verso A da sessioni di client diversi, uno testuale e uno audio quando la voce è abilitata. Ritardare la produzione del turno ammesso. Inviare nel frattempo turni verso B e turni che creano conversazioni nuove.
@@ -867,6 +851,23 @@ La prova passa se il secondo turno è rifiutato subito, non viene conservato e n
   * satisfiedBy: [conversation-server.integration.spec.ts](../../apps/server/src/runtime/conversation-server.integration.spec.ts)
   * satisfiedBy: [http-server.session-rejections.integration.spec.ts](../../apps/server/src/runtime/http-server.session-rejections.integration.spec.ts)
   * verify: [Assenza di accodamento dei turni](../Requirements/FamilyConversation.md#assenza-di-accodamento-dei-turni)
+---
+
+### Prova dell'occupazione condivisa fra client
+
+Avviare un turno nella conversazione A e, mentre è in elaborazione, inviare dallo stesso e da un altro client nuovi turni testuali e vocali sulla conversazione A e su una conversazione B. Ripetere dopo la conclusione di A.
+
+#### Details
+La prova passa se, finché il turno di A non ha un esito conservato, ogni nuovo turno testuale o vocale su A è rifiutato come `occupied` senza essere conservato né accodato, mentre i turni su B e quelli che aprono nuove conversazioni sono ammessi e completati prima della conclusione di A; dopo la conclusione A torna utilizzabile. Il recupero dopo un arresto è verificato dalla prova del turno interrotto dopo riavvio. Fallisce se un turno su A è ammesso, conservato o accodato mentre A è occupata, o se un turno su B attende la conclusione di A.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della concorrenza dei turni](#verifica-della-concorrenza-dei-turni)
+  * satisfiedBy: [conversation-server.integration.spec.ts](../../apps/server/src/runtime/conversation-server.integration.spec.ts)
+  * satisfiedBy: [http-server.session-rejections.integration.spec.ts](../../apps/server/src/runtime/http-server.session-rejections.integration.spec.ts)
+  * verify: [Rifiuto del turno nella conversazione occupata](../Requirements/FamilyConversation.md#rifiuto-del-turno-nella-conversazione-occupata)
 ---
 
 ### Prova della classificazione delle scritture PostgreSQL
@@ -920,10 +921,10 @@ La prova passa se nessuna transazione del turno resta aperta durante l'attesa de
 
 ### Prova delle transizioni atomiche del turno
 
-Forzare un errore dopo la prima scrittura dell'ammissione, della conclusione e dell'interruzione; ripetere senza errore e osservare turno, occupazione della conversazione interessata ed esito restituito. Nel percorso HTTP ritardare e poi far fallire il commit del completamento dopo l'ultimo frammento generato.
+Forzare un errore dopo la prima scrittura dell'ammissione, della conclusione e dell'interruzione; ripetere senza errore e osservare turno, occupazione della conversazione interessata ed esito restituito. Nel canale conversazionale ritardare e poi far fallire il commit del completamento dopo l'ultimo frammento generato.
 
 #### Details
-La prova passa se un errore non lascia transizioni parziali e il chiamante non riceve un successo; nei casi riusciti turno e occupazione cambiano insieme dopo il commit. La conferma di successo UI è emessa soltanto dopo il commit riuscito, senza equiparare la conclusione del modello alla conservazione dell'esito. Con commit fallito non arriva la conferma e si applica l'indisponibilità degli ingressi prevista dal prodotto. Fallisce se l'occupazione viene liberata prematuramente, se resta uno stato parziale o se un callback SDK conferma un esito non conservato.
+La prova passa se un errore non lascia transizioni parziali e il chiamante non riceve un successo; nei casi riusciti turno e occupazione cambiano insieme dopo il commit. `turn.completed` è inviato soltanto dopo il commit riuscito, senza equiparare la conclusione del modello alla conservazione dell'esito. Con commit fallito non arriva `turn.completed` e si applica l'indisponibilità degli ingressi prevista dal prodotto. Fallisce se l'occupazione viene liberata prematuramente, se resta uno stato parziale o se un callback SDK conferma un esito non conservato.
 
 #### Metadata
   * type: test-verification
@@ -998,7 +999,7 @@ Preparare profili vocali italiani e inglesi con variabili che indicano percorsi 
 #### Details
 La prova passa se ciascuna lingua seleziona esattamente i percorsi indicati, anche quando provengono da un mount o quando esistono più voci della stessa lingua; un elenco invalido o un profilo elencato con variabili invalide rende invalida la configurazione, l'altro profilo non carica i modelli e la voce disabilitata non legge altre variabili né carica modelli. Fallisce se una lingua carica percorsi diversi da quelli indicati, se un elenco o un profilo invalido è accettato o se vengono caricati modelli di un profilo non attivo o della voce disabilitata.
 
-I casi di configurazione sono provati da `voice-config.spec.ts`, la selezione dei profili e della voce montata con i modelli dell'immagine da `scripts/verify-docker-image.mjs` e l'avvio senza voce da `conversation-server.config-bootstrap.spec.ts`.
+I casi di configurazione sono provati da `voice-config.spec.ts`, la selezione dei profili e della voce montata con i modelli dell'immagine da `scripts/verify-docker-image.mjs` e l'avvio senza voce da `conversation-server.config-bootstrap.integration.spec.ts`.
 
 #### Metadata
   * type: test-verification
@@ -1023,7 +1024,7 @@ La prova passa se i testi consegnati al motore non contengono asterischi, tilde 
 
 #### Relations
   * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
-  * satisfiedBy: [sherpa-synthesizer.spec.ts](../../packages/conversations/src/adapters/in/session/sherpa-synthesizer.spec.ts)
+  * satisfiedBy: [sherpa-synthesizer.adapter.spec.ts](../../packages/conversations/src/adapters/out/speech/sherpa-synthesizer.adapter.spec.ts)
   * verify: [Risposta parlata senza marcatura testuale](../Requirements/FamilyConversation.md#risposta-parlata-senza-marcatura-testuale)
 ---
 
@@ -1039,7 +1040,7 @@ La prova passa se la voce è caricata una sola volta per tutte le trasmissioni, 
 
 #### Relations
   * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
-  * satisfiedBy: [sherpa-synthesizer.spec.ts](../../packages/conversations/src/adapters/in/session/sherpa-synthesizer.spec.ts)
+  * satisfiedBy: [sherpa-synthesizer.adapter.spec.ts](../../packages/conversations/src/adapters/out/speech/sherpa-synthesizer.adapter.spec.ts)
   * verify: [Risposta parlata su richiesta del client](../Requirements/FamilyConversation.md#risposta-parlata-su-richiesta-del-client)
 ---
 
@@ -1056,7 +1057,7 @@ La prova passa se il turno conservato contiene la trascrizione testuale attesa, 
 #### Relations
   * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
   * satisfiedBy: [conversation-server.session-lifecycle.integration.spec.ts](../../apps/server/src/runtime/conversation-server.session-lifecycle.integration.spec.ts)
-  * satisfiedBy: [sherpa-synthesizer.spec.ts](../../packages/conversations/src/adapters/in/session/sherpa-synthesizer.spec.ts)
+  * satisfiedBy: [sherpa-synthesizer.adapter.spec.ts](../../packages/conversations/src/adapters/out/speech/sherpa-synthesizer.adapter.spec.ts)
   * verify: [Risposta parlata su richiesta del client](../Requirements/FamilyConversation.md#risposta-parlata-su-richiesta-del-client)
   * verify: [Trascrizione del turno vocale](../Requirements/FamilyConversation.md#trascrizione-del-turno-vocale)
 ---
@@ -1073,8 +1074,8 @@ La prova passa se la configurazione del riconoscitore contiene la sezione `trans
 
 #### Relations
   * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
-  * satisfiedBy: [streaming-recognition.spec.ts](../../packages/conversations/src/adapters/in/session/streaming-recognition.spec.ts)
-  * satisfiedBy: [streaming-transcriber.spec.ts](../../packages/conversations/src/adapters/in/session/streaming-transcriber.spec.ts)
+  * satisfiedBy: [streaming-recognition.spec.ts](../../packages/conversations/src/adapters/out/speech/streaming-recognition.spec.ts)
+  * satisfiedBy: [streaming-transcriber.adapter.spec.ts](../../packages/conversations/src/adapters/out/speech/streaming-transcriber.adapter.spec.ts)
   * satisfiedBy: [voice-config.spec.ts](../../packages/conversations/src/adapters/out/voice-config.spec.ts)
   * satisfiedBy: [verify-docker-image.mjs](../../scripts/verify-docker-image.mjs)
   * verify: [Trascrizione in streaming del turno vocale](../Requirements/FamilyConversation.md#trascrizione-in-streaming-del-turno-vocale)
@@ -1108,7 +1109,7 @@ La prova passa se le directory valide sono accettate con la voce indicata; ogni 
 
 #### Relations
   * derivedFrom: [Verifica della conversazione a voce](#verifica-della-conversazione-a-voce)
-  * satisfiedBy: [sherpa-synthesizer.spec.ts](../../packages/conversations/src/adapters/in/session/sherpa-synthesizer.spec.ts)
+  * satisfiedBy: [sherpa-synthesizer.adapter.spec.ts](../../packages/conversations/src/adapters/out/speech/sherpa-synthesizer.adapter.spec.ts)
   * satisfiedBy: [voice-config.spec.ts](../../packages/conversations/src/adapters/out/voice-config.spec.ts)
   * verify: [Sintesi con la voce Piper configurata](../Requirements/FamilyConversation.md#sintesi-con-la-voce-piper-configurata)
 ---
@@ -1270,7 +1271,7 @@ La prova passa se il caso d'uso chiede alla porta una scadenza di 30 secondi; se
   * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
   * satisfiedBy: [mcp-tool-client.spec.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.spec.ts)
   * satisfiedBy: [system-deadlines.adapter.spec.ts](../../packages/conversations/src/adapters/out/system-deadlines.adapter.spec.ts)
-  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
+  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn/exchange-turn.use-case.spec.ts)
   * verify: [Tempo massimo della produzione della risposta](../Requirements/FamilyConversation.md#tempo-massimo-della-produzione-della-risposta)
 ---
 
@@ -1328,7 +1329,7 @@ La prova passa se il server chiude la trasmissione in corso con `output.end`, ap
 
 ### Prova dell'ingresso dei turni con agenti configurati
 
-Avviare il processo con la configurazione HTTP e Conversazioni, l'orchestratore e almeno un agente specializzato validi, usando un provider e un connettore MCP controllati. Aprire una sessione su `/api/session`, inviare un turno e leggere trasmissioni, esito e storico; richiedere anche i due GET. Ripetere con un file di agente invalido e con un connettore non disponibile prima dell'ascolto.
+Avviare il processo con la configurazione HTTP e Conversazioni, l'orchestratore e almeno un agente specializzato validi, usando un provider e un connettore MCP controllati. Aprire una sessione su `/api/session`, inviare un turno e leggere trasmissioni, esito e storico; richiedere anche i due GET. Ripetere con un file di agente invalido.
 
 #### Details
 La prova passa se l'avvio valido espone il canale conversazionale e i GET, il turno usa il produttore orchestratore e produce trasmissioni, esito e storico previsti; l'avvio invalido non apre il listener e chiude le risorse già preparate. Le risposte GET conservano gli header di sicurezza, `Cache-Control: no-store` e l'identificativo di correlazione. Fallisce se il canale manca, usa un produttore diverso, espone dettagli segreti o lascia risorse aperte. Verifica definita per il protocollo `ambrogio.v1`.
@@ -1357,6 +1358,7 @@ La prova passa se l'adapter usa il pacchetto AI SDK del provider indicato, l'end
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * satisfiedBy: [agents.api-credentials.spec.ts](../../apps/server/src/composition/agents.api-credentials.spec.ts)
   * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
+  * verify: [Produzione della risposta con AI SDK e più provider](../Requirements/FamilyConversation.md#produzione-della-risposta-con-ai-sdk-e-più-provider)
   * verify: [Risposta testuale nella conversazione](../Requirements/FamilyConversation.md#risposta-testuale-nella-conversazione)
   * verify: [Validazione preventiva della configurazione attiva](../Requirements/ServerFoundation.md#validazione-preventiva-della-configurazione-attiva)
 ---
@@ -1426,8 +1428,8 @@ La prova passa se nel secondo turno la risposta precedente compare nel contesto 
   * satisfiedBy: [conversation-server.integration.spec.ts](../../apps/server/src/runtime/conversation-server.integration.spec.ts)
   * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
   * satisfiedBy: [postgres-conversation-history-read.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/postgres/postgres-conversation-history-read.adapter.integration.spec.ts)
-  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
-  * satisfiedBy: [turn.spec.ts](../../packages/conversations/src/domain/turn.spec.ts)
+  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn/exchange-turn.use-case.spec.ts)
+  * satisfiedBy: [turn.spec.ts](../../packages/conversations/src/domain/turn/turn.spec.ts)
   * verify: [Continuità dell'agente nella conversazione](../Requirements/FamilyConversation.md#continuità-dellagente-nella-conversazione)
 ---
 
@@ -1444,7 +1446,7 @@ La prova passa se in entrambi i casi la produzione prosegue fino al proprio esit
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
-  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
+  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn/exchange-turn.use-case.spec.ts)
   * verify: [Continuità del turno dopo un guasto di consegna](../Requirements/FamilyConversation.md#continuità-del-turno-dopo-un-guasto-di-consegna)
 ---
 
@@ -1512,7 +1514,7 @@ La prova passa se per ogni guasto esiste un solo evento `conversation_reply_fail
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * satisfiedBy: [conversation-session.adapter.spec.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.spec.ts)
-  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
+  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn/exchange-turn.use-case.spec.ts)
   * verify: [Diagnostica del guasto nella produzione della risposta](../Requirements/FamilyConversation.md#diagnostica-del-guasto-nella-produzione-della-risposta)
 ---
 
@@ -1545,7 +1547,7 @@ La prova passa se il valore predefinito è 20, se un valore invalido impedisce l
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * satisfiedBy: [conversation-config.spec.ts](../../packages/conversations/src/adapters/out/conversation-config.spec.ts)
-  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
+  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn/exchange-turn.use-case.spec.ts)
   * verify: [Limite dello storico inviato ai modelli](../Requirements/FamilyConversation.md#limite-dello-storico-inviato-ai-modelli)
 ---
 
@@ -1595,7 +1597,7 @@ La prova passa se la nuova generazione avviene una sola volta, senza strumenti o
 #### Relations
   * derivedFrom: [Verifica della conversazione testuale](#verifica-della-conversazione-testuale)
   * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
-  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
+  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn/exchange-turn.use-case.spec.ts)
   * verify: [Risposta non vuota dell'agente specializzato](../Requirements/FamilyConversation.md#risposta-non-vuota-dellagente-specializzato)
 ---
 
@@ -1682,8 +1684,8 @@ La prova passa se le azioni del primo turno sono conservate con nome, argomenti 
   * satisfiedBy: [conversation-server.integration.spec.ts](../../apps/server/src/runtime/conversation-server.integration.spec.ts)
   * satisfiedBy: [ai-sdk-reply.adapter.spec.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.spec.ts)
   * satisfiedBy: [postgres-conversation-history-read.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/postgres/postgres-conversation-history-read.adapter.integration.spec.ts)
-  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
-  * satisfiedBy: [turn.spec.ts](../../packages/conversations/src/domain/turn.spec.ts)
+  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn/exchange-turn.use-case.spec.ts)
+  * satisfiedBy: [turn.spec.ts](../../packages/conversations/src/domain/turn/turn.spec.ts)
   * verify: [Azioni dell'agente nello storico](../Requirements/FamilyConversation.md#azioni-dellagente-nello-storico)
 ---
 
@@ -1925,7 +1927,7 @@ La prova passa se ogni turno e l'ultima attività della sua conversazione usano 
 Ammettere un turno e provocare separatamente un errore di lettura dello storico e uno storico che non contiene il turno ammesso in elaborazione. In entrambi i casi verificare prima che la conclusione con errore riesca, poi che la scrittura dell'esito fallisca. Osservare produzione della risposta, stato persistente, occupazione e disponibilità degli ingressi; riavviare il server dopo il guasto di scrittura.
 
 #### Details
-La prova passa se la risposta non viene prodotta, una conclusione riuscita conserva una sola volta «Errore» con messaggio pubblico sicuro e libera l'occupazione, mentre una conclusione non conservata non viene presentata come riuscita e impedisce al server di accettare altri turni fino al riavvio. Ogni nuovo POST del turno testuale durante questo blocco restituisce `503` con JSON `error` contenente «Service temporarily unavailable.» in inglese oppure «Servizio temporaneamente non disponibile.» in italiano, senza ammettere o accodare il turno. Al riavvio un turno ancora «In elaborazione» diventa «Interrotto». Fallisce se il turno resta pendente mentre il server continua ad accettare ingressi, se compare una risposta riuscita o se il guasto viene riprovato automaticamente.
+La prova passa se la risposta non viene prodotta, una conclusione riuscita conserva una sola volta «Errore» con messaggio pubblico sicuro e libera l'occupazione, mentre una conclusione non conservata non viene presentata come riuscita e impedisce al server di accettare altri turni fino al riavvio. Ogni nuovo turno inviato sul canale conversazionale durante questo blocco riceve `turn.rejected` con `reason` `unavailable` e il messaggio di indisponibilità della lingua configurata, in inglese «Service temporarily unavailable.», senza essere ammesso, accodato né prodotto. Al riavvio un turno ancora «In elaborazione» diventa «Interrotto». Fallisce se il turno resta pendente mentre il server continua ad accettare ingressi, se compare una risposta riuscita o se il guasto viene riprovato automaticamente.
 
 #### Metadata
   * type: test-verification
@@ -1974,16 +1976,18 @@ La prova passa se ciascun turno accettato è persistito con il suo testo prima d
 
 ### Prova dell'archivio configurato all'avvio
 
-Avviare l'ingresso conversazionale con configurazione HTTP e Conversazioni valida e con `AMBROGIO_DATABASE_URL` diretta a un database PostgreSQL di prova che contiene un turno pendente; richiedere l'elenco e lo storico della conversazione, poi arrestare il processo. Ripetere con `AMBROGIO_DATABASE_URL` assente, vuota, con un protocollo diverso da PostgreSQL, senza nome del database, con parametri di query e diretta a un database che non esiste sul server di prova.
+Avviare l'ingresso conversazionale con configurazione HTTP e Conversazioni valida e con `AMBROGIO_DATABASE_URL` diretta a un database PostgreSQL di prova che contiene un turno pendente; richiedere l'elenco e lo storico della conversazione, poi arrestare il processo. Ripetere con `AMBROGIO_DATABASE_URL` assente, vuota, con un protocollo diverso da PostgreSQL, senza nome del database, senza utente, senza password, con parametri di query, anche `?sslmode=require`, con un frammento e diretta a un database che non esiste sul server di prova. Aprire l'archivio con un URL valido mentre le variabili `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` e `PGSSLMODE` hanno valori diversi, osservando le opzioni ricevute dal driver.
 
 #### Details
-La prova passa se il processo ascolta all'indirizzo configurato, i due GET rispondono secondo i rispettivi contratti usando l'archivio configurato, il turno pendente è già «Interrotto» alla prima risposta, ogni avvio invalido non apre il listener e non crea tabelle, nessun messaggio d'errore contiene l'URL o la password, e l'arresto chiude listener e archivio. Fallisce se legge un altro archivio, risponde prima del recupero, riporta l'URL o lascia risorse aperte.
+La prova passa se il processo ascolta all'indirizzo configurato, i due GET rispondono secondo i rispettivi contratti usando l'archivio configurato, il turno pendente è già «Interrotto» alla prima risposta, ogni avvio invalido non apre il listener e non crea tabelle, nessun messaggio d'errore contiene l'URL o la password, l'arresto chiude listener e archivio, e il driver riceve host, porta, utente, password e database dell'URL uno per uno, senza l'URL intero e senza TLS, così che le variabili `PG*` non hanno effetto. Fallisce se legge un altro archivio, risponde prima del recupero, riporta l'URL, lascia risorse aperte, accetta un URL senza password o con frammento o usa un valore delle variabili `PG*`.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
+  * satisfiedBy: [conversation-config.spec.ts](../../packages/conversations/src/adapters/out/conversation-config.spec.ts)
+  * satisfiedBy: [conversation-archive.integration.spec.ts](../../packages/conversations/src/adapters/out/postgres/conversation-archive.integration.spec.ts)
   * satisfiedBy: [conversation-server.config-bootstrap.integration.spec.ts](../../apps/server/src/runtime/conversation-server.config-bootstrap.integration.spec.ts)
   * satisfiedBy: [conversation-server.integration.spec.ts](../../apps/server/src/runtime/conversation-server.integration.spec.ts)
   * verify: [Selezione dell'archivio conversazionale all'avvio](../Requirements/FamilyConversation.md#selezione-dellarchivio-conversazionale-allavvio)
@@ -2055,6 +2059,7 @@ La prova passa se l'inglese produce «I can't complete the response.», l'italia
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
   * satisfiedBy: [conversations.integration.spec.ts](../../apps/server/src/composition/conversations.integration.spec.ts)
   * satisfiedBy: [conversation-config.spec.ts](../../packages/conversations/src/adapters/out/conversation-config.spec.ts)
+  * verify: [Configurazione della lingua della conversazione](../Requirements/FamilyConversation.md#configurazione-della-lingua-della-conversazione)
   * verify: [Localizzazione dell'errore conversazionale inatteso](../Requirements/FamilyConversation.md#localizzazione-dellerrore-conversazionale-inatteso)
 ---
 
@@ -2070,7 +2075,7 @@ La prova passa se gli istanti validi conservano il valore temporale fornito, que
 
 #### Relations
   * derivedFrom: [Verifica dello storico e del riavvio](#verifica-dello-storico-e-del-riavvio)
-  * satisfiedBy: [turn.spec.ts](../../packages/conversations/src/domain/turn.spec.ts)
+  * satisfiedBy: [turn.spec.ts](../../packages/conversations/src/domain/turn/turn.spec.ts)
   * verify: [Istanti validi e protetti della conversazione](../Requirements/FamilyConversation.md#istanti-validi-e-protetti-della-conversazione)
 ---
 

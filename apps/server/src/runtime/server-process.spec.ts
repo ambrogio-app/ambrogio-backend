@@ -74,6 +74,59 @@ describe('runner of the server process', () => {
     expect(built.close).toHaveBeenCalledOnce();
   });
 
+  // Verification: Prova dell'arresto ordinato e limitato del server
+  it('bounds a construction that never ends from the first signal and forces the exit with 1', async () => {
+    const h = harness();
+    const activate = vi.fn(async () => undefined);
+    const outcome = runServerProcess({ ...h.options, activate, build: () => new Promise<never>(() => { /* never */ }) });
+    await settle();
+    expect(h.armed).toHaveLength(0);
+    h.signals.emit('SIGTERM');
+    h.signals.emit('SIGINT');
+    await settle();
+    expect(h.armed).toHaveLength(1);
+    expect(h.armed[0]!.delayMs).toBe(SHUTDOWN_TIMEOUT_MS);
+    h.armed[0]!.callback();
+    expect(await outcome).toEqual({ exitCode: 1, force: true });
+    expect(activate).not.toHaveBeenCalled();
+    expect(h.output.lines()).toEqual([expect.objectContaining({ level: 50, event: 'server_shutdown_timeout',
+      msg: 'Server shutdown timed out', timeoutMs: 10_000 })]);
+    expect(h.output.lines()[0]).not.toHaveProperty('err');
+    expect(h.signals.listenerCount('SIGTERM')).toBe(0);
+  });
+
+  // Verification: Prova dell'arresto ordinato e limitato del server
+  it('bounds an activation that never ends from the first signal and forces the exit with 1', async () => {
+    const h = harness();
+    const built = entryPoint([]);
+    const outcome = runServerProcess({ ...h.options, build: async () => built,
+      activate: () => new Promise<never>(() => { /* never */ }) });
+    await settle();
+    h.signals.emit('SIGTERM');
+    await settle();
+    h.armed[0]!.callback();
+    expect(await outcome).toEqual({ exitCode: 1, force: true });
+    expect(h.output.lines()).toEqual([expect.objectContaining({ event: 'server_shutdown_timeout' })]);
+  });
+
+  // Verification: Prova dell'arresto ordinato e limitato del server
+  it('keeps the window armed at the signal during the construction for the following shutdown', async () => {
+    const h = harness();
+    let finish!: () => void;
+    const built = entryPoint([['Never closes', () => new Promise(() => { /* never */ })]]);
+    const outcome = runServerProcess({ ...h.options, activate: async () => undefined,
+      build: () => new Promise<typeof built>(resolve => { finish = () => resolve(built); }) });
+    await settle();
+    h.signals.emit('SIGTERM');
+    finish();
+    await settle();
+    expect(built.close).toHaveBeenCalledOnce();
+    expect(h.armed).toHaveLength(1);
+    h.armed[0]!.callback();
+    expect(await outcome).toEqual({ exitCode: 1, force: true });
+    expect(h.output.lines()).toHaveLength(1);
+  });
+
   // Verification: Prova della diagnostica del mancato avvio
   it('reports a failed construction once on stdout and stderr and exits with 1', async () => {
     const h = harness();

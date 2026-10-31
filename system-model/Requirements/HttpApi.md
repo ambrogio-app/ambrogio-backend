@@ -15,7 +15,7 @@ Origine: baseline Reqvire «Common catalog of protocol problems», adattata: il 
   * [Forma dei Problem Details dell'API HTTP](../Contracts/HttpApi.md#forma-dei-problem-details-dellapi-http)
 
 #### Relations
-  * satisfiedBy: [session-route.adapter.ts](../../apps/server/src/adapters/in/session-route.adapter.ts)
+  * satisfiedBy: [session-route.ts](../../apps/server/src/adapters/in/session-route.ts)
   * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * satisfiedBy: [problem-details.ts](../../packages/conversations/src/adapters/in/http/problem-details.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
@@ -44,10 +44,12 @@ Origine: baseline Reqvire «Composition written by hand», adottata.
 
 ### Errori HTTP nel formato Problem Details
 
-Quando il server HTTP del backend produce una risposta 4xx o 5xx, deve usare il formato Problem Details di RFC 9457 con `application/problem+json`, con `type`, `title` e `status` sempre presenti, `type` come unico discriminante pubblico e soltanto le estensioni sicure dichiarate nello schema del problema concreto.
+Quando il server HTTP del backend produce una risposta 4xx o 5xx per una rotta dell'API versionata, per una rotta inesistente, per un guasto inatteso o per il rifiuto dell'apertura della sessione conversazionale su `/api/session`, deve usare il formato Problem Details di RFC 9457 con `application/problem+json`, con `type`, `title` e `status` sempre presenti, `type` come unico discriminante pubblico e soltanto le estensioni sicure dichiarate nello schema del problema concreto.
 
 #### Details
-Origine: baseline Reqvire «Problem Details for error responses», adattata: i `type` sono riferimenti relativi `/problems/<nome>` non risolti dal backend e descritti nei contratti dell'API HTTP.
+Le risposte proprie del server MCP della memoria su `/mcp/memory` sono escluse: seguono il trasporto MCP, i cui client non interpretano Problem Details.
+
+Origine: baseline Reqvire «Problem Details for error responses», adattata: i `type` sono riferimenti relativi `/problems/<nome>` non risolti dal backend e descritti nei contratti dell'API HTTP, e la regola non si applica alla rotta del server MCP della memoria.
 
 #### Metadata
   * type: requirement
@@ -126,14 +128,13 @@ Origine: baseline Reqvire «Explicit HTTP mapping of expected outcomes per opera
 Il backend deve esporre la propria API HTTP pubblica sotto un namespace con la versione maggiore nel percorso, `/api/v1/`, con un ciclo di versione indipendente da quello del protocollo conversazionale.
 
 #### Details
-La sessione conversazionale resta sul percorso `/api/session`, fuori dal namespace versionato, ed è versionata dal sottoprotocollo `ambrogio.v1`. Un cambio incompatibile dell'API cambia la versione nel percorso e si fa nella stessa modifica dei client che la usano, senza mantenere la versione precedente, secondo «Compatibilità fra release per versione d'interfaccia»; un percorso sotto `/api` senza versione non ha rotte e riceve la risposta della rotta inesistente.
-
 Origine: baseline Reqvire «API namespace and major version in the path», adattata: la sessione WebSocket non entra nel namespace versionato perché la versiona il sottoprotocollo.
 
 #### Metadata
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [http-surface.ts](../../apps/server/src/composition/http-surface.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
@@ -157,7 +158,7 @@ Origine: baseline Reqvire «Opaque response for unexpected faults», adottata.
 
 ### Slice delle rotte HTTP con aggregatori espliciti
 
-Ogni rotta HTTP del backend deve essere una slice con responsabilità distinte per registrazione, schemi e gestore, il cui gestore traduce esplicitamente ingressi e risposte riuscite da e verso i contratti Application, e l'applicazione server deve registrare rotte e scope tramite aggregatori espliciti che ricevono le dipendenze già costruite.
+Ogni rotta dell'API HTTP versionata del backend deve essere una slice con responsabilità distinte per registrazione, schemi e gestore, il cui gestore traduce esplicitamente ingressi e risposte riuscite da e verso i contratti Application, e l'applicazione server deve registrare rotte e scope tramite aggregatori espliciti che ricevono le dipendenze già costruite.
 
 #### Details
 Origine: baseline Reqvire «HTTP route slices with explicit aggregators», adottata.
@@ -177,7 +178,7 @@ Origine: baseline Reqvire «HTTP route slices with explicit aggregators», adott
 
 ### Stato HTTP dall'esito effettivo
 
-Ogni operazione HTTP del backend deve scegliere lo stato di successo dall'esito effettivo e gli stati d'errore da un vocabolario fisso, dichiararli nel proprio contratto e non dedurli meccanicamente dal metodo HTTP, dalla durata dell'operazione o da categorie di errori del Domain.
+Ogni operazione dell'API HTTP versionata del backend deve scegliere lo stato di successo dall'esito effettivo e gli stati d'errore da un vocabolario fisso, dichiararli nel proprio contratto e non dedurli meccanicamente dal metodo HTTP, dalla durata dell'operazione o da categorie di errori del Domain.
 
 #### Details
 Origine: baseline Reqvire «Status from the actual outcome», adattata: il vocabolario comprende soltanto gli stati usati dalle rotte attuali e dal catalogo dei problemi di protocollo.
@@ -190,3 +191,4 @@ Origine: baseline Reqvire «Status from the actual outcome», adattata: il vocab
   * satisfiedBy: [list-conversations.route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.route.adapter.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
+

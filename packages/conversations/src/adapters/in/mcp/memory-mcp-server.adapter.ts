@@ -3,8 +3,8 @@ import type { ReadableStream as NodeReadableStream } from 'node:stream/web';
 import { createMcpHandler, fromJsonSchema, McpServer } from '@modelcontextprotocol/server';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { MemoryMatch } from '../../../application/conversation-memory-search.port.js';
-import { maxMemoryResults, type SearchConversations } from '../../../application/search-conversations.use-case.js';
-import type { Logger } from '../logger.js';
+import { maxMemoryResults, type SearchConversations } from '../../../application/search-conversations/search-conversations.use-case.js';
+import type { Logger } from '../diagnostic-log.port.js';
 
 export type MemoryMcpDependencies = Readonly<{
   search: SearchConversations;
@@ -146,12 +146,18 @@ async function send(reply: FastifyReply, response: Response): Promise<FastifyRep
 export function memoryMcpRoutes(dependencies: MemoryMcpDependencies): (scope: FastifyInstance) => void {
   const handler = createMcpHandler(() => memoryServer(dependencies), { legacy: 'stateless' });
   return scope => {
-    scope.route({ method: 'POST', url: '/memory', async handler(request, reply) {
-      if (request.headers.origin !== undefined) return reply.status(403).send();
-      return send(reply, await handler.fetch(webRequest(request), { parsedBody: request.body }));
-    } });
+    // The refusals are sent before the body is read, so no body turns them into another answer.
+    scope.route({ method: 'POST', url: '/memory',
+      onRequest: async (request, reply) => {
+        if (request.headers.origin !== undefined) return reply.status(403).send();
+        return undefined;
+      },
+      async handler(request, reply) {
+        return send(reply, await handler.fetch(webRequest(request), { parsedBody: request.body }));
+      } });
     // The server keeps no session: the session methods of the transport are not allowed.
-    scope.route({ method: ['GET', 'DELETE'], url: '/memory', handler: (_request, reply) =>
-      reply.status(405).header('allow', 'POST').send() });
+    const notAllowed = (reply: FastifyReply) => reply.status(405).header('allow', 'POST').send();
+    scope.route({ method: ['GET', 'DELETE'], url: '/memory',
+      onRequest: async (_request, reply) => notAllowed(reply), handler: (_request, reply) => notAllowed(reply) });
   };
 }

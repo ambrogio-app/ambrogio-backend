@@ -18,42 +18,64 @@ export interface Logger {
   child(fields: LogFields): Logger;
 }
 
-export type ErrorView = Readonly<{ type: string; message: string; stack: string; faults?: readonly ErrorView[] }>;
+export type ErrorView = Readonly<{ type: string; message: string; stack: string; faults?: readonly ErrorView[];
+  errors?: readonly ErrorView[] }>;
 
-/** The constant view of every error not built by the backend and of every unknown thrown value. */
-const opaqueError: ErrorView = { type: 'Error', message: 'Unexpected backend failure', stack: '[redacted]' };
+/** The constant description of every error not built by the backend and of every unknown thrown value. */
+const opaqueMessage = 'Unexpected backend failure';
+
+/** The views built here, so that a view met again, for example by the `err` serializer, is kept as it is. */
+const views = new WeakSet<object>();
+
+function registered(view: ErrorView): ErrorView {
+  views.add(view);
+  return view;
+}
 
 /**
  * The controlled `err` view («Profilo controllato di serializzazione di err»): project errors show type, message
- * and stack, a lifecycle error also the views of the faults it collects; anything else stays opaque. The view is a
- * new object and the cause chain is not serialized.
+ * and stack, a lifecycle error also the views of the faults it collects; an external `AggregateError` shows a
+ * constant description and the views of its errors; anything else stays opaque. The view is a new object and the
+ * cause chain is not serialized.
  */
 export function errorView(value: unknown): ErrorView {
-  if (!(value instanceof ProjectError)) return opaqueError;
-  const view = { type: value.name, message: value.message, stack: value.stack ?? '' };
-  return value instanceof LifecycleError ? { ...view, faults: value.faults.map(errorView) } : view;
+  if (typeof value === 'object' && value !== null && views.has(value)) return value as ErrorView;
+  if (value instanceof ProjectError) {
+    const view = { type: value.name, message: value.message, stack: value.stack ?? '' };
+    return registered(value instanceof LifecycleError ? { ...view, faults: value.faults.map(errorView) } : view);
+  }
+  if (value instanceof AggregateError) {
+    const errors: unknown[] = Array.isArray(value.errors) ? value.errors : [];
+    return registered({ type: 'AggregateError', message: opaqueMessage, stack: '[redacted]',
+      errors: errors.map(errorView) });
+  }
+  return registered({ type: 'Error', message: opaqueMessage, stack: '[redacted]' });
 }
 
 const sensitiveName = /token|password|passwd|secret|authorization|cookie|credential|api[-_]?key/i;
 
-const isPlainObject = (value: object): boolean => {
-  const prototype = Object.getPrototypeOf(value);
-  return prototype === Object.prototype || prototype === null;
-};
-
 /**
- * A copy of `value` where the value of every field with a sensitive name is `[redacted]`, at any depth of plain
- * objects and arrays. Errors and other objects are kept by identity and never traversed; the original is unchanged.
+ * A copy of `value` for a log line: every `Error`, at any depth and under any key, becomes its controlled view, and
+ * the value of every field with a sensitive name is `[redacted]`, in plain objects, arrays and the own enumerable data
+ * fields of class instances (getters are not invoked). An object referenced more than once or circularly has one copy,
+ * redacted in every occurrence; dates are kept. The originals are never changed.
  */
-export function redactSensitive<T>(value: T, seen: WeakSet<object> = new WeakSet()): T {
+export function redactSensitive<T>(value: T, copies: WeakMap<object, unknown> = new WeakMap()): T {
   if (typeof value !== 'object' || value === null) return value;
-  if (!Array.isArray(value) && !isPlainObject(value)) return value;
-  if (seen.has(value)) return value;
-  seen.add(value);
-  if (Array.isArray(value)) return value.map(item => redactSensitive(item, seen)) as T;
+  if (value instanceof Error || views.has(value)) return errorView(value) as T;
+  if (value instanceof Date) return value;
+  if (copies.has(value)) return copies.get(value) as T;
+  if (Array.isArray(value)) {
+    const copy: unknown[] = [];
+    copies.set(value, copy);
+    for (const item of value) copy.push(redactSensitive(item, copies));
+    return copy as T;
+  }
   const copy: Record<string, unknown> = {};
-  for (const [name, field] of Object.entries(value)) {
-    copy[name] = sensitiveName.test(name) ? '[redacted]' : redactSensitive(field, seen);
+  copies.set(value, copy);
+  for (const [name, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(value))) {
+    if (!descriptor.enumerable || !('value' in descriptor)) continue;
+    copy[name] = sensitiveName.test(name) ? '[redacted]' : redactSensitive(descriptor.value, copies);
   }
   return copy as T;
 }

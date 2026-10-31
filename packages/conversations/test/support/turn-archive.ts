@@ -1,9 +1,9 @@
 // Test support: drive the turn repository through the Application, as the server does.
 import type { Kysely } from 'kysely';
 import { ConversationId, TurnId } from '../../src/domain/identities.js';
-import { Turn } from '../../src/domain/turn.js';
-import { createCompleteTurn, type CompleteTurnOutcome } from '../../src/application/complete-turn.use-case.js';
-import { createInterruptPendingTurns } from '../../src/application/interrupt-pending-turns.use-case.js';
+import { Turn } from '../../src/domain/turn/turn.js';
+import { createCompleteTurn, type CompleteTurnOutcome } from '../../src/application/complete-turn/complete-turn.use-case.js';
+import { createInterruptPendingTurns } from '../../src/application/interrupt-pending-turns/interrupt-pending-turns.use-case.js';
 import type { TurnRepository } from '../../src/application/turn-repository.port.js';
 import type { ConversationDatabase } from '../../src/adapters/out/postgres/conversation-archive.js';
 import { PostgresTurnRepository } from '../../src/adapters/out/postgres/postgres-turn-repository.adapter.js';

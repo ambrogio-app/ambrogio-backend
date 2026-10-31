@@ -2,6 +2,7 @@ import { sql, type Kysely } from 'kysely';
 import { afterEach, describe, expect, it } from 'vitest';
 import { openTestArchive, type TestArchive } from '../../../../../../test/support/test-database.js';
 import { admitTurn, completeTurn } from '../../../../test/support/turn-archive.js';
+import type { CompleteTurnOutcome } from '../../../application/complete-turn/complete-turn.use-case.js';
 import type { ConversationDatabase } from './conversation-archive.js';
 import { PostgresConversationMemorySearch } from './postgres-conversation-memory-search.adapter.js';
 import { PostgresTurnRepository } from './postgres-turn-repository.adapter.js';
@@ -14,7 +15,7 @@ const uuid = (prefix: string) => `${prefix}000000-0000-4000-8000-${String(++sequ
 
 /** Stores one turn of a new conversation, concluded as asked. */
 async function stored(turns: PostgresTurnRepository, text: string, acceptedAt: Date,
-  outcome: { kind: 'answer'; text: string; agent?: string } | { kind: 'error'; message: string } | { kind: 'interrupted' } | 'pending') {
+  outcome: CompleteTurnOutcome | 'pending') {
   const conversationId = uuid('c0');
   const turnId = uuid('a0');
   expect(await admitTurn(turns, { conversationId, createConversation: true, turn: { id: turnId, text, acceptedAt } }))
@@ -59,6 +60,24 @@ describe('memory search on PostgreSQL', () => {
     expect(await search.search({ text: 'giraffa', limit: 5 })).toEqual([]);
     // Only stop words: nothing to search.
     expect(await search.search({ text: 'il la di', limit: 5 })).toEqual([]);
+  });
+
+  // Verification: Prova della ricerca nella memoria
+  it('orders equal ranks by the newest turn first, then by turn id, and never returns agent or actions', async () => {
+    const { db, turns } = await archive();
+    const answer = { kind: 'answer' as const, text: 'Il bidone della carta si espone il martedì.', agent: 'home',
+      actions: [{ tool: 'calendar_read', input: { day: 'tuesday' }, output: { private: 'AGENT_ACTION_MARKER' } }] };
+    const older = await stored(turns, 'Quando passa la carta?', new Date('2026-10-20T08:00:00Z'), answer);
+    const newerFirstId = await stored(turns, 'Quando passa la carta?', new Date('2026-10-21T08:00:00Z'), answer);
+    const newerSecondId = await stored(turns, 'Quando passa la carta?', new Date('2026-10-21T08:00:00Z'), answer);
+    expect(newerFirstId.turnId < newerSecondId.turnId).toBe(true);
+    const search = new PostgresConversationMemorySearch(db, 'it', 'Europe/Rome');
+    const found = await search.search({ text: 'carta', limit: 5 });
+    expect(found.map(match => match.turnId)).toEqual([newerFirstId.turnId, newerSecondId.turnId, older.turnId]);
+    for (const match of found) {
+      expect(Object.keys(match).sort()).toEqual(['acceptedAt', 'answer', 'conversationId', 'question', 'turnId']);
+    }
+    expect(JSON.stringify(found)).not.toMatch(/AGENT_ACTION_MARKER|calendar_read|"home"/);
   });
 
   // Verification: Prova della ricerca nella memoria

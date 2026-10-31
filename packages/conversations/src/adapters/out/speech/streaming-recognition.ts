@@ -1,4 +1,4 @@
-import type { TranscriptionModelFiles } from '../../out/voice-config.js';
+import type { TranscriptionModelFiles } from '../voice-config.js';
 
 export const SAMPLE_RATE = 16_000;
 /** Silence added before the audio of a request: without it the model loses the first word. */

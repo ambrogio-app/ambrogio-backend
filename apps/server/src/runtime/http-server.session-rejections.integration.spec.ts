@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'vitest';
 import { closeAllClients, pcm, ProtocolClient, takeSchemaViolations, type TurnResult } from '../../test/support/protocol-client.js';
-import { echoReply, expectation, gate, maxAudioBytes, maxTextBytes, scriptedReply, startSessionServer, text,
+import { echoReply, expectation, gate, maxAudioBytes, maxTextBytes, publicMessages, scriptedReply, startSessionServer, text,
   type Language, type Reason, type SessionServer } from '../../test/support/session-fixture.js';
 
 const servers: SessionServer[] = [];
@@ -111,7 +111,7 @@ test('rejects text and audio continuations of unknown conversations', async () =
 });
 
 // Verification: Prova del rifiuto dei turni concorrenti
-// Verification: Prova degli ingressi disabilitati durante un turno
+// Verification: Prova dell'occupazione condivisa fra client
 test('admits one turn per conversation across clients while other conversations progress', async () => {
   const pending = gate();
   const { reply } = scriptedReply(async function* (history) {
@@ -146,50 +146,57 @@ test('admits one turn per conversation across clients while other conversations 
 });
 
 // Verification: Prova del rifiuto oltre i limiti di trasmissione
-test('rejects oversized text immediately and ignores the rest of the request', async () => {
-  const { reply, histories } = echoReply();
-  const server = await start({ reply });
-  const client = await ProtocolClient.ready(server.url);
-  const within = await client.textTurn('a'.repeat(maxTextBytes));
-  expect(within.final.type).toBe('turn.completed');
+describe.each<Language>(['en', 'it'])('transmission limits in %s', language => {
+  test('accepts text up to 65536 bytes in several chunks, rejects one byte more and ignores the rest', async () => {
+    const { reply, histories } = echoReply();
+    const server = await start({ reply, language });
+    const client = await ProtocolClient.ready(server.url);
+    const withinId = client.requestId();
+    client.startText(withinId);
+    client.chunk(withinId, 'è'.repeat(maxTextBytes / 4));
+    client.chunk(withinId, 'è'.repeat(maxTextBytes / 4));
+    client.end(withinId);
+    const within = await client.result(withinId);
+    expect(within.final.type).toBe('turn.completed');
+    expect(Buffer.byteLength(within.accepted!.text as string)).toBe(maxTextBytes);
 
-  const requestId = client.requestId();
-  client.startText(requestId);
-  client.chunk(requestId, 'è'.repeat(maxTextBytes / 4));
-  client.chunk(requestId, 'è'.repeat(maxTextBytes / 4));
-  client.chunk(requestId, 'x');
-  const rejected = await client.result(requestId);
-  expectRejected(rejected, 'too_large', server.messages.too_large);
-  client.chunk(requestId, 'ancora');
-  client.end(requestId);
-  await new Promise(resolve => setTimeout(resolve, 50));
-  expect(client.errors()).toEqual([]);
-  expect(histories).toHaveLength(1);
-  expect(await server.conversationIds()).toHaveLength(1);
-});
+    const requestId = client.requestId();
+    client.startText(requestId);
+    client.chunk(requestId, 'è'.repeat(maxTextBytes / 4));
+    client.chunk(requestId, 'è'.repeat(maxTextBytes / 4));
+    client.chunk(requestId, 'x');
+    const rejected = await client.result(requestId);
+    expectRejected(rejected, 'too_large', publicMessages[language].too_large);
+    client.chunk(requestId, 'ancora');
+    client.end(requestId);
+    await new Promise(resolve => setTimeout(resolve, 50));
+    expect(client.errors()).toEqual([]);
+    expect(histories).toHaveLength(1);
+    expect(await server.conversationIds()).toHaveLength(1);
+  });
 
-// Verification: Prova del rifiuto oltre i limiti di trasmissione
-test('rejects audio beyond 60 seconds and stops its transcription at the limit', async () => {
-  const server = await start({ voice: true, language: 'en' });
-  const client = await ProtocolClient.ready(server.url);
-  const within = await client.audioTurn(pcm('long question', maxAudioBytes));
-  expect(within.accepted!.text).toBe('long question');
-  expect(server.speech.transcriptions).toBe(1);
+  test('accepts 60 seconds of audio, rejects audio beyond them and stops its transcription at the limit', async () => {
+    const server = await start({ voice: true, language });
+    const client = await ProtocolClient.ready(server.url);
+    const within = await client.audioTurn(pcm('long question', maxAudioBytes));
+    expect(within.accepted!.text).toBe('long question');
+    expect(server.speech.transcriptions).toBe(1);
 
-  const requestId = client.requestId();
-  const stream = client.startAudio(requestId);
-  client.sendAudio(stream, pcm('too long', maxAudioBytes + 2));
-  const rejected = await client.result(requestId);
-  expectRejected(rejected, 'too_large', server.messages.too_large, 'audio');
-  client.sendFrame(stream, Buffer.alloc(320));
-  client.end(requestId);
-  await new Promise(resolve => setTimeout(resolve, 50));
-  expect(client.errors()).toEqual([]);
-  // Transcription started while receiving, but no audio beyond the limit reached it.
-  expect(server.speech.transcriptions).toBe(2);
-  expect(server.speech.interruptedTranscriptions).toBe(1);
-  expect(server.speech.receivedBytes[1]).toBeLessThanOrEqual(maxAudioBytes);
-  expect(await server.conversationIds()).toHaveLength(1);
+    const requestId = client.requestId();
+    const stream = client.startAudio(requestId);
+    client.sendAudio(stream, pcm('too long', maxAudioBytes + 2));
+    const rejected = await client.result(requestId);
+    expectRejected(rejected, 'too_large', publicMessages[language].too_large, 'audio');
+    client.sendFrame(stream, Buffer.alloc(320));
+    client.end(requestId);
+    await new Promise(resolve => setTimeout(resolve, 50));
+    expect(client.errors()).toEqual([]);
+    // Transcription started while receiving, but no audio beyond the limit reached it.
+    expect(server.speech.transcriptions).toBe(2);
+    expect(server.speech.interruptedTranscriptions).toBe(1);
+    expect(server.speech.receivedBytes[1]).toBeLessThanOrEqual(maxAudioBytes);
+    expect(await server.conversationIds()).toHaveLength(1);
+  });
 });
 
 // Verification: Prova del rifiuto audio senza voce abilitata
@@ -202,6 +209,8 @@ test('rejects audio input or audio replies in text when voice is disabled', asyn
   expect(await server.conversationIds()).toEqual([]);
   expect((await client.textTurn('ciao', { reply: 'text' })).final.type).toBe('turn.completed');
   expect(client.errors()).toEqual([]);
+  // No speech component is ever built without voice.
+  expect(server.speech.built).toBe(0);
 });
 
 // Verification: Prova della trascrizione non riuscita

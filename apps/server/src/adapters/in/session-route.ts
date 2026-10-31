@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import type { Logger } from '@ambrogio/conversations/adapters/in/logger';
+import type { Logger } from '@ambrogio/conversations/adapters/in/diagnostic-log';
 import { sendProblem, type ProblemDetails } from '@ambrogio/conversations/adapters/in/http/problem-details';
 import { sessionProtocol, sessionRoute,
   type ConversationSessions } from '@ambrogio/conversations/adapters/in/session/conversation-session';

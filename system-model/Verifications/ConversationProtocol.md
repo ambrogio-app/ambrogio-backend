@@ -27,10 +27,10 @@ Non automatizzabile: giudicare che testo e voce non abbiano regole proprie richi
 
 ### Prova degli errori di protocollo
 
-Con un turno ammesso in corso nella sessione, inviare JSON malformato, un messaggio senza `type`, un tipo sconosciuto, un oggetto con campi aggiuntivi, un `input.chunk` per un `requestId` inesistente e un frame binario con `stream` sconosciuto.
+Con un turno ammesso in corso nella sessione, inviare JSON malformato, un messaggio senza `type`, un tipo sconosciuto, un oggetto con campi aggiuntivi, un `input.chunk` per un `requestId` inesistente e un frame binario con `stream` sconosciuto. Inviare poi un frame binario più corto di 4 byte, un `input.chunk` per una richiesta audio aperta e un `input.start` con il `requestId` e poi con lo `stream` di una richiesta aperta.
 
 #### Details
-La prova passa se ciascun messaggio non conforme riceve `session.error` con il `code` previsto e un `message` privo di dettagli tecnici, con il `requestId` quando ricavabile; la sessione resta aperta, il turno in corso arriva al proprio esito e nessun caso d'uso viene invocato per i messaggi non conformi. Fallisce se la sessione si chiude, se il turno in corso viene alterato, se un messaggio non conforme produce effetti persistenti o se l'errore espone dettagli interni.
+La prova passa se ciascun messaggio non conforme riceve `session.error` con il `code` e il `message` previsti dal contratto degli errori del protocollo, con il `requestId` quando ricavabile, e il frame corto, il frammento di testo della richiesta audio e i riusi di `requestId` e `stream` ricevono `invalid_message` lasciando invariate le richieste aperte, che proseguono fino al proprio esito; la sessione resta aperta, il turno in corso arriva al proprio esito e nessun caso d'uso viene invocato per i messaggi non conformi. Fallisce se la sessione si chiude, se il turno in corso viene alterato, se un messaggio non conforme produce effetti persistenti o se l'errore espone dettagli interni.
 
 #### Metadata
   * type: test-verification

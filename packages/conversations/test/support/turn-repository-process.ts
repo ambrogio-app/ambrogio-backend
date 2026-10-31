@@ -19,7 +19,7 @@ registerHooks({
 const { default: pg } = await import('pg');
 const { Kysely, PostgresDialect } = await import('kysely');
 const { ConversationId, TurnId } = await import('../../src/domain/identities.js');
-const { Turn } = await import('../../src/domain/turn.js');
+const { Turn } = await import('../../src/domain/turn/turn.js');
 const { PostgresTurnRepository } = await import('../../src/adapters/out/postgres/postgres-turn-repository.adapter.js');
 const { PostgresConversationLookup } = await import('../../src/adapters/out/postgres/postgres-conversation-lookup.adapter.js');
 type Loaded = ReturnType<typeof Turn.create>;

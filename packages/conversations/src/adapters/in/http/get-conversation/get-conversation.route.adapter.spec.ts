@@ -2,10 +2,9 @@ import type { FastifyInstance } from 'fastify';
 import { Ajv } from 'ajv';
 import { afterEach, describe, expect, it } from 'vitest';
 import { registerGetConversationRoute } from './get-conversation.route.adapter.js';
-import { createGetConversationHandler } from './get-conversation.handler.js';
 import { conversationNotFoundProblemSchema, conversationSchema } from './get-conversation.schemas.js';
 import { methodNotAllowedProblemSchema } from '../problem-details.js';
-import type { GetConversation } from '../../../../application/get-conversation.use-case.js';
+import type { GetConversation } from '../../../../application/get-conversation/get-conversation.use-case.js';
 import { routeServer } from '../../../../../test/support/http-routes.js';
 
 const servers: FastifyInstance[] = [];
@@ -15,8 +14,7 @@ const isNotFound = ajv.compile(conversationNotFoundProblemSchema);
 const isMethodNotAllowed = ajv.compile(methodNotAllowedProblemSchema);
 
 function fixture(getConversation: GetConversation) {
-  const server = routeServer('/api/v1', scope => registerGetConversationRoute(scope,
-    createGetConversationHandler(getConversation)));
+  const server = routeServer('/api/v1', scope => registerGetConversationRoute(scope, getConversation));
   servers.push(server);
   return server;
 }

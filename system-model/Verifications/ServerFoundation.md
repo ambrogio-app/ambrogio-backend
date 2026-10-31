@@ -2,18 +2,35 @@
 
 ### Verifica degli strumenti del repository backend
 
-Raggruppa le prove dell'hook pre-commit, dell'installazione, dell'audit delle dipendenze, del comando di verifica completo e del workflow di pubblicazione del backend.
+Raggruppa le prove dell'hook pre-commit, dell'installazione, dell'audit delle dipendenze, del comando di verifica completo, della CI, dei database di prova, dell'irrobustimento dei workflow e della protezione del merge del backend.
 
 #### Metadata
   * type: verification-objective
 ---
 
-### Prova dei controlli del modello nell'hook pre-commit del backend
+### Ispezione della protezione del merge del backend
 
-In una cartella temporanea con un repository Git che contiene l'hook `.githooks/pre-commit` del backend, con `core.hooksPath` impostato a `.githooks`, e accanto una cartella `ambrogio-model/scripts/` con uno script `model-checks` sostitutivo che registra ogni esecuzione e termina con successo oppure con un errore, tentare il commit di un file privo di segreti con lo script che riesce, con lo script che fallisce e senza la cartella `ambrogio-model`; tentare poi il commit di un token fittizio con lo script che riesce.
+Leggere con `gh api repos/<proprietario>/<repository>/rulesets` e con il dettaglio del ruleset `main` le regole attive sul branch principale.
 
 #### Details
-La prova passa se il commit privo di segreti riesce ed esegue lo script; se con lo script che fallisce il commit è impedito e l'output riporta il messaggio dello script; se senza `ambrogio-model` affiancato il commit è impedito con il messaggio del contratto «Controlli del modello nell'hook pre-commit»; e se il commit con il token è impedito senza eseguire lo script. Fallisce se un commit è creato nonostante un controllo fallito o l'assenza di `ambrogio-model`, se lo script non è eseguito dopo una scansione riuscita o se è eseguito dopo un segreto. Lo script sostitutivo evita di eseguire Reqvire nella suite; `scripts/model-checks` è provato in `ambrogio-model`.
+L'ispezione passa se il ruleset corrisponde a «Ruleset del branch principale» e a «Ruleset del branch principale del backend»: applicazione attiva sul branch predefinito, nessun attore escluso, integrazione solo tramite pull request, controlli richiesti con i nomi del contratto del backend, riscrittura forzata e cancellazione vietate; e se un push diretto sul branch principale viene rifiutato. Fallisce se il ruleset manca, è disattivato, ha attori esclusi o differisce dal contratto. I controlli richiesti `Backend checks` e `Scan history for secrets` sono i job verificati da «Prova della configurazione della CI del server» e da «Prova della configurazione della scansione dei segreti in CI del backend»: l'ispezione stabilisce che un loro fallimento impedisce l'integrazione. Non automatizzabile: il ruleset è un'impostazione del repository GitHub e non un file del repository, e leggerlo richiede credenziali con accesso amministrativo che la CI non possiede.
+
+#### Metadata
+  * type: inspection-verification
+
+#### Relations
+  * derivedFrom: [Verifica degli strumenti del repository backend](#verifica-degli-strumenti-del-repository-backend)
+  * verify: [Controlli CI delle modifiche funzionali del server](../Requirements/ServerFoundation.md#controlli-ci-delle-modifiche-funzionali-del-server)
+  * verify: [Controlli obbligatori prima del merge del backend](../Requirements/ServerFoundation.md#controlli-obbligatori-prima-del-merge-del-backend)
+  * verify: [Scansione dei segreti nella CI del backend](../Requirements/ServerFoundation.md#scansione-dei-segreti-nella-ci-del-backend)
+---
+
+### Prova dei controlli del modello nell'hook pre-commit del backend
+
+In una cartella temporanea con un repository Git che contiene l'hook `.githooks/pre-commit` del backend, con `core.hooksPath` impostato a `.githooks`, e accanto una cartella `ambrogio-model/scripts/` con uno script `model-checks` sostitutivo che registra ogni esecuzione con i propri argomenti e termina con successo oppure con un errore, tentare il commit di un file privo di segreti con lo script che riesce, con lo script che fallisce e senza la cartella `ambrogio-model`; tentare poi il commit di un token fittizio con lo script che riesce.
+
+#### Details
+La prova passa se il commit privo di segreti riesce ed esegue lo script una volta con gli argomenti `--staged`, la radice del repository e il percorso assoluto del suo indice; se con lo script che fallisce il commit è impedito e l'output riporta il messaggio dello script; se senza `ambrogio-model` affiancato il commit è impedito con il messaggio del contratto «Controlli del modello nell'hook pre-commit»; e se il commit con il token è impedito senza eseguire lo script. Fallisce se un commit è creato nonostante un controllo fallito o l'assenza di `ambrogio-model`, se lo script non è eseguito dopo una scansione riuscita o se è eseguito dopo un segreto. Lo script sostitutivo evita di eseguire Reqvire nella suite; `scripts/model-checks` è provato in `ambrogio-model`.
 
 #### Metadata
   * type: test-verification
@@ -29,7 +46,7 @@ La prova passa se il commit privo di segreti riesce ed esegue lo script; se con 
 Leggere lo script `verify` di `package.json` e i passi del job `Backend checks` di `.github/workflows/ci.yml`.
 
 #### Details
-La prova passa se i comandi `pnpm` del job successivi all'installazione, escluso l'audit, sono `pnpm build`, `pnpm typecheck`, `pnpm test`, `pnpm test:integration` e `pnpm test:e2e` e se `verify` è la sequenza unita da `&&` di `../ambrogio-model/scripts/model-checks`, `pnpm install --frozen-lockfile`, `pnpm audit --audit-level high` e di quei comandi nello stesso ordine. Fallisce se un controllo della CI manca da `verify`, se l'ordine differisce o se i comandi non sono uniti da `&&`. Che `&&` interrompa la sequenza al primo comando fallito è un comportamento della shell.
+La prova passa se i comandi `pnpm` del job successivi all'installazione, escluso l'audit, sono `pnpm build`, `pnpm db:types:check`, `pnpm typecheck`, `pnpm test`, `pnpm test:integration` e `pnpm test:e2e` e se `verify` è la sequenza unita da `&&` di `../ambrogio-model/scripts/model-checks`, `pnpm install --frozen-lockfile`, `pnpm audit --audit-level high` e di quei comandi nello stesso ordine. Fallisce se un controllo della CI manca da `verify`, se l'ordine differisce o se i comandi non sono uniti da `&&`. Che `&&` interrompa la sequenza al primo comando fallito è un comportamento della shell.
 
 #### Metadata
   * type: test-verification
@@ -73,6 +90,54 @@ La prova passa se `packageManager` dichiara una versione esatta di pnpm; se ness
   * verify: [Installazione delle dipendenze del backend con pnpm e Corepack](../Requirements/ServerFoundation.md#installazione-delle-dipendenze-del-backend-con-pnpm-e-corepack)
 ---
 
+### Prova dell'irrobustimento dei workflow
+
+Leggere come testo `.github/workflows/ci.yml`, `.github/workflows/secret-scan.yml` e `.github/workflows/publish-image.yml` e confrontare permessi, riferimenti delle action, runner, `timeout-minutes`, opzioni di checkout, uso del `GITHUB_TOKEN`, installazione dello scanner dei segreti e richiami `workflow_call` con «Profilo comune dei workflow GitHub Actions» e «Profilo di irrobustimento dei workflow GitHub Actions».
+
+#### Details
+La prova passa se ogni workflow dichiara `permissions` con il solo `contents: read`; se soltanto il job `publish` dichiara permessi propri, `contents: read` e `packages: write`; se ogni `uses` di un passo indica un'action esterna con un'impronta di 40 caratteri esadecimali seguita dal commento della versione e `actions/checkout` e `actions/setup-node` usano le impronte del contratto; se ogni job con passi usa `ubuntu-24.04` e dichiara `timeout-minutes` 20 per `checks`, 10 per `gitleaks` e 60 per `publish`; se ogni passo `actions/checkout` imposta `persist-credentials: false`; se `secrets.GITHUB_TOKEN` compare soltanto nell'`env` del passo di login al registro; se i job `checks` e `gitleaks` installano gitleaks con la stessa versione e la stessa impronta verificata; e se `ci.yml` e `secret-scan.yml` dichiarano `workflow_call` e `publish-image.yml` li richiama come job `checks` e `secret-scan`, da cui il job `publish` dipende con `needs`. Fallisce se un job riceve permessi non previsti, se un'action è indicata con un tag o un branch, se un job non ha il limite di durata del contratto, se un checkout conserva le credenziali o se la pubblicazione duplica i controlli invece di richiamarli.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica degli strumenti del repository backend](#verifica-degli-strumenti-del-repository-backend)
+  * satisfiedBy: [workflows.spec.ts](../../test/repository/workflows.spec.ts)
+  * verify: [Irrobustimento dei workflow GitHub Actions](../Requirements/ServerFoundation.md#irrobustimento-dei-workflow-github-actions)
+---
+
+### Prova dell'isolamento dei database di prova
+
+Leggere come testo i file `*.integration.spec.ts` e `*.e2e.spec.ts` e il modulo `test/support/test-database.ts`.
+
+#### Details
+La prova passa se ogni file `*.integration.spec.ts` importa il modulo dei database di prova, direttamente o tramite un modulo di supporto della propria unità, e nessun file di prova nomina `AMBROGIO_TEST_DATABASE_URL` né legge `process.env.AMBROGIO_DATABASE_URL`; se il modulo legge soltanto `AMBROGIO_TEST_DATABASE_URL`, lancia un errore che nomina la variabile quando manca, senza altri valori di ripiego, crea database con il prefisso `ambrogio_test_` seguito da caratteri casuali, vi applica le migrazioni di produzione e cancella soltanto i nomi che ha creato. Fallisce se un file manca di una di queste proprietà.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica degli strumenti del repository backend](#verifica-degli-strumenti-del-repository-backend)
+  * satisfiedBy: [test-databases.spec.ts](../../test/repository/test-databases.spec.ts)
+  * verify: [Database di prova isolati del backend](../Requirements/ServerFoundation.md#database-di-prova-isolati-del-backend)
+---
+
+### Prova della configurazione della CI del server
+
+Leggere come testo `.github/workflows/ci.yml` e i file di prova dei package sotto `packages/`.
+
+#### Details
+La prova passa se il workflow parte a ogni push su `main`, a ogni pull request, su richiesta manuale e con `workflow_call`; se il job `Backend checks` dichiara `BRANCH` pari a `${{ github.head_ref || github.ref_name }}`, esegue il checkout del repository in `workspace/ambrogio-backend` con `fetch-depth: 0`, clona `ambrogio-model` in `workspace/ambrogio-model` sul branch `BRANCH` se esiste sul remoto e altrimenti su `main`, esegue poi `workspace/ambrogio-model/scripts/checkout-workspace workspace "$BRANCH"` e `workspace/ambrogio-model/scripts/model-checks --workspace workspace`, e infine, nella cartella `workspace/ambrogio-backend`, `pnpm install --frozen-lockfile`, `pnpm audit --audit-level high` subito dopo, `pnpm build`, `pnpm db:types:check`, `pnpm typecheck`, `pnpm test`, `pnpm test:integration` e `pnpm test:e2e`, con `corepack enable` prima dell'installazione e l'installazione e l'audit delle dipendenze prima degli altri passi pnpm, con `pnpm build` prima di `pnpm typecheck` e di `pnpm test:e2e` e l'installazione verificata di gitleaks prima di `pnpm test`; se il workflow non nomina un pacchetto o una versione di Reqvire né uno script di integrità locale; se il job dichiara il servizio `postgres` con l'immagine `pgvector/pgvector:pg18`, `POSTGRES_HOST_AUTH_METHOD: trust`, la porta `5432:5432` e un controllo di salute con `pg_isready`, e la variabile `AMBROGIO_TEST_DATABASE_URL` pari a `postgres://postgres@127.0.0.1:5432/postgres`; se nessun passo o job dichiara `continue-on-error`; e se ogni file di prova che importa un adapter di `src/adapters/out/postgres/` o il modulo dei database di prova si chiama `*.integration.spec.ts` o `*.e2e.spec.ts`. Fallisce se manca un evento, una fase o il servizio, se l'ordine richiesto non è rispettato, se un fallimento è tollerato o se una prova che usa il database appartiene alla selezione veloce. Che un controllo fallito impedisca l'integrazione è verificato da «Ispezione della protezione del merge del backend».
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica degli strumenti del repository backend](#verifica-degli-strumenti-del-repository-backend)
+  * satisfiedBy: [workflows.spec.ts](../../test/repository/workflows.spec.ts)
+  * verify: [Controlli CI delle modifiche funzionali del server](../Requirements/ServerFoundation.md#controlli-ci-delle-modifiche-funzionali-del-server)
+---
+
 ### Verifica del ciclo di vita del server
 
 Raggruppa le prove dell'interruzione dei turni attivi all'arresto ordinato e della chiusura delle risorse.
@@ -99,10 +164,10 @@ La prova passa se in entrambi i casi `stderr` contiene soltanto `Ambrogio backen
 
 ### Prova dell'arresto ordinato e limitato del server
 
-Con risorse controllate che registrano l'ordine delle chiusure, eseguire il runner del processo server: inviare due volte `SIGTERM`, poi ripetere facendo fallire la chiusura di una risorsa intermedia e infine con una chiusura che non termina mai e un timer controllato. Costruire il server reale con archivio, componenti vocali controllati e agenti controllati e chiuderlo, registrando l'ordine delle chiusure. Leggere l'esempio Compose del repository.
+Con risorse controllate che registrano l'ordine delle chiusure, eseguire il runner del processo server: inviare due volte `SIGTERM`, poi ripetere inviando `SIGTERM` mentre la costruzione del server non termina, poi facendo fallire la chiusura di una risorsa intermedia e infine con una chiusura che non termina mai e un timer controllato. Costruire il server reale con archivio, componenti vocali controllati e agenti controllati e chiuderlo, registrando l'ordine delle chiusure. Leggere l'esempio Compose del repository.
 
 #### Details
-La prova passa se due segnali producono un solo arresto; se le chiusure avvengono una sola volta in ordine inverso di acquisizione, dopo lo stop dei nuovi turni e l'interruzione di quelli in corso, e quelle successive a una chiusura fallita sono comunque tentate; se un guasto di chiusura produce una sola riga `server_shutdown_failed` con il guasto incapsulato che nomina la risorsa e codice 1, e due guasti un `LifecycleError` che li elenca nell'ordine osservato; se alla scadenza dei 10000 ms il runner emette una sola riga `server_shutdown_timeout` con `timeoutMs: 10000` e i guasti già osservati, e restituisce il codice 1 con l'uscita forzata senza attendere la chiusura pendente; se l'arresto riuscito restituisce 0 senza righe di log; e se l'esempio Compose dichiara un `stop_grace_period` di almeno 15 secondi. Fallisce se una risorsa è chiusa due volte o fuori ordine, se un guasto di chiusura va perso o diventa causa di un altro, se un secondo segnale riavvia il tempo massimo o se l'esempio non dichiara il periodo di arresto.
+La prova passa se due segnali producono un solo arresto; se le chiusure avvengono una sola volta in ordine inverso di acquisizione, dopo lo stop dei nuovi turni e l'interruzione di quelli in corso, e quelle successive a una chiusura fallita sono comunque tentate; se un guasto di chiusura produce una sola riga `server_shutdown_failed` con il guasto incapsulato che nomina la risorsa e codice 1, e due guasti un `LifecycleError` che li elenca nell'ordine osservato; se alla scadenza dei 10000 ms il runner emette una sola riga `server_shutdown_timeout` con `timeoutMs: 10000` e i guasti già osservati, e restituisce il codice 1 con l'uscita forzata senza attendere la chiusura pendente, anche quando l'arresto è chiesto durante la costruzione; se ogni risposta HTTP inviata dall'inizio dell'arresto porta `Connection: close`; se l'arresto riuscito restituisce 0 senza righe di log; e se l'esempio Compose dichiara un `stop_grace_period` di almeno 15 secondi. Fallisce se una risorsa è chiusa due volte o fuori ordine, se un guasto di chiusura va perso o diventa causa di un altro, se un secondo segnale riavvia il tempo massimo o se l'esempio non dichiara il periodo di arresto.
 
 #### Metadata
   * type: test-verification
@@ -110,6 +175,7 @@ La prova passa se due segnali producono un solo arresto; se le chiusure avvengon
 #### Relations
   * derivedFrom: [Verifica del ciclo di vita del server](#verifica-del-ciclo-di-vita-del-server)
   * satisfiedBy: [conversation-server.resource-lifecycle.integration.spec.ts](../../apps/server/src/runtime/conversation-server.resource-lifecycle.integration.spec.ts)
+  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
   * satisfiedBy: [lifecycle.spec.ts](../../apps/server/src/runtime/lifecycle.spec.ts)
   * satisfiedBy: [server-process.integration.spec.ts](../../apps/server/src/runtime/server-process.integration.spec.ts)
   * satisfiedBy: [server-process.spec.ts](../../apps/server/src/runtime/server-process.spec.ts)
@@ -175,9 +241,285 @@ La prova passa se ogni caso produce su `stdout` una sola riga JSON con livello `
   * verify: [Diagnostica del mancato avvio del server](../Requirements/ServerFoundation.md#diagnostica-del-mancato-avvio-del-server)
 ---
 
+### Verifica dell'immagine Docker del server
+
+Raggruppa le prove del contesto di build, del contenuto e dell'avvio dell'immagine Docker del server, compresi i modelli vocali inclusi e le voci sostituibili.
+
+#### Metadata
+  * type: verification-objective
+---
+
+### Prova del catalogo vocale bilingue dell'immagine
+
+Costruire l'immagine e ispezionare gli archivi fissati, le impronte verificate e i file runtime del modello Nemotron, e delle voci Piper italiane e inglesi. Eseguire una breve trascrizione e una sintesi per ogni lingua.
+
+#### Details
+La prova passa se tutte le risorse sono leggibili dentro il container senza mount, le impronte corrispondono a quelle fissate, la directory Nemotron contiene soltanto i file int8 dell'encoder, del decoder e del joiner, il file dei token e la licenza, e Nemotron e Piper producono risultati non vuoti in entrambe le lingue. Fallisce se una risorsa manca o richiede un mount, se un'impronta non corrisponde o se un motore produce un risultato vuoto in una lingua.
+
+La build dell'immagine verifica le impronte degli archivi con `scripts/fetch-speech-models.mjs`; `scripts/verify-docker-image.mjs` esegue gli altri controlli nel job di pubblicazione, perché richiedono la build Docker con il download dei modelli.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dell'immagine Docker del server](#verifica-dellimmagine-docker-del-server)
+  * satisfiedBy: [fetch-speech-models.mjs](../../scripts/fetch-speech-models.mjs)
+  * satisfiedBy: [verify-docker-image.mjs](../../scripts/verify-docker-image.mjs)
+  * verify: [Modelli vocali italiani e inglesi inclusi](../Requirements/ServerFoundation.md#modelli-vocali-italiani-e-inglesi-inclusi)
+---
+
+### Prova del contesto di build dell'immagine del server
+
+Leggere `.dockerignore` del backend.
+
+#### Details
+La prova passa se `.dockerignore` contiene tutte le esclusioni di «Profilo dell'immagine Docker del server» e nessuna voce `!` che reinclude file. Fallisce se manca un'esclusione o se una voce reinclude file.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dell'immagine Docker del server](#verifica-dellimmagine-docker-del-server)
+  * satisfiedBy: [container-build-context.spec.ts](../../test/repository/container-build-context.spec.ts)
+  * verify: [Distribuzione del server come immagine Docker](../Requirements/ServerFoundation.md#distribuzione-del-server-come-immagine-docker)
+---
+
+### Prova dell'immagine Docker indipendente da Compose
+
+Costruire l'immagine Docker del server a partire dagli artefatti del progetto e avviarla con il solo runtime Docker, fornendo dall'esterno i file di configurazione di prova e un database PostgreSQL in un container `pgvector/pgvector:pg18` sulla stessa rete Docker; verificare l'avvio, una richiesta a un ingresso HTTP presente e la creazione delle tabelle dell'archivio in quel database. Esaminare l'eventuale file Compose per accertare che sia un esempio di avvio e non un prerequisito della build o dell'esecuzione.
+
+#### Details
+La prova passa se il progetto produce un'immagine eseguibile, il server si avvia e risponde usando l'immagine senza Docker Compose e nessuna fase indispensabile richiede Compose. Fallisce se l'immagine manca, non è eseguibile oppure l'avvio dipende da Compose.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dell'immagine Docker del server](#verifica-dellimmagine-docker-del-server)
+  * satisfiedBy: [verify-docker-image.mjs](../../scripts/verify-docker-image.mjs)
+  * verify: [Distribuzione del server come immagine Docker](../Requirements/ServerFoundation.md#distribuzione-del-server-come-immagine-docker)
+  * verify: [Esecuzione del server senza Docker Compose](../Requirements/ServerFoundation.md#esecuzione-del-server-senza-docker-compose)
+---
+
+### Prova della coerenza dei modelli vocali registrati
+
+Leggere la tabella degli archivi della fonte «Modelli vocali scaricati nell'immagine del backend», gli archivi con le impronte SHA-256 di `scripts/fetch-speech-models.mjs` e la tabella di `voices/README.md`.
+
+#### Details
+La prova passa se le tre fonti elencano gli stessi archivi con le stesse impronte. Fallisce se un archivio o un'impronta cambia in una sola di esse, così che un aggiornamento di un modello scaricato richieda la modifica esplicita dell'elemento `source`.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dell'immagine Docker del server](#verifica-dellimmagine-docker-del-server)
+  * satisfiedBy: [speech-models-source.spec.ts](../../test/repository/speech-models-source.spec.ts)
+  * verify: [Modelli vocali italiani e inglesi inclusi](../Requirements/ServerFoundation.md#modelli-vocali-italiani-e-inglesi-inclusi)
+---
+
+### Prova delle voci incluse e sostituibili
+
+Con `scripts/verify-docker-image.mjs`, costruire l'immagine backend oppure usare quella indicata da `AMBROGIO_DOCKER_IMAGE`, ispezionare le directory delle voci Piper incluse, elencate dalla fonte «Modelli vocali scaricati nell'immagine del backend», e sintetizzare una breve frase con ciascuna usando il codice di sintesi dell'immagine. Verificare che l'immagine non contenga `python3` né `/opt/piper`. Avviare un container con una directory di prova montata in sola lettura su `/opt/ambrogio/voices` e osservare che il mount sostituisce il contenuto incluso; selezionare inoltre una voce italiana montata in un percorso distinto tramite le variabili del profilo vocale.
+
+#### Details
+La prova passa se ogni directory contiene un solo modello `.onnx`, `tokens.txt`, `espeak-ng-data/` e `MODEL_CARD`, `/opt/ambrogio/voices/README.md` è presente, la sintesi produce audio non vuoto alla frequenza del modello per ogni voce, l'immagine non contiene `python3` né `/opt/piper`, il mount su `/opt/ambrogio/voices` presenta i file esterni al posto delle voci incluse senza una nuova build e la voce montata in un percorso distinto viene selezionata e caricata. Fallisce se manca una voce, la sintesi fallisce o il mount non sostituisce la directory. La prova non sostituisce l'ascolto umano della qualità delle voci.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica dell'immagine Docker del server](#verifica-dellimmagine-docker-del-server)
+  * satisfiedBy: [verify-docker-image.mjs](../../scripts/verify-docker-image.mjs)
+  * verify: [Directory delle voci sostituibile nell'immagine](../Requirements/ServerFoundation.md#directory-delle-voci-sostituibile-nellimmagine)
+  * verify: [Distribuzione del server come immagine Docker](../Requirements/ServerFoundation.md#distribuzione-del-server-come-immagine-docker)
+---
+
+### Verifica della configurazione del server
+
+Raggruppa le prove della lettura, della validazione e della distribuzione della configurazione del backend, delle credenziali, dei file degli agenti e degli esempi di configurazione.
+
+#### Metadata
+  * type: verification-objective
+---
+
+### Controllo degli esempi di configurazione
+
+Esaminare `.env.example`, `compose.example.yaml` e i file degli agenti d'esempio di `examples/agents/`, e i campi in cui potrebbero comparire credenziali.
+
+#### Details
+Il controllo passa se gli esempi non contengono credenziali effettive: le variabili delle credenziali sono vuote in `.env.example`, richieste senza valore in `compose.example.yaml` e nominate soltanto per nome nei file degli agenti. Fallisce se un esempio contiene una credenziale effettiva.
+
+Non automatizzabile: stabilire che un valore non è una credenziale effettiva richiede giudizio umano; gitleaks riconosce soltanto i formati previsti dalle sue regole.
+
+#### Metadata
+  * type: inspection-verification
+
+#### Relations
+  * derivedFrom: [Verifica della configurazione del server](#verifica-della-configurazione-del-server)
+  * verify: [Esempi di configurazione privi di credenziali](../Requirements/ServerFoundation.md#esempi-di-configurazione-privi-di-credenziali)
+---
+
+### Controllo dei file di configurazione dei componenti
+
+Per ogni componente configurabile del backend individuare il modulo di configurazione da cui è letta la sua configurazione; esaminare da dove provengono i valori, come sono validati e confrontare le variabili lette dai diversi moduli.
+
+#### Details
+Il controllo passa se ogni componente ha un proprio modulo di configurazione TypeScript nella build, il modulo legge soltanto variabili d'ambiente del componente, le valida con lo schema del componente e non contiene valori effettivi, e soltanto il modulo degli agenti legge i file di dati della directory degli agenti. Fallisce se un componente legge la configurazione da un'altra sorgente, condivide il modulo con un altro componente o se un modulo contiene un valore effettivo, come un indirizzo o una credenziale.
+
+Non automatizzabile: individuare i componenti configurabili e distinguere un valore effettivo da un valore predefinito ammesso richiede di leggere il codice di avvio e di giudicare i confini dei componenti.
+
+#### Metadata
+  * type: inspection-verification
+
+#### Relations
+  * derivedFrom: [Verifica della configurazione del server](#verifica-della-configurazione-del-server)
+  * verify: [Modulo di configurazione per componente del backend](../Requirements/ServerFoundation.md#modulo-di-configurazione-per-componente-del-backend)
+---
+
+### Controllo dell'esclusione delle configurazioni effettive
+
+Per ciascun file di configurazione effettivo usato da un'installazione o nello sviluppo, come `.env` e i file degli agenti, esaminare i file tracciati da Git, le regole di esclusione e il contenuto dell'immagine container costruita per il server.
+
+#### Details
+Il controllo passa se nessun file effettivo è tracciato in Git o incluso nell'immagine e il deployment lo fornisce dall'esterno. Fallisce se un file effettivo è presente nei file versionati o nell'immagine.
+
+Non automatizzabile: i file effettivi appartengono alle installazioni e non sono nel repository; `scripts/verify-docker-image.mjs` controlla soltanto l'assenza dei percorsi noti nell'immagine.
+
+#### Metadata
+  * type: inspection-verification
+
+#### Relations
+  * derivedFrom: [Verifica della configurazione del server](#verifica-della-configurazione-del-server)
+  * verify: [Esclusione dei file di configurazione effettivi dagli artefatti](../Requirements/ServerFoundation.md#esclusione-dei-file-di-configurazione-effettivi-dagli-artefatti)
+---
+
+### Ispezione dei proprietari dei valori predefiniti del backend
+
+Esaminare ogni valore facoltativo della configurazione del backend, degli adapter inbound, dei casi d'uso e delle creazioni del Domain, e il punto in cui viene applicato il suo valore predefinito.
+
+#### Details
+L'ispezione passa se ogni valore predefinito è deciso per il proprio concetto e applicato esplicitamente, una sola volta, dal suo proprietario soltanto quando l'assenza è ammessa: i valori di configurazione dal modulo di configurazione del componente, quelli di protocollo dall'adapter inbound, quelli di intenzione da Application e quelli di creazione dal Domain. Fallisce se un valore predefinito è soltanto documentato, ripetuto in un altro punto o applicato dal layer sbagliato.
+
+Non automatizzabile: stabilire quale layer possiede un valore predefinito dipende dal significato di ciascun campo, che richiede la lettura del codice.
+
+#### Metadata
+  * type: inspection-verification
+
+#### Relations
+  * derivedFrom: [Verifica della configurazione del server](#verifica-della-configurazione-del-server)
+  * verify: [Valori predefiniti del backend applicati dal proprietario](../Requirements/ServerFoundation.md#valori-predefiniti-del-backend-applicati-dal-proprietario)
+---
+
+### Prova dei file JSON degli agenti
+
+Preparare una directory degli agenti con file `<id>.json` validi e con file di altro tipo; in tentativi separati usare un file che non è JSON valido, un campo sconosciuto a ciascun livello, una credenziale letterale in `llm.apiKey`, `mcp.auth.token` o `mcp.auth.clientSecret`, un nome di variabile non valido e una variabile nominata assente o vuota, con un segreto marcatore nei valori.
+
+#### Details
+La prova passa se i file validi sono accettati con le credenziali lette dalle variabili nominate, i file di altro tipo sono ignorati, ogni caso invalido impedisce l'attivazione con `Invalid agent configuration: <id>`, una variabile assente o vuota produce `Missing environment variable <NOME> for agent <id>` e nessun errore contiene il segreto marcatore. Fallisce se un file con una credenziale letterale o con un campo sconosciuto è accettato o se un errore riporta un valore.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della configurazione del server](#verifica-della-configurazione-del-server)
+  * satisfiedBy: [agent-config.spec.ts](../../apps/server/src/runtime/agent-config.spec.ts)
+  * verify: [File JSON di soli dati per gli agenti](../Requirements/ServerFoundation.md#file-json-di-soli-dati-per-gli-agenti)
+---
+
+### Prova dei file d'ambiente e dei valori predefiniti del backend
+
+Confrontare `.env.example` con le variabili dichiarate dai moduli di configurazione e con le variabili nominate dai file degli agenti d'esempio; confrontare le variabili impostate da `compose.example.yaml` con i valori predefiniti dichiarati dai moduli; esaminare gli script del `package.json` della radice e i sorgenti del backend; avviare Node.js con `--env-file` su un file temporaneo e una variabile dello stesso nome nell'ambiente del processo.
+
+#### Details
+La prova passa se `.env.example` elenca esattamente quelle variabili, tutte vuote salvo `AMBROGIO_ENV=development`; se `compose.example.yaml` imposta `AMBROGIO_ENV: production`, ogni variabile con un valore predefinito di sviluppo e nessuna variabile con un valore predefinito valido in produzione, senza valori predefiniti di interpolazione; se soltanto lo script `dev` usa `--env-file=.env` e nessun sorgente carica file d'ambiente; e se la variabile del processo prevale su quella del file. Fallisce su qualunque scostamento.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della configurazione del server](#verifica-della-configurazione-del-server)
+  * satisfiedBy: [environment-files.spec.ts](../../test/repository/environment-files.spec.ts)
+  * verify: [File d'ambiente locale del backend](../Requirements/ServerFoundation.md#file-dambiente-locale-del-backend)
+  * verify: [Valori predefiniti del backend applicati dal proprietario](../Requirements/ServerFoundation.md#valori-predefiniti-del-backend-applicati-dal-proprietario)
+---
+
+### Prova del bootstrap della configurazione del backend
+
+Avviare l'ingresso HTTP con un oggetto d'ambiente di prova che fornisce variabili distinte per i componenti attivi e omette quelle della voce. Osservare i valori ricevuti dai componenti e il momento in cui vengono create e attivate le risorse. Ripetere con una variabile richiesta mancante, malformata o con un valore invalido che contiene un segreto marcatore, e con `AMBROGIO_AGENTS_DIR` diretta a una directory di prova.
+
+#### Details
+La prova passa se il processo legge una volta all'avvio soltanto la configurazione necessaria, consegna a ogni componente solo i dati pertinenti già convertiti e usa la directory degli agenti indicata. L'assenza delle variabili della voce non blocca gli ingressi. Una variabile richiesta mancante o invalida impedisce l'attivazione prima dell'uso delle risorse dipendenti e produce un errore sicuro che nomina la variabile senza riprodurre il segreto. Domain e casi d'uso non leggono direttamente file o ambiente. Fallisce se una variabile non necessaria diventa obbligatoria, la configurazione viene riletta durante il lavoro, una risorsa dipendente si attiva prima della validazione o un segreto appare nell'errore.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della configurazione del server](#verifica-della-configurazione-del-server)
+  * satisfiedBy: [agent-config.spec.ts](../../apps/server/src/runtime/agent-config.spec.ts)
+  * satisfiedBy: [conversation-server.config-bootstrap.integration.spec.ts](../../apps/server/src/runtime/conversation-server.config-bootstrap.integration.spec.ts)
+  * satisfiedBy: [config-examples.spec.ts](../../apps/server/test/examples/config-examples.spec.ts)
+  * satisfiedBy: [conversation-config.spec.ts](../../packages/conversations/src/adapters/out/conversation-config.spec.ts)
+  * verify: [Caricamento iniziale della configurazione del backend](../Requirements/ServerFoundation.md#caricamento-iniziale-della-configurazione-del-backend)
+  * verify: [Distribuzione mirata della configurazione validata](../Requirements/ServerFoundation.md#distribuzione-mirata-della-configurazione-validata)
+  * verify: [Validazione preventiva della configurazione attiva](../Requirements/ServerFoundation.md#validazione-preventiva-della-configurazione-attiva)
+---
+
+### Prova dell'ambiente di esecuzione del backend
+
+Leggere la configurazione con `AMBROGIO_ENV` assente, vuota, con un valore diverso da `development`, `test` e `production`, e con ciascuno dei tre valori; in ciascun ambiente omettere a turno le variabili che hanno un valore predefinito di sviluppo e quelle che hanno un valore predefinito per tutti gli ambienti, e fornire una variabile vuota.
+
+#### Details
+La prova passa se un ambiente assente, vuoto o invalido impedisce l'avvio con un errore che nomina `AMBROGIO_ENV` senza il valore; se i valori predefiniti di sviluppo valgono soltanto in `development` e in `test` e `production` la loro assenza impedisce l'avvio; se i valori predefiniti per tutti gli ambienti valgono ovunque; e se una variabile vuota è trattata come assente. Fallisce se un ambiente implicito viene assunto, se un valore predefinito di sviluppo vale in un altro ambiente o se un errore riporta un valore.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della configurazione del server](#verifica-della-configurazione-del-server)
+  * satisfiedBy: [http-config.spec.ts](../../apps/server/src/runtime/http-config.spec.ts)
+  * satisfiedBy: [conversation-config.spec.ts](../../packages/conversations/src/adapters/out/conversation-config.spec.ts)
+  * satisfiedBy: [environment-variables.spec.ts](../../packages/conversations/src/adapters/out/environment-variables.spec.ts)
+  * verify: [Ambiente di esecuzione dichiarato del backend](../Requirements/ServerFoundation.md#ambiente-di-esecuzione-dichiarato-del-backend)
+---
+
+### Prova dell'origine delle credenziali API
+
+Per ogni componente del backend che usa un'API esterna, preparare file degli agenti di prova che nominano variabili d'ambiente distinte per chiave API, token Bearer e segreto OAuth, fornire nell'oggetto d'ambiente valori fittizi distinguibili, avviare il componente con un client API controllato e osservare le credenziali fornite al client. Ripetere con una variabile nominata assente o vuota.
+
+#### Details
+La prova passa se le credenziali fornite al client sono i valori delle variabili nominate dal file dell'agente, e una variabile assente o vuota impedisce l'avvio con un messaggio che nomina la variabile e l'agente senza alcun valore. Fallisce se il componente usa credenziali incorporate nel codice o ricavate da un'altra sorgente.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della configurazione del server](#verifica-della-configurazione-del-server)
+  * satisfiedBy: [agents.api-credentials.spec.ts](../../apps/server/src/composition/agents.api-credentials.spec.ts)
+  * satisfiedBy: [agent-config.spec.ts](../../apps/server/src/runtime/agent-config.spec.ts)
+  * verify: [Credenziali API dalle variabili d'ambiente](../Requirements/ServerFoundation.md#credenziali-api-dalle-variabili-dambiente)
+---
+
+### Prova della configurazione esplicita del listener HTTP
+
+Fornire al processo `AMBROGIO_HTTP_HOST` e `AMBROGIO_HTTP_PORT` validi, poi omettere separatamente ciascuna variabile negli ambienti `development`, `test` e `production` e provare valori di tipo o intervallo invalidi. Verificare l'indirizzo e la porta effettivamente ascoltati nel caso valido e l'assenza di listener nei casi invalidi.
+
+#### Details
+La prova passa se il processo ascolta solo all'indirizzo e alla porta validati, in `development` i valori assenti assumono `127.0.0.1` e `3000`, in `test` e `production` l'assenza di ciascun valore impedisce l'avvio, e i valori invalidi non aprono né attivano l'ingresso. Fallisce se usa un valore non validato o un valore implicito fuori da `development`.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della configurazione del server](#verifica-della-configurazione-del-server)
+  * satisfiedBy: [conversation-server.integration.spec.ts](../../apps/server/src/runtime/conversation-server.integration.spec.ts)
+  * satisfiedBy: [http-config.spec.ts](../../apps/server/src/runtime/http-config.spec.ts)
+  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
+  * verify: [Configurazione esplicita dell'ascolto HTTP](../Requirements/ServerFoundation.md#configurazione-esplicita-dellascolto-http)
+---
+
 ### Verifica della distinzione degli esiti applicativi
 
-Raggruppa le prove che distinguono i rifiuti previsti dai guasti inattesi nelle operazioni Domain, nei casi d'uso Application e nelle porte del server.
+Raggruppa le prove che distinguono i rifiuti previsti dai guasti inattesi nelle operazioni Domain, nei casi d'uso Application e nelle porte del server, e quelle della diagnostica tecnica dei guasti: propagazione, log diagnostici, correlazione delle richieste, messaggi pubblici e perimetro dell'osservabilità.
 
 #### Metadata
   * type: verification-objective
@@ -343,6 +685,23 @@ Non automatizzabile: riconoscere gli eventi diagnostici tecnici fra le scritture
   * verify: [Uso di Pino per il logging tecnico](../Requirements/ServerFoundation.md#uso-di-pino-per-il-logging-tecnico)
 ---
 
+### Controllo del perimetro iniziale di osservabilità
+
+Esaminare runtime HTTP, dipendenze, configurazioni, endpoint e documentazione operativa della prima versione. Confrontare i segnali presenti con i contratti dei log strutturati e degli identificativi di correlazione; cercare raccoglitori o API distinti per metriche, tracing distribuito e audit.
+
+#### Details
+Il controllo passa se i runtime forniscono i log e i `correlationId` già previsti, senza attivare nella prima versione metriche, tracing o audit separati, e se nessun `correlationId` o log ordinario è presentato come traccia distribuita o registro di audit. Fallisce se viene introdotto un segnale separato senza una decisione e una verifica proprie, se i log sono descritti come audit garantito o se manca il profilo diagnostico previsto. I controlli funzionali dei log e della correlazione restano nelle rispettive verifiche.
+
+Non automatizzabile: richiede di esaminare la documentazione operativa e di giudicare se un segnale è presentato come traccia distribuita o audit.
+
+#### Metadata
+  * type: inspection-verification
+
+#### Relations
+  * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
+  * verify: [Perimetro iniziale dei segnali di osservabilità del backend](../Requirements/ServerFoundation.md#perimetro-iniziale-dei-segnali-di-osservabilità-del-backend)
+---
+
 ### Controllo della raccolta esterna dei log
 
 Esaminare l'ingresso HTTP, la configurazione di Pino e le configurazioni di deployment presenti per identificare dove vengono definiti l'inoltro e il backend di raccolta dei log.
@@ -458,19 +817,19 @@ La prova passa se ogni rifiuto è restituito come valore distinguibile dal succe
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
   * satisfiedBy: [postgres-conversation-history-read.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/postgres/postgres-conversation-history-read.adapter.integration.spec.ts)
   * satisfiedBy: [postgres-turn-repository.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/postgres/postgres-turn-repository.adapter.integration.spec.ts)
-  * satisfiedBy: [begin-turn.use-case.spec.ts](../../packages/conversations/src/application/begin-turn.use-case.spec.ts)
-  * satisfiedBy: [complete-turn.use-case.spec.ts](../../packages/conversations/src/application/complete-turn.use-case.spec.ts)
-  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
-  * satisfiedBy: [turn.spec.ts](../../packages/conversations/src/domain/turn.spec.ts)
+  * satisfiedBy: [begin-turn.use-case.spec.ts](../../packages/conversations/src/application/begin-turn/begin-turn.use-case.spec.ts)
+  * satisfiedBy: [complete-turn.use-case.spec.ts](../../packages/conversations/src/application/complete-turn/complete-turn.use-case.spec.ts)
+  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn/exchange-turn.use-case.spec.ts)
+  * satisfiedBy: [turn.spec.ts](../../packages/conversations/src/domain/turn/turn.spec.ts)
   * verify: [Rifiuti previsti come valori di esito](../Requirements/ServerFoundation.md#rifiuti-previsti-come-valori-di-esito)
 ---
 
 ### Prova del campo err nel log definitivo
 
-Nei fallback HTTP presenti, indurre separatamente un `Error` costruito dal progetto con catena `cause`, errori esterni con marcatori distinti in messaggio, stack e proprietà aggiuntive, valori lanciati sconosciuti e un `LifecycleError` che raccoglie un errore del progetto e un errore esterno; intercettare l'argomento del logger e le righe JSON emesse. Prima della serializzazione acquisire riferimenti e proprietà proprie dell'`Error` originale e degli oggetti della sua catena `cause`, poi confrontarli dopo l'emissione. Confrontare le chiavi serializzate con i campi ammessi esplicitamente dal serializzatore.
+Nei fallback HTTP presenti, indurre separatamente un `Error` costruito dal progetto con catena `cause`, errori esterni con marcatori distinti in messaggio, stack e proprietà aggiuntive, valori lanciati sconosciuti, un `LifecycleError` che raccoglie un errore del progetto e un errore esterno, un `AggregateError` esterno che raccoglie un errore del progetto, un errore esterno e un valore non `Error`, ed errori annidati in altri campi dell'evento e nei campi fissi di un logger derivato; intercettare l'argomento del logger e le righe JSON emesse. Prima della serializzazione acquisire riferimenti e proprietà proprie dell'`Error` originale e degli oggetti della sua catena `cause`, poi confrontarli dopo l'emissione. Confrontare le chiavi serializzate con i campi ammessi esplicitamente dal serializzatore.
 
 #### Details
-La prova passa se per l'`Error` del progetto il campo strutturato `err` conserva in memoria la catena `cause`, i riferimenti e le proprietà degli oggetti originali restano invariati, e la vista JSON include lo stack diagnostico; se ogni vista contiene soltanto campi ammessi; e se errori esterni e valori sconosciuti producono una descrizione costante sicura senza riportare messaggio, stack o proprietà aggiuntive di origine, e il `LifecycleError` elenca in `faults`, nell'ordine, la vista completa dell'errore del progetto e quella costante dell'errore esterno. Fallisce se la serializzazione modifica l'`Error` originale o un oggetto della sua catena `cause`, se l'argomento in memoria perde la catena delle cause, se la riga omette `err` o lo stack previsto, se compaiono campi non ammessi o se la descrizione esterna dipende dal valore originale.
+La prova passa se per l'`Error` del progetto il campo strutturato `err` conserva in memoria la catena `cause`, i riferimenti e le proprietà degli oggetti originali restano invariati, e la vista JSON include lo stack diagnostico; se ogni vista contiene soltanto campi ammessi; e se errori esterni e valori sconosciuti producono una descrizione costante sicura senza riportare messaggio, stack o proprietà aggiuntive di origine, e il `LifecycleError` elenca in `faults`, nell'ordine, la vista completa dell'errore del progetto e quella costante dell'errore esterno; se l'`AggregateError` esterno riceve la vista con `type` `AggregateError`, la descrizione costante, lo stack `[redacted]` ed `errors` con le viste dei suoi errori nell'ordine; e se ogni `Error` annidato, a qualunque profondità e sotto qualunque chiave, anche nei campi fissi di un logger derivato, compare soltanto con la propria vista. Fallisce se la serializzazione modifica l'`Error` originale o un oggetto della sua catena `cause`, se l'argomento in memoria perde la catena delle cause, se la riga omette `err` o lo stack previsto, se compaiono campi non ammessi o se la descrizione esterna dipende dal valore originale.
 
 #### Metadata
   * type: test-verification
@@ -503,10 +862,10 @@ La prova passa se, per ciascun caso e ciascun ingresso presente, il confine emet
 
 ### Prova del logger minimo del backend
 
-Creare il logger di base del backend su un flusso di prova, derivarne due logger con campi diversi ed emettere eventi con campi sensibili annidati, nomi di variabili delle credenziali e un `err`; costruire il server HTTP e la sessione conversazionale con un logger di prova che registra le chiamate e provocare un guasto inatteso in una rotta e in una sessione. Leggere gli import dei componenti che ricevono il logger.
+Creare il logger di base del backend su un flusso di prova, derivarne due logger con campi diversi ed emettere eventi con campi sensibili annidati, nomi di variabili delle credenziali, un oggetto referenziato più volte, un oggetto circolare, array e istanze di classi con campi sensibili e un getter, e un `err`; costruire il server HTTP e la sessione conversazionale con un logger di prova che registra le chiamate e provocare un guasto inatteso in una rotta e in una sessione. Leggere gli import dei componenti che ricevono il logger.
 
 #### Details
-La prova passa se le righe dei logger derivati contengono ciascuna soltanto i propri campi fissi e il logger di base resta invariato; se i valori dei campi sensibili e delle variabili delle credenziali sono sostituiti da `[redacted]` a ogni profondità senza modificare gli oggetti originali; se il livello minimo è `info`, con gli eventi `debug` scartati; se gli eventi della rotta e della sessione arrivano al logger iniettato tramite un logger derivato con il `correlationId` della richiesta; e se nessun componente fuori da `apps/server/src/runtime/logger.ts` importa Pino. Fallisce se un evento passa dal logger di Fastify o da un'istanza Pino diversa, se un valore sensibile compare in una riga o se un logger derivato altera il logger di base.
+La prova passa se le righe dei logger derivati contengono ciascuna soltanto i propri campi fissi e il logger di base resta invariato; se i valori dei campi sensibili e delle variabili delle credenziali sono sostituiti da `[redacted]` a ogni profondità, in ogni occorrenza di un oggetto condiviso o circolare, negli array e nei campi propri enumerabili delle istanze di classi, senza invocare i getter, senza interrompere la riga e senza modificare gli oggetti originali; se il livello minimo è `info`, con gli eventi `debug` scartati; se gli eventi della rotta e della sessione arrivano al logger iniettato tramite un logger derivato con il `correlationId` della richiesta; e se nessun componente fuori da `apps/server/src/runtime/logger.ts` importa Pino. Fallisce se un evento passa dal logger di Fastify o da un'istanza Pino diversa, se un valore sensibile compare in una riga o se un logger derivato altera il logger di base.
 
 #### Metadata
   * type: test-verification
@@ -615,9 +974,9 @@ La prova passa se il caso d'uso gestisce esplicitamente ogni variante e, quando 
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
-  * satisfiedBy: [begin-turn.use-case.spec.ts](../../packages/conversations/src/application/begin-turn.use-case.spec.ts)
-  * satisfiedBy: [complete-turn.use-case.spec.ts](../../packages/conversations/src/application/complete-turn.use-case.spec.ts)
-  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn.use-case.spec.ts)
+  * satisfiedBy: [begin-turn.use-case.spec.ts](../../packages/conversations/src/application/begin-turn/begin-turn.use-case.spec.ts)
+  * satisfiedBy: [complete-turn.use-case.spec.ts](../../packages/conversations/src/application/complete-turn/complete-turn.use-case.spec.ts)
+  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn/exchange-turn.use-case.spec.ts)
   * verify: [Gestione esplicita dei rifiuti delle porte](../Requirements/ServerFoundation.md#gestione-esplicita-dei-rifiuti-delle-porte)
   * verify: [Proiezione dei rifiuti bloccanti delle porte](../Requirements/ServerFoundation.md#proiezione-dei-rifiuti-bloccanti-delle-porte)
 ---
@@ -641,16 +1000,22 @@ La prova passa se la normalizzazione avviene una sola volta nel confine definiti
 
 ### Prova della propagazione dei guasti inattesi
 
-Indurre un guasto tecnico inatteso e un bug in percorsi rappresentativi del server e seguire ciascun guasto fino al confine che ne decide la gestione.
+Indurre un guasto tecnico inatteso e un bug in percorsi rappresentativi del server e seguire ciascun guasto fino al confine che ne decide la gestione: un guasto di una porta e un turno ammesso assente dall'archivio nei casi d'uso del turno, un guasto della porta di lettura nei casi d'uso dell'elenco e dello storico delle conversazioni, un guasto della lettura nella rotta dell'elenco delle conversazioni e un'eccezione lanciata da una rotta fino al fallback HTTP.
 
 #### Details
-La prova passa se entrambi i guasti si propagano come eccezioni fino al confine che li gestisce, senza essere restituiti come successo o rifiuto previsto. Fallisce se un componente intermedio li assorbe o li rappresenta come esiti applicativi previsti.
+La prova passa se entrambi i guasti si propagano come eccezioni fino al confine che li gestisce, senza essere restituiti come successo o rifiuto previsto: i casi d'uso rifiutano la promessa con il guasto della porta, conservato per identità e non restituito come valore, o con un `Error` per il turno assente, la rotta lascia il guasto alla gestione centrale senza costruire una risposta propria e il fallback HTTP lo riceve e decide l'esito. Fallisce se un componente intermedio li assorbe o li rappresenta come esiti applicativi previsti.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
+  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
+  * satisfiedBy: [list-conversations.route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.route.adapter.spec.ts)
+  * satisfiedBy: [complete-turn.use-case.spec.ts](../../packages/conversations/src/application/complete-turn/complete-turn.use-case.spec.ts)
+  * satisfiedBy: [exchange-turn.use-case.spec.ts](../../packages/conversations/src/application/exchange-turn/exchange-turn.use-case.spec.ts)
+  * satisfiedBy: [get-conversation.use-case.spec.ts](../../packages/conversations/src/application/get-conversation/get-conversation.use-case.spec.ts)
+  * satisfiedBy: [list-conversations.use-case.spec.ts](../../packages/conversations/src/application/list-conversations/list-conversations.use-case.spec.ts)
   * verify: [Propagazione dei guasti inattesi](../Requirements/ServerFoundation.md#propagazione-dei-guasti-inattesi)
 ---
 
@@ -667,7 +1032,7 @@ La prova passa se nel primo caso arriva al confine lo stesso valore originale, s
 #### Relations
   * derivedFrom: [Verifica della distinzione degli esiti applicativi](#verifica-della-distinzione-degli-esiti-applicativi)
   * satisfiedBy: [mcp-tool-client.spec.ts](../../packages/conversations/src/adapters/out/mcp-tool-client.spec.ts)
-  * satisfiedBy: [complete-turn.use-case.spec.ts](../../packages/conversations/src/application/complete-turn.use-case.spec.ts)
+  * satisfiedBy: [complete-turn.use-case.spec.ts](../../packages/conversations/src/application/complete-turn/complete-turn.use-case.spec.ts)
   * verify: [Contesto operativo con Error e cause](../Requirements/ServerFoundation.md#contesto-operativo-con-error-e-cause)
   * verify: [Propagazione senza wrapper superflui](../Requirements/ServerFoundation.md#propagazione-senza-wrapper-superflui)
 ---
@@ -717,10 +1082,10 @@ Raggruppa i controlli che impediscono l'ingresso di credenziali nella storia Git
 
 ### Prova dell'hook pre-commit dei segreti del backend
 
-In un repository Git temporaneo che contiene l'hook `.githooks/pre-commit` del repository, con `core.hooksPath` impostato a `.githooks`, mettere in staging un file con un token fittizio nel formato dei token di accesso personali GitHub, costruito durante la prova, e tentare il commit; ripetere con un file privo di segreti; ripetere con un `PATH` che contiene soltanto `git`.
+In un repository Git temporaneo che contiene l'hook `.githooks/pre-commit` del repository, con `core.hooksPath` impostato a `.githooks`, mettere in staging un file con un token fittizio nel formato dei token di accesso personali GitHub, costruito durante la prova, e tentare il commit; ripetere con lo stesso token seguito dal commento in linea `gitleaks:allow`; ripetere con un file privo di segreti; ripetere con un `PATH` che contiene soltanto `git` e con un `PATH` che contiene `git` e un `gitleaks` sostitutivo che dichiara un'altra versione.
 
 #### Details
-La prova passa se il commit con il token è impedito e l'output non mostra il valore, se il commit senza segreti riesce e se, senza `gitleaks` nel `PATH`, il commit è impedito con un messaggio che nomina gitleaks e indica dove ottenerlo. Fallisce se viene creato un commit con il token, se il valore compare nell'output, se il commit senza segreti è impedito, se l'assenza dello scanner lascia passare il commit oppure se `gitleaks` non è disponibile nel `PATH` della prova. La CI installa lo scanner secondo «Profilo di scansione dei segreti del backend» prima della suite Vitest.
+La prova passa se `gitleaks version` nel `PATH` della prova stampa esattamente `8.30.1`; se il commit con il token è impedito e l'output non mostra il valore, anche con il commento `gitleaks:allow`; se il commit senza segreti riesce; e se, senza `gitleaks` nel `PATH` o con una versione diversa, il commit è impedito prima di ogni scansione con il messaggio che nomina gitleaks 8.30.1 e indica dove ottenerlo. Fallisce se viene creato un commit con il token, se il valore compare nell'output, se il commento `gitleaks:allow` nasconde il ritrovamento, se il commit senza segreti è impedito, se l'assenza dello scanner o una versione diversa lasciano passare il commit oppure se `gitleaks` 8.30.1 non è disponibile nel `PATH` della prova. La CI installa lo scanner secondo «Profilo di scansione dei segreti del backend» prima della suite Vitest.
 
 #### Metadata
   * type: test-verification
@@ -733,10 +1098,10 @@ La prova passa se il commit con il token è impedito e l'output non mostra il va
 
 ### Prova della configurazione della scansione dei segreti in CI del backend
 
-Leggere come testo `.github/workflows/secret-scan.yml` e `.github/workflows/publish-image.yml` e confrontarli con «Profilo di scansione dei segreti con gitleaks» e «Profilo di scansione dei segreti del backend».
+Leggere come testo `.github/workflows/secret-scan.yml` e confrontarlo con «Profilo di scansione dei segreti con gitleaks» e «Profilo di scansione dei segreti del backend».
 
 #### Details
-La prova passa se la scansione parte a ogni push su qualunque branch (`'**'`), a ogni pull request, su richiesta manuale e con `workflow_call`; se il checkout dichiara `fetch-depth: 0` e `persist-credentials: false`; se il workflow fissa la versione 8.30.1 e l'impronta SHA-256 del contratto, scarica `gitleaks_8.30.1_linux_x64.tar.gz` dalla release ufficiale e lo verifica con `sha256sum --check --strict` prima di estrarlo; se il job `Scan history for secrets` esegue `gitleaks git --redact --no-banner --exit-code 1 .`; e se il job `publish` dichiara `needs` sul job che richiama `secret-scan.yml`. Fallisce se un evento manca, se la storia è troncata, se versione o impronta differiscono dal contratto, se l'archivio è estratto senza verifica, se il comando differisce o se la pubblicazione non dipende dalla scansione. Che una scansione fallita impedisca l'integrazione è verificato da «Ispezione della protezione del merge del backend».
+La prova passa se la scansione parte a ogni push su qualunque branch (`'**'`), a ogni pull request, su richiesta manuale e con `workflow_call`; se il checkout dichiara `fetch-depth: 0` e `persist-credentials: false`; se il workflow fissa la versione 8.30.1 e l'impronta SHA-256 del contratto, scarica `gitleaks_8.30.1_linux_x64.tar.gz` dalla release ufficiale e lo verifica con `sha256sum --check --strict` prima di estrarlo; se il job `Scan history for secrets` esegue `gitleaks git --redact --no-banner --ignore-gitleaks-allow --exit-code 1 .`. Fallisce se un evento manca, se la storia è troncata, se versione o impronta differiscono dal contratto, se l'archivio è estratto senza verifica o se il comando differisce. Che una scansione fallita impedisca l'integrazione è verificato da «Ispezione della protezione del merge del backend».
 
 #### Metadata
   * type: test-verification
@@ -777,7 +1142,7 @@ Non automatizzabile: richiede la creazione di un tag di release, l'esecuzione su
 Leggere come testo `.github/workflows/publish-image.yml`.
 
 #### Details
-La prova passa se il workflow parte soltanto sui tag `v*`, se il job `publish` convalida il tag e ricava `IMAGE` uguale a `ghcr.io/ambrogio-app/ambrogio-backend:<tag Git>`, verifica l'immagine con `scripts/verify-docker-image.mjs` prima del push e, nel passo del push, dopo `docker push "$IMAGE"`, scrive `Published $IMAGE` in `$GITHUB_STEP_SUMMARY`, e se il workflow non nomina un tag `latest`. Fallisce se una di queste condizioni manca. La pubblicazione effettiva resta provata da «Dimostrazione della pubblicazione dell'immagine Docker del server».
+La prova passa se il workflow parte soltanto sui tag `v*`, se il job `publish` convalida il tag e ricava `IMAGE` uguale a `ghcr.io/ambrogio-app/ambrogio-backend:<tag Git>`, verifica l'immagine con `scripts/verify-docker-image.mjs` prima del push e, nel passo del push, dopo `docker push "$IMAGE"`, scrive `Published $IMAGE` in `$GITHUB_STEP_SUMMARY`, se il job `publish` dichiara `needs` sui job che richiamano `ci.yml` e `secret-scan.yml` e se il workflow non nomina un tag `latest`. Fallisce se una di queste condizioni manca. La pubblicazione effettiva resta provata da «Dimostrazione della pubblicazione dell'immagine Docker del server».
 
 #### Metadata
   * type: test-verification
@@ -786,6 +1151,147 @@ La prova passa se il workflow parte soltanto sui tag `v*`, se il job `publish` c
   * derivedFrom: [Verifica della pubblicazione dell'immagine Docker del server](#verifica-della-pubblicazione-dellimmagine-docker-del-server)
   * satisfiedBy: [workflows.spec.ts](../../test/repository/workflows.spec.ts)
   * verify: [Pubblicazione dell'immagine Docker del server](../Requirements/ServerFoundation.md#pubblicazione-dellimmagine-docker-del-server)
+---
+
+### Verifica della sicurezza HTTP del server
+
+Raggruppa le prove degli header di sicurezza, di cache, CORS e HSTS dell'API HTTP, del limite dei corpi e del controllo dell'accesso agli ingressi del server.
+
+#### Metadata
+  * type: verification-objective
+---
+
+### Controllo dell'assenza di autenticazione applicativa
+
+Esaminare l'ingresso HTTP presente, le dipendenze runtime e i modelli persistenti del server per individuare gestione di account, credenziali utente, login e controlli di autenticazione applicativa.
+
+#### Details
+Il controllo passa se l'MVP non implementa account utente né autenticazione applicativa nei propri ingressi. Fallisce se sono presenti meccanismi applicativi di account o autenticazione.
+
+Non automatizzabile: riconoscere meccanismi di account o autenticazione richiede di leggere ingressi, dipendenze e modelli persistenti.
+
+#### Metadata
+  * type: inspection-verification
+
+#### Relations
+  * derivedFrom: [Verifica della sicurezza HTTP del server](#verifica-della-sicurezza-http-del-server)
+  * verify: [Assenza di account e autenticazione applicativa nell'MVP](../Requirements/ServerFoundation.md#assenza-di-account-e-autenticazione-applicativa-nellmvp)
+---
+
+### Prova degli header di cache conversazionali
+
+Richiedere elenco e storico, anche in casi di errore; osservare gli header delle risposte.
+
+#### Details
+La prova passa se tutte le risposte HTTP che trasportano dati conversazionali includono `Cache-Control: no-store`, anche quando segnalano un errore. Fallisce se una risposta pertinente ne è priva. I messaggi del canale conversazionale WebSocket non rientrano in questa prova.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della sicurezza HTTP del server](#verifica-della-sicurezza-http-del-server)
+  * satisfiedBy: [get-conversation.route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.route.adapter.spec.ts)
+  * satisfiedBy: [list-conversations.route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.route.adapter.spec.ts)
+  * verify: [Esclusione dalla cache delle risposte conversazionali HTTP](../Requirements/ServerFoundation.md#esclusione-dalla-cache-delle-risposte-conversazionali-http)
+---
+
+### Prova del controllo di accesso dell'installazione
+
+Per ogni installazione dell'MVP da verificare, ispezionare la configurazione di rete e dell'eventuale reverse proxy; tentare l'accesso agli ingressi del server da un client ammesso e da un client non ammesso dall'installatore.
+
+#### Details
+La prova passa se il client ammesso può raggiungere l'ingresso previsto e il client non ammesso non può raggiungere l'applicazione attraverso la rete o il proxy. Fallisce se un client non ammesso può usare l'ingresso. La prova richiede l'installazione concreta: la validazione del repository non certifica le configurazioni degli installatori.
+
+Non automatizzabile: si svolge su un'installazione reale, con la rete e l'eventuale reverse proxy scelti dall'installatore, che il repository non contiene.
+
+#### Metadata
+  * type: demonstration-verification
+
+#### Relations
+  * derivedFrom: [Verifica della sicurezza HTTP del server](#verifica-della-sicurezza-http-del-server)
+  * verify: [Controllo dell'accesso nell'installazione](../Requirements/ServerFoundation.md#controllo-dellaccesso-nellinstallazione)
+---
+
+### Prova del limite dei corpi HTTP
+
+Con il server conversazionale composto come in produzione, registrare nella factory tecnica una rotta di prova che accetta un corpo JSON; inviarle corpi sotto il limite, al limite e oltre il limite, anche in più parti senza `Content-Length`, e inviare un corpo oltre il limite alla rotta `POST /mcp/memory`. Inviare corpi alle rotte di elenco e storico con i metodi ammessi e non ammessi.
+
+#### Details
+La prova passa se la configurazione del componente HTTP dichiara il limite di 1 MiB; se i corpi fino al limite raggiungono la rotta e quelli oltre il limite, anche inviati in più parti, ricevono il Problem Details `413` del catalogo dei problemi di protocollo senza raggiungere la rotta; se `POST /mcp/memory` respinge allo stesso modo il corpo oltre il limite; e se le rotte di elenco e storico ignorano il corpo con i metodi ammessi e rispondono `405` con quelli non ammessi. I limiti dei turni appartengono al protocollo conversazionale e sono verificati separatamente. Fallisce se una rotta accetta un corpo oltre il limite, se il limite dipende solo da `Content-Length` o se una rotta senza corpo risponde diversamente per la presenza di un corpo.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della sicurezza HTTP del server](#verifica-della-sicurezza-http-del-server)
+  * satisfiedBy: [http-surface.integration.spec.ts](../../apps/server/src/composition/http-surface.integration.spec.ts)
+  * verify: [Limite dei corpi delle richieste HTTP](../Requirements/ServerFoundation.md#limite-dei-corpi-delle-richieste-http)
+---
+
+### Prova del profilo globale degli header HTTP
+
+Avviare l'API con il plugin registrato sulla radice e richiedere una risposta conversazionale riuscita, un errore gestito e una rotta inesistente. Ispezionare configurazione del plugin e header delle risposte.
+
+#### Details
+La prova passa se `@fastify/helmet` è registrato globalmente e le tre risposte portano gli header applicabili del profilo adottato, salvo differenze motivate e dichiarate. Fallisce se il plugin è limitato a un sottoinsieme di rotte, se un errore o un `404` non riceve il profilo, oppure se una deroga non è motivata.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della sicurezza HTTP del server](#verifica-della-sicurezza-http-del-server)
+  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
+  * verify: [Header di sicurezza sulle risposte HTTP](../Requirements/ServerFoundation.md#header-di-sicurezza-sulle-risposte-http)
+---
+
+### Prova dell'endpoint di liveness
+
+Avviare il server con un archivio PostgreSQL di prova, chiedere `GET /health`, avviare l'arresto ordinato con una richiesta ancora in corso e chiedere di nuovo `GET /health` prima della chiusura del listener; ripetere la prima richiesta con il database non raggiungibile dopo l'avvio. Leggere il `HEALTHCHECK` della fase runtime del `Dockerfile`.
+
+#### Details
+La prova passa se prima dell'arresto la risposta è `200` con corpo vuoto e `Cache-Control: no-store`, se dopo l'inizio dell'arresto è `503` con corpo vuoto e `Cache-Control: no-store`, se con il database non raggiungibile la risposta resta `200`, se nessuna risposta contiene informazioni sul sistema e se l'immagine dichiara un solo `HEALTHCHECK` che esegue con Node.js `GET /health` su `127.0.0.1` alla porta `AMBROGIO_HTTP_PORT` e ha esito positivo soltanto con `200`. Fallisce se una di queste condizioni non vale.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della sicurezza HTTP del server](#verifica-della-sicurezza-http-del-server)
+  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
+  * satisfiedBy: [environment-files.spec.ts](../../test/repository/environment-files.spec.ts)
+  * verify: [Endpoint di liveness del backend](../Requirements/ServerFoundation.md#endpoint-di-liveness-del-backend)
+---
+
+### Prova della condizione HSTS
+
+Avviare l'API con origine pubblica HTTP e con origine pubblica dichiarata HTTPS, mantenendo in entrambi i casi una connessione interna HTTP e variando `X-Forwarded-Proto`. Osservare le risposte riuscite e di errore.
+
+#### Details
+La prova passa se HSTS è assente quando la configurazione pubblica è HTTP o non dichiarata ed è presente con durata positiva quando è HTTPS, indipendentemente dal protocollo interno o dal valore di `X-Forwarded-Proto`. Fallisce se un header della richiesta attiva HSTS da solo o se la politica è assente in un deployment HTTPS dichiarato.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della sicurezza HTTP del server](#verifica-della-sicurezza-http-del-server)
+  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
+  * verify: [HSTS legato all'HTTPS pubblico](../Requirements/ServerFoundation.md#hsts-legato-allhttps-pubblico)
+---
+
+### Prova delle origini CORS dell'API HTTP
+
+Avviare l'API con elenco di origini assente, poi con un'origine esplicitamente ammessa. Inviare richieste ordinarie e preflight da origine ammessa e non ammessa. Leggere la configurazione del componente HTTP con elenchi che contengono spazi attorno alle voci, voci vuote, `*` o un URL con percorso.
+
+#### Details
+La prova passa se, senza elenco, nessuna risposta autorizza CORS; con l'elenco, solo l'origine ammessa riceve gli header di autorizzazione pertinenti e nessuna risposta usa wildcard o riflette l'origine non ammessa; se le voci sono lette senza gli spazi iniziali e finali e le voci vuote sono ignorate; e se un elenco con `*` o un URL con percorso rende invalida la configurazione. Fallisce se una delle richieste non ammesse ottiene autorizzazione CORS o se la lettura dell'elenco devia da queste condizioni.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della sicurezza HTTP del server](#verifica-della-sicurezza-http-del-server)
+  * satisfiedBy: [http-config.spec.ts](../../apps/server/src/runtime/http-config.spec.ts)
+  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
+  * verify: [Origini CORS esplicite dell'API HTTP](../Requirements/ServerFoundation.md#origini-cors-esplicite-dellapi-http)
 ---
 
 ### Verifica delle integrazioni senza eventi differiti
@@ -815,95 +1321,10 @@ Non automatizzabile: riconoscere un evento di dominio conservato per una consegn
 
 ### Verifica dello stack del server
 
-Raggruppa i controlli sulla preparazione del server in TypeScript ESM e sulla sua esecuzione con Node.js 24 o successivo.
+Raggruppa le prove degli strumenti con cui il server è costruito, provato e avviato: Fastify, TypeScript strict ed ESM con Node.js 24, Vitest, il server compilato come processo, l'ingresso di prova pubblico e i nomi dei file secondo il ruolo architetturale.
 
 #### Metadata
   * type: verification-objective
----
-
-### Controllo degli esempi di configurazione
-
-Esaminare `.env.example`, `compose.example.yaml` e i file degli agenti d'esempio di `examples/agents/`, e i campi in cui potrebbero comparire credenziali.
-
-#### Details
-Il controllo passa se gli esempi non contengono credenziali effettive: le variabili delle credenziali sono vuote in `.env.example`, richieste senza valore in `compose.example.yaml` e nominate soltanto per nome nei file degli agenti. Fallisce se un esempio contiene una credenziale effettiva.
-
-Non automatizzabile: stabilire che un valore non è una credenziale effettiva richiede giudizio umano; gitleaks riconosce soltanto i formati previsti dalle sue regole.
-
-#### Metadata
-  * type: inspection-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * verify: [Esempi di configurazione privi di credenziali](../Requirements/ServerFoundation.md#esempi-di-configurazione-privi-di-credenziali)
----
-
-### Controllo dei file di configurazione dei componenti
-
-Per ogni componente configurabile del backend individuare il modulo di configurazione da cui è letta la sua configurazione; esaminare da dove provengono i valori, come sono validati e confrontare le variabili lette dai diversi moduli.
-
-#### Details
-Il controllo passa se ogni componente ha un proprio modulo di configurazione TypeScript nella build, il modulo legge soltanto variabili d'ambiente del componente, le valida con lo schema del componente e non contiene valori effettivi, e soltanto il modulo degli agenti legge i file di dati della directory degli agenti. Fallisce se un componente legge la configurazione da un'altra sorgente, condivide il modulo con un altro componente o se un modulo contiene un valore effettivo, come un indirizzo o una credenziale.
-
-Non automatizzabile: individuare i componenti configurabili e distinguere un valore effettivo da un valore predefinito ammesso richiede di leggere il codice di avvio e di giudicare i confini dei componenti.
-
-#### Metadata
-  * type: inspection-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * verify: [Modulo di configurazione per componente del backend](../Requirements/ServerFoundation.md#modulo-di-configurazione-per-componente-del-backend)
----
-
-### Controllo del perimetro iniziale di osservabilità
-
-Esaminare runtime HTTP, dipendenze, configurazioni, endpoint e documentazione operativa della prima versione. Confrontare i segnali presenti con i contratti dei log strutturati e degli identificativi di correlazione; cercare raccoglitori o API distinti per metriche, tracing distribuito e audit.
-
-#### Details
-Il controllo passa se i runtime forniscono i log e i `correlationId` già previsti, senza attivare nella prima versione metriche, tracing o audit separati, e se nessun `correlationId` o log ordinario è presentato come traccia distribuita o registro di audit. Fallisce se viene introdotto un segnale separato senza una decisione e una verifica proprie, se i log sono descritti come audit garantito o se manca il profilo diagnostico previsto. I controlli funzionali dei log e della correlazione restano nelle rispettive verifiche.
-
-Non automatizzabile: richiede di esaminare la documentazione operativa e di giudicare se un segnale è presentato come traccia distribuita o audit.
-
-#### Metadata
-  * type: inspection-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * verify: [Perimetro iniziale dei segnali di osservabilità del backend](../Requirements/ServerFoundation.md#perimetro-iniziale-dei-segnali-di-osservabilità-del-backend)
----
-
-### Controllo dell'assenza di autenticazione applicativa
-
-Esaminare l'ingresso HTTP presente, le dipendenze runtime e i modelli persistenti del server per individuare gestione di account, credenziali utente, login e controlli di autenticazione applicativa.
-
-#### Details
-Il controllo passa se l'MVP non implementa account utente né autenticazione applicativa nei propri ingressi. Fallisce se sono presenti meccanismi applicativi di account o autenticazione.
-
-Non automatizzabile: riconoscere meccanismi di account o autenticazione richiede di leggere ingressi, dipendenze e modelli persistenti.
-
-#### Metadata
-  * type: inspection-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * verify: [Assenza di account e autenticazione applicativa nell'MVP](../Requirements/ServerFoundation.md#assenza-di-account-e-autenticazione-applicativa-nellmvp)
----
-
-### Controllo dell'esclusione delle configurazioni effettive
-
-Per ciascun file di configurazione effettivo usato da un'installazione o nello sviluppo, come `.env` e i file degli agenti, esaminare i file tracciati da Git, le regole di esclusione e il contenuto dell'immagine container costruita per il server.
-
-#### Details
-Il controllo passa se nessun file effettivo è tracciato in Git o incluso nell'immagine e il deployment lo fornisce dall'esterno. Fallisce se un file effettivo è presente nei file versionati o nell'immagine.
-
-Non automatizzabile: i file effettivi appartengono alle installazioni e non sono nel repository; `scripts/verify-docker-image.mjs` controlla soltanto l'assenza dei percorsi noti nell'immagine.
-
-#### Metadata
-  * type: inspection-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * verify: [Esclusione dei file di configurazione effettivi dagli artefatti](../Requirements/ServerFoundation.md#esclusione-dei-file-di-configurazione-effettivi-dagli-artefatti)
 ---
 
 ### Controllo dell'implementazione HTTP con Fastify
@@ -928,7 +1349,7 @@ Non automatizzabile: riconoscere un gestore HTTP che aggira Fastify richiede di 
 #### Details
 Partire dall'elenco completo dei file di produzione, dalle porte Application e dai punti di ingresso; non limitare la ricerca ai nomi che contengono già `.adapter`, `.port` o `.use-case`. Per ciascun componente interessato registrare percorso, responsabilità, eventuale porta dichiarata o implementata o caso d'uso invocato, classificazione e nome atteso.
 
-L'ispezione passa se tutti i casi d'uso hanno il suffisso `.use-case.ts`, tutti i file che dichiarano una porta Application hanno il suffisso `.port.ts`, tutti gli adapter di ingresso e di uscita hanno il suffisso `.adapter.ts` e i file di supporto non sono classificati come adapter soltanto per la cartella che li contiene. Considerare anche le implementazioni strutturali di porte a oggetto o callable; non affidarsi al solo `implements`. I ruoli ambigui devono essere risolti con motivazione documentata. L'ispezione fallisce se manca un suffisso richiesto o se un suffisso descrive un ruolo non realizzato.
+L'ispezione passa se tutti i casi d'uso hanno il suffisso `.use-case.ts`, tutti i file che dichiarano una porta Application hanno il suffisso `.port.ts`, tutti gli adapter di ingresso e di uscita hanno il suffisso `.adapter.ts` e i file di supporto non sono classificati come adapter soltanto per la cartella che li contiene. Considerare anche le implementazioni strutturali di porte a oggetto o callable; non affidarsi al solo `implements`. Ogni adapter realizza una porta o invoca un caso d'uso, un contratto richiesto da un adapter inbound all'applicazione che lo assembla è un file `.port.ts`, nessuna porta è realizzata nella composition root, neppure come oggetto letterale, e gli aggregatori che registrano soltanto adapter inbound non sono adapter. I ruoli ambigui devono essere risolti con motivazione documentata. L'ispezione fallisce se manca un suffisso richiesto o se un suffisso descrive un ruolo non realizzato.
 
 Per ogni rinomina controllare import, export pubblici, riferimenti nei test e collegamenti Reqvire. La compilazione e i test pertinenti devono continuare a passare. L'elenco dei file classificati, i difetti e l'esito si riportano nel messaggio del commit o nella pull request che svolge l'ispezione; la presenza di una relazione `satisfiedBy` e il successo di `validate` o `lint` non sostituiscono questa ispezione.
 
@@ -942,210 +1363,19 @@ Non automatizzabile: la classificazione dei file per responsabilità richiede gi
   * verify: [Nomi dei file secondo il ruolo architetturale nel backend](../Requirements/ServerFoundation.md#nomi-dei-file-secondo-il-ruolo-architetturale-nel-backend)
 ---
 
-### Ispezione dei proprietari dei valori predefiniti del backend
-
-Esaminare ogni valore facoltativo della configurazione del backend, degli adapter inbound, dei casi d'uso e delle creazioni del Domain, e il punto in cui viene applicato il suo valore predefinito.
-
-#### Details
-L'ispezione passa se ogni valore predefinito è deciso per il proprio concetto e applicato esplicitamente, una sola volta, dal suo proprietario soltanto quando l'assenza è ammessa: i valori di configurazione dal modulo di configurazione del componente, quelli di protocollo dall'adapter inbound, quelli di intenzione da Application e quelli di creazione dal Domain. Fallisce se un valore predefinito è soltanto documentato, ripetuto in un altro punto o applicato dal layer sbagliato.
-
-Non automatizzabile: stabilire quale layer possiede un valore predefinito dipende dal significato di ciascun campo, che richiede la lettura del codice.
-
-#### Metadata
-  * type: inspection-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * verify: [Valori predefiniti del backend applicati dal proprietario](../Requirements/ServerFoundation.md#valori-predefiniti-del-backend-applicati-dal-proprietario)
----
-
-### Ispezione del limite dei corpi HTTP
-
-Esaminare le rotte HTTP registrate dal server e la configurazione del limite dei corpi del componente HTTP. Per ogni rotta che accetta un corpo, quando esisterà, inviare corpi sotto e sopra il limite dichiarato, includendo un invio in più parti oltre il limite.
-
-#### Details
-L'ispezione passa se nessuna rotta HTTP accetta un corpo senza un limite positivo esplicito e se le rotte attuali di elenco e storico non accettano corpo. Per una futura rotta con corpo, i corpi oltre il limite ricevono il Problem Details `413` del catalogo dei problemi di protocollo e non avviano l'operazione. I limiti dei turni appartengono al protocollo conversazionale e sono verificati separatamente. Fallisce se una rotta accetta un corpo senza limite o se il limite dipende solo da `Content-Length`.
-
-Non automatizzabile: richiede di stabilire quali rotte accettano un corpo; le rotte attuali non ne accettano, quindi non esiste un corpo da inviare in una prova automatica.
-
-#### Metadata
-  * type: inspection-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * verify: [Limite dei corpi delle richieste HTTP](../Requirements/ServerFoundation.md#limite-dei-corpi-delle-richieste-http)
----
-
-### Ispezione della protezione del merge del backend
-
-Leggere con `gh api repos/<proprietario>/<repository>/rulesets` e con il dettaglio del ruleset `main` le regole attive sul branch principale.
-
-#### Details
-L'ispezione passa se il ruleset corrisponde a «Ruleset del branch principale» e a «Ruleset del branch principale del backend»: applicazione attiva sul branch predefinito, nessun attore escluso, integrazione solo tramite pull request, controlli richiesti con i nomi del contratto del backend, riscrittura forzata e cancellazione vietate; e se un push diretto sul branch principale viene rifiutato. Fallisce se il ruleset manca, è disattivato, ha attori esclusi o differisce dal contratto. I controlli richiesti `Backend checks` e `Scan history for secrets` sono i job verificati da «Prova della configurazione della CI del server» e da «Prova della configurazione della scansione dei segreti in CI del backend»: l'ispezione stabilisce che un loro fallimento impedisce l'integrazione. Non automatizzabile: il ruleset è un'impostazione del repository GitHub e non un file del repository, e leggerlo richiede credenziali con accesso amministrativo che la CI non possiede.
-
-#### Metadata
-  * type: inspection-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * verify: [Controlli CI delle modifiche funzionali del server](../Requirements/ServerFoundation.md#controlli-ci-delle-modifiche-funzionali-del-server)
-  * verify: [Controlli obbligatori prima del merge del backend](../Requirements/ServerFoundation.md#controlli-obbligatori-prima-del-merge-del-backend)
-  * verify: [Scansione dei segreti nella CI del backend](../Requirements/ServerFoundation.md#scansione-dei-segreti-nella-ci-del-backend)
----
-
-### Prova degli header di cache conversazionali
-
-Richiedere elenco e storico, anche in casi di errore; osservare gli header delle risposte.
-
-#### Details
-La prova passa se tutte le risposte HTTP che trasportano dati conversazionali includono `Cache-Control: no-store`, anche quando segnalano un errore. Fallisce se una risposta pertinente ne è priva. I messaggi del canale conversazionale WebSocket non rientrano in questa prova.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [get-conversation.route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.route.adapter.spec.ts)
-  * satisfiedBy: [list-conversations.route.adapter.spec.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.route.adapter.spec.ts)
-  * verify: [Esclusione dalla cache delle risposte conversazionali HTTP](../Requirements/ServerFoundation.md#esclusione-dalla-cache-delle-risposte-conversazionali-http)
----
-
-### Prova dei file JSON degli agenti
-
-Preparare una directory degli agenti con file `<id>.json` validi e con file di altro tipo; in tentativi separati usare un file che non è JSON valido, un campo sconosciuto a ciascun livello, una credenziale letterale in `llm.apiKey`, `mcp.auth.token` o `mcp.auth.clientSecret`, un nome di variabile non valido e una variabile nominata assente o vuota, con un segreto marcatore nei valori.
-
-#### Details
-La prova passa se i file validi sono accettati con le credenziali lette dalle variabili nominate, i file di altro tipo sono ignorati, ogni caso invalido impedisce l'attivazione con `Invalid agent configuration: <id>`, una variabile assente o vuota produce `Missing environment variable <NOME> for agent <id>` e nessun errore contiene il segreto marcatore. Fallisce se un file con una credenziale letterale o con un campo sconosciuto è accettato o se un errore riporta un valore.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [agent-config.spec.ts](../../apps/server/src/runtime/agent-config.spec.ts)
-  * verify: [File JSON di soli dati per gli agenti](../Requirements/ServerFoundation.md#file-json-di-soli-dati-per-gli-agenti)
----
-
-### Prova dei file d'ambiente e dei valori predefiniti del backend
-
-Confrontare `.env.example` con le variabili dichiarate dai moduli di configurazione e con le variabili nominate dai file degli agenti d'esempio; confrontare le variabili impostate da `compose.example.yaml` con i valori predefiniti dichiarati dai moduli; esaminare gli script del `package.json` della radice e i sorgenti del backend; avviare Node.js con `--env-file` su un file temporaneo e una variabile dello stesso nome nell'ambiente del processo.
-
-#### Details
-La prova passa se `.env.example` elenca esattamente quelle variabili, tutte vuote salvo `AMBROGIO_ENV=development`; se `compose.example.yaml` imposta `AMBROGIO_ENV: production`, ogni variabile con un valore predefinito di sviluppo e nessuna variabile con un valore predefinito valido in produzione, senza valori predefiniti di interpolazione; se soltanto lo script `dev` usa `--env-file=.env` e nessun sorgente carica file d'ambiente; e se la variabile del processo prevale su quella del file. Fallisce su qualunque scostamento.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [environment-files.spec.ts](../../test/repository/environment-files.spec.ts)
-  * verify: [File d'ambiente locale del backend](../Requirements/ServerFoundation.md#file-dambiente-locale-del-backend)
-  * verify: [Valori predefiniti del backend applicati dal proprietario](../Requirements/ServerFoundation.md#valori-predefiniti-del-backend-applicati-dal-proprietario)
----
-
-### Prova del bootstrap della configurazione del backend
-
-Avviare l'ingresso HTTP con un oggetto d'ambiente di prova che fornisce variabili distinte per i componenti attivi e omette quelle della voce. Osservare i valori ricevuti dai componenti e il momento in cui vengono create e attivate le risorse. Ripetere con una variabile richiesta mancante, malformata o con un valore invalido che contiene un segreto marcatore, e con `AMBROGIO_AGENTS_DIR` diretta a una directory di prova.
-
-#### Details
-La prova passa se il processo legge una volta all'avvio soltanto la configurazione necessaria, consegna a ogni componente solo i dati pertinenti già convertiti e usa la directory degli agenti indicata. L'assenza delle variabili della voce non blocca gli ingressi. Una variabile richiesta mancante o invalida impedisce l'attivazione prima dell'uso delle risorse dipendenti e produce un errore sicuro che nomina la variabile senza riprodurre il segreto. Domain e casi d'uso non leggono direttamente file o ambiente. Fallisce se una variabile non necessaria diventa obbligatoria, la configurazione viene riletta durante il lavoro, una risorsa dipendente si attiva prima della validazione o un segreto appare nell'errore.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [agent-config.spec.ts](../../apps/server/src/runtime/agent-config.spec.ts)
-  * satisfiedBy: [conversation-server.config-bootstrap.integration.spec.ts](../../apps/server/src/runtime/conversation-server.config-bootstrap.integration.spec.ts)
-  * satisfiedBy: [config-examples.spec.ts](../../apps/server/test/examples/config-examples.spec.ts)
-  * satisfiedBy: [conversation-config.spec.ts](../../packages/conversations/src/adapters/out/conversation-config.spec.ts)
-  * verify: [Caricamento iniziale della configurazione del backend](../Requirements/ServerFoundation.md#caricamento-iniziale-della-configurazione-del-backend)
-  * verify: [Distribuzione mirata della configurazione validata](../Requirements/ServerFoundation.md#distribuzione-mirata-della-configurazione-validata)
-  * verify: [Validazione preventiva della configurazione attiva](../Requirements/ServerFoundation.md#validazione-preventiva-della-configurazione-attiva)
----
-
-### Prova del catalogo vocale bilingue dell'immagine
-
-Costruire l'immagine e ispezionare gli archivi fissati, le impronte verificate e i file runtime del modello Nemotron, e delle voci Piper italiane e inglesi. Eseguire una breve trascrizione e una sintesi per ogni lingua.
-
-#### Details
-La prova passa se tutte le risorse sono leggibili dentro il container senza mount, le impronte corrispondono a quelle fissate, la directory Nemotron contiene soltanto i file int8 dell'encoder, del decoder e del joiner, il file dei token e la licenza, e Nemotron e Piper producono risultati non vuoti in entrambe le lingue. Fallisce se una risorsa manca o richiede un mount, se un'impronta non corrisponde o se un motore produce un risultato vuoto in una lingua.
-
-La build dell'immagine verifica le impronte degli archivi con `scripts/fetch-speech-models.mjs`; `scripts/verify-docker-image.mjs` esegue gli altri controlli nel job di pubblicazione, perché richiedono la build Docker con il download dei modelli.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [fetch-speech-models.mjs](../../scripts/fetch-speech-models.mjs)
-  * satisfiedBy: [verify-docker-image.mjs](../../scripts/verify-docker-image.mjs)
-  * verify: [Modelli vocali italiani e inglesi inclusi](../Requirements/ServerFoundation.md#modelli-vocali-italiani-e-inglesi-inclusi)
----
-
-### Prova del contesto di build dell'immagine del server
-
-Leggere `.dockerignore` del backend.
-
-#### Details
-La prova passa se `.dockerignore` contiene tutte le esclusioni di «Profilo dell'immagine Docker del server» e nessuna voce `!` che reinclude file. Fallisce se manca un'esclusione o se una voce reinclude file.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [container-build-context.spec.ts](../../test/repository/container-build-context.spec.ts)
-  * verify: [Distribuzione del server come immagine Docker](../Requirements/ServerFoundation.md#distribuzione-del-server-come-immagine-docker)
----
-
-### Prova del controllo di accesso dell'installazione
-
-Per ogni installazione dell'MVP da verificare, ispezionare la configurazione di rete e dell'eventuale reverse proxy; tentare l'accesso agli ingressi del server da un client ammesso e da un client non ammesso dall'installatore.
-
-#### Details
-La prova passa se il client ammesso può raggiungere l'ingresso previsto e il client non ammesso non può raggiungere l'applicazione attraverso la rete o il proxy. Fallisce se un client non ammesso può usare l'ingresso. La prova richiede l'installazione concreta: la validazione del repository non certifica le configurazioni degli installatori.
-
-Non automatizzabile: si svolge su un'installazione reale, con la rete e l'eventuale reverse proxy scelti dall'installatore, che il repository non contiene.
-
-#### Metadata
-  * type: demonstration-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * verify: [Controllo dell'accesso nell'installazione](../Requirements/ServerFoundation.md#controllo-dellaccesso-nellinstallazione)
----
-
-### Prova del profilo globale degli header HTTP
-
-Avviare l'API con il plugin registrato sulla radice e richiedere una risposta conversazionale riuscita, un errore gestito e una rotta inesistente. Ispezionare configurazione del plugin e header delle risposte.
-
-#### Details
-La prova passa se `@fastify/helmet` è registrato globalmente e le tre risposte portano gli header applicabili del profilo adottato, salvo differenze motivate e dichiarate. Fallisce se il plugin è limitato a un sottoinsieme di rotte, se un errore o un `404` non riceve il profilo, oppure se una deroga non è motivata.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
-  * verify: [Header di sicurezza sulle risposte HTTP](../Requirements/ServerFoundation.md#header-di-sicurezza-sulle-risposte-http)
----
-
 ### Prova del runner Vitest del backend
 
-Esaminare `vitest.config.ts` e gli script `test`, `test:integration` e `test:e2e` del `package.json` della radice; avviarli e acquisire il report dei test eseguiti da ciascuno.
+Leggere gli script `test`, `test:integration` e `test:e2e` del `package.json` della radice e i progetti di `vitest.config.ts`; applicare a ogni file `*.spec.ts` del repository, escluse `node_modules` e `dist`, le selezioni `include` ed `exclude` di ciascun progetto.
 
 #### Details
-La prova passa se gli script eseguono con Vitest rispettivamente i progetti `fast`, `integration` ed `e2e` di «Suite di test del backend», ciascuno produce un report dei test avviati, nessun file di test compare in più di un report e la somma dei file eseguiti è pari al numero dei file `*.spec.ts` del repository. Fallisce se la suite usa un runner diverso, se uno script non può essere avviato tramite Vitest, se un file gira in entrambe le selezioni o se un file di test non appartiene a nessuna.
+La prova passa se gli script sono rispettivamente `vitest run --project fast`, `vitest run --project integration` e `vitest run --project e2e`, se i progetti di «Suite di test del backend» sono `fast`, `integration` ed `e2e` e se ogni file `*.spec.ts` del repository è selezionato da un solo progetto, i file `*.integration.spec.ts` da `integration` e i file `*.e2e.spec.ts` da `e2e`. Fallisce se uno script usa un runner diverso o un altro progetto, se un file è selezionato da più progetti o se un file di test non appartiene a nessuno.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [package.json](../../package.json)
-  * satisfiedBy: [vitest.config.ts](../../vitest.config.ts)
+  * satisfiedBy: [vitest-projects.spec.ts](../../test/repository/vitest-projects.spec.ts)
   * verify: [Vitest come runner del backend](../Requirements/ServerFoundation.md#vitest-come-runner-del-backend)
 ---
 
@@ -1165,41 +1395,6 @@ La prova passa se il punto d'ingresso compilato esiste; se il server risponde `2
   * verify: [Server compilato provato come processo](../Requirements/ServerFoundation.md#server-compilato-provato-come-processo)
 ---
 
-### Prova dell'ambiente di esecuzione del backend
-
-Leggere la configurazione con `AMBROGIO_ENV` assente, vuota, con un valore diverso da `development`, `test` e `production`, e con ciascuno dei tre valori; in ciascun ambiente omettere a turno le variabili che hanno un valore predefinito di sviluppo e quelle che hanno un valore predefinito per tutti gli ambienti, e fornire una variabile vuota.
-
-#### Details
-La prova passa se un ambiente assente, vuoto o invalido impedisce l'avvio con un errore che nomina `AMBROGIO_ENV` senza il valore; se i valori predefiniti di sviluppo valgono soltanto in `development` e in `test` e `production` la loro assenza impedisce l'avvio; se i valori predefiniti per tutti gli ambienti valgono ovunque; e se una variabile vuota è trattata come assente. Fallisce se un ambiente implicito viene assunto, se un valore predefinito di sviluppo vale in un altro ambiente o se un errore riporta un valore.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [http-config.spec.ts](../../apps/server/src/runtime/http-config.spec.ts)
-  * satisfiedBy: [conversation-config.spec.ts](../../packages/conversations/src/adapters/out/conversation-config.spec.ts)
-  * satisfiedBy: [environment-variables.spec.ts](../../packages/conversations/src/adapters/out/environment-variables.spec.ts)
-  * verify: [Ambiente di esecuzione dichiarato del backend](../Requirements/ServerFoundation.md#ambiente-di-esecuzione-dichiarato-del-backend)
----
-
-### Prova dell'immagine Docker indipendente da Compose
-
-Costruire l'immagine Docker del server a partire dagli artefatti del progetto e avviarla con il solo runtime Docker, fornendo dall'esterno i file di configurazione di prova e un database PostgreSQL in un container `pgvector/pgvector:pg18` sulla stessa rete Docker; verificare l'avvio, una richiesta a un ingresso HTTP presente e la creazione delle tabelle dell'archivio in quel database. Esaminare l'eventuale file Compose per accertare che sia un esempio di avvio e non un prerequisito della build o dell'esecuzione.
-
-#### Details
-La prova passa se il progetto produce un'immagine eseguibile, il server si avvia e risponde usando l'immagine senza Docker Compose e nessuna fase indispensabile richiede Compose. Fallisce se l'immagine manca, non è eseguibile oppure l'avvio dipende da Compose.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [verify-docker-image.mjs](../../scripts/verify-docker-image.mjs)
-  * verify: [Distribuzione del server come immagine Docker](../Requirements/ServerFoundation.md#distribuzione-del-server-come-immagine-docker)
-  * verify: [Esecuzione del server senza Docker Compose](../Requirements/ServerFoundation.md#esecuzione-del-server-senza-docker-compose)
----
-
 ### Prova dell'ingresso di prova del server conversazionale
 
 Importare soltanto l'ingresso di prova dal backend compilato e avviare il server con un produttore di risposte, un trascrittore e un sintetizzatore deterministici, l'URL del server PostgreSQL di prova e una porta libera; aprire una sessione `ambrogio.v1`, inviare un turno testuale e un turno audio con la risposta chiesta in audio, leggere elenco e storico con le API HTTP pubbliche, anche da un'origine consentita e da una non consentita, e chiudere il server due volte; ripetere l'avvio senza trascrittore e sintetizzatore e inviare un turno audio.
@@ -1216,91 +1411,26 @@ La prova passa se l'ingresso restituisce un indirizzo locale raggiungibile e un'
   * verify: [Ingresso di prova pubblico del server conversazionale](../Requirements/ServerFoundation.md#ingresso-di-prova-pubblico-del-server-conversazionale)
 ---
 
-### Prova dell'irrobustimento dei workflow
-
-Leggere come testo `.github/workflows/ci.yml`, `.github/workflows/secret-scan.yml` e `.github/workflows/publish-image.yml` e confrontare permessi, riferimenti delle action, runner, `timeout-minutes`, opzioni di checkout, uso del `GITHUB_TOKEN`, installazione dello scanner dei segreti e richiami `workflow_call` con «Profilo comune dei workflow GitHub Actions» e «Profilo di irrobustimento dei workflow GitHub Actions».
-
-#### Details
-La prova passa se ogni workflow dichiara `permissions` con il solo `contents: read`; se soltanto il job `publish` dichiara permessi propri, `contents: read` e `packages: write`; se ogni `uses` di un passo indica un'action esterna con un'impronta di 40 caratteri esadecimali seguita dal commento della versione e `actions/checkout` e `actions/setup-node` usano le impronte del contratto; se ogni job con passi usa `ubuntu-24.04` e dichiara `timeout-minutes` 20 per `checks`, 10 per `gitleaks` e 60 per `publish`; se ogni passo `actions/checkout` imposta `persist-credentials: false`; se `secrets.GITHUB_TOKEN` compare soltanto nell'`env` del passo di login al registro; se i job `checks` e `gitleaks` installano gitleaks con la stessa versione e la stessa impronta verificata; e se `ci.yml` e `secret-scan.yml` dichiarano `workflow_call` e `publish-image.yml` li richiama come job `checks` e `secret-scan`, da cui il job `publish` dipende con `needs`. Fallisce se un job riceve permessi non previsti, se un'action è indicata con un tag o un branch, se un job non ha il limite di durata del contratto, se un checkout conserva le credenziali o se la pubblicazione duplica i controlli invece di richiamarli.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [workflows.spec.ts](../../test/repository/workflows.spec.ts)
-  * verify: [Irrobustimento dei workflow GitHub Actions](../Requirements/ServerFoundation.md#irrobustimento-dei-workflow-github-actions)
----
-
-### Prova dell'isolamento dei database di prova
-
-Leggere come testo i file `*.integration.spec.ts` e `*.e2e.spec.ts` e il modulo `test/support/test-database.ts`.
-
-#### Details
-La prova passa se ogni file `*.integration.spec.ts` importa il modulo dei database di prova, direttamente o tramite un modulo di supporto della propria unità, e nessun file di prova nomina `AMBROGIO_TEST_DATABASE_URL` né legge `process.env.AMBROGIO_DATABASE_URL`; se il modulo legge soltanto `AMBROGIO_TEST_DATABASE_URL`, lancia un errore che nomina la variabile quando manca, senza altri valori di ripiego, crea database con il prefisso `ambrogio_test_` seguito da caratteri casuali, vi applica le migrazioni di produzione e cancella soltanto i nomi che ha creato. Fallisce se un file manca di una di queste proprietà.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [test-databases.spec.ts](../../test/repository/test-databases.spec.ts)
-  * verify: [Database di prova isolati del backend](../Requirements/ServerFoundation.md#database-di-prova-isolati-del-backend)
----
-
-### Prova dell'origine delle credenziali API
-
-Per ogni componente del backend che usa un'API esterna, preparare file degli agenti di prova che nominano variabili d'ambiente distinte per chiave API, token Bearer e segreto OAuth, fornire nell'oggetto d'ambiente valori fittizi distinguibili, avviare il componente con un client API controllato e osservare le credenziali fornite al client. Ripetere con una variabile nominata assente o vuota e con un file che contiene la credenziale al posto del nome della variabile.
-
-#### Details
-La prova passa se le credenziali fornite al client sono i valori delle variabili nominate dal file dell'agente, una variabile assente o vuota impedisce l'avvio con un messaggio che nomina la variabile e l'agente senza alcun valore, e un file con una credenziale letterale è rifiutato. Fallisce se il componente usa credenziali incorporate nel codice o nel file o ricavate da un'altra sorgente.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [agents.api-credentials.spec.ts](../../apps/server/src/composition/agents.api-credentials.spec.ts)
-  * satisfiedBy: [agent-config.spec.ts](../../apps/server/src/runtime/agent-config.spec.ts)
-  * verify: [Credenziali API dalle variabili d'ambiente](../Requirements/ServerFoundation.md#credenziali-api-dalle-variabili-dambiente)
----
-
 ### Prova della build e dell'avvio del server
 
-Eseguire la build del server a partire dai sorgenti TypeScript, verificare che invochi `tsc` e avviare l'artefatto prodotto in un ambiente Node.js 24; ripetere su ogni altra versione di Node.js dichiarata supportata dal progetto.
+Leggere lo script `build` del `package.json` della radice, `apps/server/package.json` e la configurazione TypeScript di build del server; dopo `pnpm build`, avviare con Node.js 24 il punto d'ingresso compilato `apps/server/dist/main.js` in un processo figlio.
 
 #### Details
-La prova passa se la build usa `tsc`, produce JavaScript ESM e l'artefatto si avvia senza errori di compatibilità del modulo o del runtime su ciascuna versione provata. Ispezionare la dichiarazione delle versioni supportate: deve includere Node.js 24 e non ammettere versioni inferiori. Fallisce se la build usa un altro compilatore, l'output non è ESM, l'avvio non riesce o la dichiarazione contraddice il requisito.
+La prova passa se lo script `build` compila il server con `tsc`, se `apps/server/package.json` dichiara `"type": "module"` e `engines.node` pari a `>=24`, se la configurazione TypeScript produce moduli ES e se il punto d'ingresso compilato si avvia e risponde senza errori di risoluzione dei moduli o del runtime. Fallisce se la build usa un altro compilatore, l'output non è ESM, l'avvio non riesce o la dichiarazione delle versioni ammette versioni di Node.js inferiori alla 24.
 
 #### Metadata
   * type: test-verification
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [package.json](../../apps/server/package.json)
-  * satisfiedBy: [verify-server-startup.mjs](../../scripts/verify-server-startup.mjs)
+  * satisfiedBy: [main.e2e.spec.ts](../../apps/server/src/main.e2e.spec.ts)
+  * satisfiedBy: [server-build.spec.ts](../../test/repository/server-build.spec.ts)
   * verify: [Preparazione del server TypeScript ESM](../Requirements/ServerFoundation.md#preparazione-del-server-typescript-esm)
----
-
-### Prova della coerenza dei modelli vocali registrati
-
-Leggere la tabella degli archivi della fonte «Modelli vocali scaricati nell'immagine del backend», gli archivi con le impronte SHA-256 di `scripts/fetch-speech-models.mjs` e la tabella di `voices/README.md`.
-
-#### Details
-La prova passa se le tre fonti elencano gli stessi cinque archivi con le stesse impronte. Fallisce se un archivio o un'impronta cambia in una sola di esse, così che un aggiornamento di un modello scaricato richieda la modifica esplicita dell'elemento `source`.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [speech-models-source.spec.ts](../../test/repository/speech-models-source.spec.ts)
-  * verify: [Modelli vocali italiani e inglesi inclusi](../Requirements/ServerFoundation.md#modelli-vocali-italiani-e-inglesi-inclusi)
 ---
 
 ### Prova della compilazione TypeScript strict
 
-Esaminare la configurazione TypeScript effettiva dei progetti che compongono il server e compilare il codice TypeScript con `tsc`.
+Risolvere, seguendo `extends`, le opzioni effettive di `tsconfig.json` e dei file `tsconfig.build.json` di `apps/server` e `packages/conversations`; compilare il codice TypeScript con `tsc` tramite `pnpm typecheck` e `pnpm build`.
 
 #### Details
 La prova passa se l'opzione effettiva `strict` è abilitata per ogni progetto TypeScript del server e la compilazione riesce. Fallisce se `strict` è disabilitata in un progetto del server o se la compilazione fallisce.
@@ -1310,91 +1440,7 @@ La prova passa se l'opzione effettiva `strict` è abilitata per ogni progetto Ty
 
 #### Relations
   * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [tsconfig.build.json](../../apps/server/tsconfig.build.json)
-  * satisfiedBy: [tsconfig.build.json](../../packages/conversations/tsconfig.build.json)
-  * satisfiedBy: [tsconfig.json](../../tsconfig.json)
+  * satisfiedBy: [typescript-strict.spec.ts](../../test/repository/typescript-strict.spec.ts)
   * verify: [Compilazione TypeScript strict del server](../Requirements/ServerFoundation.md#compilazione-typescript-strict-del-server)
----
-
-### Prova della condizione HSTS
-
-Avviare l'API con origine pubblica HTTP e con origine pubblica dichiarata HTTPS, mantenendo in entrambi i casi una connessione interna HTTP e variando `X-Forwarded-Proto`. Osservare le risposte riuscite e di errore.
-
-#### Details
-La prova passa se HSTS è assente quando la configurazione pubblica è HTTP o non dichiarata ed è presente con durata positiva quando è HTTPS, indipendentemente dal protocollo interno o dal valore di `X-Forwarded-Proto`. Fallisce se un header della richiesta attiva HSTS da solo o se la politica è assente in un deployment HTTPS dichiarato.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
-  * verify: [HSTS legato all'HTTPS pubblico](../Requirements/ServerFoundation.md#hsts-legato-allhttps-pubblico)
----
-
-### Prova della configurazione della CI del server
-
-Leggere come testo `.github/workflows/ci.yml` e i file di prova dei package sotto `packages/`.
-
-#### Details
-La prova passa se il workflow parte a ogni push su `main`, a ogni pull request, su richiesta manuale e con `workflow_call`; se il job `Backend checks` dichiara `BRANCH` pari a `${{ github.head_ref || github.ref_name }}`, esegue il checkout del repository in `workspace/ambrogio-backend` con `fetch-depth: 0`, clona `ambrogio-model` in `workspace/ambrogio-model` sul branch `BRANCH` se esiste sul remoto e altrimenti su `main`, esegue poi `workspace/ambrogio-model/scripts/checkout-workspace workspace "$BRANCH"` e `workspace/ambrogio-model/scripts/model-checks --workspace workspace`, e infine, nella cartella `workspace/ambrogio-backend`, `pnpm install --frozen-lockfile`, `pnpm audit --audit-level high` subito dopo, `pnpm build`, `pnpm db:types:check`, `pnpm typecheck`, `pnpm test`, `pnpm test:integration` e `pnpm test:e2e`, con `corepack enable` prima dell'installazione e l'installazione e l'audit delle dipendenze prima degli altri passi pnpm, con `pnpm build` prima di `pnpm typecheck` e di `pnpm test:e2e` e l'installazione verificata di gitleaks prima di `pnpm test`; se il workflow non nomina un pacchetto o una versione di Reqvire né uno script di integrità locale; se il job dichiara il servizio `postgres` con l'immagine `pgvector/pgvector:pg18`, `POSTGRES_HOST_AUTH_METHOD: trust`, la porta `5432:5432` e un controllo di salute con `pg_isready`, e la variabile `AMBROGIO_TEST_DATABASE_URL` pari a `postgres://postgres@127.0.0.1:5432/postgres`; se nessun passo o job dichiara `continue-on-error`; e se ogni file di prova che importa un adapter di `src/adapters/out/postgres/` o il modulo dei database di prova si chiama `*.integration.spec.ts` o `*.e2e.spec.ts`. Fallisce se manca un evento, una fase o il servizio, se l'ordine richiesto non è rispettato, se un fallimento è tollerato o se una prova che usa il database appartiene alla selezione veloce. Che un controllo fallito impedisca l'integrazione è verificato da «Ispezione della protezione del merge del backend».
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [workflows.spec.ts](../../test/repository/workflows.spec.ts)
-  * verify: [Controlli CI delle modifiche funzionali del server](../Requirements/ServerFoundation.md#controlli-ci-delle-modifiche-funzionali-del-server)
----
-
-### Prova della configurazione esplicita del listener HTTP
-
-Fornire al processo `AMBROGIO_HTTP_HOST` e `AMBROGIO_HTTP_PORT` validi, poi omettere separatamente ciascuna variabile negli ambienti `development`, `test` e `production` e provare valori di tipo o intervallo invalidi. Verificare l'indirizzo e la porta effettivamente ascoltati nel caso valido e l'assenza di listener nei casi invalidi.
-
-#### Details
-La prova passa se il processo ascolta solo all'indirizzo e alla porta validati, in `development` i valori assenti assumono `127.0.0.1` e `3000`, in `test` e `production` l'assenza di ciascun valore impedisce l'avvio, e i valori invalidi non aprono né attivano l'ingresso. Fallisce se usa un valore non validato o un valore implicito fuori da `development`.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [conversation-server.integration.spec.ts](../../apps/server/src/runtime/conversation-server.integration.spec.ts)
-  * satisfiedBy: [http-config.spec.ts](../../apps/server/src/runtime/http-config.spec.ts)
-  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
-  * verify: [Configurazione esplicita dell'ascolto HTTP](../Requirements/ServerFoundation.md#configurazione-esplicita-dellascolto-http)
----
-
-### Prova delle origini CORS dell'API HTTP
-
-Avviare l'API con elenco di origini assente, poi con un'origine esplicitamente ammessa. Inviare richieste ordinarie e preflight da origine ammessa e non ammessa.
-
-#### Details
-La prova passa se, senza elenco, nessuna risposta autorizza CORS; con l'elenco, solo l'origine ammessa riceve gli header di autorizzazione pertinenti e nessuna risposta usa wildcard o riflette l'origine non ammessa. Fallisce se una delle richieste non ammesse ottiene autorizzazione CORS.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [http-server.integration.spec.ts](../../apps/server/src/runtime/http-server.integration.spec.ts)
-  * verify: [Origini CORS esplicite dell'API HTTP](../Requirements/ServerFoundation.md#origini-cors-esplicite-dellapi-http)
----
-
-### Prova delle voci incluse e sostituibili
-
-Con `scripts/verify-docker-image.mjs`, costruire l'immagine backend oppure usare quella indicata da `AMBROGIO_DOCKER_IMAGE`, ispezionare le directory delle voci Piper incluse, elencate dalla fonte «Modelli vocali scaricati nell'immagine del backend», e sintetizzare una breve frase con ciascuna usando il codice di sintesi dell'immagine. Verificare che l'immagine non contenga `python3` né `/opt/piper`. Avviare un container con una directory di prova montata in sola lettura su `/opt/ambrogio/voices` e osservare che il mount sostituisce il contenuto incluso; selezionare inoltre una voce italiana montata in un percorso distinto tramite le variabili del profilo vocale.
-
-#### Details
-La prova passa se ogni directory contiene un solo modello `.onnx`, `tokens.txt`, `espeak-ng-data/` e `MODEL_CARD`, `/opt/ambrogio/voices/README.md` è presente, la sintesi produce audio non vuoto alla frequenza del modello per ogni voce, l'immagine non contiene `python3` né `/opt/piper`, il mount su `/opt/ambrogio/voices` presenta i file esterni al posto delle voci incluse senza una nuova build e la voce montata in un percorso distinto viene selezionata e caricata. Fallisce se manca una voce, la sintesi fallisce o il mount non sostituisce la directory. La prova non sostituisce l'ascolto umano della qualità delle voci.
-
-#### Metadata
-  * type: test-verification
-
-#### Relations
-  * derivedFrom: [Verifica dello stack del server](#verifica-dello-stack-del-server)
-  * satisfiedBy: [verify-docker-image.mjs](../../scripts/verify-docker-image.mjs)
-  * verify: [Directory delle voci sostituibile nell'immagine](../Requirements/ServerFoundation.md#directory-delle-voci-sostituibile-nellimmagine)
 ---
 

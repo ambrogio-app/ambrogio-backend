@@ -2,22 +2,18 @@
 
 ### Adozione del protocollo conversazionale Ambrogio v1
 
-Chat testuale e voce usano un unico protocollo conversazionale di Ambrogio, `ambrogio.v1`, trasportato su WebSocket. Il protocollo è posseduto dal backend e non dipende da Micdrop né dal formato UI Message Stream di AI SDK.
+Chat testuale e voce usano un unico protocollo conversazionale di Ambrogio, `ambrogio.v1`, trasportato su WebSocket e posseduto dal backend.
 
 #### Decisioni
-- Il backend non offre altri canali per i turni: non esistono il profilo SSE della chat basato su UI Message Stream di AI SDK né il protocollo vocale Micdrop.
+- Il backend non offre altri canali per i turni.
 - Testo e voce condividono gli stessi messaggi: ogni richiesta e ogni contenuto per la famiglia è una trasmissione con apertura, contenuto e chiusura, e il tipo di contenuto, testo o audio, è dichiarato all'apertura. Rifiuti, errori ed esiti seguono le stesse regole per ogni client.
 - Trascrizione e sintesi vocale restano nel backend: un client vocale trasmette e riceve audio, un client testuale trasmette e riceve testo.
 - Una sessione WebSocket per client trasporta turni di più conversazioni; la conversazione non dipende dalla connessione. Il client decide se continuare una conversazione esistente o iniziarne una nuova, e il backend applica le stesse regole di continuazione a turni testuali e vocali. Le regole con cui un client sceglie fra una nuova conversazione e quella in corso, per esempio a ogni attivazione di un client vocale, appartengono al client.
 - Ogni turno completato comunica `expectsReply`, indipendentemente dal tipo di contenuto; la produzione della risposta segue un unico percorso con l'indicazione strutturata della replica attesa.
 - Elenco e storico delle conversazioni restano rotte HTTP GET.
 - La definizione macchina dei messaggi è uno schema JSON versionato nel repository backend.
-- Il protocollo ammette messaggi del server non legati a un turno, con una regola di risposta esplicita del client, senza una dichiarazione preventiva delle capacità del client.
 - Le regole su ammissione atomica per conversazione, completamento dopo disconnessione, esiti conservati, diagnostica, configurazione e lingua sono definite dai rispettivi contratti e valgono per ogni client del protocollo.
-- Un cambio incompatibile del protocollo segue «Compatibilità fra release per versione d'interfaccia»: cambia la versione maggiore nel nome del sottoprotocollo e si fa nella stessa modifica dei client che lo usano, rilasciati insieme al backend; il backend non conserva la versione precedente del protocollo.
-
-#### Documentazione utente
-Un cambiamento del protocollo aggiorna nello stesso lavoro la documentazione utente secondo «Documentazione utente aggiornata con i cambiamenti pubblici».
+- Le versioni del protocollo seguono «Versioni dell'API HTTP pubblica».
 
 #### Metadata
   * type: specification
@@ -28,7 +24,7 @@ Un cambiamento del protocollo aggiorna nello stesso lavoro la documentazione ute
 
 ### Ciclo di vita della sessione conversazionale
 
-Una sessione conversazionale attraversa gli stati `aperta`, dopo l'upgrade accettato e in attesa di `session.hello`, `pronta`, dopo `session.ready`, quando accetta trasmissioni, e `chiusa`. La sessione passa a `chiusa` quando il client o il server chiudono la WebSocket, quando non risponde ai ping o all'arresto del server. Alla chiusura il backend rilascia le risorse della sessione: le trasmissioni in ingresso non concluse vengono scartate senza creare turni e le sintesi audio in corso per la sessione vengono interrotte, mentre i turni già ammessi proseguono fino all'esito conservato. La chiusura di una sessione non influenza le sessioni degli altri client. Il backend non deduce né attende la fine della riproduzione sul client: decidere quando attendere una replica o chiudere la sessione appartiene al client.
+Una sessione conversazionale attraversa gli stati `aperta`, dopo l'upgrade accettato e in attesa di `session.hello`, `pronta`, dopo `session.ready`, quando accetta trasmissioni, e `chiusa`. La sessione passa a `chiusa` quando il client o il server chiudono la WebSocket, quando il client non risponde con un pong a un ping del server prima del ping successivo o all'arresto del server. Alla chiusura il backend rilascia le risorse della sessione: le trasmissioni in ingresso non concluse vengono scartate senza creare turni e le sintesi audio in corso per la sessione vengono interrotte, mentre i turni già ammessi proseguono fino all'esito conservato. I messaggi dei turni non consegnati per la chiusura non vengono ripetuti in una sessione successiva: l'esito di quei turni si legge dallo storico. La chiusura di una sessione non influenza le sessioni degli altri client. Il backend non deduce né attende la fine della riproduzione sul client: decidere quando attendere una replica o chiudere la sessione appartiene al client.
 
 #### Metadata
   * type: state
@@ -39,7 +35,7 @@ Una sessione conversazionale attraversa gli stati `aperta`, dopo l'upgrade accet
 
 ### Controllo dell'origine all'apertura della sessione
 
-L'upgrade WebSocket del canale conversazionale applica l'elenco di origini autorizzate del configurazione locale del componente HTTP. Una richiesta senza header `Origin`, tipica dei client non browser, è accettata. Una richiesta con `Origin` è accettata soltanto se il valore corrisponde esattamente a un'origine dell'elenco; altrimenti il server rifiuta l'upgrade con HTTP 403 prima di creare la sessione. Con elenco vuoto o assente nessuna origine dichiarata è accettata. Il controllo non sostituisce le restrizioni di rete e reverse proxy previste per l'installazione.
+L'upgrade WebSocket del canale conversazionale applica l'elenco di origini autorizzate della configurazione locale del componente HTTP. Una richiesta senza header `Origin`, tipica dei client non browser, è accettata. Una richiesta con `Origin` è accettata soltanto se il valore corrisponde esattamente a un'origine dell'elenco; altrimenti il server rifiuta l'upgrade con HTTP 403 prima di creare la sessione. Con elenco vuoto o assente nessuna origine dichiarata è accettata. Il controllo non sostituisce le restrizioni di rete e reverse proxy previste per l'installazione.
 
 #### Metadata
   * type: specification
@@ -61,7 +57,17 @@ Ogni sessione conversazionale ha un identificativo di correlazione per la diagno
 
 ### Errori ed estensioni del protocollo Ambrogio v1
 
-Un messaggio del client non conforme allo schema JSON, di tipo sconosciuto, riferito a una richiesta o trasmissione inesistente o già chiusa, inviato prima di `session.ready`, oppure un frame binario non attribuibile a una trasmissione aperta, riceve `session.error` con `code` (`invalid_message`, `unknown_type`, `unknown_stream`, `session_not_ready`, `audio_busy`), un `message` sicuro e, quando ricavabile, il `requestId`. La sessione resta aperta e i turni già ammessi proseguono. Una seconda trasmissione audio in ingresso mentre una è aperta riceve `audio_busy` e non apre la richiesta.
+Un messaggio del client che viola il protocollo riceve `session.error` con un `code`, un `message` sicuro e, quando ricavabile, il `requestId`. Ogni condizione ha un solo `code`:
+
+| Condizione | `code` | `message` |
+|---|---|---|
+| Frame di testo che non è JSON, messaggio senza `type` stringa, messaggio di un tipo noto non conforme allo schema JSON, secondo `session.hello` nella sessione, `input.start` con un `requestId` o uno `stream` già usati da una richiesta aperta o da una richiesta rifiutata per i limiti e non ancora chiusa da `input.end`, `input.chunk` per una richiesta audio, frame binario più corto di 4 byte | `invalid_message` | `Invalid message.` |
+| Messaggio con un `type` che non è un messaggio del client | `unknown_type` | `Unknown message type.` |
+| `input.chunk` o `input.end` per un `requestId` che non identifica una richiesta aperta, frame binario con uno `stream` che non identifica una trasmissione audio aperta | `unknown_stream` | `Unknown request or stream.` |
+| Messaggio diverso da `session.hello` o frame binario prima di `session.ready` | `session_not_ready` | `Session not ready.` |
+| `input.start` audio mentre la sessione ha già una trasmissione audio in ingresso aperta | `audio_busy` | `Another audio transmission is open.` |
+
+La forma e il tipo del messaggio sono controllati prima dello stato della sessione: un messaggio non decodificabile o di tipo sconosciuto riceve `invalid_message` o `unknown_type` anche prima di `session.ready`. Un messaggio che riceve `session.error` non apre né modifica richieste. I frammenti e i frame di una richiesta rifiutata per i limiti sono ignorati senza errore fino al suo `input.end`. La sessione resta aperta e i turni già ammessi proseguono.
 
 I messaggi del server sono `session.*`, `output.*` e `turn.*`; un client ignora un messaggio del server di tipo sconosciuto senza chiudere la sessione. Il protocollo non definisce messaggi del server fuori dai turni né risposte del client ai messaggi del server; la loro introduzione richiede requisiti propri.
 
@@ -78,13 +84,13 @@ Dopo `input.end` il server comunica l'ammissione oppure il rifiuto del turno. `t
 
 Ogni turno termina con un solo messaggio di esito, successivo all'ultima trasmissione del turno: `turn.completed` con `turnId` ed `expectsReply` booleano, inviato soltanto dopo la conferma del commit dell'esito riuscito; `turn.failed` con `turnId` e `message`, uguale al messaggio pubblico conservato come esito di errore; `turn.interrupted` con `turnId`, quando l'arresto del server interrompe il turno; `turn.rejected` con `requestId`, `reason` e `message` per un turno non ammesso, senza `turnId`. La fine della generazione del modello, `output.end` o la chiusura della sessione non attestano un esito conservato.
 
-Se la sessione si chiude dopo l'ammissione, il backend completa il turno e ne conserva l'esito; i messaggi non consegnati non vengono ripetuti in una sessione successiva e l'esito si legge dallo storico. Un guasto della persistenza dopo l'ammissione segue la politica di indisponibilità degli ingressi e non viene comunicato come `turn.completed`: il server trasmette il messaggio standard del guasto conversazionale e conclude il turno con `turn.failed` con lo stesso messaggio, anche se l'esito non è stato conservato; il turno rimasto senza esito viene riconosciuto come interrotto al riavvio.
+Un guasto della persistenza dopo l'ammissione segue la politica di indisponibilità degli ingressi e non viene comunicato come `turn.completed`: il server trasmette il messaggio standard del guasto conversazionale e conclude il turno con `turn.failed` con lo stesso messaggio, anche se l'esito non è stato conservato; il turno rimasto senza esito viene riconosciuto come interrotto al riavvio.
 
 #### Metadata
   * type: input-output
 
 #### Relations
-  * define: [Conferma del completamento del turno](../Requirements/FamilyConversation.md#conferma-del-completamento-del-turno)
+  * define: [Canale conversazionale comune a testo e voce](../Requirements/ConversationProtocol.md#canale-conversazionale-comune-a-testo-e-voce)
 ---
 
 ### Motivi di rifiuto del turno
@@ -95,7 +101,7 @@ Un turno non ammesso riceve una trasmissione del server con il messaggio pubblic
 - `conversation_not_found`: `conversationId` non identifica una conversazione conservata; «Conversation not found.» oppure «Conversazione non trovata.».
 - `occupied`: la conversazione indicata ha già un turno attivo; «Another turn is in progress.» oppure «Un altro turno è in corso.».
 - `unavailable`: l'archivio rifiuta temporaneamente l'ammissione, il server sta arrestandosi, oppure gli ingressi sono disabilitati fino al riavvio perché non è stato possibile conservare l'esito di un turno già ammesso; «Service temporarily unavailable.» oppure «Servizio temporaneamente non disponibile.».
-- `too_large`: il testo supera 64 KiB o l'audio supera 60 secondi; «Request too large.» oppure «Richiesta troppo grande.».
+- `too_large`: il testo o l'audio superano i limiti di «Trasmissione in ingresso del protocollo Ambrogio v1»; «Request too large.» oppure «Richiesta troppo grande.».
 - `transcription_failed`: la trascrizione dell'audio non è utilizzabile; «I didn't understand the request.» oppure «Non ho capito la richiesta.».
 - `audio_unavailable`: la voce non è abilitata nell'installazione e il turno trasmette audio o chiede la risposta in audio; «Voice is not available.» oppure «La voce non è disponibile.». Il messaggio è trasmesso sempre in testo.
 - `failure`: un guasto tecnico inatteso avviene prima dell'ammissione; il messaggio standard del guasto conversazionale nella lingua configurata.
@@ -115,7 +121,7 @@ La forma dei messaggi JSON di `ambrogio.v1`, in entrambe le direzioni, è defini
   * type: specification
 
 #### Relations
-  * define: [Validazione del formato negli ingressi conversazionali](../Requirements/FamilyConversation.md#validazione-del-formato-negli-ingressi-conversazionali)
+  * define: [Canale conversazionale comune a testo e voce](../Requirements/ConversationProtocol.md#canale-conversazionale-comune-a-testo-e-voce)
 ---
 
 ### Sessione del protocollo Ambrogio v1
@@ -126,7 +132,7 @@ I frame di testo contengono un solo messaggio JSON con il campo stringa `type`. 
 
 Il primo messaggio del client è `session.hello` con `clientId`, stringa non vuota e stabile fornita dalla configurazione del client, e `name`, stringa non vuota leggibile dalla famiglia. Il server risponde `session.ready` con `protocol: "ambrogio.v1"`. Prima di `session.ready` il server non accetta trasmissioni; un secondo `session.hello` è un errore di protocollo. Il protocollo non prevede dichiarazioni delle capacità del client.
 
-Il server invia ping WebSocket periodici a ogni sessione e chiude la sessione che non risponde con un pong entro l'intervallo successivo. Il client che perde la connessione decide se aprire una nuova sessione; i turni ammessi nella sessione precedente proseguono secondo le regole del turno e i loro esiti si leggono dallo storico. Una nuova sessione non riprende trasmissioni interrotte. Più sessioni con lo stesso `clientId` restano indipendenti.
+Il server invia un ping WebSocket a ogni sessione ogni 30 secondi; la chiusura della sessione che non risponde segue «Ciclo di vita della sessione conversazionale». Il client che perde la connessione decide se aprire una nuova sessione. Una nuova sessione non riprende trasmissioni interrotte. Più sessioni con lo stesso `clientId` restano indipendenti.
 
 #### Metadata
   * type: specification
@@ -141,7 +147,7 @@ Il client apre una richiesta con `input.start`, che contiene: `requestId`, strin
 
 Per il contenuto testuale il client invia uno o più messaggi `input.chunk` con `requestId` e `text`; il testo del turno è la concatenazione ordinata dei frammenti e non supera 64 KiB (65 536 byte) in UTF-8. Per il contenuto audio il client invia frame binari con il proprio numero `stream`, campioni PCM16 mono a 16 kHz, per una durata complessiva non superiore a 60 secondi. Il client chiude la richiesta con `input.end` e `requestId`; per la voce la chiusura corrisponde alla fine del parlato rilevata dal client. Il server elabora la richiesta soltanto dopo `input.end`, salvo il rifiuto immediato per superamento dei limiti.
 
-Quando la voce è abilitata, il server consegna i frame di una richiesta audio al trascrittore man mano che li riceve; il trascrittore li decodifica man mano, secondo «Trascrizione vocale in streaming con sherpa-onnx», così che a `input.end` resti da completare soltanto la parte finale. Il testo trascritto è usato soltanto dopo `input.end`: la verifica della trascrizione, l'ammissione e ogni altro effetto del turno restano successivi alla chiusura della richiesta. Se la richiesta non si conclude, perché supera i limiti o perché la sessione si chiude prima di `input.end`, la trascrizione in corso viene interrotta e il suo risultato scartato, senza turni né conversazioni. Motivazione: trascrivere l'intero audio soltanto dopo `input.end` aggiungerebbe al turno il tempo di trascrizione di tutto l'audio ricevuto.
+Quando la voce è abilitata, il server consegna i frame di una richiesta audio al trascrittore man mano che li riceve; il trascrittore li decodifica man mano, secondo «Trascrizione vocale in streaming con sherpa-onnx», così che a `input.end` resti da completare soltanto la parte finale. Il testo trascritto è usato soltanto dopo `input.end`: la verifica della trascrizione, l'ammissione e ogni altro effetto del turno restano successivi alla chiusura della richiesta. Se la richiesta non si conclude, perché supera i limiti o perché la sessione si chiude prima di `input.end`, la trascrizione in corso viene interrotta e il suo risultato scartato, senza turni né conversazioni.
 
 Una sessione ha al massimo una trasmissione audio in ingresso aperta; la sessione ammette richieste testuali aperte contemporaneamente su conversazioni diverse. Il testo di un turno è valido se, eliminati gli spazi iniziali e finali per la sola verifica, contiene almeno un carattere, e viene conservato com'è stato ricevuto. Quando un limite è superato il server rifiuta il turno senza attendere `input.end` e ignora il resto della trasmissione con lo stesso `requestId`. Un `input.start` non conforme allo schema produce un errore di protocollo e non apre la richiesta. La richiesta non contiene gli scambi precedenti: lo storico è recuperato dal backend.
 
@@ -154,7 +160,7 @@ Una sessione ha al massimo una trasmissione audio in ingresso aperta; la session
 
 ### Trasmissione in uscita del protocollo Ambrogio v1
 
-Ogni contenuto destinato alla famiglia per un turno, cioè la risposta, il messaggio di un rifiuto o il messaggio di un errore, viaggia in una trasmissione del server composta da `output.start`, contenuto e `output.end`. `output.start` contiene `requestId`, `turnId` quando il turno è stato ammesso, `stream`, numero assegnato dal server e unico tra le trasmissioni aperte dal server nella sessione, e `content`, che vale `{"type":"text"}` oppure `{"type":"audio","sampleRate":<frequenza del modello di sintesi caricato>}`. Il tipo di contenuto è quello chiesto dal client con `reply`, salvo il rifiuto `audio_unavailable`, trasmesso sempre in testo.
+Ogni contenuto destinato alla famiglia per un turno, cioè la risposta, il messaggio di un rifiuto o il messaggio di un errore, viaggia in una trasmissione del server composta da `output.start`, contenuto e `output.end`. `output.start` contiene `requestId`, `turnId` quando il turno è stato ammesso, `stream`, numero assegnato dal server e unico tra le trasmissioni aperte dal server nella sessione, e `content`, che vale `{"type":"text"}` oppure `{"type":"audio","sampleRate":<frequenza del modello di sintesi caricato>}`. Il tipo di contenuto è quello chiesto dal client con `reply`, salvo le eccezioni di «Motivi di rifiuto del turno».
 
 Il testo viaggia in messaggi `output.chunk` con `stream` e `text`, che contiene soltanto il nuovo frammento; la concatenazione ordinata ricostruisce il messaggio. L'audio viaggia in frame binari con il numero `stream` della trasmissione, campioni PCM16 mono alla frequenza dichiarata. La risposta viene trasmessa progressivamente durante la generazione: per il testo i frammenti disponibili, per l'audio la sintesi dei tratti di testo già prodotti. `output.end` con `stream` segnala che il server non invierà altro contenuto per quella trasmissione.
 

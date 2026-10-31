@@ -6,12 +6,12 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { generateText, jsonSchema, Output, stepCountIs, streamText, tool, type LanguageModel,
   type ModelMessage } from 'ai';
 import { ProjectError } from '../../domain/project-error.js';
-import type { JsonValue, TurnAction } from '../../domain/turn.js';
+import type { JsonValue, TurnAction } from '../../domain/turn/turn.js';
 import type { ConversationHistory } from '../../application/conversation-history-read.port.js';
 import type { ProduceConversationReply, ReplyCancellation, ReplyPart }
   from '../../application/produce-conversation-reply.port.js';
 import type { AvailableMcpTool } from './mcp-tool-client.js';
-import type { Logger } from '../in/logger.js';
+import type { Logger } from '../in/diagnostic-log.port.js';
 
 /** A monotonic clock in milliseconds, for the reply timing. */
 export type Clock = () => number;

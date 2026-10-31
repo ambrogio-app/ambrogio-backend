@@ -1,6 +1,6 @@
 import { ProjectError } from '../../../domain/project-error.js';
 import { ConversationId, TurnId } from '../../../domain/identities.js';
-import { checkTurnActions, Turn, type TurnAction } from '../../../domain/turn.js';
+import { checkTurnActions, Turn, type TurnAction } from '../../../domain/turn/turn.js';
 import type { HistoryTurn } from '../../../application/conversation-history-read.port.js';
 import { sql, type RawBuilder, type Selectable } from 'kysely';
 import type { Json, Turns } from './database.generated.js';

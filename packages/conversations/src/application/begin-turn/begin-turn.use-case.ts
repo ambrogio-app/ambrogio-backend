@@ -1,10 +1,10 @@
-import { ProjectError } from '../domain/project-error.js';
-import { ConversationId, TurnId } from '../domain/identities.js';
-import type { Result } from '../domain/result.js';
-import { Turn } from '../domain/turn.js';
-import type { ConversationLookup } from './conversation-lookup.port.js';
-import type { CurrentTime, NewIdentifier } from './turn-capabilities.port.js';
-import type { AdmissionRejection, TurnRepository } from './turn-repository.port.js';
+import { ProjectError } from '../../domain/project-error.js';
+import { ConversationId, TurnId } from '../../domain/identities.js';
+import type { Result } from '../../domain/result.js';
+import { Turn } from '../../domain/turn/turn.js';
+import type { ConversationLookup } from '../conversation-lookup.port.js';
+import type { CurrentTime, NewIdentifier } from '../turn-capabilities.port.js';
+import type { AdmissionRejection, TurnRepository } from '../turn-repository.port.js';
 
 export type BeginTurnInput = Readonly<{ text: string; conversationId?: string }>;
 export type BeginTurnSuccess = Readonly<{ conversationId: string; turnId: string; acceptedAt: Date }>;

@@ -1,5 +1,6 @@
 import { ProjectError } from '@ambrogio/conversations/application/project-error';
 import type { ConversationConfig } from '@ambrogio/conversations/adapters/out/conversation-config';
+import { FixedCurrentTime } from '@ambrogio/conversations/adapters/out/fixed-current-time';
 import { SystemCurrentTime } from '@ambrogio/conversations/adapters/out/system-current-time';
 import { SystemDeadlines } from '@ambrogio/conversations/adapters/out/system-deadlines';
 import { UuidIdentifiers } from '@ambrogio/conversations/adapters/out/uuid-identifiers';
@@ -23,9 +24,9 @@ import { createListConversations } from '@ambrogio/conversations/application/lis
 import { createGetConversation } from '@ambrogio/conversations/application/get-conversation';
 import type { ProduceConversationReply } from '@ambrogio/conversations/application/produce-conversation-reply';
 import type { FastifyInstance } from 'fastify';
-import type { Logger } from '@ambrogio/conversations/adapters/in/logger';
+import type { Logger } from '@ambrogio/conversations/adapters/in/diagnostic-log';
 import { readFile } from 'node:fs/promises';
-import { registerSessionRoute } from '../adapters/in/session-route.adapter.js';
+import { registerSessionRoute } from '../adapters/in/session-route.js';
 
 export type PreparedConversations = Awaited<ReturnType<typeof prepareConfiguredConversations>>;
 
@@ -39,7 +40,7 @@ export async function prepareConfiguredConversations(config: ConversationConfig,
   const archive = await openConversationArchive(config.databaseUrl, onIdleConnectionFault);
   try {
     const turns = new PostgresTurnRepository(archive.db);
-    const recoveredTurns = await createInterruptPendingTurns({ turns, clock: { now: () => interruptedAt } })();
+    const recoveredTurns = await createInterruptPendingTurns({ turns, clock: new FixedCurrentTime(interruptedAt) })();
     const read = new PostgresConversationListRead(archive.db, config.maxListPageSize);
     const listConversations = createListConversations(read, config.listPageSize, config.maxListPageSize);
     const failureMessage = config.language === 'it'

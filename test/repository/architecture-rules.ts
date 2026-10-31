@@ -25,7 +25,8 @@ export type RuleName =
   | 'domain-application-own-package'
   | 'technical-factory-imports'
   | 'no-dependency-container'
-  | 'pino-only-in-logger';
+  | 'pino-only-in-logger'
+  | 'no-circular-imports';
 
 export type Violation = Readonly<{ rule: RuleName; from: string; to: string }>;
 export type Rule = Readonly<{ name: RuleName; check: (graph: ImportGraph) => Violation[] }>;
@@ -222,9 +223,48 @@ const pinoOnlyInLogger: Rule = {
   },
 };
 
+/**
+ * The import cycles of the graph («Nessun ciclo di import nel backend»), each as the ordered list of its files from the
+ * smallest path and back to it. The edges are the relative imports between the TypeScript files of the graph, type-only
+ * imports included; a workspace unit reaches another only through its public exports, and the isolation of the
+ * packages leaves no path back from a package to the application that imports it.
+ */
+export function importCycles(graph: ImportGraph): string[][] {
+  const known = new Set(graph.files.map((file) => file.path));
+  const edges = new Map(graph.files.map((file) => [file.path, [...new Set(file.specifiers
+    .filter((specifier) => specifier.startsWith('.'))
+    .map((specifier) => asSource(resolveSpecifier(file.path, specifier)))
+    .filter((target) => known.has(target)))].sort()]));
+  const cycles = new Map<string, string[]>();
+  const state = new Map<string, 'open' | 'done'>();
+  const stack: string[] = [];
+  const visit = (path: string) => {
+    state.set(path, 'open');
+    stack.push(path);
+    for (const target of edges.get(path) ?? []) {
+      if (state.get(target) === 'open') {
+        const cycle = stack.slice(stack.indexOf(target));
+        const start = cycle.indexOf([...cycle].sort()[0]!);
+        const ordered = [...cycle.slice(start), ...cycle.slice(0, start)];
+        cycles.set(ordered.join('\n'), [...ordered, ordered[0]!]);
+      } else if (state.get(target) === undefined) visit(target);
+    }
+    stack.pop();
+    state.set(path, 'done');
+  };
+  for (const path of [...known].sort()) if (state.get(path) === undefined) visit(path);
+  return [...cycles.values()];
+}
+
+const noCircularImports: Rule = {
+  name: 'no-circular-imports',
+  check: (graph) => importCycles(graph).map((cycle) => ({ rule: 'no-circular-imports' as const, from: cycle[0]!,
+    to: cycle.slice(1).join(' -> ') })),
+};
+
 export const rules: readonly Rule[] = [
   packageIsolation, applicationPublicExports, noPathAliases, layerTestImports, domainApplicationOwnPackage,
-  technicalFactoryImports, noDependencyContainer, pinoOnlyInLogger,
+  technicalFactoryImports, noDependencyContainer, pinoOnlyInLogger, noCircularImports,
 ];
 
 const excepted = (violation: Violation, list: readonly ArchitectureException[]) =>

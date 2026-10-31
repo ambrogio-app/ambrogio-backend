@@ -3,7 +3,7 @@ import type { SpeechComponents, SpeechComponentsFactory } from '@ambrogio/conver
 import type { VoiceConfig } from '@ambrogio/conversations/adapters/out/voice-config';
 import type { ProduceConversationReply } from '@ambrogio/conversations/application/produce-conversation-reply';
 import type { FastifyInstance } from 'fastify';
-import { createHttpServer, type HttpRouteRegistration } from '../runtime/http-server.js';
+import { createHttpServer, createHttpShutdown, type HttpRouteRegistration } from '../runtime/http-server.js';
 import type { HttpConfig } from '../runtime/http-config.js';
 import type { ResourceStack } from '../runtime/lifecycle.js';
 import type { Logger } from '../runtime/logger.js';
@@ -11,6 +11,10 @@ import { startupPhase } from '../runtime/startup-failure.js';
 import { conversationApiRegistration, loadProtocolSchema, memoryMcpRegistration, registerConversationSessionRoute,
   type PreparedConversations } from './conversations.js';
 
+/**
+ * The ingresses of the surface during the shutdown: `stopAccepting` begins the shutdown of the HTTP server, so the
+ * liveness endpoint answers `503` and every response closes its connection, and stops accepting turns.
+ */
 export type ConversationIngress = Readonly<{ stopAccepting(): Promise<void>; closeSessions(): Promise<void> }>;
 export type ConversationServerOptions = Readonly<{
   /** Base logger of the process, shared with every component of the surface. */
@@ -36,7 +40,7 @@ export async function buildConversationServer(config: HttpConfig, prepared: Prep
   let speech: SpeechComponents | undefined;
   if (voice) {
     const factory = speechFactory
-      ?? (await import('@ambrogio/conversations/adapters/in/session/local-speech-components'))
+      ?? (await import('@ambrogio/conversations/adapters/out/speech/local-speech-components'))
         .createLocalSpeechComponents;
     const loaded = await startupPhase('Voice components could not be loaded', async () => factory(voice));
     options.resources.defer('Voice components could not be closed', () => loaded.close());
@@ -50,7 +54,8 @@ export async function buildConversationServer(config: HttpConfig, prepared: Prep
       ...(speech ? { speech } : {}),
     });
   } };
-  const server = await createHttpServer(config, { log: options.log, routes: [
+  const shutdown = createHttpShutdown();
+  const server = await createHttpServer(config, { log: options.log, shutdown, routes: [
     { prefix: '/api/v1', register: conversationApiRegistration(prepared) },
     { prefix: '/mcp', register: await memoryMcpRegistration(prepared, options.log) },
     session,
@@ -58,7 +63,7 @@ export async function buildConversationServer(config: HttpConfig, prepared: Prep
   options.resources.defer('HTTP server could not be closed', () => server.close());
   const registered = sessions!;
   return { server, turnIngress: {
-    stopAccepting: () => registered.stopAccepting(),
+    stopAccepting: () => { shutdown.begin(); return registered.stopAccepting(); },
     closeSessions: () => registered.closeSessions(),
   } };
 }

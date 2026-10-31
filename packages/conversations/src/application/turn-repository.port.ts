@@ -1,6 +1,6 @@
 import type { TurnId } from '../domain/identities.js';
 import type { Result } from '../domain/result.js';
-import type { Turn } from '../domain/turn.js';
+import type { Turn } from '../domain/turn/turn.js';
 
 export type ConversationOccupied = Readonly<{ kind: 'conversation_occupied' }>;
 export type ArchiveBusy = Readonly<{ kind: 'archive_busy' }>;

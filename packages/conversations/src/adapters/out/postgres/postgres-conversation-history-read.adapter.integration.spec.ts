@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { sql, type Kysely } from 'kysely';
 import { emptyTestDatabase } from '../../../../../../test/support/test-database.js';
-import { createGetConversation } from '../../../application/get-conversation.use-case.js';
+import { createGetConversation } from '../../../application/get-conversation/get-conversation.use-case.js';
 import { admitTurn, completeTurn, interruptPendingTurns } from '../../../../test/support/turn-archive.js';
 import { openConversationArchive, type ConversationArchive, type ConversationDatabase } from './conversation-archive.js';
 import { PostgresTurnRepository } from './postgres-turn-repository.adapter.js';
 import { PostgresConversationHistoryRead } from './postgres-conversation-history-read.adapter.js';
 import type { TemporaryDatabase } from './temporary-database.js';
 import { TurnId } from '../../../domain/identities.js';
-import type { TurnAction } from '../../../domain/turn.js';
+import type { TurnAction } from '../../../domain/turn/turn.js';
 
 const conversationId = 'dc89cb5e-e695-43cc-8a04-917316771ea4';
 const firstTurnId = 'fffffff0-1111-4111-8111-111111111111';

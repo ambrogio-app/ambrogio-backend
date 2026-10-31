@@ -235,6 +235,22 @@ La prova passa se nessun import originato da un package sotto `packages/` nomina
   * verify: [Isolamento dei package business dai package tecnici condivisi](../Requirements/Workspace.md#isolamento-dei-package-business-dai-package-tecnici-condivisi)
 ---
 
+### Prova dell'assenza di cicli di import nel backend
+
+Eseguire la regola `no-circular-imports` di `test/repository/architecture-rules.ts` sull'intero grafo degli import del repository e su due fixture negative in memoria di `test/repository/import-boundaries.spec.ts`: un ciclo fra due adapter dello stesso layer e un ciclo di soli import di tipi fra tre file.
+
+#### Details
+La prova passa se la regola non segnala cicli sul repository e se ciascuna fixture produce una sola violazione con il nome `no-circular-imports` e il percorso completo del ciclo, dal file con il percorso minore fino al ritorno a esso. Fallisce se il repository contiene un ciclo, se una fixture non fallisce, se il ciclo di soli tipi non è riconosciuto o se la violazione non riporta il nome della regola e il percorso del ciclo.
+
+#### Metadata
+  * type: test-verification
+
+#### Relations
+  * derivedFrom: [Verifica della struttura del monorepo](#verifica-della-struttura-del-monorepo)
+  * satisfiedBy: [import-boundaries.spec.ts](../../test/repository/import-boundaries.spec.ts)
+  * verify: [Nessun ciclo di import nel backend](../Requirements/Workspace.md#nessun-ciclo-di-import-nel-backend)
+---
+
 ### Prova delle regole di architettura centrali del backend
 
 Eseguire ogni regola di `test/repository/architecture-rules.ts` sull'intero grafo degli import del repository e sulle fixture negative in memoria di `test/repository/import-boundaries.spec.ts`; leggere l'elenco `exceptions`.
@@ -250,3 +266,4 @@ La prova passa se l'estrazione degli import riconosce anche gli import di soli t
   * satisfiedBy: [import-boundaries.spec.ts](../../test/repository/import-boundaries.spec.ts)
   * verify: [Regole di architettura centrali del backend](../Requirements/Workspace.md#regole-di-architettura-centrali-del-backend)
 ---
+

@@ -1,5 +1,5 @@
-import { ProjectError } from '../domain/project-error.js';
-import type { ConversationMemorySearch, MemoryMatch, MemorySearchQuery } from './conversation-memory-search.port.js';
+import { ProjectError } from '../../domain/project-error.js';
+import type { ConversationMemorySearch, MemoryMatch, MemorySearchQuery } from '../conversation-memory-search.port.js';
 
 export type SearchConversations = (query: MemorySearchQuery) => Promise<readonly MemoryMatch[]>;
 

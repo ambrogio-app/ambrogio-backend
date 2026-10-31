@@ -1,4 +1,4 @@
-import type { LogFields, Logger } from '../../src/adapters/in/logger.js';
+import type { LogFields, Logger } from '../../src/adapters/in/diagnostic-log.port.js';
 
 export type LoggedEvent = Readonly<{
   level: 'debug' | 'info' | 'warn' | 'error';

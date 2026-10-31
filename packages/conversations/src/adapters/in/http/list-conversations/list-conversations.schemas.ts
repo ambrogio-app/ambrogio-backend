@@ -1,7 +1,7 @@
 import { Type, type Static } from '@sinclair/typebox';
 import type { ProblemDetails } from '../problem-details.js';
 
-/** Query of `GET /conversations`: both parameters stay strings until the handler converts them. */
+/** Query of `GET /conversations`: both parameters stay strings until the route adapter converts them. */
 export const listConversationsQuerySchema = Type.Object({
   cursor: Type.Optional(Type.String()),
   limit: Type.Optional(Type.String()),

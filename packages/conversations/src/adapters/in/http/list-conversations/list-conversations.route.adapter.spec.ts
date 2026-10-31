@@ -2,10 +2,9 @@ import type { FastifyInstance } from 'fastify';
 import { Ajv } from 'ajv';
 import { afterEach, describe, expect, it } from 'vitest';
 import { registerListConversationsRoute } from './list-conversations.route.adapter.js';
-import { createListConversationsHandler } from './list-conversations.handler.js';
 import { conversationPageSchema, invalidPaginationProblemSchema } from './list-conversations.schemas.js';
 import { methodNotAllowedProblemSchema } from '../problem-details.js';
-import type { ListConversations } from '../../../../application/list-conversations.use-case.js';
+import type { ListConversations } from '../../../../application/list-conversations/list-conversations.use-case.js';
 import { routeServer } from '../../../../../test/support/http-routes.js';
 
 const servers: FastifyInstance[] = [];
@@ -16,7 +15,7 @@ const isMethodNotAllowed = ajv.compile(methodNotAllowedProblemSchema);
 
 function fixture(listConversations: ListConversations, maxPageSize = 100) {
   const server = routeServer('/api/v1', scope => registerListConversationsRoute(scope,
-    createListConversationsHandler({ listConversations, maxPageSize })));
+    { listConversations, maxPageSize }));
   servers.push(server);
   return server;
 }

@@ -1,5 +1,5 @@
-import type { CurrentTime } from './turn-capabilities.port.js';
-import type { TurnRepository } from './turn-repository.port.js';
+import type { CurrentTime } from '../turn-capabilities.port.js';
+import type { TurnRepository } from '../turn-repository.port.js';
 
 /** Interrupts every turn still pending and returns how many interruptions were saved. */
 export type InterruptPendingTurns = () => Promise<number>;

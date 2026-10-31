@@ -1,9 +1,9 @@
-import { ProjectError } from '../domain/project-error.js';
-import { TurnId } from '../domain/identities.js';
-import type { Result } from '../domain/result.js';
-import type { Turn, TurnAction, TurnTransitionRejected } from '../domain/turn.js';
-import type { CurrentTime } from './turn-capabilities.port.js';
-import type { TurnRepository } from './turn-repository.port.js';
+import { ProjectError } from '../../domain/project-error.js';
+import { TurnId } from '../../domain/identities.js';
+import type { Result } from '../../domain/result.js';
+import type { Turn, TurnAction, TurnTransitionRejected } from '../../domain/turn/turn.js';
+import type { CurrentTime } from '../turn-capabilities.port.js';
+import type { TurnRepository } from '../turn-repository.port.js';
 
 export type CompleteTurnOutcome =
   | Readonly<{ kind: 'answer'; text: string; agent?: string; actions?: readonly TurnAction[] }>

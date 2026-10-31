@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ConversationId, TurnId } from './identities.js';
+import { ConversationId, TurnId } from '../identities.js';
 import { Turn, type SavedTurn } from './turn.js';
 
 const id = TurnId.create('ba57b21b-7d55-4c11-8136-9181bef673d1');

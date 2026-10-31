@@ -59,6 +59,22 @@ describe('memory MCP server', () => {
   });
 
   // Verification: Prova della ricerca nella memoria
+  it('keeps the order of the matches and selects their public fields only, never agent or actions', async () => {
+    const second = { ...match, turnId: '82d590bb-216d-407d-8034-55f1db4a3212', answer: 'breve' };
+    const withInternals = [match, second].map(item => ({ ...item, agent: 'home',
+      actions: [{ tool: 'calendar_read', input: {}, output: 'AGENT_ACTION_MARKER' }] })) as unknown as MemoryMatch[];
+    const { url } = await started(async () => withInternals);
+    const client = await connected(url);
+    const result = await client.callTool({ name: 'search_conversations', arguments: { query: 'visita' } });
+    const results = (result.structuredContent as { results: Array<Record<string, unknown>> }).results;
+    expect(results.map(item => item.turnId)).toEqual([match.turnId, second.turnId]);
+    for (const item of results) {
+      expect(Object.keys(item).sort()).toEqual(['acceptedAt', 'answer', 'conversationId', 'question', 'turnId']);
+    }
+    expect(JSON.stringify(result)).not.toMatch(/AGENT_ACTION_MARKER|calendar_read/);
+  });
+
+  // Verification: Prova della ricerca nella memoria
   it('refuses invalid arguments without searching, naming the argument', async () => {
     let searched = false;
     const { url } = await started(async () => { searched = true; return []; });
@@ -73,6 +89,7 @@ describe('memory MCP server', () => {
     expect(searched).toBe(false);
   });
 
+  // Verification: Prova della ricerca nella memoria
   it('reports a failed search with a fixed text and one log event without the words searched', async () => {
     const { url, errors } = await started(async () => { throw new Error('database down'); });
     const client = await connected(url);
@@ -88,10 +105,19 @@ describe('memory MCP server', () => {
     const { url } = await started(async () => []);
     const body = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' });
     const headers = { 'content-type': 'application/json', accept: 'application/json, text/event-stream' };
-    expect((await fetch(url, { method: 'POST', body, headers: { ...headers, origin: 'https://evil.example' } })).status)
-      .toBe(403);
-    expect((await fetch(url, { method: 'GET', headers: { accept: 'text/event-stream' } })).status).toBe(405);
-    expect((await fetch(url, { method: 'DELETE' })).status).toBe(405);
+    // The refusals do not depend on the body, which is never read.
+    for (const sent of [body, '{"jsonrpc":']) {
+      const refused = await fetch(url, { method: 'POST', body: sent, headers: { ...headers, origin: 'https://evil.example' } });
+      expect(refused.status).toBe(403);
+      expect(await refused.text()).toBe('');
+    }
+    for (const request of [{ method: 'GET', headers: { accept: 'text/event-stream' } }, { method: 'DELETE' } as RequestInit,
+      { method: 'DELETE', body: '{"jsonrpc":', headers: { 'content-type': 'application/json' } }] as RequestInit[]) {
+      const notAllowed = await fetch(url, request);
+      expect(notAllowed.status).toBe(405);
+      expect(notAllowed.headers.get('allow')).toBe('POST');
+      expect(await notAllowed.text()).toBe('');
+    }
   });
 
   it('writes instants with the offset of the time zone, also in UTC', () => {

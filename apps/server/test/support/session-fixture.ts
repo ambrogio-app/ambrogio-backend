@@ -70,7 +70,7 @@ export function echoReply(expectsReply = false) {
  */
 export function fakeSpeech() {
   const state = { transcriptions: 0, interruptedTranscriptions: 0, synthesisAborts: 0, synthesisGate: undefined as Promise<void> | undefined,
-    closed: false, receivedBytes: [] as number[] };
+    closed: false, receivedBytes: [] as number[], built: 0 };
   const components: SpeechComponents = {
     transcriber: {
       async transcribe(audio) {
@@ -106,7 +106,7 @@ export function fakeSpeech() {
     },
     async close() { state.closed = true; },
   };
-  const factory: SpeechComponentsFactory = () => components;
+  const factory: SpeechComponentsFactory = () => { state.built += 1; return components; };
   return { factory, state };
 }
 
@@ -130,7 +130,8 @@ export async function startSessionServer(options: Readonly<{
   options.reply ?? echoReply().reply,
   options.voice ? { sttModelDir: '/fake/transcription', voiceModelDir: '/fake/voice' }
     : undefined,
-  options.voice ? speech.factory : undefined,
+  // The factory is handed over also without voice, so a test can observe that it is never built.
+  speech.factory,
   { ...surfaceOptions(), sessionPingIntervalMs: options.pingIntervalMs ?? 30_000 });
   await built.server.listen({ host: '127.0.0.1', port: 0 });
   const { port } = built.server.server.address() as AddressInfo;

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { sql, type Kysely } from 'kysely';
 import { openTestArchive, type TestArchive } from '../../../../../../test/support/test-database.js';
-import { createListConversations } from '../../../application/list-conversations.use-case.js';
+import { createListConversations } from '../../../application/list-conversations/list-conversations.use-case.js';
 import { admitTurn, completeTurn, interruptPendingTurns } from '../../../../test/support/turn-archive.js';
 import { PostgresConversationListRead } from './postgres-conversation-list-read.adapter.js';
 import { PostgresTurnRepository } from './postgres-turn-repository.adapter.js';

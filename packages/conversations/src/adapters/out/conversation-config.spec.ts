@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readConversationConfig } from './conversation-config.js';
+import { postgresConnection, readConversationConfig } from './conversation-config.js';
 import type { RuntimeEnvironment } from './environment-variables.js';
 
 const archive = { AMBROGIO_DATABASE_URL: 'postgres://ambrogio:placeholder@127.0.0.1:5432/ambrogio' };
@@ -70,9 +70,13 @@ describe('conversation component configuration', () => {
 
   // Verification: Prova dell'archivio configurato all'avvio
   it('requires a PostgreSQL URL without parameters in every environment', () => {
-    for (const url of ['postgres://ambrogio:placeholder@database:5432/ambrogio', 'postgresql://ambrogio@localhost/ambrogio']) {
+    for (const url of ['postgres://ambrogio:placeholder@database:5432/ambrogio', 'postgresql://ambrogio:placeholder@localhost/ambrogio']) {
       expect(read({ AMBROGIO_DATABASE_URL: url }).databaseUrl).toBe(url);
     }
+    expect(postgresConnection('postgres://ambrogio:place%40holder@database:5433/ambrogio')).toEqual({
+      host: 'database', port: 5433, user: 'ambrogio', password: 'place@holder', database: 'ambrogio' });
+    expect(postgresConnection('postgresql://ambrogio:placeholder@[::1]/ambrogio')).toEqual({
+      host: '::1', port: 5432, user: 'ambrogio', password: 'placeholder', database: 'ambrogio' });
     for (const runtime of ['development', 'test', 'production'] as const) {
       expect(() => readConversationConfig({}, runtime)).toThrow('Missing environment variable AMBROGIO_DATABASE_URL');
       expect(() => readConversationConfig({ AMBROGIO_DATABASE_URL: '' }, runtime))
@@ -80,7 +84,11 @@ describe('conversation component configuration', () => {
     }
     for (const url of ['  ', '/data/conversations.sqlite', 'mysql://ambrogio:placeholder@database/ambrogio',
       'postgres://ambrogio:placeholder@database:5432', 'postgres://ambrogio:placeholder@database:5432/',
-      'postgres://ambrogio:placeholder@database/ambrogio?sslmode=require', 'postgres://ambrogio:placeholder@database/a/b']) {
+      'postgres://ambrogio:placeholder@database/ambrogio?sslmode=require', 'postgres://ambrogio:placeholder@database/a/b',
+      'postgres://ambrogio@database/ambrogio', 'postgres://ambrogio:@database/ambrogio',
+      'postgres://:placeholder@database/ambrogio', 'postgres://database/ambrogio',
+      'postgres://ambrogio:placeholder@database/ambrogio#fragment', 'postgres://ambrogio:placeholder@database/ambrogio#',
+      'postgres://ambrogio:placeholder@database/ambrogio?', 'postgres://ambrogio:placeholder@/ambrogio']) {
       const message = failure({ AMBROGIO_DATABASE_URL: url });
       expect(message, url).toBe('Invalid environment variable AMBROGIO_DATABASE_URL: expected a PostgreSQL URL without parameters');
     }

@@ -1,5 +1,5 @@
-import type { Result } from '../domain/result.js';
-import type { ConversationHistoryRead, HistoryTurn } from './conversation-history-read.port.js';
+import type { Result } from '../../domain/result.js';
+import type { ConversationHistoryRead, HistoryTurn } from '../conversation-history-read.port.js';
 
 export type GetConversationInput = Readonly<{ conversationId: string }>;
 export type GetConversationRejection = Readonly<{ kind: 'conversation_not_found' }>;

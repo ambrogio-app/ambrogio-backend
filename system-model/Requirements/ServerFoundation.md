@@ -2,13 +2,12 @@
 
 ### Ambiente di esecuzione dichiarato del backend
 
-Il processo del backend deve leggere l'ambiente di esecuzione da `AMBROGIO_ENV` prima di ogni altra configurazione, rifiutare l'avvio se la variabile manca o non è valida, e applicare i valori predefiniti di sviluppo del componente HTTP soltanto nell'ambiente `development`, richiedendone il valore esplicito in `test` e `production`.
+Il processo del backend deve leggere l'ambiente di esecuzione da `AMBROGIO_ENV` prima di ogni altra configurazione e rifiutare l'avvio se la variabile manca o non è valida.
 
 #### Metadata
   * type: requirement
 
 #### Contract References
-  * [Profilo dell'ascolto HTTP](../Contracts/ServerFoundation.md#profilo-dellascolto-http)
   * [Profilo dell'ambiente di esecuzione e del file d'ambiente locale](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#profilo-dellambiente-di-esecuzione-e-del-file-dambiente-locale)
 
 #### Relations
@@ -33,6 +32,7 @@ Origine: baseline Reqvire «New work refused on shutdown», adottata.
   * [Politica di interruzione nell'arresto ordinato](../Contracts/ServerFoundation.md#politica-di-interruzione-nellarresto-ordinato)
 
 #### Relations
+  * derivedFrom: [Arresto unico, ordinato e limitato nel tempo](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#arresto-unico-ordinato-e-limitato-nel-tempo)
   * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
@@ -40,12 +40,13 @@ Origine: baseline Reqvire «New work refused on shutdown», adottata.
 
 ### Arresto unico e ordinato del server
 
-Quando riceve `SIGINT` o `SIGTERM`, il server deve avviare un solo arresto, smettere di accettare turni, interrompere quelli in corso, chiudere le sessioni conversazionali e poi, ciascuna una sola volta e in ordine inverso di acquisizione, il listener HTTP, i componenti vocali, l'archivio e le connessioni MCP degli agenti, e deve concludere l'arresto entro il tempo massimo del contratto «Finestra di arresto del server».
+Quando riceve `SIGINT` o `SIGTERM`, il server deve avviare un solo arresto, fermare i turni secondo «Arresto controllato dei nuovi turni» e «Interruzione dei turni durante l'arresto», chiudere le sessioni conversazionali e poi, ciascuna una sola volta e in ordine inverso di acquisizione, il listener HTTP, i componenti vocali, l'archivio e le connessioni MCP degli agenti, e deve concludere l'arresto entro il tempo massimo del contratto «Finestra di arresto del server».
 
 #### Metadata
   * type: requirement
 
 #### Contract References
+  * [Stati persistenti dei turni conversazionali](../Contracts/FamilyConversation.md#stati-persistenti-dei-turni-conversazionali)
   * [Politica di interruzione nell'arresto ordinato](../Contracts/ServerFoundation.md#politica-di-interruzione-nellarresto-ordinato)
   * [Ciclo di vita dei processi di servizio con Node.js](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#ciclo-di-vita-dei-processi-di-servizio-con-nodejs)
 
@@ -55,6 +56,7 @@ Quando riceve `SIGINT` o `SIGTERM`, il server deve avviare un solo arresto, smet
   * satisfiedBy: [http-surface.ts](../../apps/server/src/composition/http-surface.ts)
   * satisfiedBy: [main.ts](../../apps/server/src/main.ts)
   * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * satisfiedBy: [lifecycle.ts](../../apps/server/src/runtime/lifecycle.ts)
   * satisfiedBy: [server-process.ts](../../apps/server/src/runtime/server-process.ts)
   * satisfiedBy: [compose.example.yaml](../../compose.example.yaml)
@@ -110,8 +112,8 @@ Quando un componente intermedio del server si limita a propagare un guasto inatt
 
 #### Relations
   * derivedFrom: [Diagnosi definitiva unica dei guasti inattesi](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#diagnosi-definitiva-unica-dei-guasti-inattesi)
-  * satisfiedBy: [get-conversation.use-case.ts](../../packages/conversations/src/application/get-conversation.use-case.ts)
-  * satisfiedBy: [list-conversations.use-case.ts](../../packages/conversations/src/application/list-conversations.use-case.ts)
+  * satisfiedBy: [get-conversation.use-case.ts](../../packages/conversations/src/application/get-conversation/get-conversation.use-case.ts)
+  * satisfiedBy: [list-conversations.use-case.ts](../../packages/conversations/src/application/list-conversations/list-conversations.use-case.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -159,6 +161,7 @@ Quando la CI del backend viene eseguita, il job `Backend checks` di `.github/wor
   * derivedFrom: [Audit delle vulnerabilità delle dipendenze](../../../ambrogio-model/system-model/Requirements/ModelDrivenDevelopment.md#audit-delle-vulnerabilità-delle-dipendenze)
   * satisfiedBy: [ci.yml](../../.github/workflows/ci.yml)
   * satisfiedBy: [pnpm-workspace.yaml](../../pnpm-workspace.yaml)
+  * specify: [Sviluppo governato dal modello](../../../ambrogio-model/system-model/Capabilities/Engineering.md#sviluppo-governato-dal-modello)
 ---
 
 ### Blocco locale dei commit con segreti
@@ -230,6 +233,7 @@ Origine: baseline Reqvire «Interrupted state persisted before closing resources
   * [Politica di interruzione nell'arresto ordinato](../Contracts/ServerFoundation.md#politica-di-interruzione-nellarresto-ordinato)
 
 #### Relations
+  * derivedFrom: [Arresto unico, ordinato e limitato nel tempo](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#arresto-unico-ordinato-e-limitato-nel-tempo)
   * satisfiedBy: [main.ts](../../apps/server/src/main.ts)
   * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
@@ -251,6 +255,7 @@ I comandi del punto 5 del contratto sono, in quest'ordine, `pnpm build`, `pnpm d
 #### Relations
   * derivedFrom: [Comando di verifica completo](../../../ambrogio-model/system-model/Requirements/ModelDrivenDevelopment.md#comando-di-verifica-completo)
   * satisfiedBy: [package.json](../../package.json)
+  * specify: [Sviluppo governato dal modello](../../../ambrogio-model/system-model/Capabilities/Engineering.md#sviluppo-governato-dal-modello)
 ---
 
 ### Compilazione TypeScript strict del server
@@ -264,6 +269,8 @@ Origine: baseline Reqvire «Strict TypeScript compilation», adottata.
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [tsconfig.build.json](../../packages/conversations/tsconfig.build.json)
+  * satisfiedBy: [tsconfig.json](../../tsconfig.json)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -281,6 +288,7 @@ Origine: baseline Reqvire «Explicit HTTP listener configuration», adottata.
   * [Profilo dell'ambiente di esecuzione e del file d'ambiente locale](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#profilo-dellambiente-di-esecuzione-e-del-file-dambiente-locale)
 
 #### Relations
+  * derivedFrom: [Modulo di configurazione per componente dalle variabili d'ambiente](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#modulo-di-configurazione-per-componente-dalle-variabili-dambiente)
   * satisfiedBy: [http-config.ts](../../apps/server/src/runtime/http-config.ts)
   * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
@@ -346,6 +354,7 @@ Quando si crea un commit in un clone del backend con gli hook versionati attivi,
 #### Relations
   * derivedFrom: [Controlli del modello prima del commit](../../../ambrogio-model/system-model/Requirements/ModelDrivenDevelopment.md#controlli-del-modello-prima-del-commit)
   * satisfiedBy: [pre-commit](../../.githooks/pre-commit)
+  * specify: [Sviluppo governato dal modello](../../../ambrogio-model/system-model/Capabilities/Engineering.md#sviluppo-governato-dal-modello)
 ---
 
 ### Controlli obbligatori prima del merge del backend
@@ -376,7 +385,7 @@ Quando l'MVP è installato senza autenticazione applicativa, il deployment deve 
 
 ### Costruzione del server separata dall'ascolto
 
-La costruzione del server conversazionale deve preparare configurazione, agenti, archivio, componenti vocali e server HTTP e restituire il server, l'indirizzo di ascolto validato e la funzione di chiusura senza mettersi in ascolto, e l'entrypoint del processo deve aprire l'ascolto, avviare poi le connessioni dei connettori MCP degli agenti senza attenderle e decidere l'esito del processo; l'ingresso di prova pubblico deve seguire la stessa separazione.
+La costruzione del server conversazionale deve preparare configurazione, agenti, archivio, componenti vocali e server HTTP e restituire il server, l'indirizzo di ascolto validato e la funzione di chiusura senza mettersi in ascolto, e l'entrypoint del processo deve aprire l'ascolto e decidere l'esito del processo; l'ingresso di prova pubblico deve seguire la stessa separazione.
 
 #### Metadata
   * type: requirement
@@ -395,7 +404,7 @@ La costruzione del server conversazionale deve preparare configurazione, agenti,
 
 ### Credenziali API dalle variabili d'ambiente
 
-Quando un componente del backend usa credenziali per un'API esterna, deve riceverle dalle variabili d'ambiente del processo tramite il proprio modulo di configurazione, e nessun file di configurazione del backend deve contenere una credenziale.
+Quando un componente del backend usa credenziali per un'API esterna, deve riceverle dalle variabili d'ambiente del processo tramite il proprio modulo di configurazione.
 
 #### Details
 Le credenziali degli agenti sono indicate nei file degli agenti con il nome della variabile d'ambiente che le contiene.
@@ -416,19 +425,23 @@ Origine: baseline Reqvire «Configuration module per component reading environme
 
 ### Database di prova isolati del backend
 
-Le prove del backend che usano PostgreSQL devono usare soltanto database che creano sul server indicato da `AMBROGIO_TEST_DATABASE_URL`, con un nome che li riconosce come database di prova, costruiti con le migrazioni di produzione; devono cancellare soltanto i database che hanno creato, non devono leggere la configurazione dell'installazione né ripiegare su un database di sviluppo o di produzione, e devono fallire, senza essere saltate, se la variabile manca o il server non risponde.
+Le prove del backend che usano PostgreSQL, oltre a seguire «Comando di verifica completo con pnpm», devono creare ciascuna i propri database, con un nome che inizia per `ambrogio_test_` e costruiti con le migrazioni di produzione, e non devono leggere la configurazione dell'installazione.
 
 #### Details
-Origine: baseline Reqvire «Isolated and guarded test databases», adattata: ogni prova crea il proprio database invece di un database per worker, così non serve azzerare i dati fra i casi; il bersaglio è riconosciuto dal prefisso `ambrogio_test_` dei database creati, senza limitare i privilegi del ruolo, perché il server di prova contiene soltanto database delle prove; la variabile è `AMBROGIO_TEST_DATABASE_URL` e l'ambiente di esecuzione non è richiesto.
+Origine: baseline Reqvire «Isolated and guarded test databases», adattata: ogni prova crea il proprio database invece di un database per worker, così non serve azzerare i dati fra i casi; il bersaglio è riconosciuto dal prefisso dei database creati, senza limitare i privilegi del ruolo, perché il server di prova contiene soltanto database delle prove; l'ambiente di esecuzione non è richiesto; il modulo dei database di prova resta nel backend, senza il package di strumenti `vitest-config`, perché il backend ha un unico `vitest.config.ts` nella radice.
 
 #### Metadata
   * type: requirement
 
+#### Contract References
+  * [Comando di verifica completo con pnpm](../../../ambrogio-model/system-model/Contracts/ModelDrivenDevelopment.md#comando-di-verifica-completo-con-pnpm)
+
 #### Relations
+  * derivedFrom: [Comando di verifica completo](../../../ambrogio-model/system-model/Requirements/ModelDrivenDevelopment.md#comando-di-verifica-completo)
   * satisfiedBy: [postgres-turn-repository.adapter.integration.spec.ts](../../packages/conversations/src/adapters/out/postgres/postgres-turn-repository.adapter.integration.spec.ts)
   * satisfiedBy: [temporary-database.ts](../../packages/conversations/src/adapters/out/postgres/temporary-database.ts)
   * satisfiedBy: [test-database.ts](../../test/support/test-database.ts)
-  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
+  * specify: [Sviluppo governato dal modello](../../../ambrogio-model/system-model/Capabilities/Engineering.md#sviluppo-governato-dal-modello)
 ---
 
 ### Definizione locale del tipo Result
@@ -457,6 +470,7 @@ Origine: baseline Reqvire «Diagnostics of unexpected failures in technical comp
   * type: requirement
 
 #### Relations
+  * derivedFrom: [Diagnosi definitiva unica dei guasti inattesi](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#diagnosi-definitiva-unica-dei-guasti-inattesi)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -464,8 +478,16 @@ Origine: baseline Reqvire «Diagnostics of unexpected failures in technical comp
 
 Se la preparazione del processo server o l'apertura dell'ascolto HTTP falliscono, il processo deve emettere un unico log diagnostico definitivo `server_startup_failed` che identifichi la causa del mancato avvio senza riprodurre valori segreti, comunicare il mancato avvio su stderr e terminare con un codice di uscita non riuscito, secondo il contratto «Evento diagnostico del mancato avvio del server».
 
+#### Details
+La riga JSON con `err` permette a chi installa Ambrogio di capire quale configurazione o risorsa impedisca l'avvio, che la sola riga su `stderr` non indica.
+
 #### Metadata
   * type: requirement
+
+#### Contract References
+  * [Connessione asincrona dei connettori MCP](../Contracts/FamilyConversation.md#connessione-asincrona-dei-connettori-mcp)
+  * [Profilo controllato di serializzazione di err](../../../ambrogio-model/system-model/Contracts/CodeArchitecture.md#profilo-controllato-di-serializzazione-di-err)
+  * [Ciclo di vita dei processi di servizio con Node.js](../../../ambrogio-model/system-model/Contracts/HomelabInstallation.md#ciclo-di-vita-dei-processi-di-servizio-con-nodejs)
 
 #### Relations
   * derivedFrom: [Diagnostica del mancato avvio](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#diagnostica-del-mancato-avvio)
@@ -571,6 +593,10 @@ Quando il processo ha validato la configurazione dei componenti attivi, la compo
 
 #### Relations
   * derivedFrom: [Validazione della configurazione prima delle risorse](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#validazione-della-configurazione-prima-delle-risorse)
+  * satisfiedBy: [agents.ts](../../apps/server/src/composition/agents.ts)
+  * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
+  * satisfiedBy: [http-surface.ts](../../apps/server/src/composition/http-surface.ts)
+  * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
 ---
 
@@ -589,6 +615,24 @@ Origine: baseline Reqvire «Exceptions built as Error objects», adottata.
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
+### Endpoint di liveness del backend
+
+Il server HTTP del backend deve offrire un endpoint di liveness pubblico che risponde con successo quando l'avvio è completato e il server accetta richieste, e risponde non disponibile dal momento in cui inizia l'arresto ordinato, senza interrogare risorse esterne e senza rivelare informazioni sul sistema.
+
+#### Details
+Docker e chi orchestra i container smettono di instradare richieste verso un servizio in arresto e riavviano un processo che non risponde più. Le risorse esterne sono controllate dall'avvio ordinato: un controllo di liveness che le interrogasse riavvierebbe un processo sano quando una dipendenza non è disponibile. L'endpoint è pubblico come ogni rotta del backend, che non ha autenticazione applicativa.
+
+Origine: baseline Reqvire «Liveness endpoint», adattata: l'endpoint non è un'eccezione di una superficie HTTP protetta, perché «Protected HTTP surface by default» non è adottata.
+
+#### Metadata
+  * type: requirement
+
+#### Relations
+  * satisfiedBy: [Dockerfile](../../Dockerfile)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
+  * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
+---
+
 ### Esclusione dalla cache delle risposte conversazionali HTTP
 
 Quando l'API HTTP risponde con dati di una conversazione, inclusi storico, elenco e flussi di aggiornamento, deve includere l'header `Cache-Control: no-store`.
@@ -600,6 +644,10 @@ Origine: baseline Reqvire «No caching of sensitive HTTP responses», adottata.
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
+  * satisfiedBy: [get-conversation.route.adapter.ts](../../packages/conversations/src/adapters/in/http/get-conversation/get-conversation.route.adapter.ts)
+  * satisfiedBy: [list-conversations.route.adapter.ts](../../packages/conversations/src/adapters/in/http/list-conversations/list-conversations.route.adapter.ts)
+  * satisfiedBy: [problem-details.ts](../../packages/conversations/src/adapters/in/http/problem-details.ts)
   * specify: [Conversazione familiare](../../../ambrogio-model/system-model/Capabilities/Product.md#conversazione-familiare)
 ---
 
@@ -644,6 +692,8 @@ Quando il runtime HTTP del server emette eventi diagnostici, il logger e le loro
 
 #### Relations
   * derivedFrom: [Log tecnici JSON con Pino](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#log-tecnici-json-con-pino)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
+  * satisfiedBy: [logger.ts](../../apps/server/src/runtime/logger.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -805,8 +855,8 @@ Quando un caso d'uso Application del server riceve da una porta un rifiuto previ
 
 #### Relations
   * derivedFrom: [Gestione esplicita dei rifiuti previsti](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#gestione-esplicita-dei-rifiuti-previsti)
-  * satisfiedBy: [begin-turn.use-case.ts](../../packages/conversations/src/application/begin-turn.use-case.ts)
-  * satisfiedBy: [complete-turn.use-case.ts](../../packages/conversations/src/application/complete-turn.use-case.ts)
+  * satisfiedBy: [begin-turn.use-case.ts](../../packages/conversations/src/application/begin-turn/begin-turn.use-case.ts)
+  * satisfiedBy: [complete-turn.use-case.ts](../../packages/conversations/src/application/complete-turn/complete-turn.use-case.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -905,9 +955,10 @@ Origine: baseline Reqvire «Public test entry point for client integration tests
   * type: requirement
 
 #### Relations
+  * derivedFrom: [Compatibilità fra release per versione d'interfaccia](../../../ambrogio-model/system-model/Requirements/ModelDrivenDevelopment.md#compatibilità-fra-release-per-versione-dinterfaccia)
   * satisfiedBy: [test-server.ts](../../apps/server/src/runtime/test-server.ts)
   * satisfiedBy: [temporary-database.ts](../../packages/conversations/src/adapters/out/postgres/temporary-database.ts)
-  * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
+  * specify: [Sviluppo governato dal modello](../../../ambrogio-model/system-model/Capabilities/Engineering.md#sviluppo-governato-dal-modello)
 ---
 
 ### Inoltro dei log affidato al deployment
@@ -938,6 +989,7 @@ Il backend deve dichiarare in `package.json` `"packageManager": "pnpm@12.11.2"` 
   * satisfiedBy: [Dockerfile](../../Dockerfile)
   * satisfiedBy: [package.json](../../package.json)
   * satisfiedBy: [pnpm-workspace.yaml](../../pnpm-workspace.yaml)
+  * specify: [Sviluppo governato dal modello](../../../ambrogio-model/system-model/Capabilities/Engineering.md#sviluppo-governato-dal-modello)
 ---
 
 ### Interruzione dei turni durante l'arresto
@@ -950,10 +1002,14 @@ Origine: baseline Reqvire «Interruption of active operations on shutdown», ado
 #### Metadata
   * type: requirement
 
+#### Contract References
+  * [Stati persistenti dei turni conversazionali](../Contracts/FamilyConversation.md#stati-persistenti-dei-turni-conversazionali)
+
 #### Relations
+  * derivedFrom: [Arresto unico, ordinato e limitato nel tempo](../../../ambrogio-model/system-model/Requirements/HomelabInstallation.md#arresto-unico-ordinato-e-limitato-nel-tempo)
   * satisfiedBy: [main.ts](../../apps/server/src/main.ts)
   * satisfiedBy: [conversation-server.ts](../../apps/server/src/runtime/conversation-server.ts)
-  * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
+  * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn/exchange-turn.use-case.ts)
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
 ---
 
@@ -1001,6 +1057,7 @@ Origine: baseline Reqvire «HTTP request body size limit», adottata.
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * specify: [Installazione nell'homelab](../../../ambrogio-model/system-model/Capabilities/Engineering.md#installazione-nellhomelab)
 ---
 
@@ -1015,6 +1072,8 @@ Origine: baseline Reqvire «Error log at the public fallback», adottata.
   * type: requirement
 
 #### Relations
+  * derivedFrom: [Diagnosi definitiva unica dei guasti inattesi](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#diagnosi-definitiva-unica-dei-guasti-inattesi)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -1033,14 +1092,14 @@ Il livello minimo è `info` perché gli eventi informativi, come i tempi dei tur
 
 #### Relations
   * derivedFrom: [Interfaccia minima del logger con un solo logger di base](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#interfaccia-minima-del-logger-con-un-solo-logger-di-base)
-  * satisfiedBy: [session-route.adapter.ts](../../apps/server/src/adapters/in/session-route.adapter.ts)
+  * satisfiedBy: [session-route.ts](../../apps/server/src/adapters/in/session-route.ts)
   * satisfiedBy: [conversations.ts](../../apps/server/src/composition/conversations.ts)
   * satisfiedBy: [main.ts](../../apps/server/src/main.ts)
   * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
   * satisfiedBy: [logger.ts](../../apps/server/src/runtime/logger.ts)
   * satisfiedBy: [test-server.ts](../../apps/server/src/runtime/test-server.ts)
+  * satisfiedBy: [diagnostic-log.port.ts](../../packages/conversations/src/adapters/in/diagnostic-log.port.ts)
   * satisfiedBy: [conversation-routes.ts](../../packages/conversations/src/adapters/in/http/conversation-routes.ts)
-  * satisfiedBy: [logger.ts](../../packages/conversations/src/adapters/in/logger.ts)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
@@ -1113,6 +1172,8 @@ Quando il logger del server HTTP emette un evento diagnostico, la riga JSON deve
 
 #### Relations
   * derivedFrom: [Log tecnici JSON con Pino](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#log-tecnici-json-con-pino)
+  * satisfiedBy: [http-server.ts](../../apps/server/src/runtime/http-server.ts)
+  * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -1131,11 +1192,11 @@ Esempi nel backend: il caso d'uso che scambia un turno si chiama `exchange-turn.
 
 #### Relations
   * derivedFrom: [Nomi dei file secondo il ruolo architetturale](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#nomi-dei-file-secondo-il-ruolo-architetturale)
-  * satisfiedBy: [session-route.adapter.ts](../../apps/server/src/adapters/in/session-route.adapter.ts)
+  * satisfiedBy: [session-route.ts](../../apps/server/src/adapters/in/session-route.ts)
   * satisfiedBy: [conversation-session.adapter.ts](../../packages/conversations/src/adapters/in/session/conversation-session.adapter.ts)
   * satisfiedBy: [ai-sdk-reply.adapter.ts](../../packages/conversations/src/adapters/out/ai-sdk-reply.adapter.ts)
   * satisfiedBy: [conversation-history-read.port.ts](../../packages/conversations/src/application/conversation-history-read.port.ts)
-  * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
+  * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn/exchange-turn.use-case.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -1225,6 +1286,8 @@ Origine: baseline Reqvire «ESM build for Node.js», adottata.
   * type: requirement
 
 #### Relations
+  * satisfiedBy: [package.json](../../apps/server/package.json)
+  * satisfiedBy: [tsconfig.build.json](../../apps/server/tsconfig.build.json)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -1240,8 +1303,8 @@ Origine: baseline Reqvire «Projection of blocking port rejections», adottata.
 
 #### Relations
   * derivedFrom: [Gestione esplicita dei rifiuti previsti](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#gestione-esplicita-dei-rifiuti-previsti)
-  * satisfiedBy: [begin-turn.use-case.ts](../../packages/conversations/src/application/begin-turn.use-case.ts)
-  * satisfiedBy: [complete-turn.use-case.ts](../../packages/conversations/src/application/complete-turn.use-case.ts)
+  * satisfiedBy: [begin-turn.use-case.ts](../../packages/conversations/src/application/begin-turn/begin-turn.use-case.ts)
+  * satisfiedBy: [complete-turn.use-case.ts](../../packages/conversations/src/application/complete-turn/complete-turn.use-case.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -1254,8 +1317,8 @@ Quando un guasto tecnico inatteso o un bug si verifica nel server, il componente
 
 #### Relations
   * derivedFrom: [Guasti inattesi propagati come eccezioni](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#guasti-inattesi-propagati-come-eccezioni)
-  * satisfiedBy: [get-conversation.use-case.ts](../../packages/conversations/src/application/get-conversation.use-case.ts)
-  * satisfiedBy: [list-conversations.use-case.ts](../../packages/conversations/src/application/list-conversations.use-case.ts)
+  * satisfiedBy: [get-conversation.use-case.ts](../../packages/conversations/src/application/get-conversation/get-conversation.use-case.ts)
+  * satisfiedBy: [list-conversations.use-case.ts](../../packages/conversations/src/application/list-conversations/list-conversations.use-case.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -1349,21 +1412,16 @@ Quando un'operazione Domain, un caso d'uso Application o una porta Application d
 #### Relations
   * derivedFrom: [Esiti previsti come valori tipizzati](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#esiti-previsti-come-valori-tipizzati)
   * satisfiedBy: [postgres-turn-repository.adapter.ts](../../packages/conversations/src/adapters/out/postgres/postgres-turn-repository.adapter.ts)
-  * satisfiedBy: [begin-turn.use-case.ts](../../packages/conversations/src/application/begin-turn.use-case.ts)
-  * satisfiedBy: [complete-turn.use-case.ts](../../packages/conversations/src/application/complete-turn.use-case.ts)
-  * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn.use-case.ts)
-  * satisfiedBy: [turn.ts](../../packages/conversations/src/domain/turn.ts)
+  * satisfiedBy: [begin-turn.use-case.ts](../../packages/conversations/src/application/begin-turn/begin-turn.use-case.ts)
+  * satisfiedBy: [complete-turn.use-case.ts](../../packages/conversations/src/application/complete-turn/complete-turn.use-case.ts)
+  * satisfiedBy: [exchange-turn.use-case.ts](../../packages/conversations/src/application/exchange-turn/exchange-turn.use-case.ts)
+  * satisfiedBy: [turn.ts](../../packages/conversations/src/domain/turn/turn.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
 ### Scansione dei segreti nella CI del backend
 
-Prima della pubblicazione di un'immagine di release del backend, la pipeline di pubblicazione deve eseguire la scansione dei segreti sull'intera storia del repository e deve impedire la pubblicazione se la scansione rileva un segreto o non si completa.
-
-#### Details
-Alternative: l'action `gitleaks/gitleaks-action` (richiede una chiave di licenza per i repository di organizzazioni e aggiunge una dipendenza di terze parti al percorso di pubblicazione); il solo controllo in CI (il segreto entra nella storia locale ed è bloccato soltanto al push); il solo controllo locale (dipende dall'attivazione dell'hook in ogni clone e non protegge integrazione e pubblicazione).
-
-Motivo: il binario fissato con impronta verificata non dipende da licenze né da action di terze parti, e l'hook locale insieme alla scansione in CI blocca il segreto prima del commit e lo rileva comunque prima dell'integrazione e della pubblicazione.
+Quando viene eseguito un push su qualunque branch del backend o viene proposta una pull request, il workflow `.github/workflows/secret-scan.yml` deve scansionare l'intera storia del repository secondo «Profilo di scansione dei segreti del backend» e deve fallire se la scansione rileva un segreto o non si completa.
 
 #### Metadata
   * type: requirement
@@ -1373,7 +1431,6 @@ Motivo: il binario fissato con impronta verificata non dipende da licenze né da
 
 #### Relations
   * derivedFrom: [Scansione dei segreti nella CI](../../../ambrogio-model/system-model/Requirements/ModelDrivenDevelopment.md#scansione-dei-segreti-nella-ci)
-  * satisfiedBy: [publish-image.yml](../../.github/workflows/publish-image.yml)
   * satisfiedBy: [secret-scan.yml](../../.github/workflows/secret-scan.yml)
   * specify: [Sviluppo governato dal modello](../../../ambrogio-model/system-model/Capabilities/Engineering.md#sviluppo-governato-dal-modello)
 ---
@@ -1481,6 +1538,7 @@ Quando il server HTTP emette un evento diagnostico tecnico, deve usare Pino come
 
 #### Relations
   * derivedFrom: [Log tecnici JSON con Pino](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#log-tecnici-json-con-pino)
+  * satisfiedBy: [logger.ts](../../apps/server/src/runtime/logger.ts)
   * specify: [Architettura del codice](../../../ambrogio-model/system-model/Capabilities/Engineering.md#architettura-del-codice)
 ---
 
@@ -1544,6 +1602,7 @@ Quando la suite automatica del backend esegue le verifiche dei package business,
 
 #### Contract References
   * [Suite di test con Vitest](../../../ambrogio-model/system-model/Contracts/CodeArchitecture.md#suite-di-test-con-vitest)
+  * [Comando di verifica completo con pnpm](../../../ambrogio-model/system-model/Contracts/ModelDrivenDevelopment.md#comando-di-verifica-completo-con-pnpm)
 
 #### Relations
   * derivedFrom: [Suite di test con Vitest accanto al codice](../../../ambrogio-model/system-model/Requirements/CodeArchitecture.md#suite-di-test-con-vitest-accanto-al-codice)

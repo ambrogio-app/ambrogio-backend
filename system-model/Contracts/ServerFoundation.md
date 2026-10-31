@@ -1,24 +1,13 @@
 # Elements
 
-### Arresto immediato con richiesta remota non attesa
-
-Alla richiesta di arresto ordinato, il server impedisce subito nuove ammissioni e conserva come `interrotto` ogni turno ancora senza esito, prima di chiudere l'archivio. Non attende il completamento della produzione remota e non invia un annullamento esplicito al provider tramite la porta della risposta. Dopo la persistenza comunica `turn.interrupted` ai turni interrotti delle sessioni ancora aperte quando la consegna è possibile, chiude le sessioni conversazionali e le connessioni HTTP locali attive e termina il processo; una risposta remota successiva non viene acquisita né conservata. La chiusura della connessione locale non garantisce l'arresto dell'elaborazione presso il provider. Un turno già concluso prima dell'interruzione conserva il proprio esito.
-
-#### Metadata
-  * type: behavior
-
-#### Relations
-  * define: [Interruzione dei turni durante l'arresto](../Requirements/ServerFoundation.md#interruzione-dei-turni-durante-larresto)
----
-
 ### Catalogo bilingue dei modelli vocali nell'immagine backend
 
-L'immagine runtime include i modelli elencati, con archivio, origine, impronta SHA-256 e licenza, dalla fonte «Modelli vocali scaricati nell'immagine del backend», ciascuno nella directory che ha il nome dell'archivio senza estensione:
+Contenuto, versioni, impronte e licenze dei modelli inclusi sono quelli della fonte «Modelli vocali scaricati nell'immagine del backend». Nell'immagine runtime ogni archivio estratto occupa una directory con il nome dell'archivio senza estensione:
 
-- in `/opt/ambrogio/models` il modello in streaming Nemotron 3.5 ASR 0.6B multilingue per italiano e inglese, con i soli file int8 dell'encoder, del decoder e del joiner, il file dei token e il testo della licenza `LICENSE`;
-- in `/opt/ambrogio/voices` le voci Piper VITS convertite per sherpa-onnx, ciascuna con un solo modello `.onnx`, `tokens.txt`, `espeak-ng-data/` e la scheda `MODEL_CARD`, insieme a una nota di provenienza e licenza (`README.md`).
+- in `/opt/ambrogio/models` il modello di trascrizione, con i soli file che la fonte indica come conservati nell'immagine e il testo della licenza `LICENSE`;
+- in `/opt/ambrogio/voices` le voci Piper, ciascuna con un solo modello `.onnx`, `tokens.txt`, `espeak-ng-data/` e la scheda `MODEL_CARD`, insieme alla nota di provenienza e licenza `README.md`.
 
-La build scarica gli archivi della fonte, ne verifica l'impronta SHA-256 fissata in `scripts/fetch-speech-models.mjs` prima dell'estrazione e si interrompe se un'impronta differisce o se il contenuto estratto non ha la struttura attesa; dall'archivio Nemotron rimuove le registrazioni di prova e il `README.md`. I profili vocali indicano i modelli con percorsi espliciti e ammettono anche modelli esterni montati. Non è prevista la scelta della voce durante una conversazione.
+La build si interrompe se l'impronta di un archivio differisce da quella fissata in `scripts/fetch-speech-models.mjs` o se il contenuto estratto non ha questa struttura.
 
 #### Metadata
   * type: specification
@@ -38,22 +27,11 @@ Il confine tecnico usa il valore catturato come `err` senza crearne un altro qua
   * define: [Normalizzazione diagnostica nel confine definitivo](../Requirements/ServerFoundation.md#normalizzazione-diagnostica-nel-confine-definitivo)
 ---
 
-### Distribuzione dei modelli vocali
-
-Quando la voce è abilitata, la trascrizione e la sintesi vocale sono eseguite con `sherpa-onnx-node` nel processo backend del medesimo container Docker. La libreria e i suoi binari nativi appartengono all'immagine runtime, insieme ai modelli del catalogo definito da «Catalogo bilingue dei modelli vocali nell'immagine backend»; l'immagine non contiene un ambiente Python né il binario Piper. Il componente vocale riceve i percorsi dalla configurazione validata e ne verifica la disponibilità prima di attivare l'ingresso vocale; un modello necessario assente, illeggibile o non caricabile impedisce l'avvio. Quando la voce è disabilitata, i percorsi dei modelli non sono richiesti.
-
-#### Metadata
-  * type: specification
-
-#### Relations
-  * define: [Distribuzione del server come immagine Docker](../Requirements/ServerFoundation.md#distribuzione-del-server-come-immagine-docker)
----
-
 ### Evento diagnostico del mancato avvio del server
 
-Il runner del processo server è il confine definitivo dei guasti avvenuti prima che il server sia in ascolto: quando la costruzione del server o l'apertura dell'ascolto falliscono, emette con il logger di base una sola riga JSON su `stdout` con livello `error`, `event: "server_startup_failed"`, il messaggio fisso `Server startup failed` e il campo `err`, poi scrive su `stderr` la riga invariata `Unable to start HTTP server.` e restituisce il codice di uscita `1`. Il server non resta in ascolto e non emette altri log definitivi per lo stesso guasto. Motivazione: la sola riga su `stderr` non permette a chi installa Ambrogio di capire quale configurazione o risorsa impedisca l'avvio.
+Il runner del processo server è il confine definitivo dei guasti avvenuti prima che il server sia in ascolto: quando la costruzione del server o l'apertura dell'ascolto falliscono, emette con il logger di base una sola riga JSON su `stdout` con livello `error`, `event: "server_startup_failed"`, il messaggio fisso `Server startup failed` e il campo `err`, poi scrive su `stderr` la riga invariata `Unable to start HTTP server.` e restituisce il codice di uscita `1`. Il server non resta in ascolto e non emette altri log definitivi per lo stesso guasto.
 
-Il campo `err` segue il profilo controllato di serializzazione: un `ProjectError` espone tipo, messaggio e stack; ogni altro valore riceve la descrizione costante `Unexpected backend failure` con stack oscurato, senza copiarne messaggio o proprietà. La catena `cause` non è serializzata. Per rendere identificabile la causa, le fasi di avvio esposte a guasti esterni li incapsulano in un `ProjectError` con un messaggio fisso che nomina la fase e conserva l'originale come `cause`: `Conversation archive could not be prepared` per connessione, migrazione e recupero dell'archivio, `Voice components could not be loaded` per il caricamento di trascrizione e sintesi, `HTTP listener could not start` per l'ascolto e `Invalid agent options: <id>` per opzioni del modello non valide. Le connessioni ai server MCP degli agenti non sono una fase di avvio: seguono «Connessione asincrona dei connettori MCP». Un `ProjectError` già prodotto da una fase, come quelli della validazione della configurazione, resta invariato. Se anche la chiusura delle risorse già acquisite fallisce, `err` è un `LifecycleError` con il messaggio fisso `Server startup failed` e `faults` che elenca il guasto dell'avvio seguito dai guasti di chiusura. I messaggi ammettono il nome di una variabile d'ambiente, l'identificativo di un agente o il nome di un file di agente, ma mai valori letti dalle variabili d'ambiente o dai file, URL, credenziali, token o chiavi.
+Il campo `err` segue «Profilo controllato di serializzazione di err». Per rendere identificabile la causa, le fasi di avvio esposte a guasti esterni li incapsulano in un `ProjectError` con un messaggio fisso che nomina la fase e conserva l'originale come `cause`: `Conversation archive could not be prepared` per connessione, migrazione e recupero dell'archivio, `Voice components could not be loaded` per il caricamento di trascrizione e sintesi, `HTTP listener could not start` per l'ascolto e `Invalid agent options: <id>` per opzioni del modello non valide. Le connessioni ai server MCP degli agenti non sono una fase di avvio: seguono «Connessione asincrona dei connettori MCP». Un `ProjectError` già prodotto da una fase, come quelli della validazione della configurazione, resta invariato. Se anche la chiusura delle risorse già acquisite fallisce, `err` è il `LifecycleError` del guasto dell'avvio seguito dai guasti di chiusura di «Ciclo di vita dei processi di servizio con Node.js», con il messaggio fisso `Server startup failed`. I messaggi seguono le regole dei messaggi degli errori del progetto di «Profilo controllato di serializzazione di err», e il nome di un file di agente vale come identificativo configurato.
 
 #### Metadata
   * type: input-output
@@ -64,7 +42,7 @@ Il campo `err` segue il profilo controllato di serializzazione: un `ProjectError
 
 ### Finestra di arresto del server
 
-Il tempo massimo dell'arresto del server è una costante di 10000 ms, non configurabile, che parte dal primo `SIGINT` o `SIGTERM`; i segnali successivi non la riavviano. L'arresto riuscito termina il processo con codice 0 senza righe di log. Se una chiusura fallisce, il server emette una sola riga JSON con livello `error`, `event: "server_shutdown_failed"`, il messaggio fisso `Server shutdown failed` ed `err`, e termina con codice 1. Se l'arresto non termina entro il tempo massimo, il server emette una sola riga JSON con livello `error`, `event: "server_shutdown_timeout"`, il messaggio fisso `Server shutdown timed out`, `timeoutMs: 10000` ed `err` con i guasti già osservati quando ve ne sono, e termina subito con codice 1 senza attendere le chiusure pendenti. Un turno ancora senza esito alla scadenza resta senza esito e il recupero al riavvio lo riconosce come interrotto.
+Il tempo massimo dell'arresto del server è una costante di 10000 ms, non configurabile, che parte dal primo `SIGINT` o `SIGTERM`; i segnali successivi non la riavviano. L'arresto riuscito termina il processo con codice 0 senza righe di log. Se una chiusura fallisce, il server emette una sola riga JSON con livello `error`, `event: "server_shutdown_failed"`, il messaggio fisso `Server shutdown failed` ed `err`, e termina con codice 1. Se l'arresto non termina entro il tempo massimo, il server emette una sola riga JSON con livello `error`, `event: "server_shutdown_timeout"`, il messaggio fisso `Server shutdown timed out`, `timeoutMs: 10000` ed `err` con i guasti già osservati quando ve ne sono, e termina subito con codice 1 senza attendere le chiusure pendenti. Un turno ancora senza esito alla scadenza resta senza esito e segue «Stati persistenti dei turni conversazionali».
 
 I messaggi fissi dei guasti dell'arresto nominano la fase o la risorsa: `Turns could not be interrupted` per l'arresto dei turni e la chiusura delle sessioni, `HTTP server could not be closed`, `Voice components could not be closed`, `Conversation archive could not be closed` e `Agent MCP connection could not be closed: <id>`; più guasti di chiusura delle connessioni MCP sono raccolti in un `LifecycleError` con il messaggio `Agent MCP connections could not be closed`, più guasti dell'arresto in un `LifecycleError` con il messaggio `Server shutdown failed`.
 
@@ -92,7 +70,7 @@ La definizione TypeScript locale a un modulo business è `type Result<T, E> = Re
 
 L'ingresso di prova è il modulo `apps/server/dist/runtime/test-server.js` del backend compilato, distinto dall'avvio di produzione, che esporta la funzione asincrona `startTestServer(options)`. `options` contiene `databaseUrl`, l'URL di un server PostgreSQL di prova il cui ruolo ha il permesso di creare e cancellare database, di norma il valore di `AMBROGIO_TEST_DATABASE_URL` letto dalla prova; `language`, `it` oppure `en`; `reply`, il produttore di risposte deterministico al posto dell'orchestratore e degli agenti, con la forma della porta di produzione della risposta; facoltativi `speech`, la fabbrica di un trascrittore e di un sintetizzatore deterministici al posto della trascrizione e della sintesi vocale, `allowedOrigins`, le origini consentite del componente HTTP, e `sessionPingIntervalMs`. Senza `speech` la voce non è abilitata.
 
-L'ingresso avvia lo stesso server conversazionale dell'avvio di produzione, con il canale `ambrogio.v1`, le API HTTP pubbliche e gli stessi contratti di comportamento del turno, in ascolto su `127.0.0.1` con una porta libera, e restituisce `origin`, l'origine HTTP del server, `sessionUrl`, l'URL della sessione `ambrogio.v1`, e `close()`, che smette di accettare turni, interrompe quelli in corso, chiude le sessioni, il listener e l'archivio, cancella il database temporaneo, ed è idempotente. L'archivio è un database temporaneo che l'ingresso crea su quel server con un nome che inizia per `ambrogio_test_`, prepara con le migrazioni di produzione e cancella alla chiusura o se l'avvio fallisce; l'ingresso non usa né cancella altri database. Non legge le variabili d'ambiente del processo né i file degli agenti, non carica modelli vocali e non contatta servizi esterni. La configurazione del componente Conversazioni è letta dal suo modulo di configurazione da un ambiente costruito dall'ingresso, con l'ambiente di esecuzione `test`, l'URL del database temporaneo e la lingua indicata, così che gli altri valori siano i predefiniti del modulo. Un cambio incompatibile della forma dell'ingresso si fa nella stessa modifica delle prove dei client che lo usano, secondo «Compatibilità fra release per versione d'interfaccia», senza conservare la forma precedente.
+L'ingresso avvia lo stesso server conversazionale dell'avvio di produzione, con il canale `ambrogio.v1`, le API HTTP pubbliche e gli stessi contratti di comportamento del turno, in ascolto su `127.0.0.1` con una porta libera, e restituisce `origin`, l'origine HTTP del server, `sessionUrl`, l'URL della sessione `ambrogio.v1`, e `close()`, che smette di accettare turni, interrompe quelli in corso, chiude le sessioni, il listener e l'archivio, cancella il database temporaneo, ed è idempotente. L'archivio è un database temporaneo che l'ingresso crea su quel server con un nome che inizia per `ambrogio_test_`, prepara con le migrazioni di produzione e cancella alla chiusura o se l'avvio fallisce; l'ingresso non usa né cancella altri database. L'URL del database temporaneo conserva host, porta, utente e password dell'URL del server di prova e, quando questo non contiene una password, ne riceve una segnaposto fissa, ignorata dall'autenticazione `trust` del server di prova, così che abbia la forma che il modulo di configurazione richiede. Non legge le variabili d'ambiente del processo né i file degli agenti, non carica modelli vocali e non contatta servizi esterni. La configurazione del componente Conversazioni è letta dal suo modulo di configurazione da un ambiente costruito dall'ingresso, con l'ambiente di esecuzione `test`, l'URL del database temporaneo e la lingua indicata, così che gli altri valori siano i predefiniti del modulo. Un cambio incompatibile della forma dell'ingresso si fa nella stessa modifica delle prove dei client che lo usano, secondo «Compatibilità fra release per versione d'interfaccia», senza conservare la forma precedente.
 
 #### Metadata
   * type: specification
@@ -103,7 +81,7 @@ L'ingresso avvia lo stesso server conversazionale dell'avvio di produzione, con 
 
 ### Politica CORS del componente HTTP
 
-L'elenco delle origini autorizzate è un'impostazione esplicita del configurazione locale del componente HTTP; se è assente o vuoto, la politica non aggiunge header CORS di autorizzazione. Per una richiesta con `Origin`, la risposta ordinaria e l'eventuale risposta alla preflight autorizzano soltanto una corrispondenza esatta con un'origine dell'elenco. Non si usa `*` e non si riflette un'origine non autorizzata. CORS non sostituisce le restrizioni di rete e reverse proxy previste per l'accesso all'installazione.
+L'elenco delle origini autorizzate è la variabile `AMBROGIO_ALLOWED_ORIGINS` del modulo di configurazione del componente HTTP, un elenco di origini HTTP(S) esatte separate da virgole, ciascuna senza gli spazi iniziali e finali; una voce vuota è ignorata, e una voce diversa da un'origine esatta, come `*` o un URL con percorso, rende invalida la configurazione e impedisce l'avvio. Se la variabile è assente o vuota, la politica non aggiunge header CORS di autorizzazione. Il componente applica la politica con il plugin ufficiale `@fastify/cors`. Per una richiesta con `Origin`, la risposta ordinaria e l'eventuale risposta alla preflight autorizzano soltanto una corrispondenza esatta con un'origine dell'elenco. Non si usa `*` e non si riflette un'origine non autorizzata. CORS non sostituisce le restrizioni di rete e reverse proxy previste per l'accesso all'installazione.
 
 #### Metadata
   * type: specification
@@ -114,7 +92,7 @@ L'elenco delle origini autorizzate è un'impostazione esplicita del configurazio
 
 ### Politica HSTS dell'origine pubblica
 
-La configurazione validata del componente HTTP dichiara con `AMBROGIO_PUBLIC_HTTPS` se l'origine pubblica è esposta esclusivamente tramite HTTPS, anche quando la terminazione TLS avviene nel reverse proxy. Il componente non deduce questa condizione da `X-Forwarded-Proto` o dal protocollo della singola connessione interna. Se la condizione è falsa, disabilita l'HSTS predefinito di Helmet. Se è vera, abilita HSTS con la durata positiva dichiarata da `AMBROGIO_HSTS_MAX_AGE_SECONDS`; `includeSubDomains` e `preload` non sono attivati implicitamente, perché riguardano anche altri servizi del dominio. La configurazione del deployment coordina l'eventuale emissione dello stesso header da parte del reverse proxy.
+La configurazione validata del componente HTTP dichiara con `AMBROGIO_PUBLIC_HTTPS`, che vale `true` o `false`, se l'origine pubblica è esposta esclusivamente tramite HTTPS, anche quando la terminazione TLS avviene nel reverse proxy; la variabile è obbligatoria in `test` e `production` e vale `false` per impostazione predefinita in `development`. Il componente non deduce questa condizione da `X-Forwarded-Proto` o dal protocollo della singola connessione interna. Il componente configura `@fastify/helmet` secondo questa politica. Se la condizione è falsa, disabilita l'HSTS predefinito di Helmet. Se è vera, abilita HSTS con la durata dichiarata da `AMBROGIO_HSTS_MAX_AGE_SECONDS`, un intero positivo obbligatorio quando `AMBROGIO_PUBLIC_HTTPS` vale `true`; `includeSubDomains` e `preload` non sono attivati implicitamente, perché riguardano anche altri servizi del dominio. La configurazione del deployment coordina l'eventuale emissione dello stesso header da parte del reverse proxy.
 
 #### Metadata
   * type: specification
@@ -136,7 +114,7 @@ L'header `Cache-Control: no-store` accompagna le risposte HTTP che trasportano d
 
 ### Politica di interruzione nell'arresto ordinato
 
-Alla richiesta di arresto il server smette di accettare nuovi turni, richiede subito l'interruzione di quelli attivi e non attende che le loro risposte terminino. Per ogni turno accettato rimasto senza esito, conserva lo stato `interrotto` prima di chiudere l'archivio e le altre risorse necessarie a tale registrazione; un completamento tardivo non sostituisce tale stato con una risposta riuscita. Un esito già conservato prima dell'arresto resta concluso. Se il processo termina prima che lo stato `interrotto` sia conservato, il recupero al riavvio riconosce il turno senza esito come interrotto. Nessun turno viene accodato o ripetuto automaticamente.
+Alla richiesta di arresto ordinato il server smette subito di accettare nuovi turni e richiede l'interruzione di quelli attivi, senza attendere che la produzione remota delle loro risposte termini e senza inviare al provider un annullamento esplicito tramite la porta della risposta. Per ogni turno accettato rimasto senza esito conserva lo stato `interrotto` prima di chiudere l'archivio e le altre risorse necessarie a tale registrazione; un completamento tardivo o una risposta remota successiva non sono acquisiti né conservati e non sostituiscono tale stato. Un esito già conservato prima dell'arresto resta concluso. Dopo la persistenza il server comunica `turn.interrupted` ai turni interrotti delle sessioni ancora aperte quando la consegna è possibile, poi chiude le sessioni conversazionali e le connessioni HTTP locali attive. La chiusura della connessione locale non garantisce l'arresto dell'elaborazione presso il provider. Nessun turno viene accodato o ripetuto automaticamente; un turno rimasto senza esito perché il processo termina prima della persistenza segue «Stati persistenti dei turni conversazionali».
 
 #### Metadata
   * type: specification
@@ -147,7 +125,7 @@ Alla richiesta di arresto il server smette di accettare nuovi turni, richiede su
 
 ### Profilo del limite dei corpi HTTP
 
-Il componente HTTP configura un limite di dimensione positivo per i corpi ricevuti dalle rotte che ne accettano uno; un'eventuale eccezione per rotta dichiara un proprio limite esplicito. Il controllo riguarda la dimensione effettivamente ricevuta, anche quando il corpo arriva in più parti. Il rifiuto `413` è il problema `about:blank` con `title` `Content Too Large` del catalogo dei problemi di protocollo e non passa il corpo al caso d'uso. Le rotte HTTP attuali di elenco e storico non accettano un corpo; i valori di future rotte con corpo saranno fissati nei rispettivi contratti. I limiti dei turni sono definiti dal protocollo conversazionale e non da questo profilo.
+Il componente HTTP configura con `bodyLimit` un limite globale esplicito di 1 MiB (`1_048_576` byte) per i corpi ricevuti dalle rotte che ne accettano uno; una rotta il cui contratto richiede un altro limite lo dichiara nella propria registrazione ed è provata al limite e oltre. Il controllo riguarda la dimensione effettivamente ricevuta, anche quando il corpo arriva in più parti, e non si basa soltanto su `Content-Length`. Il rifiuto `413` è il problema `about:blank` con `title` `Content Too Large` del catalogo dei problemi di protocollo e non passa il corpo al caso d'uso. Le rotte che non prevedono un corpo non lo accettano: un corpo inviato a una di esse è ignorato, non raggiunge l'handler né il caso d'uso, e la risposta è quella della stessa richiesta senza corpo. Le rotte HTTP attuali di elenco e storico non prevedono un corpo. I limiti dei turni sono definiti dal protocollo conversazionale e non da questo profilo.
 
 #### Metadata
   * type: specification
@@ -160,9 +138,7 @@ Il componente HTTP configura un limite di dimensione positivo per i corpi ricevu
 
 Il modulo di configurazione del componente HTTP legge `AMBROGIO_HTTP_HOST`, stringa non vuota, e `AMBROGIO_HTTP_PORT`, intero decimale da 1 a 65535. In `test` e `production` entrambe sono obbligatorie e non hanno valori predefiniti; in `development`, quando mancano, valgono `127.0.0.1` e `3000`. Il listener usa esattamente i valori validati; un valore mancante o invalido impedisce l'avvio e nessun listener viene aperto.
 
-`AMBROGIO_PUBLIC_HTTPS` vale `true` o `false`; è obbligatoria in `test` e `production` e vale `false` per impostazione predefinita in `development`. `AMBROGIO_HSTS_MAX_AGE_SECONDS` è un intero positivo, obbligatorio quando `AMBROGIO_PUBLIC_HTTPS` vale `true`. `AMBROGIO_ALLOWED_ORIGINS` è un elenco di origini HTTP(S) esatte separate da virgole; quando manca, nessuna origine è autorizzata. Il componente applica la politica CORS già definita tramite il plugin ufficiale `@fastify/cors` e configura `@fastify/helmet` secondo la politica HSTS già definita. Una voce diversa da un'origine esatta, come `*` o un URL con percorso, rende invalida la configurazione; la corrispondenza dell'origine è esatta.
-
-Gli errori seguono il profilo comune: `Missing environment variable <NOME>` per una variabile richiesta assente e `Invalid environment variable <NOME>: <condizione>` per un valore invalido.
+Per ogni variabile del componente HTTP gli errori seguono il profilo comune: `Missing environment variable <NOME>` per una variabile richiesta assente e `Invalid environment variable <NOME>: <condizione>` per un valore invalido.
 
 #### Metadata
   * type: specification
@@ -171,9 +147,20 @@ Gli errori seguono il profilo comune: `Missing environment variable <NOME>` per 
   * define: [Configurazione esplicita dell'ascolto HTTP](../Requirements/ServerFoundation.md#configurazione-esplicita-dellascolto-http)
 ---
 
+### Profilo dell'endpoint di liveness
+
+L'endpoint di liveness è `GET /health`, fuori da `/api` e dall'API HTTP versionata. Risponde `200` con corpo vuoto mentre il server accetta richieste e `503` con corpo vuoto dal momento in cui inizia l'arresto ordinato, in entrambi i casi con `Cache-Control: no-store`. Non interroga il database, i modelli vocali, i server MCP né i provider dei modelli. L'immagine Docker del server dichiara un `HEALTHCHECK` che esegue con Node.js una richiesta `GET /health` a `127.0.0.1` sulla porta `AMBROGIO_HTTP_PORT` e ha esito positivo soltanto con la risposta `200`.
+
+#### Metadata
+  * type: specification
+
+#### Relations
+  * define: [Endpoint di liveness del backend](../Requirements/ServerFoundation.md#endpoint-di-liveness-del-backend)
+---
+
 ### Profilo dell'immagine Docker del server
 
-L'immagine del backend usa Debian con Node.js 24 ed è costruita in due fasi: una fase prepara dipendenze e artefatti compilati del workspace, l'altra contiene il runtime necessario per avviare il server. La configurazione effettiva dei componenti è fornita dal deployment come variabili d'ambiente e, per gli agenti, come file montati nella directory degli agenti; il database PostgreSQL dell'archivio è un servizio esterno all'immagine; il filesystem dell'immagine non contiene i loro valori effettivi. La build e l'avvio dell'immagine non richiedono Docker Compose. Il file `.dockerignore` esclude dal contesto di build `.git`, `node_modules` e `**/node_modules`, `dist` e `**/dist`, `system-model`, le cartelle `test` a ogni livello, i file `**/*.spec.ts`, i file di database `*.sqlite`, `*.sqlite-*`, `*.db`, `*.db-*` e i file d'ambiente `*.env` e `*.env.*`, senza voci che reincludono file.
+L'immagine del backend usa Debian con Node.js 24 ed è costruita in due fasi: una fase prepara dipendenze e artefatti compilati del workspace, l'altra contiene il runtime necessario per avviare il server. La configurazione effettiva dei componenti è fornita dal deployment come variabili d'ambiente e, per gli agenti, come file montati nella directory degli agenti; il database PostgreSQL dell'archivio è un servizio esterno all'immagine; il filesystem dell'immagine non contiene i loro valori effettivi. La libreria `sherpa-onnx-node` della trascrizione e della sintesi vocale e i suoi binari nativi appartengono all'immagine runtime, insieme ai modelli di «Catalogo bilingue dei modelli vocali nell'immagine backend»; l'immagine non contiene un ambiente Python né il binario Piper. La build e l'avvio dell'immagine non richiedono Docker Compose. Il file `.dockerignore` esclude dal contesto di build `.git`, `node_modules` e `**/node_modules`, `dist` e `**/dist`, `system-model`, le cartelle `test` a ogni livello, i file `**/*.spec.ts`, i file di database `*.sqlite`, `*.sqlite-*`, `*.db`, `*.db-*` e i file d'ambiente `*.env` e `*.env.*`, senza voci che reincludono file.
 
 #### Metadata
   * type: specification
@@ -246,7 +233,7 @@ Il backend pubblica l'immagine su GitHub Container Registry (`ghcr.io`) tramite 
 
 Il backend applica «Profilo di scansione dei segreti con gitleaks» con questi elementi propri.
 
-Nel workflow `.github/workflows/secret-scan.yml` la scansione è il job `gitleaks`, chiamato `Scan history for secrets`; versione e impronta di gitleaks sono dichiarate a livello di workflow nelle variabili `GITLEAKS_VERSION` e `GITLEAKS_SHA256`. Il workflow di pubblicazione `.github/workflows/publish-image.yml` richiama `secret-scan.yml` come job `secret-scan` e il job `publish` dipende dal suo esito, così che nessuna immagine venga pubblicata se la scansione fallisce.
+Nel workflow `.github/workflows/secret-scan.yml` la scansione è il job `gitleaks`, chiamato `Scan history for secrets`; versione e impronta di gitleaks sono dichiarate a livello di workflow nelle variabili `GITLEAKS_VERSION` e `GITLEAKS_SHA256`.
 
 Il job `checks` di `.github/workflows/ci.yml` dichiara le stesse variabili, installa lo stesso archivio di gitleaks con lo stesso passo di download e verifica dell'impronta del job `gitleaks` e aggiunge lo scanner al `PATH` prima della suite Vitest, che esercita l'hook `.githooks/pre-commit` in un repository Git temporaneo.
 
@@ -304,6 +291,9 @@ Le regole sono definite in `test/repository/architecture-rules.ts` e controllate
 | `technical-factory-imports` | un file delle factory tecniche del runtime, oggi `apps/server/src/runtime/http-server.ts`, che importa un package del workspace oppure un file dell'applicazione in `src/composition/` o `src/adapters/` | «Factory tecniche senza conoscenza business» |
 | `no-dependency-container` | un file di un'applicazione o di un package che importa un container di dependency injection: `awilix`, `inversify`, `tsyringe`, `typedi`, `injection-js` o `@nestjs/core` | «Composizione scritta a mano» |
 | `pino-only-in-logger` | un file di produzione di un'applicazione o di un package, diverso da `apps/server/src/runtime/logger.ts`, che importa `pino` | «Logger minimo del backend» |
+| `no-circular-imports` | un ciclo nel grafo degli import relativi fra i file TypeScript di sorgenti e test di `apps/*` e `packages/*`, compresi gli import di soli tipi e i cicli all'interno di uno stesso layer, package o cartella; la violazione riporta il nome della regola e il percorso del ciclo, dal file con il percorso minore fino al ritorno a esso | «Nessun ciclo di import nel backend» |
+
+Per `no-circular-imports` un import fra unità del workspace passa dagli `exports` pubblici di un package e `package-isolation` non lascia a un package alcun import verso un'applicazione o un altro package, quindi un ciclo fra unità non è possibile e la regola esamina gli import relativi.
 
 Per `package-isolation`, `application-public-exports` e `layer-test-imports` gli import della cartella `test/support/` della radice da parte dei test e dei moduli di supporto dei test di un'unità sono trattati come quelli della cartella `test/` dell'unità stessa; il codice di produzione non la importa.
 
@@ -355,7 +345,7 @@ Il codice sorgente del server è scritto in TypeScript. La build del server usa 
 
 Il backend applica «Suite di test con Vitest» con questi valori.
 
-Le unità con test sono `packages/conversations` e `apps/server`: i loro test risiedono in `src/` accanto ai file che verificano. Le cartelle `test/` dedicate sono:
+Le unità con test sono `packages/conversations` e `apps/server`. Le cartelle `test/` dedicate sono:
 
 - `test/support/` nella radice, con il modulo `test-database.ts` dei database PostgreSQL di prova, usato dai test delle due unità;
 - `packages/conversations/test/support/`, con le fixture dell'archivio dei turni, il processo figlio delle prove di concorrenza e lo scope Fastify con le opzioni Ajv del server usato dalle prove delle rotte HTTP;
@@ -364,9 +354,9 @@ Le unità con test sono `packages/conversations` e `apps/server`: i loro test ri
 - `apps/server/test/examples/`, con i test delle configurazioni d'esempio di `examples/`;
 - `test/repository/`, con i test dell'intero repository: regole di architettura e loro fixture negative, indipendenza tecnica di Domain e Application, tipo `Result`, dipendenze, contesto di build dell'immagine, database delle prove, workflow e hook pre-commit.
 
-La selezione `integration` contiene i test che usano un database PostgreSQL reale: i test degli adapter di `packages/conversations/src/adapters/out/postgres/` e le prove dell'applicazione server che attraversano l'archivio. Ogni file `*.integration.spec.ts` crea i propri database con `test/support/test-database.ts`, direttamente o tramite un modulo di supporto della propria unità; ogni test che apre una connessione a un database, anche attraverso un adapter di `postgres/` o la composizione dell'archivio, è un file `*.integration.spec.ts` o `*.e2e.spec.ts`, e la selezione `fast` non si connette a database. La selezione `integration` ha un tempo massimo di 20 secondi per ogni test e per ogni funzione di preparazione e chiusura, perché i suoi file creano e cancellano database sullo stesso server PostgreSQL di prova in parallelo. La selezione `e2e` contiene `apps/server/src/main.e2e.spec.ts`, che avvia con Node.js in un processo figlio il punto d'ingresso compilato `apps/server/dist/main.js` prodotto da `pnpm build` e fallisce se manca.
+La selezione `integration` comprende i test degli adapter di `packages/conversations/src/adapters/out/postgres/` e le prove dell'applicazione server che attraversano l'archivio, anche tramite la composizione dell'archivio. Ogni file `*.integration.spec.ts` crea i propri database con `test/support/test-database.ts`, direttamente o tramite un modulo di supporto della propria unità. La selezione `integration` ha un tempo massimo di 20 secondi per ogni test e per ogni funzione di preparazione e chiusura, perché i suoi file creano e cancellano database sullo stesso server PostgreSQL di prova in parallelo. La selezione `e2e` contiene `apps/server/src/main.e2e.spec.ts`, che avvia il punto d'ingresso compilato `apps/server/dist/main.js` prodotto da `pnpm build` e fallisce se manca.
 
-Gli script sono `test`, `vitest run --project fast`, `test:integration`, `vitest run --project integration`, e `test:e2e`, `vitest run --project e2e`. Le selezioni `integration` ed `e2e` richiedono `AMBROGIO_TEST_DATABASE_URL` secondo «Comando di verifica completo con pnpm» e falliscono se manca. Il `package.json` della radice dichiara `"type": "module"`; il `tsconfig.json` della radice, usato da `pnpm typecheck` con `tsc --noEmit`, comprende `packages/**/*.ts`, `apps/**/*.ts`, `test/**/*.ts` e `vitest.config.ts`, escluse le cartelle `dist/` e `node_modules/`. Poiché l'applicazione server e i suoi test importano i package del workspace dalla loro `dist/`, la build precede il controllo TypeScript nella CI e in `pnpm verify`. Il `tsconfig.build.json` di ciascuna unità esclude `src/**/*.spec.ts`, e `.dockerignore` esclude `**/*.spec.ts` e le cartelle `test/`.
+Il backend dichiara i tre script `test`, `test:integration` e `test:e2e`. Il `package.json` della radice dichiara `"type": "module"`; il `tsconfig.json` della radice, usato da `pnpm typecheck` con `tsc --noEmit`, comprende `packages/**/*.ts`, `apps/**/*.ts`, `test/**/*.ts` e `vitest.config.ts`, escluse le cartelle `dist/` e `node_modules/`. Il `tsconfig.build.json` di ciascuna unità esclude `src/**/*.spec.ts`.
 
 #### Metadata
   * type: specification
@@ -385,3 +375,4 @@ Una variante contiene solo `kind` oppure aggiunge campi propri, tipizzati, che a
 #### Relations
   * define: [Campi specifici dei rifiuti previsti](../Requirements/ServerFoundation.md#campi-specifici-dei-rifiuti-previsti)
 ---
+

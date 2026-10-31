@@ -23,12 +23,38 @@ export const conversationVariables = {
   historyTurns: { name: 'AMBROGIO_HISTORY_TURNS', default: { environments: 'all', value: '20' } },
 } as const satisfies Record<string, EnvironmentVariable>;
 
-/** A `postgres:` or `postgresql:` URL with a host and a database name, and no query parameters. */
-function isPostgresUrl(value: string): boolean {
+/** The parts of the archive URL that the driver receives one by one. */
+export type PostgresConnection = Readonly<{
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  database: string;
+}>;
+
+const defaultPostgresPort = 5432;
+
+function decoded(value: string): string | undefined {
+  try { return decodeURIComponent(value); } catch { return undefined; }
+}
+
+/**
+ * The connection named by a `postgres:` or `postgresql:` URL with host, user, password and database, and without
+ * query or fragment («Indirizzo del database nella configurazione Conversazioni»); undefined for any other value.
+ */
+export function postgresConnection(value: string): PostgresConnection | undefined {
+  // An empty query or fragment leaves no trace in the parsed URL: the raw separators are refused too.
+  if (value.includes('?') || value.includes('#')) return undefined;
   let url: URL;
-  try { url = new URL(value); } catch { return false; }
-  return (url.protocol === 'postgres:' || url.protocol === 'postgresql:') && url.hostname !== ''
-    && /^\/[^/]+$/.test(url.pathname) && url.search === '' && url.hash === '';
+  try { url = new URL(value); } catch { return undefined; }
+  if (url.protocol !== 'postgres:' && url.protocol !== 'postgresql:') return undefined;
+  const database = /^\/([^/]+)$/.exec(url.pathname)?.[1];
+  const host = url.hostname.replace(/^\[(.*)\]$/, '$1');
+  const user = decoded(url.username);
+  const password = decoded(url.password);
+  const name = database === undefined ? undefined : decoded(database);
+  if (!host || !user || !password || !name) return undefined;
+  return { host, port: url.port === '' ? defaultPostgresPort : Number(url.port), user, password, database: name };
 }
 
 function validTimeZone(name: string): boolean {
@@ -40,7 +66,7 @@ function validTimeZone(name: string): boolean {
 export function readConversationConfig(environment: NodeJS.ProcessEnv, runtime: RuntimeEnvironment): ConversationConfig {
   const variables = conversationVariables;
   const databaseUrl = requireVariable(environment, runtime, variables.databaseUrl);
-  if (!isPostgresUrl(databaseUrl)) {
+  if (!postgresConnection(databaseUrl)) {
     throw invalidVariable(variables.databaseUrl.name, 'expected a PostgreSQL URL without parameters');
   }
   const language = requireVariable(environment, runtime, variables.language);

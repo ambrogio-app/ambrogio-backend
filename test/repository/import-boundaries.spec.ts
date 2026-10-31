@@ -33,6 +33,7 @@ test('the analysis covers the sources and tests of every application and package
 // Verification: Prova dell'indipendenza tecnica di Domain e Application
 // Verification: Prova delle regole sulle factory tecniche e sulla composizione
 // Verification: Prova del logger minimo del backend
+// Verification: Prova dell'assenza di cicli di import nel backend
 test.each(rules.map((rule) => rule.name))('the workspace respects the rule %s', (name) => {
   const rule = rules.find((candidate) => candidate.name === name)!;
   expect(analyse(workspace, [rule]).map(describeViolation)).toEqual([]);
@@ -125,6 +126,21 @@ const negativeFixtures: ReadonlyArray<Readonly<{ rule: RuleName; title: string; 
       'packages/conversations/src/adapters/in/session/conversation-session.adapter.ts': "import type { Logger } from 'pino';\n",
     }, units),
   },
+  {
+    rule: 'no-circular-imports', title: 'a cycle between two adapters of the same layer',
+    graph: fixtureGraph({
+      'packages/conversations/src/adapters/out/a.adapter.ts': "import { b } from './b.adapter.js';\nexport const a = 1;\n",
+      'packages/conversations/src/adapters/out/b.adapter.ts': "import { a } from './a.adapter.js';\nexport const b = a;\n",
+    }, units),
+  },
+  {
+    rule: 'no-circular-imports', title: 'a cycle made of type-only imports through three files',
+    graph: fixtureGraph({
+      'packages/conversations/src/application/x.port.ts': "import type { Y } from './y.port.js';\nexport type X = { y?: Y };\n",
+      'packages/conversations/src/application/y.port.ts': "import type { Z } from './z.port.js';\nexport type Y = { z?: Z };\n",
+      'packages/conversations/src/application/z.port.ts': "export type { X as Z } from './x.port.js';\n",
+    }, units),
+  },
 ];
 
 describe('negative fixtures', () => {
@@ -138,6 +154,21 @@ describe('negative fixtures', () => {
       expect(violations.length).toBeGreaterThan(0);
       expect(new Set(violations.map((violation) => violation.rule))).toEqual(new Set([rule]));
     });
+});
+
+// Verification: Prova dell'assenza di cicli di import nel backend
+test('an import cycle is reported with the rule name and the path of the cycle', () => {
+  const sameLayer = negativeFixtures.find((fixture) => fixture.title.startsWith('a cycle between'))!;
+  const typeOnly = negativeFixtures.find((fixture) => fixture.title.startsWith('a cycle made'))!;
+  expect(analyse(sameLayer.graph).map(describeViolation)).toEqual([
+    '[no-circular-imports] packages/conversations/src/adapters/out/a.adapter.ts -> '
+      + 'packages/conversations/src/adapters/out/b.adapter.ts -> packages/conversations/src/adapters/out/a.adapter.ts',
+  ]);
+  expect(analyse(typeOnly.graph).map(describeViolation)).toEqual([
+    '[no-circular-imports] packages/conversations/src/application/x.port.ts -> '
+      + 'packages/conversations/src/application/y.port.ts -> packages/conversations/src/application/z.port.ts -> '
+      + 'packages/conversations/src/application/x.port.ts',
+  ]);
 });
 
 describe('exceptions', () => {

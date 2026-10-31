@@ -75,6 +75,18 @@ test('the Compose example grants the container a stop period longer than the shu
   expect(Number(period![1])).toBeGreaterThanOrEqual(15);
 });
 
+// Verification: Prova dell'endpoint di liveness
+test('the image declares a Node.js health check of the liveness endpoint on the configured port', () => {
+  const runtime = read('Dockerfile').split(/^FROM /m).at(-1)!;
+  const checks = runtime.split('\n').filter(line => line.startsWith('HEALTHCHECK'));
+  expect(checks).toHaveLength(1);
+  const command = JSON.parse(checks[0]!.replace(/^HEALTHCHECK\s+CMD\s+/, '')) as string[];
+  expect(command.slice(0, 2)).toEqual(['node', '-e']);
+  expect(command[2]).toContain("fetch('http://127.0.0.1:' + process.env.AMBROGIO_HTTP_PORT + '/health')");
+  expect(command[2]).toContain('response.status === 200 ? 0 : 1');
+  expect(command[2]).toContain('() => process.exit(1)');
+});
+
 test('only the development command loads the local environment file', () => {
   const scripts = JSON.parse(read('package.json')).scripts as Record<string, string>;
   expect(scripts.dev).toBe('node --env-file=.env apps/server/dist/main.js');

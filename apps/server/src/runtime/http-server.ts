@@ -15,12 +15,34 @@ export type HttpRouteRegistration = Readonly<{
   register: (scope: FastifyInstance) => void;
 }>;
 
+/**
+ * The shutdown state of one HTTP server: once begun, the liveness endpoint answers `503` and every response carries
+ * `Connection: close` («Profilo dell'endpoint di liveness», «Ciclo di vita dei processi di servizio con Node.js»).
+ */
+export type HttpShutdown = Readonly<{
+  begin(): void;
+  readonly started: boolean;
+}>;
+
+export function createHttpShutdown(): HttpShutdown {
+  let started = false;
+  return { begin() { started = true; }, get started() { return started; } };
+}
+
 export type HttpServerOptions = Readonly<{
   /** Base logger of the process; each failure is logged with a derived logger carrying the request identifier. */
   log: Logger;
   /** Registered in the order given, after the technical plugins. */
   routes: readonly HttpRouteRegistration[];
+  /** Begun by the owner of the server when its orderly shutdown starts. */
+  shutdown: HttpShutdown;
 }>;
+
+/** The explicit global limit of received bodies («Profilo del limite dei corpi HTTP»). */
+export const HTTP_BODY_LIMIT_BYTES = 1_048_576;
+
+/** The liveness endpoint, outside `/api` («Profilo dell'endpoint di liveness»). */
+export const healthRoute = '/health';
 
 /** Keep Fastify's schema validator from changing received request values. */
 export const httpAjvOptions = {
@@ -36,6 +58,7 @@ type ValidationProblem = Readonly<{ location: 'body' | 'query' | 'path' | 'heade
   code: 'unknown-field' | 'invalid-value'; detail: string }>;
 
 // The protocol problem catalog («Catalogo dei problemi di protocollo HTTP»).
+const badRequest: Problem = { type: 'about:blank', title: 'Bad Request', status: 400 };
 const notFound: Problem = { type: 'about:blank', title: 'Not Found', status: 404 };
 const contentTooLarge: Problem = { type: 'about:blank', title: 'Content Too Large', status: 413 };
 const unsupportedMediaType: Problem = { type: 'about:blank', title: 'Unsupported Media Type', status: 415 };
@@ -106,8 +129,23 @@ function normalizeError(value: unknown): Error {
  * nothing is logged automatically for requests and responses («Assenza dei log HTTP automatici»).
  */
 export async function createHttpServer(config: HttpConfig, options: HttpServerOptions): Promise<FastifyInstance> {
+  const unexpectedFailure = (error: unknown, requestId: string, reply: FastifyReply) => {
+    options.log.child({ correlationId: requestId })
+      .error({ event: 'http.unexpected_failure', err: normalizeError(error) }, 'HTTP request failed');
+    return sendProblem(reply, internalServerError);
+  };
   const server = Fastify({
     ajv: { customOptions: httpAjvOptions },
+    bodyLimit: HTTP_BODY_LIMIT_BYTES,
+    // A request target that is not a valid URL and a path parameter longer than the router accepts are catalog
+    // problems; other routing errors are unexpected failures.
+    frameworkErrors: (error, request, reply) => {
+      reply.header('X-Request-Id', request.id);
+      const code = record(error)?.code;
+      if (code === 'FST_ERR_BAD_URL') return sendProblem(reply, badRequest);
+      if (code === 'FST_ERR_MAX_PARAM_LENGTH') return sendProblem(reply, notFound);
+      return unexpectedFailure(error, request.id, reply);
+    },
     forceCloseConnections: true,
     logger: false,
     requestIdHeader: false,
@@ -117,14 +155,21 @@ export async function createHttpServer(config: HttpConfig, options: HttpServerOp
     reply.header('X-Request-Id', request.id);
     done();
   });
+  // From the start of the shutdown a keep-alive connection closes after its last response.
+  server.addHook('onSend', (_request, reply, payload, done) => {
+    if (options.shutdown.started) reply.header('Connection', 'close');
+    done(null, payload);
+  });
   server.setErrorHandler((error, request, reply) => {
     const problem = protocolProblem(error);
     if (problem) return sendProblem(reply, problem);
-    options.log.child({ correlationId: request.id })
-      .error({ event: 'http.unexpected_failure', err: normalizeError(error) }, 'HTTP request failed');
-    return sendProblem(reply, internalServerError);
+    return unexpectedFailure(error, request.id, reply);
   });
   server.setNotFoundHandler((_request, reply) => sendProblem(reply, notFound));
+  // Liveness only: it reads no external resource and reveals nothing about the system.
+  server.get(healthRoute, (_request, reply) => {
+    reply.code(options.shutdown.started ? 503 : 200).header('Cache-Control', 'no-store').send();
+  });
   try {
     await server.register(websocket);
     await server.register(helmet, { global: true, hsts: config.publicHttps

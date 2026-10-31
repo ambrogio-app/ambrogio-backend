@@ -27,8 +27,12 @@ export function sendProblem(reply: FastifyReply, problem: ProblemDetails,
 export const methodNotAllowedProblemSchema = fixedProblemSchema('about:blank', 'Method Not Allowed', 405);
 const methodNotAllowed: ProblemDetails = { type: 'about:blank', title: 'Method Not Allowed', status: 405 };
 
-/** Answer `405` with `Allow` to the methods a read-only route of the versioned API does not accept. */
+/**
+ * Answer `405` with `Allow` to the methods a read-only route of the versioned API does not accept. The answer is sent
+ * before the body is read, so whatever body the request carries never turns it into another problem.
+ */
 export function rejectOtherMethods(scope: FastifyInstance, url: string): void {
   scope.route({ method: ['POST', 'PUT', 'PATCH', 'DELETE'], url,
+    onRequest: async (_request, reply) => sendProblem(reply, methodNotAllowed, { allow: 'GET, HEAD' }),
     handler: (_request, reply) => sendProblem(reply, methodNotAllowed, { allow: 'GET, HEAD' }) });
 }

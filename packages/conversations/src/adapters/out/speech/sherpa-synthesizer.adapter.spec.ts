@@ -3,7 +3,7 @@ import { availableParallelism } from 'node:os';
 import { join } from 'node:path';
 import { expect, it } from 'vitest';
 import { takeSentences } from './sentences.js';
-import { SherpaSynthesizer, pcm16, type SherpaTtsConfig } from './sherpa-synthesizer.js';
+import { SherpaSynthesizer, pcm16, type SherpaTtsConfig } from './sherpa-synthesizer.adapter.js';
 
 /** The voice the synthesizer loads, as its own signature describes it. */
 type VoiceModel = Parameters<typeof SherpaSynthesizer.load>[0];

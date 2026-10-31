@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { REPLY_TIME_LIMIT_MS, createExchangeTurn } from './exchange-turn.use-case.js';
-import type { BeginTurn } from './begin-turn.use-case.js';
-import type { CompleteTurnUseCase } from './complete-turn.use-case.js';
-import type { ConversationHistoryRead, HistoryTurn } from './conversation-history-read.port.js';
-import type { ProduceConversationReply, ReplyPart } from './produce-conversation-reply.port.js';
+import type { BeginTurn } from '../begin-turn/begin-turn.use-case.js';
+import type { CompleteTurnUseCase } from '../complete-turn/complete-turn.use-case.js';
+import type { ConversationHistoryRead, HistoryTurn } from '../conversation-history-read.port.js';
+import type { ProduceConversationReply, ReplyPart } from '../produce-conversation-reply.port.js';
 
 const conversationId = 'dc89cb5e-e695-43cc-8a04-917316771ea4';
 const turnId = '79e437a8-c11a-48ba-b476-e4fd4712ea58';

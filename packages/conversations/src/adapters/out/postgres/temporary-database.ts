@@ -9,7 +9,7 @@ export const temporaryDatabasePrefix = 'ambrogio_test_';
 const temporaryName = /^ambrogio_test_[0-9a-f]{16}$/;
 
 export type TemporaryDatabase = Readonly<{
-  /** URL of the new database, on the same server and with the same role. */
+  /** URL of the new database, on the same server and with the same role, always with a password. */
   url: string;
   /** Drops the database once, closing the connections still open to it. */
   drop(): Promise<void>;
@@ -38,6 +38,9 @@ export async function createTemporaryDatabase(serverUrl: string): Promise<Tempor
   const name = `${temporaryDatabasePrefix}${randomBytes(8).toString('hex')}`;
   await onServer(serverUrl, client => client.query(`create database "${name}"`));
   url.pathname = `/${name}`;
+  // The test server trusts its connections and needs no password; the archive URL names one all the same, as the
+  // configuration requires, and the server ignores it.
+  if (url.password === '') url.password = 'test-server-trust';
   let dropping: Promise<void> | undefined;
   return {
     url: url.toString(),

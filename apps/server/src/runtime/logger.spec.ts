@@ -47,13 +47,73 @@ describe('base logger of the backend', () => {
     expect(row.client_secret).toBe('[redacted]');
   });
 
-  it('keeps errors and other objects by identity and tolerates cycles', () => {
-    const error = new Error('kept');
-    const cyclic: Record<string, unknown> = { name: 'cycle' };
+  // Verification: Prova del logger minimo del backend
+  it('redacts shared and circular references, arrays and class instances on copies, without invoking getters', () => {
+    const { log, lines } = capturedBaseLogger();
+    class Settings {
+      apiKey = 'PRIVATE_K';
+      visible = 'shown';
+      get token(): string { throw new Error('getter invoked'); }
+    }
+    const shared = { password: 'PRIVATE_S', label: 'shared' };
+    const cyclic: Record<string, unknown> = { secret: 'PRIVATE_C', label: 'cycle' };
     cyclic.self = cyclic;
-    const value = redactSensitive({ err: error, cyclic, date: new Date(0) });
-    expect(value.err).toBe(error);
-    expect((value.cyclic as Record<string, unknown>).self).toBe(cyclic);
+    const settings = new Settings();
+    const fields = { first: shared, second: shared, list: [shared, [{ cookie: 'PRIVATE_L' }]], cyclic, settings,
+      date: new Date(0) };
+    const copy = { shared: structuredClone(shared), cyclicSecret: cyclic.secret };
+    log.error({ event: 'references', ...fields });
+    const [row] = lines() as Record<string, any>[];
+    expect(JSON.stringify(row)).not.toMatch(/PRIVATE_/);
+    expect(row!.first).toEqual({ password: '[redacted]', label: 'shared' });
+    expect(row!.second).toEqual({ password: '[redacted]', label: 'shared' });
+    expect(row!.list[0]).toEqual({ password: '[redacted]', label: 'shared' });
+    expect(row!.list[1]).toEqual([{ cookie: '[redacted]' }]);
+    expect(row!.cyclic).toMatchObject({ secret: '[redacted]', label: 'cycle' });
+    expect(row!.settings).toEqual({ apiKey: '[redacted]', visible: 'shown' });
+    expect(row!.date).toBe(new Date(0).toISOString());
+    expect(shared).toEqual(copy.shared);
+    expect(cyclic.secret).toBe(copy.cyclicSecret);
+    expect(cyclic.self).toBe(cyclic);
+    expect(settings.apiKey).toBe('PRIVATE_K');
+    const redacted = redactSensitive({ a: shared, b: shared, cyclic });
+    expect(redacted.a).toBe(redacted.b);
+    expect((redacted.cyclic as Record<string, unknown>).self).toBe(redacted.cyclic);
+  });
+
+  // Verification: Prova del campo err nel log definitivo
+  it('gives every error at any depth and key, also in derived loggers, the controlled view', () => {
+    const { log, lines } = capturedBaseLogger();
+    const project = new ProjectError('Agent MCP connection could not be closed: home');
+    const external = Object.assign(new Error('PRIVATE_NESTED'), { detail: 'PRIVATE_DETAIL' });
+    const before = Object.getOwnPropertyDescriptors(external);
+    log.child({ failure: external, context: { inner: [project] } })
+      .error({ event: 'nested', reason: { deep: { error: external } }, list: [external, project] });
+    const [row] = lines() as Record<string, any>[];
+    const opaque = { type: 'Error', message: 'Unexpected backend failure', stack: '[redacted]' };
+    const projectView = { type: 'ProjectError', message: project.message, stack: project.stack };
+    expect(row!.failure).toEqual(opaque);
+    expect(row!.context.inner).toEqual([projectView]);
+    expect(row!.reason.deep.error).toEqual(opaque);
+    expect(row!.list).toEqual([opaque, projectView]);
+    expect(JSON.stringify(row)).not.toMatch(/PRIVATE_/);
+    expect(Object.getOwnPropertyDescriptors(external)).toEqual(before);
+  });
+
+  // Verification: Prova del campo err nel log definitivo
+  it('shows an external AggregateError with a constant description and the views of its errors', () => {
+    const { log, lines } = capturedBaseLogger();
+    const project = new ProjectError('Conversation archive could not be prepared');
+    const aggregate = new AggregateError([project, new TypeError('PRIVATE_INNER'), 'PRIVATE_VALUE'], 'PRIVATE_OUTER');
+    log.error({ event: 'aggregate', err: aggregate, nested: { aggregate } });
+    const [row] = lines() as Record<string, any>[];
+    const opaque = { type: 'Error', message: 'Unexpected backend failure', stack: '[redacted]' };
+    const view = { type: 'AggregateError', message: 'Unexpected backend failure', stack: '[redacted]',
+      errors: [{ type: 'ProjectError', message: project.message, stack: project.stack }, opaque, opaque] };
+    expect(row!.err).toEqual(view);
+    expect(row!.nested.aggregate).toEqual(view);
+    expect(JSON.stringify(row)).not.toMatch(/PRIVATE_/);
+    expect(aggregate.message).toBe('PRIVATE_OUTER');
   });
 
   // Verification: Prova del campo err nel log definitivo

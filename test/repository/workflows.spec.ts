@@ -118,7 +118,7 @@ test('the secret scan covers the whole history with the verified gitleaks and ga
   expect(checkout?.with).toEqual({ 'fetch-depth': '0', 'persist-credentials': 'false' });
   expect(secretScan.document.env).toEqual({ GITLEAKS_VERSION: gitleaksVersion, GITLEAKS_SHA256: gitleaksSha256 });
   expectVerifiedInstall(job);
-  const scan = indexOfRun(job, /^gitleaks git --redact --no-banner --exit-code 1 \.\s*$/);
+  const scan = indexOfRun(job, /^gitleaks git --redact --no-banner --ignore-gitleaks-allow --exit-code 1 \.\s*$/);
   expect(scan).toBeGreaterThan(stepsOf(job).indexOf(installStep(job)));
   expect(publish.document.jobs['secret-scan']).toEqual({ uses: './.github/workflows/secret-scan.yml' });
   expect(publish.document.jobs.publish.needs).toContain('secret-scan');

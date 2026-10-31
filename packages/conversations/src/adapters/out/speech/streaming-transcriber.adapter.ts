@@ -1,10 +1,10 @@
 import { availableParallelism } from 'node:os';
 import { Worker } from 'node:worker_threads';
 import { ProjectError } from '../../../application/project-error.js';
-import type { TranscriptionModelFiles } from '../../out/voice-config.js';
+import type { TranscriptionModelFiles } from '../voice-config.js';
 import { onlineRecognizerConfig, type OnlineRecognizerConfig, type RecognitionReply,
   type RecognitionRequest } from './streaming-recognition.js';
-import type { Transcriber } from './speech-components.js';
+import type { Transcriber } from '../../in/session/speech-components.port.js';
 
 /** The recognition worker as seen by the transcriber; replaced in tests. */
 export type RecognitionWorker = Readonly<{

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { WebSocket } from 'ws';
 import { ProjectError } from '../../../application/project-error.js';
-import { createExchangeTurn, type ExchangeTurn } from '../../../application/exchange-turn.use-case.js';
+import { createExchangeTurn, type ExchangeTurn } from '../../../application/exchange-turn/exchange-turn.use-case.js';
 import type { ConversationHistory } from '../../../application/conversation-history-read.port.js';
 
 type HistoryTurn = ConversationHistory['turns'][number];
@@ -18,7 +18,7 @@ import type { ReplyPart } from '../../../application/produce-conversation-reply.
 import { createConversationSessions,
   type ConversationSessionsDependencies } from './conversation-session.adapter.js';
 import { createProtocolDecoder } from './protocol-decoder.js';
-import type { SpeechComponents } from './speech-components.js';
+import type { SpeechComponents } from './speech-components.port.js';
 import { recordingLogger } from '../../../../test/support/recording-logger.js';
 
 const schemaPath = fileURLToPath(new URL('../../../../../../protocol/ambrogio-v1.schema.json', import.meta.url));

@@ -1,6 +1,6 @@
 // Verification: Prova della trascrizione in streaming
 import { describe, expect, it } from 'vitest';
-import { StreamingTranscriber, type RecognitionWorker } from './streaming-transcriber.js';
+import { StreamingTranscriber, type RecognitionWorker } from './streaming-transcriber.adapter.js';
 
 const files = { encoder: '/m/encoder.int8.onnx', decoder: '/m/decoder.int8.onnx', joiner: '/m/joiner.int8.onnx',
   tokens: '/m/tokens.txt' };

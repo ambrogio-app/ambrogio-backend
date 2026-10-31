@@ -124,13 +124,13 @@ const ports = filesIn('application', '.port.ts');
 // Verification: Prova della separazione dei contratti di lettura
 test('read contracts, the lookup port and the turn repository stay separate', () => {
   for (const file of ['application/conversation-history-read.port.ts', 'application/conversation-list-read.port.ts',
-    'application/get-conversation.use-case.ts', 'application/list-conversations.use-case.ts']) {
+    'application/get-conversation/get-conversation.use-case.ts', 'application/list-conversations/list-conversations.use-case.ts']) {
     const imports = extractSpecifiers(read(file));
-    expect(imports.filter((specifier) => /domain\/(turn|identities)\.js$|turn-repository\.port\.js$/.test(specifier)), file)
+    expect(imports.filter((specifier) => /domain\/(turn\/turn|identities)\.js$|turn-repository\.port\.js$/.test(specifier)), file)
       .toEqual([]);
   }
-  const begin = extractSpecifiers(read('application/begin-turn.use-case.ts'));
-  expect(begin).toContain('./conversation-lookup.port.js');
+  const begin = extractSpecifiers(read('application/begin-turn/begin-turn.use-case.ts'));
+  expect(begin).toContain('../conversation-lookup.port.js');
   expect(begin.filter((specifier) => /-read\.port\.js$/.test(specifier))).toEqual([]);
   const repository = code('application/turn-repository.port.ts');
   expect([...repository.matchAll(/^\s*(\w+)\(/gm)].map((match) => match[1]).sort())

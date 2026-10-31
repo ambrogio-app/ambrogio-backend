@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { ConversationId, TurnId } from '../domain/identities.js';
-import { Turn } from '../domain/turn.js';
+import { ConversationId, TurnId } from '../../domain/identities.js';
+import { Turn } from '../../domain/turn/turn.js';
 import { createCompleteTurn } from './complete-turn.use-case.js';
-import type { TurnRepository } from './turn-repository.port.js';
+import type { TurnRepository } from '../turn-repository.port.js';
 
 const conversationId = ConversationId.create('dc89cb5e-e695-43cc-8a04-917316771ea4');
 const turnId = '79e437a8-c11a-48ba-b476-e4fd4712ea58';

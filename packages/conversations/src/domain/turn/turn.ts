@@ -1,6 +1,6 @@
-import { ProjectError } from './project-error.js';
-import { ConversationId, TurnId } from './identities.js';
-import type { Result } from './result.js';
+import { ProjectError } from '../project-error.js';
+import { ConversationId, TurnId } from '../identities.js';
+import type { Result } from '../result.js';
 
 export type TurnTransitionRejected = Readonly<{ kind: 'already_closed' }>;
 

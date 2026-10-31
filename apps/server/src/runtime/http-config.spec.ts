@@ -45,11 +45,16 @@ describe('HTTP component configuration', () => {
     }
   });
 
+  // Verification: Prova delle origini CORS dell'API HTTP
   it('accepts exact CORS origins only', () => {
     expect(readHttpConfig({ ...explicit, AMBROGIO_ALLOWED_ORIGINS: 'https://chat.example.test, http://127.0.0.1:8080' },
       'production').allowedOrigins).toEqual(['https://chat.example.test', 'http://127.0.0.1:8080']);
+    // Items are trimmed and empty items are ignored.
+    expect(readHttpConfig({ ...explicit, AMBROGIO_ALLOWED_ORIGINS: ' https://a.example.test ,, https://b.example.test,' },
+      'production').allowedOrigins).toEqual(['https://a.example.test', 'https://b.example.test']);
+    expect(readHttpConfig({ ...explicit, AMBROGIO_ALLOWED_ORIGINS: ' , ' }, 'production').allowedOrigins).toEqual([]);
     for (const origins of ['*', 'https://example.test/path', 'ftp://example.test', 'example.test',
-      'https://example.test,', 'https://example.test/']) {
+      'https://example.test,*', 'https://example.test/']) {
       expect(failure({ ...explicit, AMBROGIO_ALLOWED_ORIGINS: origins }))
         .toBe('Invalid environment variable AMBROGIO_ALLOWED_ORIGINS: expected comma-separated exact HTTP or HTTPS origins');
     }

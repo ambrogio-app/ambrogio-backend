@@ -1,9 +1,9 @@
 import type { WebSocket } from 'ws';
-import type { BeginTurnRejection } from '../../../application/begin-turn.use-case.js';
-import type { ExchangeTurn } from '../../../application/exchange-turn.use-case.js';
+import type { BeginTurnRejection } from '../../../application/begin-turn/begin-turn.use-case.js';
+import type { ExchangeTurn } from '../../../application/exchange-turn/exchange-turn.use-case.js';
 import type { DecodedMessage, InputStart } from './protocol-decoder.js';
-import type { SpeechComponents } from './speech-components.js';
-import type { Logger } from '../logger.js';
+import type { SpeechComponents } from './speech-components.port.js';
+import type { Logger } from '../diagnostic-log.port.js';
 
 export const sessionProtocol = 'ambrogio.v1';
 export const sessionRoute = '/api/session';

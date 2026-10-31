@@ -1,9 +1,9 @@
 import { createRequire } from 'node:module';
 import { availableParallelism } from 'node:os';
 import { ProjectError } from '../../../application/project-error.js';
-import { type VoiceModelFiles } from '../../out/voice-config.js';
+import { type VoiceModelFiles } from '../voice-config.js';
 import { spokenSentence, takeSentences } from './sentences.js';
-import type { Synthesizer } from './speech-components.js';
+import type { Synthesizer } from '../../in/session/speech-components.port.js';
 
 /** The `sherpa-onnx-node` configuration of a Piper (VITS) voice. */
 export type SherpaTtsConfig = Readonly<{

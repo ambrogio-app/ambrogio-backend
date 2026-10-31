@@ -28,7 +28,7 @@ Argomenti invalidi danno un risultato con `isError: true` e un testo che nomina 
 
 La migrazione `002_turn_search` crea due indici GIN su espressione della tabella `turns`, limitati alle righe con `status = 'answered'`: `turns_search_italian` su `to_tsvector('italian', text || ' ' || answer)` e `turns_search_english` su `to_tsvector('english', text || ' ' || answer)`. La ricerca usa la stessa espressione con la configurazione della lingua dell'installazione e `websearch_to_tsquery` con la stessa configurazione, così che PostgreSQL usi l'indice corrispondente. Gli indici non aggiungono colonne: i tipi generati dello schema non cambiano. PostgreSQL li aggiorna nella stessa transazione della conclusione del turno.
 
-Una colonna `tsvector` generata non è adottata perché la sua configurazione resterebbe fissata nella migrazione, mentre la lingua dipende da `AMBROGIO_LANGUAGE`. L'archivio non usa l'estensione `unaccent`: una parola scritta senza l'accento previsto non corrisponde.
+L'archivio non usa l'estensione `unaccent`: una parola scritta senza l'accento previsto non corrisponde.
 
 La lettura è una porta Application `ConversationMemorySearch`, con un proprio adapter PostgreSQL che non scrive, secondo le regole delle porte di lettura dell'archivio.
 
@@ -41,9 +41,9 @@ La lettura è una porta Application `ConversationMemorySearch`, con un proprio a
 
 ### Server MCP della memoria
 
-Il server MCP della memoria usa `@modelcontextprotocol/server` della stessa versione del client MCP del lockfile, con trasporto Streamable HTTP senza stato, sulla rotta `POST /mcp/memory` del server Fastify del backend; `GET` e `DELETE` su quel percorso rispondono `405`. Si presenta con il nome `ambrogio-memory` e la versione del package server, dichiara soltanto la capacità `tools` e offre soltanto «Strumento MCP search_conversations». Segue la revisione del protocollo di «Protocollo Model Context Protocol».
+Il server MCP della memoria usa `@modelcontextprotocol/server` della stessa versione del client MCP del lockfile, con trasporto Streamable HTTP senza stato, sulla rotta `POST /mcp/memory` del server Fastify del backend. `GET` e `DELETE` su quel percorso rispondono `405` con l'header `Allow: POST` e senza corpo. Si presenta con il nome `ambrogio-memory` e la versione del package server, dichiara soltanto la capacità `tools` e offre soltanto «Strumento MCP search_conversations». Segue la revisione del protocollo di «Protocollo Model Context Protocol».
 
-Il percorso non richiede autenticazione applicativa, come il resto del backend, e non appartiene all'API HTTP `v1`. Una richiesta con l'intestazione `Origin` riceve `403` senza raggiungere il server MCP, così che una pagina web non possa usarlo attraverso il browser di chi la visita; i client MCP lato server, come gli agenti, non inviano `Origin`. Il server MCP è costruito dalla composition root con la porta di lettura della memoria e la configurazione già validata, ed è registrato prima dell'apertura dell'ascolto.
+Il percorso non richiede autenticazione applicativa, come il resto del backend, e non appartiene all'API HTTP `v1`. Una richiesta `POST` con l'intestazione `Origin` riceve `403` senza corpo e senza raggiungere il server MCP. Le altre risposte della rotta sono quelle del trasporto Streamable HTTP del server MCP, compresi i suoi errori JSON-RPC, e non sono Problem Details; un corpo che il server HTTP non riesce a leggere riceve il problema corrispondente del catalogo dei problemi di protocollo HTTP. Il server MCP è costruito dalla composition root con la porta di lettura della memoria e la configurazione già validata, ed è registrato prima dell'apertura dell'ascolto.
 
 #### Metadata
   * type: specification
@@ -54,7 +54,7 @@ Il percorso non richiede autenticazione applicativa, come il resto del backend, 
 
 ### Agente Memory d'esempio nel repository
 
-Il file d'esempio è `examples/agents/memory.json`. La descrizione per l'orchestratore è `Handles requests to remember something the family says, and answers questions about the family's own plans, appointments, deadlines and things said before.`, così che l'orchestratore gli affidi anche le richieste di ricordare e le domande sulle scadenze della famiglia, che altrimenti finirebbero a un agente di conoscenza generale; `mcp.url` è `http://127.0.0.1:3000/mcp/memory`, l'indirizzo del backend nel proprio container con la porta degli esempi; `mcp.tools` elenca `search_conversations`; `maxToolCalls` è 4, per una ricerca e fino a tre nuovi tentativi con sinonimi. Il modello è quello degli altri esempi. Le istruzioni, in inglese come gli altri esempi, chiedono di confermare brevemente, senza cercare, una richiesta di ricordare qualcosa, perché ogni turno con risposta resta ricercabile, di cercare prima di rispondere a domande su conversazioni passate, di riprovare con sinonimi o parole più generali quando non ci sono risultati, di dire quando non trova nulla invece di inventare e di indicare la data delle conversazioni citate.
+Il file d'esempio è `examples/agents/memory.json`. La descrizione per l'orchestratore è `Handles requests to remember something the family says, and answers questions about the family's own plans, appointments, deadlines and things said before.`; `mcp.url` è `http://127.0.0.1:3000/mcp/memory`, l'indirizzo del backend nel proprio container con la porta degli esempi; `mcp.tools` elenca `search_conversations`; `maxToolCalls` è 4. Il modello è quello degli altri esempi. Le istruzioni, in inglese come gli altri esempi, chiedono di confermare brevemente, senza cercare, una richiesta di ricordare qualcosa, di cercare prima di rispondere a domande su conversazioni passate, di riprovare con sinonimi o parole più generali quando non ci sono risultati, di dire quando non trova nulla invece di inventare e di indicare la data delle conversazioni citate.
 
 #### Metadata
   * type: specification

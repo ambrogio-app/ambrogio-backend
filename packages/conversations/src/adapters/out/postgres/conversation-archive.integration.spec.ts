@@ -93,6 +93,48 @@ describe('conversation archive startup', () => {
   });
 });
 
+describe('conversation archive address', () => {
+  const names = ['PGHOST', 'PGPORT', 'PGUSER', 'PGPASSWORD', 'PGDATABASE', 'PGSSLMODE'] as const;
+  const saved = new Map(names.map(name => [name, process.env[name]]));
+  afterEach(() => {
+    for (const [name, value] of saved) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+    vi.restoreAllMocks();
+  });
+
+  // Verification: Prova dell'archivio configurato all'avvio
+  it('gives the driver each part of the URL and never falls back on the PG variables', async () => {
+    const { url } = await database();
+    Object.assign(process.env, { PGHOST: 'unreachable.invalid', PGPORT: '1', PGUSER: 'other_role',
+      PGPASSWORD: 'PRIVATE_ENV_PASSWORD', PGDATABASE: 'other_database', PGSSLMODE: 'require' });
+    const connect = vi.spyOn(pg.Pool.prototype, 'connect');
+    const archive = await openConversationArchive(url, ignoreFault);
+    try {
+      const expected = new URL(url);
+      const options = (connect.mock.contexts[0] as unknown as { options: Record<string, unknown> }).options;
+      expect(options).not.toHaveProperty('connectionString');
+      expect(options).toMatchObject({ host: expected.hostname, port: Number(expected.port || 5432),
+        user: decodeURIComponent(expected.username), password: decodeURIComponent(expected.password),
+        database: expected.pathname.slice(1), ssl: false });
+      const { rows: [row] } = await sql<{ name: string }>`select current_database() as name`.execute(archive.db);
+      expect(row!.name).toBe(expected.pathname.slice(1));
+    } finally { await archive.close(); }
+  });
+
+  // Verification: Prova dell'archivio configurato all'avvio
+  it('refuses a URL without password before any connection', async () => {
+    const { url } = await database();
+    const withoutPassword = new URL(url);
+    withoutPassword.password = '';
+    const connect = vi.spyOn(pg.Pool.prototype, 'connect');
+    await expect(openConversationArchive(withoutPassword.toString(), ignoreFault)).rejects
+      .toThrow('Conversation archive URL is not valid');
+    expect(connect).not.toHaveBeenCalled();
+  });
+});
+
 describe('conversation archive resource', () => {
   // Verification: Prova della chiusura della risorsa PostgreSQL
   it('destroys the owned instance once for repeated and concurrent closing', async () => {

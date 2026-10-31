@@ -1,5 +1,5 @@
-import { ProjectError } from '../domain/project-error.js';
-import type { ConversationListCursor, ConversationListPage, ConversationListRead } from './conversation-list-read.port.js';
+import { ProjectError } from '../../domain/project-error.js';
+import type { ConversationListCursor, ConversationListPage, ConversationListRead } from '../conversation-list-read.port.js';
 
 export type ListConversations = (input: Readonly<{
   after?: ConversationListCursor;

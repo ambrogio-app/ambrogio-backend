@@ -2,7 +2,7 @@ import { ProjectError } from '../../../domain/project-error.js';
 import { sql, type Kysely } from 'kysely';
 import type { TurnId } from '../../../domain/identities.js';
 import type { Result } from '../../../domain/result.js';
-import type { Turn } from '../../../domain/turn.js';
+import type { Turn } from '../../../domain/turn/turn.js';
 import type {
   AdmissionRejection, TurnAdmission, TurnAlreadyClosed, TurnRepository,
 } from '../../../application/turn-repository.port.js';

@@ -55,6 +55,11 @@ test.each([
     clientId: 'id', clientSecret: 'secret' } },
   { url: 'https://example/mcp', auth: { type: 'oauth_client_credentials',
     clientId: 'id', clientSecret: 'secret', issuer: '' } },
+  // Verification: Prova del Bearer token per i connettori MCP
+  { url: 'https://example/mcp', auth: { type: 'basic', token: 'home-token' } },
+  { url: 'https://example/mcp', auth: { type: 'Bearer', token: 'home-token' } },
+  { url: 'https://example/mcp', auth: { token: 'home-token' } },
+  { url: 'https://example/mcp', auth: 'bearer' },
   // Verification: Prova della selezione degli strumenti MCP
   { url: 'https://example/mcp', tools: 'geocoding' },
   { url: 'https://example/mcp', tools: [] },

@@ -8,7 +8,8 @@ import { createResourceStack } from './lifecycle.js';
 import { createBaseLogger, type Logger } from './logger.js';
 import type { HttpConfig } from './http-config.js';
 import { closeAllClients, ProtocolClient, takeSchemaViolations } from '../../test/support/protocol-client.js';
-import type { AddressInfo } from 'node:net';
+import type { AddressInfo, Socket } from 'node:net';
+import { Agent, request as httpRequest } from 'node:http';
 import { emptyTestDatabase } from '../../../../test/support/test-database.js';
 
 const databases: Array<() => Promise<void>> = [];
@@ -36,6 +37,80 @@ afterEach(async () => {
   await closeAllClients();
   expect(takeSchemaViolations()).toEqual([]);
   await Promise.all(databases.splice(0).map(drop => drop()));
+});
+
+type RawResponse = Readonly<{ status: number; headers: Record<string, unknown>; body: string; socket: Socket }>;
+
+/** One request on a real connection, through `agent` when given, so that keep-alive is observable. */
+function rawGet(port: number, path: string, agent?: Agent): Promise<RawResponse> {
+  return new Promise((resolve, reject) => {
+    const sent = httpRequest({ host: '127.0.0.1', port, path, method: 'GET', ...(agent ? { agent } : {}) }, response => {
+      let body = '';
+      response.setEncoding('utf8');
+      response.on('data', chunk => { body += chunk; });
+      response.on('end', () => resolve({ status: response.statusCode ?? 0, headers: response.headers, body,
+        socket: response.socket }));
+    });
+    sent.on('error', reject);
+    sent.end();
+  });
+}
+
+describe('liveness and shutdown of the HTTP server', () => {
+  // Verification: Prova dell'endpoint di liveness
+  // Verification: Prova dell'arresto ordinato e limitato del server
+  it('answers 200 while accepting, 503 from the start of the shutdown, and then closes every connection', async () => {
+    const files = await fixture();
+    const prepared = await prepareConfiguredConversations({ databaseUrl: files.archive,
+      listPageSize: 20, maxListPageSize: 100, historyTurns: 20, language: 'en', timeZone: 'UTC' }, new Date(), () => undefined);
+    const { server, turnIngress } = await buildConversationServer(base, prepared, producer, undefined, undefined,
+      { log: createBaseLogger(), resources: createResourceStack() });
+    let release!: () => void;
+    const released = new Promise<void>(resolve => { release = resolve; });
+    let arrived!: () => void;
+    const inFlight = new Promise<void>(resolve => { arrived = resolve; });
+    server.get('/test-slow', async () => { arrived(); await released; return { done: true }; });
+    const agent = new Agent({ keepAlive: true, maxSockets: 1 });
+    try {
+      await server.listen({ host: '127.0.0.1', port: 0 });
+      const { port } = server.server.address() as AddressInfo;
+      const live = await rawGet(port, '/health', agent);
+      expect(live).toMatchObject({ status: 200, body: '' });
+      expect(live.headers['cache-control']).toBe('no-store');
+      expect(live.headers.connection).toBe('keep-alive');
+      expect(live.headers['content-type']).toBeUndefined();
+      expect(live.headers['x-powered-by']).toBeUndefined();
+      expect(live.headers.server).toBeUndefined();
+      // The database is not read: the endpoint stays live when the archive is no longer reachable.
+      await prepared.archive.close();
+      const withoutDatabase = await rawGet(port, '/health', agent);
+      expect(withoutDatabase).toMatchObject({ status: 200, body: '' });
+      expect(withoutDatabase.socket).toBe(live.socket);
+      // A request in flight on the keep-alive connection while the shutdown starts.
+      const slow = rawGet(port, '/test-slow', agent);
+      await inFlight;
+      await turnIngress.stopAccepting();
+      const stopping = await server.inject({ method: 'GET', url: '/health' });
+      expect(stopping.statusCode).toBe(503);
+      expect(stopping.body).toBe('');
+      expect(stopping.headers['cache-control']).toBe('no-store');
+      expect(stopping.headers.connection).toBe('close');
+      const fresh = await rawGet(port, '/health');
+      expect(fresh).toMatchObject({ status: 503, body: '' });
+      expect(fresh.headers.connection).toBe('close');
+      release();
+      const last = await slow;
+      expect(last.status).toBe(200);
+      expect(last.headers.connection).toBe('close');
+      await vi.waitFor(() => expect(last.socket.destroyed).toBe(true));
+    } finally {
+      release();
+      agent.destroy();
+      await turnIngress.closeSessions();
+      await server.close();
+      await prepared.archive.close();
+    }
+  });
 });
 
 describe('conversation HTTP server', () => {

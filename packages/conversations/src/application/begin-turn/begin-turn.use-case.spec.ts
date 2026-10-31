@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createBeginTurn } from './begin-turn.use-case.js';
-import type { ConversationLookup } from './conversation-lookup.port.js';
-import type { TurnRepository } from './turn-repository.port.js';
+import type { ConversationLookup } from '../conversation-lookup.port.js';
+import type { TurnRepository } from '../turn-repository.port.js';
 
 const conversationId = 'dc89cb5e-e695-43cc-8a04-917316771ea4';
 const turnId = '79e437a8-c11a-48ba-b476-e4fd4712ea58';

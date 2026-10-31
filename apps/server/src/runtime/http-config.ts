@@ -33,8 +33,9 @@ export function readHttpConfig(environment: NodeJS.ProcessEnv, runtime: RuntimeE
   if (!host.trim()) throw invalidVariable(variables.host.name, 'expected a host address');
   const port = integerVariable(variables.port.name, requireVariable(environment, runtime, variables.port), 1, 65535);
   const listed = readVariable(environment, runtime, variables.allowedOrigins);
-  // No list authorizes no origin.
-  const allowedOrigins = listed === undefined ? [] : listed.split(',').map(origin => origin.trim());
+  // No list authorizes no origin; each item is trimmed and an empty item is ignored.
+  const allowedOrigins = listed === undefined ? []
+    : listed.split(',').map(origin => origin.trim()).filter(origin => origin.length > 0);
   if (!allowedOrigins.every(exactOrigin)) {
     throw invalidVariable(variables.allowedOrigins.name, 'expected comma-separated exact HTTP or HTTPS origins');
   }

@@ -15,20 +15,20 @@
       "import": "./dist/application/project-error.js"
     },
     "./application/begin-turn": {
-      "types": "./dist/application/begin-turn.use-case.d.ts",
-      "import": "./dist/application/begin-turn.use-case.js"
+      "types": "./dist/application/begin-turn/begin-turn.use-case.d.ts",
+      "import": "./dist/application/begin-turn/begin-turn.use-case.js"
     },
     "./application/complete-turn": {
-      "types": "./dist/application/complete-turn.use-case.d.ts",
-      "import": "./dist/application/complete-turn.use-case.js"
+      "types": "./dist/application/complete-turn/complete-turn.use-case.d.ts",
+      "import": "./dist/application/complete-turn/complete-turn.use-case.js"
     },
     "./application/interrupt-pending-turns": {
-      "types": "./dist/application/interrupt-pending-turns.use-case.d.ts",
-      "import": "./dist/application/interrupt-pending-turns.use-case.js"
+      "types": "./dist/application/interrupt-pending-turns/interrupt-pending-turns.use-case.d.ts",
+      "import": "./dist/application/interrupt-pending-turns/interrupt-pending-turns.use-case.js"
     },
     "./application/exchange-turn": {
-      "types": "./dist/application/exchange-turn.use-case.d.ts",
-      "import": "./dist/application/exchange-turn.use-case.js"
+      "types": "./dist/application/exchange-turn/exchange-turn.use-case.d.ts",
+      "import": "./dist/application/exchange-turn/exchange-turn.use-case.js"
     },
     "./application/produce-conversation-reply": {
       "types": "./dist/application/produce-conversation-reply.port.d.ts",
@@ -51,12 +51,12 @@
       "import": "./dist/application/conversation-lookup.port.js"
     },
     "./application/get-conversation": {
-      "types": "./dist/application/get-conversation.use-case.d.ts",
-      "import": "./dist/application/get-conversation.use-case.js"
+      "types": "./dist/application/get-conversation/get-conversation.use-case.d.ts",
+      "import": "./dist/application/get-conversation/get-conversation.use-case.js"
     },
     "./application/list-conversations": {
-      "types": "./dist/application/list-conversations.use-case.d.ts",
-      "import": "./dist/application/list-conversations.use-case.js"
+      "types": "./dist/application/list-conversations/list-conversations.use-case.d.ts",
+      "import": "./dist/application/list-conversations/list-conversations.use-case.js"
     },
     "./application/turn-capabilities": {
       "types": "./dist/application/turn-capabilities.port.d.ts",
@@ -118,9 +118,9 @@
       "types": "./dist/adapters/in/http/problem-details.d.ts",
       "import": "./dist/adapters/in/http/problem-details.js"
     },
-    "./adapters/in/logger": {
-      "types": "./dist/adapters/in/logger.d.ts",
-      "import": "./dist/adapters/in/logger.js"
+    "./adapters/in/diagnostic-log": {
+      "types": "./dist/adapters/in/diagnostic-log.port.d.ts",
+      "import": "./dist/adapters/in/diagnostic-log.port.js"
     },
     "./adapters/out/uuid-identifiers": {
       "types": "./dist/adapters/out/uuid-identifiers.adapter.d.ts",
@@ -129,6 +129,10 @@
     "./adapters/out/system-current-time": {
       "types": "./dist/adapters/out/system-current-time.adapter.d.ts",
       "import": "./dist/adapters/out/system-current-time.adapter.js"
+    },
+    "./adapters/out/fixed-current-time": {
+      "types": "./dist/adapters/out/fixed-current-time.adapter.d.ts",
+      "import": "./dist/adapters/out/fixed-current-time.adapter.js"
     },
     "./adapters/out/system-deadlines": {
       "types": "./dist/adapters/out/system-deadlines.adapter.d.ts",
@@ -143,16 +147,16 @@
       "import": "./dist/adapters/in/session/protocol-decoder.js"
     },
     "./adapters/in/session/speech-components": {
-      "types": "./dist/adapters/in/session/speech-components.d.ts",
-      "import": "./dist/adapters/in/session/speech-components.js"
+      "types": "./dist/adapters/in/session/speech-components.port.d.ts",
+      "import": "./dist/adapters/in/session/speech-components.port.js"
     },
-    "./adapters/in/session/local-speech-components": {
-      "types": "./dist/adapters/in/session/local-speech-components.d.ts",
-      "import": "./dist/adapters/in/session/local-speech-components.js"
+    "./adapters/out/speech/local-speech-components": {
+      "types": "./dist/adapters/out/speech/local-speech-components.adapter.d.ts",
+      "import": "./dist/adapters/out/speech/local-speech-components.adapter.js"
     },
     "./application/search-conversations": {
-      "types": "./dist/application/search-conversations.use-case.d.ts",
-      "import": "./dist/application/search-conversations.use-case.js"
+      "types": "./dist/application/search-conversations/search-conversations.use-case.d.ts",
+      "import": "./dist/application/search-conversations/search-conversations.use-case.js"
     },
     "./adapters/out/postgres/memory-search": {
       "types": "./dist/adapters/out/postgres/postgres-conversation-memory-search.adapter.d.ts",
